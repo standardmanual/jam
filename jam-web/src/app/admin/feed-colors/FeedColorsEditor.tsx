@@ -63,14 +63,17 @@ const RULE_NAMES: Readonly<Record<ColorRuleName, string>> = {
 
 const HEX_ERROR = '#과 영문·숫자 6자리로 입력해 주세요. 예: #ff9a9a'
 
-/** 15색이 모두 한 번씩 보이도록 고른 미리보기 샘플(가짜 카드). 색 키는 직접 지정한 값이라 자동 배정에 흔들리지 않는다. */
+/**
+ * 통합 팔레트 색 9개(노랑·초록·짙은 초록·분홍·하늘·빨강·보라·파랑·흰색)가 한 번씩 보이도록 고른 미리보기 샘플(가짜 카드, 티켓 20261122_2224 회차 9).
+ * 짙은 초록 바탕 카드(목록형, 바탕 위 제목·설명이 흰색)를 한 장 포함한다. 색 키는 직접 지정한 값이라 자동 배정에 흔들리지 않고, 칩은 배제 표에 걸리지 않게 골랐다.
+ */
 const PREVIEW_VIEWS: CardView[] = [
-  previewView('hero_box', { bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }),
-  previewView('text_box', { bg_color_key: 'yellow-soft', chip_color_key: 'yellow', box_color_key: 'ref-pink' }),
-  previewView('badge_intro', { bg_color_key: 'green-soft', chip_color_key: 'green' }),
-  previewView('drop_pickup', { bg_color_key: 'purple-soft', chip_color_key: 'purple', box_color_key: 'ref-blue' }),
-  previewView('gallery_list', { bg_color_key: 'blue-soft', chip_color_key: 'blue', box_color_key: 'ref-yellow' }),
-  previewView('badge_only', { bg_color_key: 'ref-red' }),
+  previewView('hero_box', { bg_color_key: 'yellow', chip_color_key: 'purple', box_color_key: 'sky' }),
+  previewView('text_box', { bg_color_key: 'pink', chip_color_key: 'blue', box_color_key: 'yellow' }),
+  previewView('badge_intro', { bg_color_key: 'sky', chip_color_key: 'red' }),
+  previewView('drop_pickup', { bg_color_key: 'green', chip_color_key: 'white', box_color_key: 'pink' }),
+  previewView('gallery_list', { bg_color_key: 'green-deep', chip_color_key: 'pink', box_color_key: 'yellow' }),
+  previewView('badge_only', { bg_color_key: 'pink' }),
 ]
 
 const lower = (hex: string): string => hex.toLowerCase()

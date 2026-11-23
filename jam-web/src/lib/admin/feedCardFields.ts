@@ -32,8 +32,17 @@ import {
   MAX_CARD_CHIPS,
   type FeedType,
 } from '@/lib/today/feedChipSlots'
-import { firstViolatedRule, type ColorRuleName } from '@/lib/today/feedColorRules'
-import { boxHasTextFor, FEED_BURST, FEED_COLOR_KEYS, FEED_COLORS, FEED_GALLERY, FEED_TILTS } from '@/lib/today/feedConstants'
+import { chipExclusionRule, type ColorRuleName } from '@/lib/today/feedColorRules'
+import {
+  boxAllowedFor,
+  boxHasTextFor,
+  FEED_BURST,
+  FEED_COLOR_KEYS,
+  FEED_COLOR_USAGE,
+  FEED_GALLERY,
+  FEED_TILTS,
+} from '@/lib/today/feedConstants'
+import { FEED_COLOR_LABELS } from '@/lib/admin/feedColorLabels'
 import type { FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { checkChipTextLength } from '@/lib/today/feedValueChips'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
@@ -309,7 +318,7 @@ export interface FeedCardValidateOptions {
   title: string
   /** 카드에 연결된 컬렉션 id. 넘기면(`null` 포함) «컬렉션 소개인데 컬렉션이 없음» 경고를 판정하고, 안 넘기면 그 경고는 건너뛴다. */
   itemBookId?: string | null
-  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 색 규칙 경고 판정에 쓴다. 생략하면 기본 15색 hex다. */
+  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 호출부 호환용으로 남겼다 — 색 조합 경고는 키 기반 규칙(`colorRuleWarnings`)이라 hex를 읽지 않는다(회차 9). */
   palette?: FeedPalette
 }
 
@@ -333,6 +342,71 @@ export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
   lightness: '밝기 차이가 모자라 칩이 묻혀요',
   image: '이미지의 대표 색과 너무 비슷해서 묻혀요',
   table: '함께 쓰지 않기로 한 색 조합이에요',
+}
+
+/** 글자가 들어가는 박스에 짙은 초록 박스를 골랐을 때의 이유 문구(`boxAllowedFor`). 검정 글자 대비가 3.9라서다(티켓 20261122_2224 결정 4). */
+export const DEEP_GREEN_TEXT_BOX_REASON = '짙은 그린 박스는 검정 글자의 대비가 모자라서 글자가 들어가는 박스에는 맞지 않아요'
+
+/**
+ * 고른 색 조합이 통합 팔레트 규칙에 걸리면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
+ * 폼 경고(`FeedCardSection`의 `feedColorWarnings`)와 서버 검증 경고(`validateFeedCardColumns`)가 이 한 함수를 써서 같은 규칙·같은 문구를 낸다.
+ *
+ * 규칙: ① 칩 색이 배경색·박스 색 위에서 배제 표(`chipExclusionRule`)에 걸리면 경고한다(같은 색이면 «두 색이 같아서» 문구).
+ * ② 배경색과 박스 색이 같으면 박스가 안 보이니 경고한다(바탕–박스 짝은 배제 표가 «칩 대 면» 표라 이것만 본다).
+ * ③ 글자가 들어가는 박스(`boxHasTextFor`)에 짙은 초록 박스(`boxAllowedFor`가 거짓인 새 팔레트 키)를 고르면 경고한다.
+ * 옛 15키 박스(`boxAllowedFor`가 쓰임 표에 없다고 거짓을 주는 키)는 저장된 카드에서 계속 유효하니 ③에서 경고하지 않는다.
+ *
+ * 비어 있거나 모르는 키가 낀 짝은 건너뛴다(비워 둔 «자동» 칸은 저장할 때 규칙을 지켜서 정한다). `show`가 거짓인 칸(보이지 않는 칸)이 낀 짝도 건너뛴다.
+ * `excludedPairs`는 사용자가 제외한 색 조합이다(서버 검증은 생략). 색은 키 대신 `FEED_COLOR_LABELS`의 색 이름으로 적는다.
+ */
+export function colorRuleWarnings(input: {
+  bg: string | null | undefined
+  chip: string | null | undefined
+  box: string | null | undefined
+  feedType?: unknown
+  boxKind?: unknown
+  show?: { chip: boolean; box: boolean }
+  excludedPairs?: readonly (readonly [string, string])[]
+}): string[] {
+  const show = input.show ?? { chip: true, box: true }
+  const known = (key: string | null | undefined): key is keyof typeof FEED_COLOR_LABELS =>
+    typeof key === 'string' && Object.hasOwn(FEED_COLOR_LABELS, key)
+  const warnings: string[] = []
+  const pairs: ReadonlyArray<readonly [string, string | null | undefined, string, string | null | undefined, boolean]> = [
+    ['배경색', input.bg, '칩 색', input.chip, true],
+    ['칩 색', input.chip, '박스 색', input.box, true],
+    ['배경색', input.bg, '박스 색', input.box, false],
+  ]
+  for (const [labelA, keyA, labelB, keyB, involvesChip] of pairs) {
+    if (!known(keyA) || !known(keyB)) continue
+    if ((labelA === '칩 색' || labelB === '칩 색') && !show.chip) continue
+    if ((labelA === '박스 색' || labelB === '박스 색') && !show.box) continue
+    const head = `${labelA} ${FEED_COLOR_LABELS[keyA]} · ${labelB} ${FEED_COLOR_LABELS[keyB]} 조합이`
+    if (input.excludedPairs?.some(([x, y]) => (x === keyA && y === keyB) || (x === keyB && y === keyA))) {
+      warnings.push(`${head} 제외하기로 한 조합이에요. 저장은 되지만 다른 색을 골라 보세요.`)
+      continue
+    }
+    // 칩이 낀 짝은 배제 표, 바탕–박스 짝은 같은 색만 본다. 같은 색은 표보다 «두 색이 같아서» 문구가 정확하다.
+    let reason: string | null = null
+    if (keyA === keyB) reason = COLOR_RULE_REASON.same
+    else if (involvesChip) {
+      const baseKey = labelA === '칩 색' ? keyB : keyA
+      const chipKey = labelA === '칩 색' ? keyA : keyB
+      reason = chipExclusionRule(chipKey, baseKey) ? COLOR_RULE_REASON.table : null
+    }
+    if (reason) warnings.push(`${head} 색 규칙에 걸려요. ${reason}. 저장은 되지만 다른 색을 골라 보세요.`)
+  }
+  const box = input.box
+  if (
+    show.box &&
+    known(box) &&
+    (FEED_COLOR_USAGE.box as readonly string[]).includes(box) &&
+    boxHasTextFor(input.feedType, input.boxKind) &&
+    !boxAllowedFor(box, true)
+  ) {
+    warnings.push(`박스 색 ${FEED_COLOR_LABELS[box]}이 색 규칙에 걸려요. ${DEEP_GREEN_TEXT_BOX_REASON}. 저장은 되지만 다른 색을 골라 보세요.`)
+  }
+  return warnings
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -544,22 +618,15 @@ export function validateFeedCardColumns(
   }
 
   // ── 경고 ──
-  for (const [a, b, involvesChip] of [
-    ['bg_color_key', 'chip_color_key', true],
-    ['chip_color_key', 'box_color_key', true],
-    ['bg_color_key', 'box_color_key', false],
-  ] as const) {
-    const keyA = columns[a]
-    const keyB = columns[b]
-    if (typeof keyA !== 'string' || typeof keyB !== 'string') continue
-    const colorA = (FEED_COLORS as Readonly<Record<string, { hex: string }>>)[keyA]
-    const colorB = (FEED_COLORS as Readonly<Record<string, { hex: string }>>)[keyB]
-    if (!colorA || !colorB) continue
-    const violated = firstViolatedRule(options.palette?.[keyA] ?? colorA.hex, options.palette?.[keyB] ?? colorB.hex, { involvesChip })
-    if (violated) {
-      warnings.push(`고른 색 조합(${keyA}, ${keyB})이 색 규칙에 걸려요. ${COLOR_RULE_REASON[violated]}. 다른 색을 골라 보세요.`)
-    }
-  }
+  warnings.push(
+    ...colorRuleWarnings({
+      bg: typeof columns.bg_color_key === 'string' ? columns.bg_color_key : null,
+      chip: typeof columns.chip_color_key === 'string' ? columns.chip_color_key : null,
+      box: typeof columns.box_color_key === 'string' ? columns.box_color_key : null,
+      feedType,
+      boxKind: columns.box_kind,
+    }),
+  )
 
   if (feedType === 'gallery_list' && listItemCount === 0) {
     warnings.push('목록형인데 항목이 없어요. 홈에서 텍스트 박스로 그려지니 항목을 1개 이상 추가해 주세요.')

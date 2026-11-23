@@ -183,6 +183,8 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
   })
 
   it('규칙을 통과하는 조합(안전한 기본 조합)은 경고가 없다', () => {
+    expect(feedColorWarnings({ bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: 'green' }, show)).toEqual([])
+    // 저장된 옛 키 조합도 배제 표에 없어 조용하다
     expect(feedColorWarnings({ bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'ref-lime' }, show)).toEqual([])
   })
 
@@ -191,36 +193,69 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
   })
 
   it('사용자가 제외한 조합은 순서와 상관없이 경고한다', () => {
-    const colors = { bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: '' } as const
+    const colors = { bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: '' } as const
     expect(feedColorWarnings(colors, show)).toEqual([])
-    expect(feedColorWarnings(colors, show, [['red', 'red-soft']])[0]).toContain('제외하기로 한 조합')
+    expect(feedColorWarnings(colors, show, [['pink', 'yellow']])[0]).toContain('제외하기로 한 조합')
   })
 
   it('보이지 않는 칸이 낀 짝은 판정하지 않는다', () => {
     expect(feedColorWarnings({ bgColorKey: 'red', chipColorKey: 'red', boxColorKey: '' }, { chip: false, box: false })).toEqual([])
+    expect(feedColorWarnings({ bgColorKey: '', chipColorKey: '', boxColorKey: 'green-deep', feedType: 'text_box' }, { chip: false, box: false })).toEqual([])
+  })
+
+  it('배제 표: 빨강 칩이 초록·짙은 초록 위, 흰 칩이 노랑 위, 보라 칩이 분홍 위에 있으면 경고한다', () => {
+    const cases = [
+      [{ bgColorKey: 'green', chipColorKey: 'red', boxColorKey: '' }, '배경색 그린 · 칩 색 레드 조합이'],
+      [{ bgColorKey: 'green-deep', chipColorKey: 'red', boxColorKey: '' }, '배경색 짙은 그린 · 칩 색 레드 조합이'],
+      [{ bgColorKey: '', chipColorKey: 'white', boxColorKey: 'yellow' }, '칩 색 화이트 · 박스 색 옐로 조합이'],
+      [{ bgColorKey: 'pink', chipColorKey: 'purple', boxColorKey: '' }, '배경색 핑크 · 칩 색 퍼플 조합이'],
+    ] as const
+    for (const [colors, head] of cases) {
+      const warnings = feedColorWarnings(colors, show)
+      expect(warnings, head).toHaveLength(1)
+      expect(warnings[0]).toContain(`${head} 색 규칙에 걸려요`)
+      expect(warnings[0]).toContain('함께 쓰지 않기로 한 색 조합이에요')
+      expect(warnings[0]).toContain('저장은 되지만')
+    }
+    // 반대 방향은 막지 않는다
+    expect(feedColorWarnings({ bgColorKey: 'yellow', chipColorKey: '', boxColorKey: 'white' }, show)).toEqual([])
+    expect(feedColorWarnings({ bgColorKey: '', chipColorKey: 'yellow', boxColorKey: 'white' }, show)).toEqual([])
+  })
+
+  it('바탕과 박스가 같은 색이면 경고한다', () => {
+    const warnings = feedColorWarnings({ bgColorKey: 'sky', chipColorKey: '', boxColorKey: 'sky' }, show)
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('배경색 스카이 · 박스 색 스카이 조합이 색 규칙에 걸려요')
+  })
+
+  it('글자가 들어가는 박스에 짙은 초록 박스를 고르면 경고하고, 그림만 담는 박스에는 경고하지 않는다', () => {
+    const colors = { bgColorKey: 'yellow', chipColorKey: '', boxColorKey: 'green-deep' } as const
+    for (const feedType of ['text_box', 'drop_pickup', 'gallery_list'] as const) {
+      const warnings = feedColorWarnings({ ...colors, feedType }, show)
+      expect(warnings, feedType).toHaveLength(1)
+      expect(warnings[0]).toContain('박스 색 짙은 그린이 색 규칙에 걸려요')
+      expect(warnings[0]).toContain('글자가 들어가는 박스에는 맞지 않아요')
+    }
+    expect(feedColorWarnings({ ...colors, feedType: 'hero_box' }, show)).toEqual([])
+    expect(feedColorWarnings({ ...colors, feedType: 'hero_box', boxKind: 'text' }, show)).toHaveLength(1)
+    expect(feedColorWarnings({ ...colors, feedType: 'text_box', boxColorKey: 'pink' }, show)).toEqual([])
   })
 
   it('섹션이 경고를 보이고 저장을 막는 오류 문구는 아니다', () => {
-    const html = render({ feedType: 'hero_box', bgColorKey: 'red', chipColorKey: 'red' })
+    const html = render({ feedType: 'hero_box', bgColorKey: 'green', chipColorKey: 'red' })
     expect(html).toContain('data-testid="feed-color-warnings"')
-    expect(html).toContain('두 색이 같아서 구분이 안 돼요')
-    expect(render({ feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red' })).not.toContain('feed-color-warnings')
+    expect(html).toContain('함께 쓰지 않기로 한 색 조합이에요')
+    expect(render({ feedType: 'hero_box', bgColorKey: 'yellow', chipColorKey: 'red' })).not.toContain('feed-color-warnings')
+    expect(render({ feedType: 'text_box', boxColorKey: 'green-deep' })).toContain('글자가 들어가는 박스에는 맞지 않아요')
   })
 
-  describe('덮어쓴 팔레트 (티켓 20261121_2145)', () => {
-    // 규칙을 통과하던 조합(연한 레드 배경 + 레드 칩)이 레드를 연한 레드와 같은 hex로 덮어쓰면 걸린다
-    const colors = { bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: '' } as const
+  describe('덮어쓴 팔레트 (티켓 20261121_2145) — 색 조합 경고는 키 기반이라 hex를 읽지 않고 이미지 경고만 읽는다', () => {
     const overridden = { ...DEFAULT_FEED_PALETTE, red: DEFAULT_FEED_PALETTE['red-soft'] }
 
-    it('palette를 안 주거나 기본 팔레트를 주면 이전과 같다', () => {
-      expect(feedColorWarnings(colors, show)).toEqual([])
-      expect(feedColorWarnings(colors, show, [], undefined, DEFAULT_FEED_PALETTE)).toEqual([])
-    })
-
-    it('palette를 주면 덮어쓴 hex로 판정해 경고한다', () => {
-      const warnings = feedColorWarnings(colors, show, [], undefined, overridden)
-      expect(warnings).toHaveLength(1)
-      expect(warnings[0]).toContain('두 색이 같아서 구분이 안 돼요')
+    it('palette를 줘도 키 기반 색 조합 경고는 그대로다', () => {
+      const colors = { bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: '' } as const
+      expect(feedColorWarnings(colors, show, [], undefined, overridden)).toEqual([])
+      expect(feedColorWarnings({ ...colors, bgColorKey: 'green', chipColorKey: 'red' }, show, [], undefined, overridden)).toHaveLength(1)
     })
 
     it('이미지 색 경고도 덮어쓴 hex로 판정한다', () => {
@@ -230,12 +265,6 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
       const warnings = feedColorWarnings(only, show, [], image, { ...DEFAULT_FEED_PALETTE, green: DEFAULT_FEED_PALETTE.blue })
       expect(warnings).toHaveLength(1)
       expect(warnings[0]).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
-    })
-
-    it('섹션이 palette prop으로 경고를 판정한다', () => {
-      const patch = { feedType: 'hero_box', bgColorKey: 'red-soft', chipColorKey: 'red' } as const
-      expect(render(patch)).not.toContain('feed-color-warnings')
-      expect(render(patch, { palette: overridden })).toContain('feed-color-warnings')
     })
   })
 })

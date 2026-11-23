@@ -273,11 +273,72 @@ describe('validateFeedCardColumns — warnings(막지 않는다)', () => {
   it('색 규칙에 걸리는 조합은 경고한다(둘 다 고른 쌍만 본다)', () => {
     // 같은 색
     expect(hasWarning({ bg_color_key: 'red', chip_color_key: 'red' }, '같아서')).toBe(true)
-    // 규칙을 통과하는 기본 조합
+    // 옛 키 조합은 배제 표에 없어 통과한다(저장된 카드 121장이 계속 유효하다)
     expect(check({ feed_type: 'hero_box', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }).warnings).toEqual([])
     // 하나만 골랐으면 짝이 없어 판정하지 않는다
     expect(check({ feed_type: 'hero_box', bg_color_key: 'red' }).warnings).toEqual([])
     expect(check({ bg_color_key: 'red', chip_color_key: 'red' }).errors).toEqual([])
+  })
+
+  describe('통합 팔레트 색 경고 — 배제 표·글자 박스+짙은 초록 박스 (티켓 20261122_2224 회차 9)', () => {
+    const warnings = (columns: FeedCardColumnsInput) => check(columns).warnings
+
+    it('빨강 칩이 초록·짙은 초록 바탕 위에 있으면 «함께 쓰지 않기로 한» 경고이고 색 이름이 문구에 있다(키 이름은 노출하지 않는다)', () => {
+      for (const [bg, name] of [['green', '그린'], ['green-deep', '짙은 그린']] as const) {
+        const result = warnings({ feed_type: 'hero_box', bg_color_key: bg, chip_color_key: 'red' })
+        expect(result, bg).toHaveLength(1)
+        expect(result[0]).toContain(`배경색 ${name} · 칩 색 레드 조합이 색 규칙에 걸려요`)
+        expect(result[0]).toContain('함께 쓰지 않기로 한 색 조합이에요')
+        expect(result[0]).toContain('저장은 되지만 다른 색을 골라 보세요')
+        expect(result[0]).not.toContain('green-deep')
+      }
+    })
+
+    it('노랑 박스 위 흰 칩, 분홍 박스 위 보라 칩도 걸리고 반대 방향은 걸리지 않는다', () => {
+      expect(warnings({ feed_type: 'hero_box', box_color_key: 'yellow', chip_color_key: 'white' })[0]).toContain('칩 색 화이트 · 박스 색 옐로 조합이')
+      expect(warnings({ feed_type: 'hero_box', box_color_key: 'pink', chip_color_key: 'purple' })[0]).toContain('칩 색 퍼플 · 박스 색 핑크 조합이')
+      expect(warnings({ feed_type: 'hero_box', box_color_key: 'white', chip_color_key: 'yellow' })).toEqual([])
+      expect(warnings({ feed_type: 'hero_box', box_color_key: 'purple', chip_color_key: 'pink' })).toEqual([])
+    })
+
+    it('배제 표에 없는 새 키 조합은 조용하다', () => {
+      expect(warnings({ feed_type: 'hero_box', bg_color_key: 'yellow', chip_color_key: 'pink', box_color_key: 'green' })).toEqual([])
+    })
+
+    it('바탕과 박스가 같은 색이면 경고하고, 다른 색이면 조용하다', () => {
+      expect(warnings({ feed_type: 'hero_box', bg_color_key: 'yellow', box_color_key: 'yellow' })[0]).toContain('배경색 옐로 · 박스 색 옐로 조합이')
+      expect(warnings({ feed_type: 'hero_box', bg_color_key: 'yellow', box_color_key: 'pink' })).toEqual([])
+    })
+
+    it('글자가 들어가는 박스(텍스트형·글자 박스)에 짙은 초록 박스를 고르면 경고한다', () => {
+      for (const columns of [
+        { feed_type: 'text_box' },
+        { feed_type: 'drop_pickup' },
+        { feed_type: 'gallery_list' },
+        { feed_type: 'hero_box', box_kind: 'text' },
+      ] as const) {
+        const result = warnings({ ...columns, box_color_key: 'green-deep', ...(columns.feed_type === 'gallery_list' ? { list_items: [{ name: '항목', href: '/drops' }] } : {}) })
+        expect(result, columns.feed_type).toHaveLength(1)
+        expect(result[0]).toContain('박스 색 짙은 그린이 색 규칙에 걸려요')
+        expect(result[0]).toContain('글자가 들어가는 박스에는 맞지 않아요')
+        expect(result[0]).toContain('저장은 되지만 다른 색을 골라 보세요')
+        expect(result[0]).not.toContain('green-deep')
+      }
+    })
+
+    it('그림만 담는 박스(히어로 이미지 마스크)와 다른 색 박스는 경고하지 않는다', () => {
+      expect(warnings({ feed_type: 'hero_box', box_color_key: 'green-deep' })).toEqual([])
+      expect(warnings({ feed_type: 'hero_box', box_kind: 'image_mask', box_color_key: 'green-deep' })).toEqual([])
+      expect(warnings({ feed_type: 'text_box', box_color_key: 'yellow' })).toEqual([])
+    })
+
+    it('옛 키 박스는 글자 박스여도 경고하지 않는다(저장된 카드가 계속 유효하다)', () => {
+      expect(warnings({ feed_type: 'text_box', box_color_key: 'ref-lime' })).toEqual([])
+    })
+
+    it('경고는 저장을 막지 않는다(errors가 비어 있다)', () => {
+      expect(check({ feed_type: 'text_box', bg_color_key: 'green', chip_color_key: 'red', box_color_key: 'green-deep' }).errors).toEqual([])
+    })
   })
 
   it('목록형인데 항목이 0개면 경고한다', () => {

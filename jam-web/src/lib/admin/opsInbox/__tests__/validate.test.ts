@@ -1608,7 +1608,7 @@ describe('validateOpsBundle — 홈피드 개편 새 칸 (티켓 20261121_1530)'
     expect(result.errors).toEqual([])
     expect(result.feedWarnings).toHaveLength(2)
     expect(result.feedWarnings[0]).toMatch(/^items\[0\]\.resource\.chips: 1번째 칩의 문구가 14자로 길어요/)
-    expect(result.feedWarnings[1]).toMatch(/^items\[0\]\.resource\.bg_color_key: 고른 색 조합\(red, red\)이 색 규칙에 걸려요/)
+    expect(result.feedWarnings[1]).toMatch(/^items\[0\]\.resource\.bg_color_key: 배경색 레드 · 칩 색 레드 조합이 색 규칙에 걸려요/)
     expect(result.items[0].format_errors).toEqual([])
   })
 
