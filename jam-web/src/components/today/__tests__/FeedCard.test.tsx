@@ -331,10 +331,15 @@ describe('배지 소개(badge_intro)', () => {
     expect(html).not.toContain('<svg')
   })
 
-  it('칩은 배지 그림 둘레에 걸치고 박스는 없다', () => {
-    const html = render(feedView('badge_intro', { ...base, chips: TWO_CHIPS }))
-    expect(count(html, 'rounded-full')).toBe(2)
-    expect(html).not.toContain('mask-image')
+  it('칩은 카드 모서리 계획 층이 그리고(배지 칸 안이 아니다) 박스는 없다', () => {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const view = feedView('badge_intro', { ...base, chips: TWO_CHIPS, feed_seed: seed })
+      const html = render(view)
+      expect(chipCount(html)).toBe(planOf(view).chips.length)
+      expect(html).not.toContain('mask-image')
+      // 배지 칸(208×208)은 칩 층을 품지 않는다: 칩 층은 칸이 닫힌 뒤, 제목·설명 뒤에 온다
+      expect(html.indexOf('data-chip-plan')).toBeGreaterThan(html.indexOf('<h3'))
+    }
   })
 })
 
