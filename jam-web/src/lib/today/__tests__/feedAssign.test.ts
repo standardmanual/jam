@@ -134,20 +134,20 @@ describe('assignFeedColors — 짙은 초록 바탕 리듬', () => {
   const many = seeds(3000)
   const { everyMin, everyMax } = FEED_DEEP_GREEN_RHYTHM
 
-  it('마지막 짙은 초록 바탕 이후 5장 미만이면 짙은 초록 바탕은 나오지 않는다', () => {
-    for (let since = 0; since < everyMin; since += 1) {
+  it('마지막 짙은 초록 바탕 카드로부터 5번째 미만(사이 3장 이하)이면 짙은 초록 바탕은 나오지 않는다', () => {
+    for (let since = 0; since < everyMin - 1; since += 1) {
       for (const seed of many.slice(0, 600)) expect(assignFeedColors({ seed, recentBgKeys: recentWithSince(since) }).bg).not.toBe(FEED_DEEP_GREEN_KEY)
     }
   })
 
-  it('정확히 5장 뒤에는 낮은 확률로 나온다(약 DEEP_GREEN_CHANCE_AT_MIN)', () => {
-    const hits = many.filter((seed) => assignFeedColors({ seed, recentBgKeys: recentWithSince(everyMin) }).bg === FEED_DEEP_GREEN_KEY).length
+  it('5번째(사이 4장)에는 낮은 확률로 나온다(약 DEEP_GREEN_CHANCE_AT_MIN)', () => {
+    const hits = many.filter((seed) => assignFeedColors({ seed, recentBgKeys: recentWithSince(everyMin - 1) }).bg === FEED_DEEP_GREEN_KEY).length
     expect(Math.abs(hits / many.length - DEEP_GREEN_CHANCE_AT_MIN)).toBeLessThan(0.05)
   })
 
-  it('6장 뒤부터는 반드시 나오고, 짙은 초록 조합(노랑·분홍 박스) 안에서 고른다', () => {
+  it('6번째(사이 5장)부터는 반드시 나오고, 짙은 초록 조합(노랑·분홍 박스) 안에서 고른다', () => {
     const boxes = new Set<string>()
-    for (const since of [everyMax, everyMax + 1, everyMax + 10]) {
+    for (const since of [everyMax - 1, everyMax, everyMax + 9]) {
       for (const seed of many.slice(0, 600)) {
         const result = assignFeedColors({ seed, recentBgKeys: recentWithSince(since) })
         expect(result.bg).toBe(FEED_DEEP_GREEN_KEY)
@@ -159,13 +159,13 @@ describe('assignFeedColors — 짙은 초록 바탕 리듬', () => {
     expect([...boxes].sort()).toEqual(['pink', 'yellow'])
   })
 
-  it('짙은 초록이 목록에 없어도 6장 이상 쌓이면 반드시 나온다', () => {
+  it('짙은 초록이 목록에 없어도 5장 이상 쌓이면(새 카드가 6번째) 반드시 나온다', () => {
     const recent = ['yellow', 'pink', 'sky', 'green', 'yellow', 'pink']
     for (const seed of many.slice(0, 300)) expect(assignFeedColors({ seed, recentBgKeys: recent }).bg).toBe(FEED_DEEP_GREEN_KEY)
-    for (const seed of many.slice(0, 300)) expect(assignFeedColors({ seed, recentBgKeys: recent.slice(2) }).bg).not.toBe(FEED_DEEP_GREEN_KEY)
+    for (const seed of many.slice(0, 300)) expect(assignFeedColors({ seed, recentBgKeys: recent.slice(3) }).bg).not.toBe(FEED_DEEP_GREEN_KEY)
   })
 
-  it('차례로 이어 붙이면 짙은 초록 사이가 5~6장이고 6장째에는 어긴 적이 없다(다섯~여섯 장에 한 장꼴)', () => {
+  it('차례로 이어 붙이면 짙은 초록 카드가 5~6장마다 하나씩이고 6번째에는 어긴 적이 없다(다섯~여섯 장에 한 장꼴)', () => {
     const recent: string[] = []
     const deepAt: number[] = []
     for (let index = 0; index < 700; index += 1) {
@@ -173,7 +173,7 @@ describe('assignFeedColors — 짙은 초록 바탕 리듬', () => {
       if (result.bg === FEED_DEEP_GREEN_KEY) deepAt.push(index)
       recent.push(result.bg)
     }
-    const betweens = deepAt.slice(1).map((at, i) => at - deepAt[i] - 1)
+    const betweens = deepAt.slice(1).map((at, i) => at - deepAt[i])
     expect(betweens.length).toBeGreaterThan(80)
     for (const between of betweens) {
       expect(between).toBeGreaterThanOrEqual(everyMin)

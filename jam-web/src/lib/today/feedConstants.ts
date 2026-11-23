@@ -148,7 +148,7 @@ export const FEED_DEEP_GREEN_COMBOS: readonly Omit<FeedBgBoxCombo, 'weight'>[] =
   { bg: 'green-deep', box: 'pink' },
 ];
 
-/** 짙은 초록 바탕 카드의 리듬: «다섯~여섯 장에 한 장꼴»(연속 노출 카드 5~6장마다 하나). */
+/** 짙은 초록 바탕 카드의 리듬: «다섯~여섯 장에 한 장꼴»(짙은 초록 바탕 카드와 다음 짙은 초록 바탕 카드의 간격이 5~6번째, 즉 사이에 4~5장). */
 export const FEED_DEEP_GREEN_RHYTHM = { everyMin: 5, everyMax: 6 } as const;
 
 /** 짙은 초록 키. 바탕 위 글자가 흰색으로 바뀌고 박스로는 글자 있는 박스에 못 쓴다. */
