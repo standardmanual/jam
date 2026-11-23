@@ -16,7 +16,7 @@ import { feedColorVar, type FeedColorKey } from '@/lib/today/feedConstants'
  * 박스에는 외곽선이 없다. 치수·비율 변환·돌출의 바깥 여백·시드 없는 물결의 대체는 `lib/today/boxShape.ts` 머리말이 정본이다.
  *
  * - 값만 받아 그린다(DB·조회·훅 없음, 서버 컴포넌트로 그려진다). 무작위(물결)는 `seed`로만 정한다 — 같은 시드는 같은 물결을 그린다.
- * - 면 색은 통합 팔레트 색 키 19개(`FEED_COLOR_KEYS`)다. 색 키는 `feedColorVar`를 거쳐 `var(--…)`로만 칠한다(hex를 쓰지 않는다). `white`는 `--jam-chip-white`다.
+ * - 면 색은 통합 팔레트 색 키 9개(`FEED_COLOR_KEYS`)다. 색 키는 `feedColorVar`를 거쳐 `var(--…)`로만 칠한다(hex를 쓰지 않는다). `white`는 `--jam-chip-white`다.
  * - 마스크는 **이 요소에만** 건다. `children`(이미지 마스크로 쓸 때는 안쪽 이미지)도 같은 마스크로 잘린다.
  *   그래서 칩 같은 꾸밈은 이 요소 안이 아니라 **마스크 밖의 형제 층**에 둔다(`FeedBox.stories.tsx` 합성 예시).
  * - `children`의 안쪽 여백은 부모가 정한다. 예외는 반원 돌출뿐이다: 돌출 영역이 요소 상자 안에 있어서 그만큼(`boxProtrusion`) 안쪽 여백을 이 요소가 건다.

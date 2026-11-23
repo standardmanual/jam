@@ -1,12 +1,12 @@
 /**
- * 홈피드 새 카드 전용 상수 — 15색 표와 디자인 시스템에 없는 치수·모션 값.
+ * 홈피드 새 카드 전용 상수 — 통합 팔레트 9색 표와 디자인 시스템에 없는 치수·모션 값.
  *
  * 근거: 티켓 20261120_2129 「채원 사전 판정」(서비스 전용·홈피드 한정, 사용자 승인 2026-11-20, 추천안대로),
  * 규격 정본은 docs/service/prd/home-feed/PRD.md §6 「개편 규격: 새 카드 유형·박스·색·칩」이다.
  * 다른 화면이 이 값을 쓰게 되면 디자인 시스템으로 올릴지 다시 판정한다.
  *
- * 2회차(DB)가 색 키 이름을 바꾸면 이 표를 맞춘다. 카드에는 hex가 아니라 색 키를 저장한다.
- * 15색 hex는 CSS(`design-system/tokens/colors.css`)와 이 파일에 두 번 있다. 자동 규칙(계산)이 hex를
+ * 카드에는 hex가 아니라 색 키를 저장한다.
+ * 9색 hex는 CSS(`design-system/tokens/colors.css`)와 이 파일에 두 번 있다. 자동 규칙(계산)이 hex를
  * 읽기 때문이다. 두 정의가 같은지는 `__tests__/feedConstants.test.ts`가 대조한다.
  *
  * 디자인 시스템 눈금 대응(새 값을 만들지 않고 기존 눈금을 가리키는 항목):
@@ -18,48 +18,20 @@
  * | 칩 가로 여백 16px (큰 칩)   | spacing.css `--spacing-16`                                |
  * | 칩 높이 32px (작은 칩)      | 줄 높이 20px + 세로 여백 6px×2 (눈금에 높이 토큰은 없다)  |
  * | 칩 높이 40px (큰 칩)        | 줄 높이 28px + 세로 여백 6px×2 (눈금에 높이 토큰은 없다)  |
- * 모서리는 `rounded-full`(radius.css), 칩 글자 색은 `--foreground` 고정이다(`--snow`는 15색 위에서 AA 미달).
+ * 모서리는 `rounded-full`(radius.css), 칩 글자 색은 `--foreground` 고정이다(`--snow`는 통합 팔레트 위에서 AA 미달).
  *
  * 이 파일의 값은 모두 서비스 전용이다. 디자인 시스템 토큰이 아니므로 `design-system/`에 두지 않는다.
  */
 
-// ── 15색 표 ──────────────────────────────────────────────────
+// ── 색 표 ────────────────────────────────────────────────────
 
 /**
- * 색 키 19개. 원색 5개(기존 `--jam-*`), 연한 색 5개(`--jam-*-soft`), 참조 색 5개(`--feed-ref-*`), 통합 팔레트 새 키 4개.
- * 새 키 4개(티켓 20261122_2224 회차 2)는 통합 팔레트 키다. 옛 15키는 12회차(축소)까지 읽기 전용으로 남는다.
+ * 색 키 9개(통합 팔레트): 노랑 `yellow`·초록 `green`·짙은 초록 `green-deep`·분홍 `pink`·하늘 `sky`·빨강 `red`·보라 `purple`·파랑 `blue`·흰색 `white`.
+ * 옛 10키(연한 색 5개·참조 색 5개)는 티켓 20261122_2224 회차 12에서 걷었다.
  */
-export const FEED_COLOR_KEYS = [
-  'red',
-  'yellow',
-  'green',
-  'purple',
-  'blue',
-  'red-soft',
-  'yellow-soft',
-  'green-soft',
-  'purple-soft',
-  'blue-soft',
-  'ref-red',
-  'ref-blue',
-  'ref-lime',
-  'ref-pink',
-  'ref-yellow',
-  'green-deep',
-  'pink',
-  'sky',
-  'white',
-] as const;
+export const FEED_COLOR_KEYS = ['yellow', 'green', 'green-deep', 'pink', 'sky', 'red', 'purple', 'blue', 'white'] as const;
 
 export type FeedColorKey = (typeof FEED_COLOR_KEYS)[number];
-
-/** 통합 팔레트 새 키 4개. 자동 배정에는 4·5회차가 쓰기 전까지 쓰지 않고, 옛 15색 규칙 계산(`feedColorHexes`)에도 넣지 않는다. */
-export const FEED_NEW_COLOR_KEYS = ['green-deep', 'pink', 'sky', 'white'] as const satisfies readonly FeedColorKey[];
-
-/** 옛 15키(12회차까지 읽기 전용). 옛 색 규칙(대비·키즈·명도, 컬러셋 메뉴가 읽는다)의 15색 표본이다. */
-export const FEED_LEGACY_COLOR_KEYS: readonly FeedColorKey[] = FEED_COLOR_KEYS.filter(
-  (key) => !(FEED_NEW_COLOR_KEYS as readonly string[]).includes(key),
-);
 
 export interface FeedColor {
   /** `colors.css`에 정의된 CSS 변수 이름 */
@@ -76,18 +48,6 @@ export const FEED_COLORS = {
   green: { cssVar: '--jam-green', hex: '#59C02B' },
   purple: { cssVar: '--jam-purple', hex: '#BA8AF7' },
   blue: { cssVar: '--jam-blue', hex: '#0695EC' },
-  // 연한 색 5개 — 신규
-  'red-soft': { cssVar: '--jam-red-soft', hex: '#FF9A9A' },
-  'yellow-soft': { cssVar: '--jam-yellow-soft', hex: '#FFDD73' },
-  'green-soft': { cssVar: '--jam-green-soft', hex: '#9AF7AD' },
-  'purple-soft': { cssVar: '--jam-purple-soft', hex: '#D6B9FA' },
-  'blue-soft': { cssVar: '--jam-blue-soft', hex: '#8FCFF6' },
-  // 참조 색 5개 — 신규
-  'ref-red': { cssVar: '--feed-ref-red', hex: '#F5442C' },
-  'ref-blue': { cssVar: '--feed-ref-blue', hex: '#95C1F7' },
-  'ref-lime': { cssVar: '--feed-ref-lime', hex: '#C0DC66' },
-  'ref-pink': { cssVar: '--feed-ref-pink', hex: '#E57FBB' },
-  'ref-yellow': { cssVar: '--feed-ref-yellow', hex: '#F2EC6A' },
   // 통합 팔레트 새 키 4개 — 값 정본은 colors.css(티켓 20261122_2223)
   'green-deep': { cssVar: '--jam-green-deep', hex: '#3D851E' },
   pink: { cssVar: '--jam-pink', hex: '#F372C1' },
@@ -97,19 +57,22 @@ export const FEED_COLORS = {
 
 /**
  * 색 키 → CSS `var(--…)` 문자열. 부품은 색을 이 함수만 거쳐 칠한다(hex를 직접 쓰지 않는다).
- * 컬러셋 교체(티켓 20261121_2145): 카드 전용 변수 `--feed-color-<키>`를 먼저 읽고, 덮어쓴 값이 없으면 기존 변수(`--jam-*`·`--feed-ref-*`)를 읽는다.
+ * 컬러셋 교체(티켓 20261121_2145): 카드 전용 변수 `--feed-color-<키>`를 먼저 읽고, 덮어쓴 값이 없으면 기존 변수(`--jam-*`)를 읽는다.
  * 덮어쓴 키만 `feedColorOverrideCss`가 `:root`에 내려주므로 디자인 시스템의 다른 곳은 그대로다.
- * 위 15색 표가 «키 → 변수 이름 + 기본 hex»의 순수 데이터라, hex를 입력으로 받는 순수 함수(5회차 자동 제외 규칙)가 그 위에 붙을 수 있다.
+ * 위 색 표가 «키 → 변수 이름 + 기본 hex»의 순수 데이터라, hex를 입력으로 받는 순수 함수(자동 제외 규칙)가 그 위에 붙을 수 있다.
  */
 export function feedColorVar(key: FeedColorKey): string {
-  return `var(--feed-color-${key}, var(${FEED_COLORS[key].cssVar}))`;
+  // 9키에 없는 값(저장된 옛 키 등)이 와도 던지거나 undefined를 칠하지 않고 노랑으로 그린다.
+  const known = (FEED_COLOR_KEYS as readonly string[]).includes(key);
+  const safeKey: FeedColorKey = known ? key : 'yellow';
+  return `var(--feed-color-${safeKey}, var(${FEED_COLORS[safeKey].cssVar}))`;
 }
 
 // ── 통합 팔레트 쓰임 표·조합 (티켓 20261122_2224 회차 3) ─────────────────
 
 /**
  * 색이 어디에 쓰이는지의 표(상위 티켓 20261122_2217 결정 §1·§2). 이번 회차는 표만 만든다 — 배정은 4·5회차가 읽는다.
- * 키 이름은 위 19키다(노랑 `yellow`·초록 `green`·짙은 초록 `green-deep`·분홍 `pink`·하늘 `sky`·빨강 `red`·보라 `purple`·파랑 `blue`·흰색 `white`).
+ * 키 이름은 위 9키다(노랑 `yellow`·초록 `green`·짙은 초록 `green-deep`·분홍 `pink`·하늘 `sky`·빨강 `red`·보라 `purple`·파랑 `blue`·흰색 `white`).
  */
 export const FEED_COLOR_USAGE = {
   /** 카드 바탕에 올 수 있는 색 */

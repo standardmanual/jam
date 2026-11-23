@@ -273,8 +273,12 @@ describe('validateFeedCardColumns — warnings(막지 않는다)', () => {
   it('색 규칙에 걸리는 조합은 경고한다(둘 다 고른 쌍만 본다)', () => {
     // 같은 색
     expect(hasWarning({ bg_color_key: 'red', chip_color_key: 'red' }, '같아서')).toBe(true)
-    // 옛 키 조합은 배제 표에 없어 통과한다(저장된 카드 121장이 계속 유효하다)
-    expect(check({ feed_type: 'hero_box', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }).warnings).toEqual([])
+    // 옛 키는 더 받지 않는다: 저장은 거부되고(errors) 경고는 모르는 키를 건너뛰어 내지 않는다
+    const legacy = check({ feed_type: 'hero_box', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' } as unknown as FeedCardColumnsInput)
+    expect(legacy.errors).toHaveLength(2)
+    expect(legacy.errors[0]).toContain('배경색 값이 올바르지 않아요')
+    expect(legacy.errors[1]).toContain('박스 색 값이 올바르지 않아요')
+    expect(legacy.warnings).toEqual([])
     // 하나만 골랐으면 짝이 없어 판정하지 않는다
     expect(check({ feed_type: 'hero_box', bg_color_key: 'red' }).warnings).toEqual([])
     expect(check({ bg_color_key: 'red', chip_color_key: 'red' }).errors).toEqual([])
@@ -332,8 +336,10 @@ describe('validateFeedCardColumns — warnings(막지 않는다)', () => {
       expect(warnings({ feed_type: 'text_box', box_color_key: 'yellow' })).toEqual([])
     })
 
-    it('옛 키 박스는 글자 박스여도 경고하지 않는다(저장된 카드가 계속 유효하다)', () => {
-      expect(warnings({ feed_type: 'text_box', box_color_key: 'ref-lime' })).toEqual([])
+    it('옛 키 박스는 저장이 거부되고(errors) 경고는 내지 않는다', () => {
+      const result = check({ feed_type: 'text_box', box_color_key: 'ref-lime' } as unknown as FeedCardColumnsInput)
+      expect(result.errors).toHaveLength(1)
+      expect(result.warnings).toEqual([])
     })
 
     it('경고는 저장을 막지 않는다(errors가 비어 있다)', () => {

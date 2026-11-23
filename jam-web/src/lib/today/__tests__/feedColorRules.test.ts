@@ -25,7 +25,7 @@ import {
   violatesKidsRule,
   violatesLightnessRule,
 } from '../feedColorRules'
-import { FEED_COLORS, FEED_LEGACY_COLOR_KEYS } from '../feedConstants'
+import { FEED_COLORS, FEED_COLOR_KEYS } from '../feedConstants'
 
 describe('색 계산', () => {
   it('hex를 읽는다(대소문자·#·3자리). 읽을 수 없으면 던진다', () => {
@@ -144,23 +144,22 @@ describe('규칙별 경계값', () => {
   })
 })
 
-describe('옛 15색 순서쌍 필터', () => {
+describe('9색 순서쌍 필터(컬러셋 메뉴 전용 옛 색 규칙)', () => {
   const summary = summarizeFeedColors()
 
-  it('색 키 표의 옛 15색을 키 순서대로 낸다(통합 팔레트 새 키 4개는 넣지 않는다)', () => {
-    expect(feedColorHexes()).toEqual(FEED_LEGACY_COLOR_KEYS.map((key) => FEED_COLORS[key].hex))
-    expect(feedColorHexes()).toHaveLength(15)
+  it('색 키 표의 9색을 키 순서대로 낸다', () => {
+    expect(feedColorHexes()).toEqual(FEED_COLOR_KEYS.map((key) => FEED_COLORS[key].hex))
+    expect(feedColorHexes()).toHaveLength(9)
   })
 
-  // 정답 대조: PRD §6이 적은 2026-11-20 샘플 계산값(210 → 대비 50, 키즈 36, 명도 50 제외 → 74 남음. 2026-11-22 노랑·초록 값 교체로 대비 40, 키즈 42, 명도 42 제외 → 86 남음).
-  // 구현 결과가 이 값과 어긋나면 임계값을 바꿔 맞추지 않고 어긋난 규칙과 원인을 티켓의 «주요 의사결정»에 적는다.
-  it('210가지 순서쌍에서 대비 40·키즈 42·명도 42가 빠져 86가지가 남는다 (PRD 값과 같다)', () => {
-    expect(summary.total).toBe(210)
-    expect(summary.excludedByContrast).toBe(40)
-    expect(summary.excludedByKids).toBe(42)
-    expect(summary.excludedByLightness).toBe(42)
-    expect(summary.remaining).toBe(86)
-    expect(summary.remainingPairs).toHaveLength(86)
+  // 옛 15색 샘플 계산(210 → 86)은 옛 10키를 걷으면서 9색 표본(72쌍)으로 바뀌었다. 컬러셋 메뉴 전용 계산이고 배정은 배제 표를 읽는다.
+  it('72가지 순서쌍에서 대비 10·키즈 4·명도 20이 빠져 38가지가 남는다', () => {
+    expect(summary.total).toBe(72)
+    expect(summary.excludedByContrast).toBe(10)
+    expect(summary.excludedByKids).toBe(4)
+    expect(summary.excludedByLightness).toBe(20)
+    expect(summary.remaining).toBe(38)
+    expect(summary.remainingPairs).toHaveLength(38)
     expect(summary.excludedByContrast + summary.excludedByKids + summary.excludedByLightness + summary.remaining).toBe(
       summary.total,
     )
@@ -183,7 +182,7 @@ describe('옛 15색 순서쌍 필터', () => {
     expect(grays.remaining).not.toBe(summary.remaining)
     // 같은 hex를 두 번 넣으면 «같은 색»이라 어느 단계에서도 세지 않고 총 쌍 수에서 뺀다
     expect(summarizeColorPairs(['#FF1D1D', '#ff1d1d', '#0695EC']).total).toBe(4)
-    // 15색 표의 hex를 다른 색으로 바꾸면 결과가 달라진다
+    // 9색 표의 hex를 다른 색으로 바꾸면 결과가 달라진다
     const swapped = [...feedColorHexes()]
     swapped[0] = '#101010'
     expect(summarizeColorPairs(swapped)).not.toEqual(summary)

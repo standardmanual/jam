@@ -102,7 +102,7 @@ export const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = 
 
 // ── 해석 결과 ────────────────────────────────────────────────
 
-/** 칩 면 색: 색 키 15개 또는 `black`(구분 칩). */
+/** 칩 면 색: 색 키 9개 또는 `black`(구분 칩). */
 export type FeedLookChipColor = FeedColorKey | 'black'
 
 export interface FeedLookChip {

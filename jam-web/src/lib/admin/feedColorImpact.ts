@@ -2,7 +2,7 @@
  * 홈피드 컬러셋 편집의 영향 계산 — 순수 함수 (티켓 20261121_2146, 상위 20261120_2026 후속).
  *
  * 어드민 «홈피드 컬러셋» 화면이 적용 전에 보여 주는 두 가지를 계산한다.
- * 1. 규칙 재계산: 15색 hex로 서로 다른 순서쌍을 규칙 ②→③→④에 통과시킨 개수(`summarizeColorPairs`)를 지금 값과 편집 값으로 비교한다.
+ * 1. 규칙 재계산: 9색 hex로 서로 다른 순서쌍을 규칙 ②→③→④에 통과시킨 개수(`summarizeColorPairs`)를 지금 값과 편집 값으로 비교한다.
  * 2. 영향받는 카드: 노출이 끝나지 않은 카드의 색 키 조합(배경·칩·박스) 가운데 «지금 팔레트로는 규칙을 통과하는데 편집 팔레트로는 새로 걸리는» 것.
  *    카드에는 hex가 아니라 키가 저장돼 있어 키는 바뀌지 않고 보이는 색만 바뀐다. 이미 걸리던 조합은 이번 변경 탓이 아니라서 제외한다.
  *
@@ -12,7 +12,7 @@ import type { FeedPalette } from '@/lib/today/feedAssign'
 import { BOX_FEED_TYPES, chipLimitOf, isFeedType } from '@/lib/today/feedChipSlots'
 import { isOverrideHex } from '@/lib/today/feedColorOverrides'
 import { firstViolatedRule, summarizeColorPairs, type ColorPairSummary, type ColorRuleName } from '@/lib/today/feedColorRules'
-import { FEED_COLOR_KEYS, FEED_LEGACY_COLOR_KEYS, type FeedColorKey } from '@/lib/today/feedConstants'
+import { FEED_COLOR_KEYS, type FeedColorKey } from '@/lib/today/feedConstants'
 
 /** 영향받는 카드 목록에 보이는 최대 장수. 넘으면 «외 N장»으로 적는다. */
 export const IMPACT_CARD_LIMIT = 20
@@ -38,16 +38,16 @@ export function buildEditedPalette(
 const sameHex = (a: string | undefined, b: string | undefined): boolean =>
   (a ?? '').toLowerCase() === (b ?? '').toLowerCase()
 
-/** 두 팔레트에서 hex가 다른 색 키(15색 순서). */
+/** 두 팔레트에서 hex가 다른 색 키(9색 순서). */
 export function changedColorKeys(before: FeedPalette, after: FeedPalette): FeedColorKey[] {
   return FEED_COLOR_KEYS.filter((key) => !sameHex(before[key], after[key]))
 }
 
 // ── 규칙 재계산 ───────────────────────────────────────────────
 
-/** 팔레트 옛 15색의 순서쌍을 규칙에 통과시킨 요약(통합 팔레트 새 키 4개는 옛 규칙의 표본이 아니다). */
+/** 팔레트 9색의 순서쌍을 옛 색 규칙(대비·키즈·명도)에 통과시킨 요약. 컬러셋 메뉴 전용이다. */
 export function summarizePalette(palette: FeedPalette): ColorPairSummary {
-  return summarizeColorPairs(FEED_LEGACY_COLOR_KEYS.map((key) => palette[key]))
+  return summarizeColorPairs(FEED_COLOR_KEYS.map((key) => palette[key]))
 }
 
 export interface PaletteComparison {

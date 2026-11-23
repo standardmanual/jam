@@ -3,7 +3,7 @@
 /**
  * 투데이 카드 작성·수정 화면의 「카드 모양」 섹션 — 홈피드 개편 5회차-2 (티켓 20261121_1316, 상위 20261120_2026).
  *
- * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(19색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
+ * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(9색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
  * 칸마다 «자동»이 기본이고, 비워 두면 저장할 때 자동 규칙이 정한다(값 의미는 `lib/admin/feedCardFields.ts` 머리 주석).
  * 칩·목록 항목·컬렉션 모션 입력 칸은 5-3(티켓 20261121_1317)이 만든 `FeedChipsEditor`·`FeedListItemsEditor`·`FeedBurstEditor`가 맡고, 이 섹션은 유형에 맞는 것만 렌더한다.
  *
@@ -196,7 +196,9 @@ function imageColorWarnings(
   const warnings: string[] = []
   for (const [label, key, applies] of candidates) {
     if (!applies || !key) continue
-    if (!violatesImageColorRule(palette?.[key] ?? FEED_COLORS[key].hex, imageColors.imageHexes)) continue
+    // 저장된 값이 9키에 없으면(옛 키) 색을 모르니 건너뛴다
+    const hex = palette?.[key] ?? (FEED_COLORS as Readonly<Record<string, { hex: string } | undefined>>)[key]?.hex
+    if (!hex || !violatesImageColorRule(hex, imageColors.imageHexes)) continue
     warnings.push(`${label}(${colorName(key)})이 색 규칙에 걸려요. ${COLOR_RULE_REASON.image}. 저장은 되지만 다른 색을 골라 보세요.`)
   }
   return warnings

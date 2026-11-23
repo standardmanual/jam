@@ -7,6 +7,7 @@
  * - 같은 입력(시드·지정값·최근 바탕 목록·제외 목록)은 언제 어디서 열어도 같은 값이다. `Math.random`은 쓰지 않고 `boxShape.ts`의 `createRng`를 쓴다.
  * - 시각·서버 값을 읽지 않는 순수 함수다. 결과를 카드에 저장하는 일은 호출하는 쪽(등록 경로, 6회차)이 한다.
  * - 사용자가 지정한 값(NULL이 아닌 칸)은 덮어쓰지 않는다. 지정값끼리 규칙에 걸려도 막지 않는다(PRD «수동 지정»: 경고만).
+ *   통합 팔레트 9키에 없는 지정값(옛 키 등)은 «지정 없음»으로 보고 자동으로 정한다(티켓 20261122_2224 회차 12).
  * - 배지 그림 색 겹침 규칙(⑤·⑥)만 hex를 읽는다. 색 키 → hex 표(`palette`)를 인자로 받고 기본값은 `FEED_COLORS`다.
  */
 import { createRng, type BoxSeed } from './boxShape'
@@ -14,6 +15,7 @@ import { chipExclusionRule, isHexColor, violatesImageColorRule } from './feedCol
 import {
   boxAllowedFor,
   FEED_BG_BOX_COMBOS,
+  FEED_COLOR_KEYS,
   FEED_COLOR_USAGE,
   FEED_COLORS,
   FEED_DEEP_GREEN_COMBOS,
@@ -25,13 +27,18 @@ import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, MAX_CARD_CHIPS, type Fee
 
 // ── 색 ────────────────────────────────────────────────────────
 
-/** 색 키 → hex 표. 키는 통합 팔레트 말고도 지정값으로 들어온 옛 키를 담을 수 있다. */
+/** 색 키 → hex 표. 키는 통합 팔레트 9키다. 지정값으로 들어온 모르는 키는 표에 없다. */
 export type FeedPalette = Readonly<Record<string, string>>
 
-/** 기본 표: `FEED_COLORS`의 19키. 컬러셋 메뉴·그림 색 규칙이 읽는다. */
+/** 기본 표: `FEED_COLORS`의 9키. 컬러셋 메뉴·그림 색 규칙이 읽는다. */
 export const DEFAULT_FEED_PALETTE: FeedPalette = Object.fromEntries(
   Object.entries(FEED_COLORS).map(([key, color]) => [key, color.hex]),
 )
+
+/** 통합 팔레트 9키에 든 값만 돌려준다. 비었거나 모르는 키(옛 키 등)는 null — 자동으로 정하게 한다. */
+function knownColorKey(value: string | null | undefined): string | null {
+  return value && (FEED_COLOR_KEYS as readonly string[]).includes(value) ? value : null
+}
 
 export interface FeedColorTriple {
   bg: string
@@ -73,7 +80,7 @@ export interface FeedColorAssignInput {
 }
 
 export interface FeedColorAssignOptions {
-  /** 색 키 → hex. 그림 색 규칙(⑤·⑥)이 읽는다. 기본은 19키 표. */
+  /** 색 키 → hex. 그림 색 규칙(⑤·⑥)이 읽는다. 기본은 9키 표. */
   palette?: FeedPalette
   excludedPairs?: readonly ExcludedColorPair[]
   /** 통과하는 조합이 없을 때 쓸 기본 조합. 기본은 `FEED_FALLBACK_COLORS`. */
@@ -137,9 +144,9 @@ export function assignFeedColors(
   const palette = options.palette ?? DEFAULT_FEED_PALETTE
   const fallback = options.fallback ?? FEED_FALLBACK_COLORS
   const excluded = new Set((options.excludedPairs ?? []).map(([a, b]) => pairKey(a, b)))
-  const fixedBg = input.fixed?.bg || null
-  const fixedChip = input.fixed?.chip || null
-  const fixedBox = input.fixed?.box || null
+  const fixedBg = knownColorKey(input.fixed?.bg)
+  const fixedChip = knownColorKey(input.fixed?.chip)
+  const fixedBox = knownColorKey(input.fixed?.box)
   const boxHasText = input.boxHasText ?? true
 
   // 세 칸을 모두 지정했으면 고를 것이 없다(지정값끼리는 검사하지 않는다)
@@ -194,7 +201,7 @@ export function assignFeedColors(
   }
 
   const collect = (pool: readonly WeightedPair[], applyImageRule: boolean, avoidPrevious: boolean): Candidate[] => {
-    // 지정값에 맞는 조합만 쓰고, 하나도 없으면(통합 팔레트에 없는 지정 키) 모든 조합의 나머지 칸 중에서 고른다
+    // 지정값에 맞는 조합만 쓰고, 하나도 없으면(조합에 없는 지정 키, 예: 파랑) 모든 조합의 나머지 칸 중에서 고른다
     const matching = pool.filter((pair) => (!fixedBg || pair.bg === fixedBg) && (!fixedBox || pair.box === fixedBox))
     const base = matching.length > 0 ? matching : pool
     const found: Candidate[] = []

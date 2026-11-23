@@ -45,7 +45,7 @@ describe('buildEditedPalette · changedColorKeys', () => {
     expect(palette.yellow).toBe(current.yellow)
   })
 
-  it('hex가 다른 키만 15색 순서로 돌려주고 대소문자만 다르면 같은 값으로 본다', () => {
+  it('hex가 다른 키만 9색 순서로 돌려주고 대소문자만 다르면 같은 값으로 본다', () => {
     const current = buildFeedPalette({})
     const next = buildEditedPalette(current, { blue: '#000000', red: current.red.toLowerCase() })
     expect(changedColorKeys(current, next)).toEqual(['blue'])

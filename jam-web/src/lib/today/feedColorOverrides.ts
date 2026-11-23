@@ -1,7 +1,7 @@
 /**
  * 홈피드 컬러셋 교체의 순수 함수 (티켓 20261121_2145, 상위 20261120_2026 후속).
  *
- * 색 키 15개는 그대로 두고, 키가 가리키는 hex만 덮어쓴다. 덮어쓴 값은 카드 전용 CSS 변수(`--feed-color-<키>`)로 홈·어드민에 내려가고
+ * 색 키 9개는 그대로 두고, 키가 가리키는 hex만 덮어쓴다. 덮어쓴 값은 카드 전용 CSS 변수(`--feed-color-<키>`)로 홈·어드민에 내려가고
  * (`feedColorVar`가 이 변수를 먼저 읽고 없으면 기존 변수를 읽는다), 자동 색 배정·색 규칙·어드민 경고는 덮어쓴 hex로 합친 팔레트(`buildFeedPalette`)를 입력으로 받는다.
  * 디자인 시스템 토큰(`--jam-*`)은 건드리지 않는다.
  *
@@ -45,7 +45,7 @@ export function normalizeOverrides(input: unknown): FeedColorOverrides {
   return result
 }
 
-/** 15색 기본 hex에 덮어쓴 값을 합친 팔레트. 덮어쓰기가 비어 있으면 기본 팔레트와 값이 같다. */
+/** 9색 기본 hex에 덮어쓴 값을 합친 팔레트. 덮어쓰기가 비어 있으면 기본 팔레트와 값이 같다. */
 export function buildFeedPalette(overrides: FeedColorOverrides | null | undefined): FeedPalette {
   if (!overrides) return DEFAULT_FEED_PALETTE
   return { ...DEFAULT_FEED_PALETTE, ...normalizeOverrides(overrides) }
@@ -53,7 +53,7 @@ export function buildFeedPalette(overrides: FeedColorOverrides | null | undefine
 
 /**
  * 덮어쓴 키만 `:root{--feed-color-<키>:#rrggbb;…}`로 만든다. 덮어쓴 키가 없으면 빈 문자열이다.
- * 키는 15개 목록에서, 값은 `#rrggbb` 형식에서만 받아 정규화하므로 입력에 무엇이 들어와도 CSS 주입이 불가능하다.
+ * 키는 9개 목록에서, 값은 `#rrggbb` 형식에서만 받아 정규화하므로 입력에 무엇이 들어와도 CSS 주입이 불가능하다.
  */
 export function feedColorOverrideCss(overrides: FeedColorOverrides | null | undefined): string {
   if (!overrides) return ''

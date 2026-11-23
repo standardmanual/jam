@@ -98,7 +98,7 @@ describe('자동 배정 120장', () => {
   })
 
   it('제외 조합을 모두 막으면 되돌림 기본 조합이 쓰이고 요약이 센다(되돌림 수가 실제로 움직인다)', () => {
-    // 19키 모든 쌍을 제외하면 통과하는 조합이 없다 — 배경·칩·박스 모두 기본 조합으로 되돌아간다
+    // 9키 모든 쌍을 제외하면 통과하는 조합이 없다 — 배경·칩·박스 모두 기본 조합으로 되돌아간다
     const keys = [...FEED_COLOR_KEYS]
     const everything = keys.flatMap((a) => keys.filter((b) => b !== a).map((b) => [a, b] as const))
     const { summary: blocked } = buildAutoAssignment(8, everything)

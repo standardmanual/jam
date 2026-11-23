@@ -8,7 +8,7 @@
  * 키 표를 기본값으로 쓰는 편의 함수(`summarizeFeedColors`)만 아래쪽에 따로 있다.
  * 서버 모듈·사전·난수·시각을 읽지 않는다(서버와 브라우저가 같은 값을 낸다).
  */
-import { FEED_COLORS, FEED_LEGACY_COLOR_KEYS } from './feedConstants'
+import { FEED_COLOR_KEYS, FEED_COLORS } from './feedConstants'
 
 // ── 임계값 (PRD §6 «자동으로 거르는 규칙», 2026-11-20 샘플 계산) ─────────────────────────
 
@@ -234,7 +234,7 @@ export function chipExclusionRule(chipKey: string, baseKey: string): ColorRuleNa
 // ── 전체 순서쌍 필터 ─────────────────────────────────────────
 
 export interface ColorPairSummary {
-  /** 서로 다른 색의 순서쌍 수(n색이면 n×(n−1), 15색이면 210) */
+  /** 서로 다른 색의 순서쌍 수(n색이면 n×(n−1), 9색이면 72) */
   total: number
   /** 규칙을 순서대로 적용했을 때 그 단계에서 새로 빠진 수(누적 제외 개수의 증분) */
   excludedByContrast: number
@@ -265,7 +265,7 @@ export function summarizeColorPairs(hexes: readonly string[]): ColorPairSummary 
       else if (failed === 'kids') excludedByKids += 1
       else if (failed === 'lightness') excludedByLightness += 1
       else if (failed === null) remainingPairs.push([i, j])
-      // 'same'은 hex가 같은 서로 다른 위치 쌍이다. 15색 표에는 없다(표의 hex는 모두 다르다)
+      // 'same'은 hex가 같은 서로 다른 위치 쌍이다. 색 표에는 없다(표의 hex는 모두 다르다)
       else total -= 1
     }
   }
@@ -279,12 +279,12 @@ export function summarizeColorPairs(hexes: readonly string[]): ColorPairSummary 
   }
 }
 
-/** 색 키 표(`FEED_COLORS`)의 옛 15색 hex를 키 순서대로 낸다(통합 팔레트 새 키 4개는 옛 규칙의 표본이 아니다). 키 표를 기본값으로 쓰는 편의 함수다. */
+/** 색 키 표(`FEED_COLORS`)의 9색 hex를 키 순서대로 낸다. 컬러셋 메뉴의 옛 색 규칙(대비·키즈·명도) 표본이다. 키 표를 기본값으로 쓰는 편의 함수다. */
 export function feedColorHexes(): string[] {
-  return FEED_LEGACY_COLOR_KEYS.map((key) => FEED_COLORS[key].hex)
+  return FEED_COLOR_KEYS.map((key) => FEED_COLORS[key].hex)
 }
 
-/** 15색 전체의 단계별 제외 개수. 키 표를 기본값으로 쓰는 편의 함수다. */
+/** 9색 전체의 단계별 제외 개수. 키 표를 기본값으로 쓰는 편의 함수다. */
 export function summarizeFeedColors(): ColorPairSummary {
   return summarizeColorPairs(feedColorHexes())
 }

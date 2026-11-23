@@ -7,7 +7,7 @@ import { invalidateFeedColors } from '@/lib/today/feedColorOverridesServer'
 import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 
 /**
- * 홈피드 컬러셋(색 15개의 hex 덮어쓰기) 읽기·저장 — 티켓 20261121_2146 (상위 20261120_2026 후속).
+ * 홈피드 컬러셋(색 9개의 hex 덮어쓰기) 읽기·저장 — 티켓 20261121_2146 (상위 20261120_2026 후속).
  *
  * - `GET`: 저장된 덮어쓰기와 기본값을 돌려준다.
  * - `PUT`: 본문 `{ overrides: { <색 키>: '#rrggbb' | null } }`. 값이 hex면 저장(upsert)하고 `null`이면 그 키의 행을 지운다(기본값 복원).
@@ -15,7 +15,7 @@ import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/fee
  * 어드민 세션(`requireAdmin`)만 통과한다. 쓰기는 서비스 클라이언트로 하고 `updated_by`에 관리자 id를 남긴다.
  */
 
-/** 본문 글자 수 한도. 15키 × 키·hex 글자가 들어가고도 넉넉한 값이다(그보다 크면 키 개수 검사 전에 거절한다). */
+/** 본문 글자 수 한도. 9키 × 키·hex 글자가 들어가고도 넉넉한 값이다(그보다 크면 키 개수 검사 전에 거절한다). */
 const MAX_BODY_CHARS = 2048
 
 const defaultHexes = (): Record<FeedColorKey, string> =>
@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest) {
 
   const raw = await req.text()
   if (raw.length > MAX_BODY_CHARS) {
-    return badRequest('요청 내용이 너무 길어요. 색 15개 이하로 줄여서 다시 저장해 주세요.')
+    return badRequest('요청 내용이 너무 길어요. 색 9개 이하로 줄여서 다시 저장해 주세요.')
   }
   let body: unknown
   try {

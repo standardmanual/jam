@@ -69,7 +69,7 @@ describe('resolveFeedLook — 같은 행은 같은 값', () => {
 })
 
 describe('resolveFeedLook — 색', () => {
-  it('NULL 칸은 15색 키로 채워진다', () => {
+  it('NULL 칸은 통합 팔레트 9키로 채워진다', () => {
     const { colors } = look('hero_box')
     for (const key of [colors.bg, colors.chip, colors.box]) expect(FEED_COLOR_KEYS).toContain(key)
   })
@@ -89,6 +89,17 @@ describe('resolveFeedLook — 색', () => {
   it('색 키가 아닌 값은 지정하지 않은 것으로 본다', () => {
     const { colors } = look('hero_box', { bg_color_key: '#ff0000' })
     expect(FEED_COLOR_KEYS).toContain(colors.bg)
+  })
+
+  it('저장돼 있던 옛 키(358이 아직 안 돈 행)가 와도 던지지 않고 9키 안의 색으로 그린다', () => {
+    for (const legacy of ['red-soft', 'yellow-soft', 'green-soft', 'ref-red', 'ref-lime', 'ref-yellow']) {
+      const run = () => look('text_box', { bg_color_key: legacy, chip_color_key: legacy, box_color_key: legacy }).colors
+      expect(run).not.toThrow()
+      const colors = run()
+      for (const key of [colors.bg, colors.chip, colors.box]) expect(FEED_COLOR_KEYS).toContain(key)
+      // 옛 키는 «지정 없음»과 같다 — 같은 카드를 지정 없이 열었을 때와 같은 색이다
+      expect(colors).toEqual(look('text_box').colors)
+    }
   })
 })
 

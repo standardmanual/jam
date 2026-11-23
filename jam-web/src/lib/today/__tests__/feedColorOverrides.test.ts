@@ -72,7 +72,7 @@ describe('buildFeedPalette', () => {
     expect(buildFeedPalette({})).toEqual(DEFAULT_FEED_PALETTE)
   })
 
-  it('덮어쓴 키만 바뀌고 15색의 키 순서가 그대로다', () => {
+  it('덮어쓴 키만 바뀌고 9색의 키 순서가 그대로다', () => {
     const palette = buildFeedPalette({ red: '#112233' })
     expect(palette.red).toBe('#112233')
     for (const key of FEED_COLOR_KEYS) {
@@ -97,14 +97,14 @@ describe('feedColorOverrideCss', () => {
 
   it('덮어쓴 키만 :root 변수로 내리고 디자인 시스템 토큰(--jam-*)은 건드리지 않는다', () => {
     const css = feedColorOverrideCss({ red: '#FF0000', green: '#00ff00' })
-    expect(css).toBe(':root{--feed-color-red:#ff0000;--feed-color-green:#00ff00}')
+    expect(css).toBe(':root{--feed-color-green:#00ff00;--feed-color-red:#ff0000}')
     expect(css).not.toContain('--jam-')
     expect(css).not.toContain('blue')
   })
 
   it('키는 색 키 목록 순서로 나온다', () => {
     const css = feedColorOverrideCss({ yellow: '#111111', red: '#222222' })
-    expect(css.indexOf('--feed-color-red:')).toBeLessThan(css.indexOf('--feed-color-yellow:'))
+    expect(css.indexOf('--feed-color-yellow:')).toBeLessThan(css.indexOf('--feed-color-red:'))
   })
 
   it('CSS 주입이 불가능하다 — 값·키에 다른 문자가 들어와도 출력에 나오지 않는다', () => {

@@ -8,6 +8,6 @@ import { getFeedColorOverrides } from '@/lib/today/feedColorOverridesServer'
 export default async function FeedColorStyle() {
   const css = feedColorOverrideCss(await getFeedColorOverrides())
   if (!css) return null
-  // css는 15개 키 이름과 `#rrggbb`만으로 만들어진다(feedColorOverrideCss) — 입력이 무엇이든 다른 문자가 들어올 수 없다.
+  // css는 9개 키 이름과 `#rrggbb`만으로 만들어진다(feedColorOverrideCss) — 입력이 무엇이든 다른 문자가 들어올 수 없다.
   return <style data-feed-colors="" dangerouslySetInnerHTML={{ __html: css }} />
 }

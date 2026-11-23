@@ -1363,7 +1363,7 @@ export interface TodayCardRow {
   box_shape?: TodayBoxShape | null
   /** 박스 용도. NULL이면 유형 기본값. */
   box_kind?: TodayBoxKind | null
-  /** 카드 배경·칩·박스 색 키(15색 중 하나). hex가 아니라 키를 저장한다. NULL이면 자동. */
+  /** 카드 배경·칩·박스 색 키(9색 중 하나). hex가 아니라 키를 저장한다. NULL이면 자동. */
   bg_color_key?: FeedColorKey | null
   chip_color_key?: FeedColorKey | null
   box_color_key?: FeedColorKey | null
@@ -1404,12 +1404,10 @@ export type TodayBoxShape = 'round' | 'ticket' | 'stamp' | 'wave' | 'bump'
 /** 박스 용도(DB CHECK `today_cards_box_kind_check`): 글자를 담는 박스 또는 이미지를 박스 모양으로 자른 마스크. */
 export type TodayBoxKind = 'text' | 'image_mask'
 
-/** 홈피드 색 키 19개(옛 15키 + 통합 팔레트 새 키 4개, DB CHECK `today_cards_*_color_key_check`). 색 값은 `design-system/tokens/colors.css`가 정한다. */
+/** 홈피드 색 키 9개(통합 팔레트, DB CHECK `today_cards_*_color_key_check`). 색 값은 `design-system/tokens/colors.css`가 정한다. */
 export type FeedColorKey =
-  | 'red' | 'yellow' | 'green' | 'purple' | 'blue'
-  | 'red-soft' | 'yellow-soft' | 'green-soft' | 'purple-soft' | 'blue-soft'
-  | 'ref-red' | 'ref-blue' | 'ref-lime' | 'ref-pink' | 'ref-yellow'
-  | 'green-deep' | 'pink' | 'sky' | 'white'
+  | 'yellow' | 'green' | 'green-deep' | 'pink' | 'sky'
+  | 'red' | 'purple' | 'blue' | 'white'
 
 /**
  * 칩 한 개(`today_cards.chips`의 원소). DB는 kind·필수 키·tilt 값·slot 모양만 지킨다(함수 `today_cards_chips_valid`).

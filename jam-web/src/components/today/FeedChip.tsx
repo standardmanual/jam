@@ -14,8 +14,8 @@ import {
  *
  * - 모양: 검정 2px 외곽선 알약(`rounded-full`), 글자는 굵게·한 줄.
  *   큰 칩은 높이 40·글자 18(`text-lg`)·가로 여백 16(`px-4`), 작은 칩은 높이 32·글자 14(`text-sm`)·가로 여백 12(`px-3`). 높이는 `FEED_CHIP`이 정본이다.
- * - 면 색: 통합 팔레트 색 키 19개(`FEED_COLOR_KEYS`, 새 `white`는 `--jam-chip-white`) + `'black'`(구분 칩). 색 키는 `feedColorVar`를 거쳐 `var(--…)`로만 칠한다(hex를 쓰지 않는다).
- * - 글자 색은 `--foreground` 고정이고 검정 칩만 `--snow`다(`--snow`는 옛 15색 위에서 AA 미달, 채원 판정).
+ * - 면 색: 통합 팔레트 색 키 9개(`FEED_COLOR_KEYS`, 새 `white`는 `--jam-chip-white`) + `'black'`(구분 칩). 색 키는 `feedColorVar`를 거쳐 `var(--…)`로만 칠한다(hex를 쓰지 않는다).
+ * - 글자 색은 `--foreground` 고정이고 검정 칩만 `--snow`다(`--snow`는 통합 팔레트 위에서 AA 미달, 채원 판정).
  * - 기울기는 여섯 값(`FeedTilt`) 중 하나다. 이 밖의 값은 타입 오류다.
  * - 자리는 부모가 정한다: 칩은 `className`으로 받은 위치 클래스를 쓸 뿐 자리를 계산하지 않는다.
  *   Tailwind v4의 `translate-*`·`-top-*`은 `transform`이 아니라 `translate`·`top`을 쓰므로 인라인 `rotate`와 부딪치지 않는다.

@@ -237,11 +237,21 @@ describe('assignFeedColors — 박스 글자·칩 배제 표', () => {
 describe('assignFeedColors — 지정값·제외 목록·기본 조합', () => {
   const many = seeds(400)
 
-  it('지정한 값은 덮어쓰지 않는다(일부만 지정해도, 규칙에 걸리는 조합을 지정해도, 옛 키를 지정해도)', () => {
+  it('지정한 값은 덮어쓰지 않는다(일부만 지정해도, 규칙에 걸리는 조합을 지정해도)', () => {
     for (const seed of many.slice(0, 100)) {
       expect(assignFeedColors({ seed, fixed: { chip: 'red', box: 'yellow' } })).toMatchObject({ chip: 'red', box: 'yellow', usedFallback: false })
-      expect(assignFeedColors({ seed, fixed: { bg: 'red-soft' } }).bg).toBe('red-soft')
       expect(assignFeedColors({ seed, fixed: { bg: 'red', chip: 'red', box: 'red' } })).toStrictEqual({ bg: 'red', chip: 'red', box: 'red', usedFallback: false })
+    }
+  })
+
+  it('9키에 없는 지정값(옛 키 등)은 받지 않고 «지정 없음»처럼 자동으로 정한다', () => {
+    for (const seed of many.slice(0, 40)) {
+      const auto = assignFeedColors({ seed })
+      for (const legacy of ['red-soft', 'yellow-soft', 'ref-lime', 'ref-pink', 'nope']) {
+        expect(assignFeedColors({ seed, fixed: { bg: legacy, chip: legacy, box: legacy } })).toStrictEqual(auto)
+      }
+      const result = assignFeedColors({ seed, fixed: { bg: 'red-soft', chip: 'ref-red', box: 'ref-lime' } })
+      for (const key of [result.bg, result.chip, result.box]) expect(FEED_COLOR_KEYS).toContain(key)
     }
   })
 
@@ -387,7 +397,7 @@ describe('assignFeedColors — 이미지 대표 색 규칙 ⑤·⑥ (티켓 2026
   })
 
   it('조합이 하나도 없으면 이미지 규칙만 건너뛰고 통합 팔레트 규칙으로 정한다(imageRuleSkipped, usedFallback과 구분)', () => {
-    // 모든 자동 후보 색이 이미지 대표 색에 걸리는 경우: 이미지 대표 색을 19키 전부로 준다
+    // 모든 자동 후보 색이 이미지 대표 색에 걸리는 경우: 이미지 대표 색을 9키 전부로 준다
     const everything = Object.values(DEFAULT_FEED_PALETTE)
     for (const seed of seeds(40)) {
       const skipped = assignFeedColors({ seed, imageHexes: everything, chipOnImage: true })

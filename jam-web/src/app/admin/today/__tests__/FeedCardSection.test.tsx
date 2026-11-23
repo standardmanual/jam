@@ -40,7 +40,7 @@ const render = (patch: Partial<FeedCardFormValues> = {}, props: Partial<Componen
   renderToStaticMarkup(<FeedCardSection values={values(patch)} onChange={() => {}} title="핫한 성수동 배지" {...props} />)
 
 describe('이름 표 — 상수와 같은 키를 모두 덮는다', () => {
-  it('유형 8개·박스 모양 5개·색 19개·박스 용도 2개에 한국어 이름이 있다', () => {
+  it('유형 8개·박스 모양 5개·색 9개·박스 용도 2개에 한국어 이름이 있다', () => {
     expect(Object.keys(FEED_TYPE_LABELS).sort()).toEqual([...FEED_TYPES].sort())
     expect(Object.keys(BOX_SHAPE_LABELS).sort()).toEqual([...BOX_SHAPES].sort())
     expect(Object.keys(FEED_COLOR_LABELS).sort()).toEqual([...FEED_COLOR_KEYS].sort())
@@ -184,8 +184,10 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
 
   it('규칙을 통과하는 조합(안전한 기본 조합)은 경고가 없다', () => {
     expect(feedColorWarnings({ bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: 'green' }, show)).toEqual([])
-    // 저장된 옛 키 조합도 배제 표에 없어 조용하다
-    expect(feedColorWarnings({ bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'ref-lime' }, show)).toEqual([])
+    // 저장돼 있던 옛 키는 모르는 키라 건너뛰고(경고 없음, 던지지 않음) 그림 색 규칙도 건너뛴다
+    const legacy = { bgColorKey: 'red-soft', chipColorKey: 'red', boxColorKey: 'ref-lime' } as unknown as Parameters<typeof feedColorWarnings>[0]
+    expect(feedColorWarnings(legacy, show)).toEqual([])
+    expect(() => feedColorWarnings(legacy, show, [], { imageHexes: ['#ff0000'], chipOnImage: true })).not.toThrow()
   })
 
   it('두 칸을 다 고르지 않았으면 판정하지 않는다', () => {

@@ -30,7 +30,7 @@ const html = (props: { savedOverrides?: Record<string, string>; cards?: FeedColo
   renderToStaticMarkup(<FeedColorsEditor savedOverrides={props.savedOverrides ?? {}} cards={props.cards ?? []} />)
 
 describe('FeedColorsEditor 초기 렌더', () => {
-  it('색 19개가 이름·기본값과 함께 한 줄씩 그려진다', () => {
+  it('색 9개가 이름·기본값과 함께 한 줄씩 그려진다', () => {
     const out = html()
     expect((out.match(/data-color-key="/g) ?? []).length).toBe(FEED_COLOR_KEYS.length)
     for (const key of FEED_COLOR_KEYS) expect(out).toContain(FEED_COLOR_LABELS[key])
