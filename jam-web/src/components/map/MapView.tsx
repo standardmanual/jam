@@ -175,7 +175,7 @@ export const DROP_MARKER_GLYPH_RATIO = 0.8
 
 /**
  * 배지(드랍)가 있는 지점 마커의 면·아이콘 색 — 강조색 그린(사용자 지시 2026-11-11, 티켓 20261111_1034).
- * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 11:1)이다.
+ * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 7.7:1)이다(새 초록 #59C02B 기준, 2026-11-23 계산값).
  */
 export const DROP_MARKER_ACTIVE_BG = 'var(--jam-green)'
 export const DROP_MARKER_ACTIVE_GLYPH = 'var(--foreground)'
