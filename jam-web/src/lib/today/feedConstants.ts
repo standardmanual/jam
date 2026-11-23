@@ -346,3 +346,20 @@ export function feedTypeUsesCoverImage(feedType: unknown, boxKind?: unknown): bo
   if (feedType === 'text_box') return boxKind === 'image_mask';
   return false;
 }
+
+/**
+ * 카드의 박스 용도(`box_kind`)를 정한다. 저장값이 있으면 그 값, 비어 있으면 유형 기본(히어로는 이미지 마스크, 나머지는 글자 박스)이다.
+ * `resolveFeedLook`의 박스 용도 계산과 같은 규칙이라 화면과 서버 자동 배정이 같은 판단을 한다.
+ */
+export function resolveBoxKind(feedType: unknown, boxKind: unknown): 'text' | 'image_mask' {
+  if (boxKind === 'text' || boxKind === 'image_mask') return boxKind;
+  return feedType === 'hero_box' ? 'image_mask' : 'text';
+}
+
+/**
+ * 박스 안에 글자가 들어가는가(통합 팔레트 자동 배정의 `boxHasText`, 티켓 20261122_2224 6회차).
+ * 텍스트형·드랍 픽업 배지 상자·목록형 타일은 글자가 들어가 참이고, 박스에 사진만 들어가는 이미지 마스크(히어로 등)는 거짓이다.
+ */
+export function boxHasTextFor(feedType: unknown, boxKind: unknown): boolean {
+  return resolveBoxKind(feedType, boxKind) !== 'image_mask';
+}

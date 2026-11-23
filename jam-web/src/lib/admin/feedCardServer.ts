@@ -2,7 +2,7 @@
  * 홈피드 카드 등록·수정 때 비어 있는 시드와 색을 정하는 서버 보조 (티켓 20261121_1531, 상위 20261120_2026 6회차-2).
  *
  * 규칙 자체는 `feedCardFields.ts`의 `decideFeedCardValues`(순수)가 정하고, 이 파일은 그 규칙에 서버가 채워 주는 입력(서버 난수 시드,
- * 같은 시기에 노출되는 카드의 배경색 사용 빈도)을 붙인다. 어드민 저장 라우트 두 개(`/api/admin/today`·`/api/admin/today/[id]`)와
+ * 같은 시기에 노출되는 카드의 바탕 키 목록)을 붙인다. 어드민 저장 라우트 두 개(`/api/admin/today`·`/api/admin/today/[id]`)와
  * 운영 묶음 카드 핸들러(`opsInbox/execute/homeFeedCard.ts`의 `create`)가 같은 코드를 쓴다.
  *
  * 번들 경계: 핸들러가 이 파일을 값으로 가져오고 요약창이 그 핸들러를 끌어오므로, 이 파일은 Supabase·`node:`·서버 모듈을 값으로 가져오지 않는다.
@@ -10,7 +10,6 @@
  */
 import type { createServiceClient } from '@/lib/supabase/server'
 import {
-  countBgUsage,
   createFeedSeed,
   decideFeedCardValues,
   type DecidedFeedCardValues,
@@ -19,14 +18,15 @@ import {
 import type { FeedPalette } from '@/lib/today/feedAssign'
 import { fetchFeedPalette } from '@/lib/today/feedColorOverridesRead'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
+import { pickCollectionItemBadges, type CollectionItemBadgeRow } from '@/lib/today/collectionBurstBadges'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-/** 같은 시기 노출 카드를 찾는 기간. 기간이 비어 있으면(`null`·없음·글자가 아님) 빈 빈도로 정한다. */
+/** 같은 시기 노출 카드를 찾는 기간. 기간이 비어 있으면(`null`·없음·글자가 아님) 빈 목록으로 정한다. */
 export interface FeedCardPeriod {
   startsAt: unknown
   endsAt: unknown
-  /** 빈도에서 뺄 카드 ID(수정 저장은 자기 자신, 등록은 이미 정해 둔 새 카드 ID) */
+  /** 목록에서 뺄 카드 ID(수정 저장은 자기 자신, 등록은 이미 정해 둔 새 카드 ID) */
   excludeId?: string
 }
 
@@ -35,25 +35,39 @@ export function serverRandomUint32(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0]
 }
 
+/** 앞 카드 목록으로 가져오는 최대 장수. 짙은 초록 바탕 리듬이 최근 6장 이상을 봐야 해서 짧게 자르지 않는다(티켓 20261122_2224 6회차). */
+export const FEED_RECENT_BG_LIMIT = 12
+
 /**
- * 같은 시기에 노출되는 카드의 배경색 사용 빈도. 게시 기간(`starts_at`~`ends_at`)이 겹치고 `bg_color_key`가 있는 카드를 센다.
- * 기간이 비어 있거나 조회가 실패하면 빈 빈도로 정한다(빈도는 배경색을 고르게 퍼뜨리는 보조 입력이라 저장을 막지 않는다).
+ * 같은 시기에 노출되는 카드의 바탕 키를 등록 순서(`created_at` 오름차순)로 돌려준다. 가장 최근 카드가 마지막이고, 최근 `FEED_RECENT_BG_LIMIT`장까지만 가져온다.
+ * 게시 기간(`starts_at`~`ends_at`)이 겹치고 `bg_color_key`가 있는 카드를 센다.
+ * 기간이 비어 있거나 조회가 실패하면 빈 목록으로 정한다(앞 카드 목록은 바탕을 고르게 퍼뜨리는 보조 입력이라 저장을 막지 않는다).
  * 조회 오류는 서버 로그에만 남긴다(`logLabel`이 로그 머리말이다).
  */
-export async function fetchOverlappingBgUsage(
+export async function fetchRecentBgKeys(
   client: ServiceClient,
   { startsAt, endsAt, excludeId }: FeedCardPeriod,
-  logLabel = '[홈피드 카드 배경색 사용 빈도 조회 오류]',
-): Promise<Record<string, number>> {
-  if (typeof startsAt !== 'string' || !startsAt || typeof endsAt !== 'string' || !endsAt) return {}
+  logLabel = '[홈피드 카드 앞 카드 바탕 조회 오류]',
+): Promise<string[]> {
+  if (typeof startsAt !== 'string' || !startsAt || typeof endsAt !== 'string' || !endsAt) return []
   let query = client.from('today_cards').select('bg_color_key')
   if (excludeId) query = query.neq('id', excludeId)
-  const { data, error } = await query.lte('starts_at', endsAt).gte('ends_at', startsAt).not('bg_color_key', 'is', null)
+  const { data, error } = await query
+    .lte('starts_at', endsAt)
+    .gte('ends_at', startsAt)
+    .not('bg_color_key', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(FEED_RECENT_BG_LIMIT)
   if (error) {
     console.error(logLabel, error)
-    return {}
+    return []
   }
-  return countBgUsage((data ?? []) as Array<{ bg_color_key: string | null }>)
+  // 최근 순으로 가져왔으니 뒤집어 등록 순서(가장 최근이 마지막)로 돌려준다.
+  const keys: string[] = []
+  for (const row of (data ?? []) as Array<{ bg_color_key: string | null }>) {
+    if (row.bg_color_key) keys.push(row.bg_color_key)
+  }
+  return keys.reverse()
 }
 
 /** 자동 배정에 쓸 이미지 대표 색을 고르는 재료(티켓 20261121_1828). 저장 요청이 쓰는 값을 그대로 넘긴다. */
@@ -64,6 +78,8 @@ export interface FeedCardImageSource {
   coverColors: unknown
   /** 카드가 가리키는 배지 id(`badge_ids`). 배지 유형일 때만 조회한다. */
   badgeIds: readonly string[] | null | undefined
+  /** 컬렉션 소개 카드가 가리키는 컬렉션(`item_book_id`). 컬렉션 소개일 때만 조회한다. 없으면 커버 색만 본다. */
+  itemBookId?: string | null
 }
 
 const BADGE_COLOR_TYPES: readonly string[] = ['badge_intro', 'badge_only', 'drop_pickup']
@@ -91,6 +107,32 @@ export async function fetchBadgeBgColors(
 }
 
 /**
+ * 컬렉션 소개 카드가 대표 그림 뒤로 퍼뜨리는 아이템 배지(최대 `COLLECTION_BURST_BADGE_LIMIT`개)의 대표 색(`badges.bg_colors`)을 읽는다.
+ * 어느 배지를 고르는지는 홈과 같은 규칙(`pickCollectionItemBadges`)이라 홈이 그리는 4개와 같은 배지다. 조회가 실패하면 `null`을 돌려주고 서버 로그에 남긴다.
+ * 대표 색이 비어 있는 배지는 색 쪽에서 건너뛴다(`imageColorsForCard`가 읽을 수 없는 값을 거른다).
+ */
+export async function fetchCollectionBadgeColors(
+  client: ServiceClient,
+  itemBookId: string,
+  logLabel = '[홈피드 카드 컬렉션 배지 대표 색 조회 오류]',
+): Promise<unknown[] | null> {
+  // 홈의 조회(`fetchCollectionsById`)와 같은 조건: 이 컬렉션의 삭제되지 않은 배지. 아이템 배지만 고르는 일은 선택 함수가 한다.
+  const { data, error } = await client
+    .from('badges')
+    .select('id, item_book_id, type, name, image_url, bg_colors')
+    .eq('item_book_id', itemBookId)
+    .is('deleted_at', null)
+  if (error) {
+    console.error(logLabel, error)
+    return null
+  }
+  const rows = (data ?? []) as Array<CollectionItemBadgeRow & { bg_colors?: unknown }>
+  const colorsById = new Map(rows.map((row) => [row.id, row.bg_colors] as const))
+  const picked = pickCollectionItemBadges(rows).get(itemBookId) ?? []
+  return picked.map((badge) => colorsById.get(badge.id))
+}
+
+/**
  * 카드 한 장의 이미지 규칙 입력(`imageHexes`·`chipOnImage`)을 만든다. 적용 대상이 아닌 유형은 DB를 읽지 않고, 배지 유형만 배지 대표 색을 한 번 읽는다.
  * 조회가 실패하면 빈 입력(이미지 규칙 없음)이다 — 색은 보조 입력이라 저장을 막지 않는다.
  */
@@ -104,16 +146,22 @@ export async function fetchFeedCardImageColors(
     badgeColors = await fetchBadgeBgColors(client, source.badgeIds, logLabel)
     if (badgeColors === null) badgeColors = []
   }
+  // 컬렉션 소개는 대표 그림(커버)에 더해 아이템 배지 4개의 색도 본다. 읽을 수 없으면 없는 것으로 보고 커버 색만 본다.
+  let collectionBadgeColors: unknown[] = []
+  if (source.feedType === 'collection_intro' && source.itemBookId) {
+    collectionBadgeColors = (await fetchCollectionBadgeColors(client, source.itemBookId, logLabel)) ?? []
+  }
   return imageColorsForCard({
     feedType: source.feedType,
     boxKind: source.boxKind,
     coverColors: source.coverColors,
     badgeColors,
+    collectionBadgeColors,
   })
 }
 
 /**
- * 비어 있는 시드와 색 키를 정한다(저장은 호출하는 쪽이 한다). 지정한 값은 덮어쓰지 않고, 같은 시드·같은 빈도는 같은 값이다.
+ * 비어 있는 시드와 색 키를 정한다(저장은 호출하는 쪽이 한다). 지정한 값은 덮어쓰지 않고, 같은 시드·같은 앞 카드 목록은 같은 값이다.
  * `columns.feed_seed`가 있으면 그 값이 색 계산 시드이자 저장 시드다(난수는 뽑지 않는다). 없을 때만 서버 난수로 새로 뽑는다(`random`은 시험이 바꿔 끼운다, 티켓 20261121_2113). 제외 조합은 운영 코드에 연결된 목록이 없어 비워 둔다 —
  * 연결되면 이 한 곳만 바꾸면 어드민과 에이전트 두 경로가 함께 바뀐다.
  * `imageSource`를 주면 이미지 대표 색(커버 색·배지 색)으로 자동 배경·칩을 거른다(티켓 20261121_1828). 주지 않으면 이전과 같다.
@@ -129,13 +177,13 @@ export async function completeFeedCardValues(
   imageSource?: FeedCardImageSource,
   palette?: FeedPalette,
 ): Promise<DecidedFeedCardValues> {
-  const overlappingBgUsage = await fetchOverlappingBgUsage(client, period, logLabel)
+  const recentBgKeys = await fetchRecentBgKeys(client, period, logLabel)
   const image = imageSource ? await fetchFeedCardImageColors(client, imageSource, logLabel) : undefined
   const resolvedPalette = palette ?? (await fetchFeedPalette(client, logLabel))
   return decideFeedCardValues({
     columns,
     seed: columns.feed_seed ?? createFeedSeed(random),
-    overlappingBgUsage,
+    recentBgKeys,
     excludedPairs: [],
     image,
     palette: resolvedPalette,

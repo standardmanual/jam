@@ -63,8 +63,6 @@ export interface FeedColorAssignInput {
   recentBgKeys?: readonly string[]
   /** 박스에 글자가 들어가는 카드인가. 참(기본)이면 자동으로 고르는 박스는 `boxAllowedFor`에 걸려 짙은 초록을 쓰지 않는다. */
   boxHasText?: boolean
-  /** 옛 규칙의 «같은 시기 배경색 사용 빈도». 통합 팔레트 규칙은 읽지 않는다 — 6회차가 호출부를 `recentBgKeys`로 바꾸면 이 칸도 지운다. */
-  bgUsage?: Readonly<Record<string, number>>
   /**
    * 이 카드 이미지의 대표 색 hex(저장된 최대 3개, 티켓 20261121_1828). 비었거나 없으면 이미지 규칙을 쓰지 않는다.
    * 있으면 자동으로 고르는 배경 후보는 규칙 ⑤(그림과 배경)를 통과해야 한다. 지정값은 걸러 내지 않는다(경고만, 7-7).

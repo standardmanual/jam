@@ -9,8 +9,8 @@
 import { describe, expect, it } from 'vitest'
 import { assignFeedColors, FEED_FALLBACK_COLORS } from '@/lib/today/feedAssign'
 import { chipExclusionRule } from '@/lib/today/feedColorRules'
-import { boxAllowedFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE } from '@/lib/today/feedConstants'
-import { countBgUsage, createFeedSeed, decideFeedCardValues } from '../feedCardFields'
+import { boxAllowedFor, boxHasTextFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE, FEED_DEEP_GREEN_KEY } from '@/lib/today/feedConstants'
+import { createFeedSeed, decideFeedCardValues } from '../feedCardFields'
 
 describe('createFeedSeed — 난수 공급 함수를 인자로 받는다', () => {
   it('공급한 값을 0 이상 2^32 미만 정수로 돌려준다', () => {
@@ -31,13 +31,6 @@ describe('createFeedSeed — 난수 공급 함수를 인자로 받는다', () =>
   })
 })
 
-describe('countBgUsage', () => {
-  it('색 키별 장수를 세고 색 키가 없는 카드는 세지 않는다', () => {
-    expect(countBgUsage([{ bg_color_key: 'red' }, { bg_color_key: 'red' }, { bg_color_key: 'blue' }, { bg_color_key: null }, {}])).toEqual({ red: 2, blue: 1 })
-    expect(countBgUsage([])).toEqual({})
-  })
-})
-
 describe('decideFeedCardValues', () => {
   it('비어 있는 색 키 3개와 시드를 정한다', () => {
     const decided = decideFeedCardValues({ columns: {}, seed: 4242 })
@@ -49,13 +42,61 @@ describe('decideFeedCardValues', () => {
     expect(decided.warnings).toEqual([])
   })
 
-  it('같은 시드·같은 빈도는 같은 값이고, 자동 배정 함수와도 같다', () => {
-    const usage = { red: 3, blue: 1 }
-    const a = decideFeedCardValues({ columns: {}, seed: 99, overlappingBgUsage: usage, excludedPairs: [] })
-    const b = decideFeedCardValues({ columns: {}, seed: 99, overlappingBgUsage: usage, excludedPairs: [] })
+  it('같은 시드·같은 앞 카드 목록은 같은 값이고, 자동 배정 함수와도 같다', () => {
+    const recent = ['yellow', 'green', 'pink']
+    const a = decideFeedCardValues({ columns: {}, seed: 99, recentBgKeys: recent, excludedPairs: [] })
+    const b = decideFeedCardValues({ columns: {}, seed: 99, recentBgKeys: recent, excludedPairs: [] })
     expect(a).toEqual(b)
-    const direct = assignFeedColors({ seed: 99, bgUsage: usage })
+    const direct = assignFeedColors({ seed: 99, recentBgKeys: recent, boxHasText: true })
     expect([a.bg_color_key, a.chip_color_key, a.box_color_key]).toEqual([direct.bg, direct.chip, direct.box])
+  })
+
+  it('앞 카드 목록의 마지막(가장 최근) 바탕과 같은 바탕은 나오지 않는다', () => {
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const previous = FEED_COLOR_USAGE.bg[seed % FEED_COLOR_USAGE.bg.length]
+      const decided = decideFeedCardValues({ columns: {}, seed, recentBgKeys: ['sky', previous] })
+      expect(decided.bg_color_key, `seed ${seed}`).not.toBe(previous)
+    }
+  })
+
+  it('짙은 초록 바탕이 없던 앞 카드 5장 뒤 6번째 카드는 서버 경로(앞 카드 목록)로 이어 붙여도 반드시 짙은 초록이다', () => {
+    const recent = ['yellow', 'pink', 'sky', 'green', 'yellow']
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const decided = decideFeedCardValues({ columns: {}, seed, recentBgKeys: recent })
+      expect(decided.bg_color_key, `seed ${seed}`).toBe(FEED_DEEP_GREEN_KEY)
+      // 글자가 들어가는 박스(기본 유형)에는 짙은 초록 박스를 쓰지 않는다
+      expect(decided.box_color_key).not.toBe(FEED_DEEP_GREEN_KEY)
+    }
+  })
+
+  it('박스 종류로 글자 박스 여부(boxHasText)가 정해진다 — 글자 박스·드랍 픽업·목록형은 참, 이미지 마스크(히어로 등)는 거짓', () => {
+    expect(boxHasTextFor('text_box', 'text')).toBe(true)
+    expect(boxHasTextFor('text_box', null)).toBe(true)
+    expect(boxHasTextFor('drop_pickup', null)).toBe(true)
+    expect(boxHasTextFor('gallery_list', null)).toBe(true)
+    expect(boxHasTextFor('text_box', 'image_mask')).toBe(false)
+    expect(boxHasTextFor('hero_box', 'image_mask')).toBe(false)
+    expect(boxHasTextFor('hero_box', null)).toBe(false)
+    expect(boxHasTextFor('hero_box', 'text')).toBe(true)
+    expect(boxHasTextFor(null, null)).toBe(true)
+  })
+
+  it('decideFeedCardValues가 카드 유형·박스 용도에서 boxHasText를 정해 자동 배정에 넘긴다', () => {
+    const recent = ['yellow', 'pink', 'sky', 'green', 'yellow']
+    const cases = [
+      { columns: { feed_type: 'text_box', box_kind: 'text' }, boxHasText: true },
+      { columns: { feed_type: 'text_box', box_kind: 'image_mask' }, boxHasText: false },
+      { columns: { feed_type: 'hero_box' }, boxHasText: false },
+      { columns: { feed_type: 'drop_pickup' }, boxHasText: true },
+      { columns: { feed_type: 'gallery_list' }, boxHasText: true },
+    ] as const
+    for (const { columns, boxHasText } of cases) {
+      for (let seed = 1; seed <= 30; seed += 1) {
+        const decided = decideFeedCardValues({ columns, seed, recentBgKeys: recent })
+        const direct = assignFeedColors({ seed, recentBgKeys: recent, boxHasText })
+        expect([decided.bg_color_key, decided.chip_color_key, decided.box_color_key], `${columns.feed_type} ${seed}`).toEqual([direct.bg, direct.chip, direct.box])
+      }
+    }
   })
 
   it('사용자가 고른 값은 덮어쓰지 않는다', () => {
@@ -75,10 +116,9 @@ describe('decideFeedCardValues', () => {
     expect(decideFeedCardValues({ columns: { feed_seed: 0 }, seed: 99 }).feed_seed).toBe(0)
   })
 
-  it('자동으로 정한 세 색은 통합 팔레트 쓰임 표의 키뿐이고, 옛 사용 빈도 입력은 배정에 영향을 주지 않는다', () => {
-    const usage = { yellow: 9, green: 0 }
+  it('자동으로 정한 세 색은 통합 팔레트 쓰임 표의 키뿐이다', () => {
     for (let seed = 1; seed <= 20; seed += 1) {
-      const decided = decideFeedCardValues({ columns: {}, seed, overlappingBgUsage: usage })
+      const decided = decideFeedCardValues({ columns: {}, seed })
       expect(FEED_COLOR_USAGE.bg as readonly string[]).toContain(decided.bg_color_key)
       expect(FEED_COLOR_USAGE.box as readonly string[]).toContain(decided.box_color_key)
       expect(FEED_COLOR_USAGE.valueChip as readonly string[]).toContain(decided.chip_color_key)
@@ -88,8 +128,8 @@ describe('decideFeedCardValues', () => {
 
   it('시드 100개를 바꿔 돌려도 자동으로 정한 색 조합이 쓰임 표와 배제 표를 통과한다', () => {
     for (let seed = 1; seed <= 100; seed += 1) {
-      const usage = seed % 2 === 0 ? { red: seed % 5, blue: seed % 3, 'ref-lime': 1 } : undefined
-      const d = decideFeedCardValues({ columns: {}, seed: seed * 7919, overlappingBgUsage: usage })
+      const recent = seed % 2 === 0 ? ['red', 'blue', 'ref-lime'] : undefined
+      const d = decideFeedCardValues({ columns: {}, seed: seed * 7919, recentBgKeys: recent })
       expect(d.usedFallback, `seed ${seed}`).toBe(false)
       expect(FEED_COLOR_USAGE.bg as readonly string[], `bg ${seed}`).toContain(d.bg_color_key)
       expect(FEED_COLOR_USAGE.valueChip as readonly string[], `chip ${seed}`).toContain(d.chip_color_key)

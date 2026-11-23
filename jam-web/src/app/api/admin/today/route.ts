@@ -70,12 +70,13 @@ export async function POST(req: NextRequest) {
         columns as Partial<FeedCardColumns>,
         { startsAt: safeBody.starts_at, endsAt: safeBody.ends_at },
         undefined,
-        '[today POST 배경색 사용 빈도 조회 오류]',
+        '[today POST 앞 카드 바탕 조회 오류]',
         {
           feedType: columns.feed_type as string,
           boxKind: typeof columns.box_kind === 'string' ? columns.box_kind : null,
           coverColors: cover.cover_colors ?? null,
           badgeIds: Array.isArray(safeBody.badge_ids) ? (safeBody.badge_ids as string[]) : null,
+          itemBookId: typeof safeBody.item_book_id === 'string' ? safeBody.item_book_id : null,
         },
         palette,
       )
