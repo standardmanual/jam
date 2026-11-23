@@ -70,13 +70,13 @@ function feed(overrides: Partial<TodayCardWithHref> = {}): FeedCardView {
 const texts = (view: FeedCardView) => view.look.chips.map((chip) => chip.text)
 
 describe('미션 조건 값 칩', () => {
-  it('기간·보상 칩이 없으면 조건 값이 값 칩이 된다(걷기 8km → 구분 칩 «미션»)', () => {
+  it('기간·보상 칩이 없으면 조건 값이 값 칩이 된다(걷기 8km → 분류 칩 «MISSION»)', () => {
     const view = feed({ resolved_mission: { ...MISSION, condition_json: { activity_type: 'walking', distance_km: 8 } } })
-    expect(texts(view)).toEqual(['걷기 8km', '미션'])
+    expect(texts(view)).toEqual(['걷기 8km', 'MISSION'])
   })
 
   it('조건 값이 없으면 그 칩만 없다(구분 칩만 남는다)', () => {
-    expect(texts(feed())).toEqual(['미션'])
+    expect(texts(feed())).toEqual(['MISSION'])
   })
 
   it('저장된 값 칩이 `mission.condition`을 읽는다', () => {
@@ -93,7 +93,7 @@ describe('미션 조건 값 칩', () => {
     const view = feed({
       resolved_mission: { ...MISSION, ends_at: '2026-11-23T12:00:00+09:00', condition_json: { distance_km: 8 } },
     })
-    expect(texts(view)).toEqual(['2일 남음', '미션'])
+    expect(texts(view)).toEqual(['2일 남음', 'MISSION'])
   })
 })
 
@@ -102,16 +102,16 @@ describe('액티비티 배지 달성 기준·레벨 값 칩', () => {
     feed({ template_type: 'badge_spotlight', feed_type: 'badge_intro', mission_id: null, resolved_mission: null, resolved_badges: badges, ...overrides })
 
   it('카드에 걸린 첫 배지의 달성 기준이 값 칩이 된다', () => {
-    expect(texts(badgeCard([badge({ condition_json: { elevation_gain_m: 700 } })]))).toEqual(['고도 700m', '액티비티 배지'])
+    expect(texts(badgeCard([badge({ condition_json: { elevation_gain_m: 700 } })]))).toEqual(['고도 700m', 'ACTIVITY'])
   })
 
   it('달성 기준이 없고 레벨만 있으면 레벨 칩이다', () => {
-    expect(texts(badgeCard([badge({ level: 2 })]))).toEqual(['Lv.2', '액티비티 배지'])
+    expect(texts(badgeCard([badge({ level: 2 })]))).toEqual(['Lv.2', 'ACTIVITY'])
   })
 
   it('값이 없으면 구분 칩만 남는다', () => {
-    expect(texts(badgeCard([badge()]))).toEqual(['액티비티 배지'])
-    expect(texts(badgeCard([]))).toEqual(['액티비티 배지'])
+    expect(texts(badgeCard([badge()]))).toEqual(['ACTIVITY'])
+    expect(texts(badgeCard([]))).toEqual(['ACTIVITY'])
   })
 
   it('저장된 값 칩이 `activity_badge.criteria`·`activity_badge.level`을 읽는다', () => {

@@ -167,8 +167,8 @@ describe('toCardView — 개편 카드', () => {
     expect(feed({ feed_type: 'hero_box', description: '   ' }).description).toBeUndefined()
   })
 
-  it('값 칩은 카드가 이미 싣고 있는 값으로 만든다: 미션은 남은 기간(구분 칩 «미션»)', () => {
-    expect(feed({}).look.chips.map((chip) => chip.text)).toEqual(['2일 남음', '미션'])
+  it('값 칩은 카드가 이미 싣고 있는 값으로 만든다: 미션은 남은 기간(분류 칩 «MISSION»)', () => {
+    expect(feed({}).look.chips.map((chip) => chip.text)).toEqual(['2일 남음', 'MISSION'])
   })
 
   it('컬렉션 소식은 아이템 수, 지역 트렌드는 체크인 구분 칩과 장소·배지 수다', () => {
@@ -177,14 +177,14 @@ describe('toCardView — 개편 카드', () => {
       resolved_mission: null,
       resolved_collection: { name: '가을 컬렉션', item_count: 12 },
     })
-    expect(collection.look.chips.map((chip) => chip.text)).toEqual(['아이템 12개', '컬렉션'])
+    expect(collection.look.chips.map((chip) => chip.text)).toEqual(['아이템 12개', 'COLLECTION'])
     const checkin = feed({
       template_type: 'location_trend',
       resolved_mission: null,
       region_label: '문경',
       resolved_badges: [badge('b1'), badge('b2'), badge('b3')],
     })
-    expect(checkin.look.chips.map((chip) => chip.text)).toEqual(['배지 3종류', '체크인'])
+    expect(checkin.look.chips.map((chip) => chip.text)).toEqual(['배지 3종류', 'CHECK IN'])
   })
 
   it('칩을 내지 않는 자원(기사)은 칩이 없다', () => {

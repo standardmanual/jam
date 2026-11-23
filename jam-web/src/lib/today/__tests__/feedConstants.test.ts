@@ -13,7 +13,14 @@ import { describe, it, expect } from 'vitest'
 import {
   FEED_BG_BOX_COMBOS,
   FEED_BOX,
+  FEED_CHIP,
   FEED_CHIP_OFFSET,
+  FEED_CORNER_CHIP,
+  FEED_CORNER_INSET,
+  FEED_CORNER_OVERHANG,
+  FEED_CORNER_TILT_RANGE,
+  FEED_PHOTO_TEXT_SCRIM,
+  FEED_TEXT_BOX_TITLE_STEPS,
   FEED_COLORS,
   FEED_COLOR_KEYS,
   FEED_COLOR_USAGE,
@@ -22,6 +29,7 @@ import {
   FEED_TILTS,
   boxAllowedFor,
   feedColorVar,
+  feedTextBoxTitleSizeClass,
   feedTextOnBg,
   feedTypeUsesCoverImage,
 } from '../feedConstants'
@@ -218,5 +226,46 @@ describe('boxAllowedFor', () => {
 
   it('박스 표에 없는 색(빨강·보라·흰색·파랑·모르는 키)은 쓰지 못한다', () => {
     for (const key of ['red', 'purple', 'white', 'blue', 'not-a-color']) expect(boxAllowedFor(key, false)).toBe(false)
+  })
+})
+
+describe('카드 모서리 칩 상수 (티켓 20261122_2228 R1)', () => {
+  it('코너 칩 크기는 큰 칩 52/24·작은 칩 40/18·굵기 900이다', () => {
+    expect(FEED_CORNER_CHIP.large).toEqual({ height: 52, fontSize: 24, paddingX: 16 })
+    expect(FEED_CORNER_CHIP.small).toEqual({ height: 40, fontSize: 18, paddingX: 12 })
+    expect(FEED_CORNER_CHIP.fontWeight).toBe(900)
+  })
+
+  it('제목 속 칩 크기(FEED_CHIP)와 기울기 여섯 값은 그대로다', () => {
+    expect(FEED_CHIP.large).toEqual({ height: 40, fontSize: 18, paddingX: 16 })
+    expect(FEED_CHIP.small).toEqual({ height: 32, fontSize: 14, paddingX: 12 })
+    expect([...FEED_TILTS]).toEqual([-8, -6, -4, 4, 6, 8])
+  })
+
+  it('기울기 범위 3~12°, 안쪽 한도 가로 6%·세로 5%, 바깥 한도 6px이다', () => {
+    expect(FEED_CORNER_TILT_RANGE).toEqual({ min: 3, max: 12 })
+    for (const tilt of FEED_TILTS) {
+      expect(Math.abs(tilt)).toBeGreaterThanOrEqual(FEED_CORNER_TILT_RANGE.min)
+      expect(Math.abs(tilt)).toBeLessThanOrEqual(FEED_CORNER_TILT_RANGE.max)
+    }
+    expect(FEED_CORNER_INSET).toEqual({ x: 6, y: 5 })
+    expect(FEED_CORNER_OVERHANG).toBe(6)
+  })
+})
+
+describe('텍스트형 (티켓 20261122_2228 R2)', () => {
+  it('사진 위 어둠 막은 32%다', () => {
+    expect(FEED_PHOTO_TEXT_SCRIM).toBe(0.32)
+  })
+
+  it('큰 제목 글자는 2~3단계이고 길수록 한 단계씩 낮아진다', () => {
+    expect(FEED_TEXT_BOX_TITLE_STEPS.map((step) => step.className)).toEqual(['text-5xl', 'text-4xl', 'text-3xl'])
+    expect(feedTextBoxTitleSizeClass('잠긴 채\n온 배지,\n열어\n볼까요')).toBe('text-5xl')
+    expect(feedTextBoxTitleSizeClass('오늘 걷기 미션에 도전해 보세요')).toBe('text-5xl')
+    // 줄 수가 넘치면 낮춘다: 5자 이하로 접혀도 5줄이면 4xl, 7자 기준으로도 7줄을 넘으면 3xl
+    expect(feedTextBoxTitleSizeClass('가나다라마\n가나다라마\n가나다라마\n가나다라마\n가나다라마')).toBe('text-4xl')
+    expect(feedTextBoxTitleSizeClass('가을 숲길을 따라 걷다가 만나는 작은 쉼터에서 한숨 돌려요 오늘도 수고했어요')).toBe('text-4xl')
+    expect(feedTextBoxTitleSizeClass('가나다\n가나다\n가나다\n가나다\n가나다\n가나다\n가나다')).toBe('text-3xl')
+    expect(feedTextBoxTitleSizeClass(null)).toBe('text-5xl')
   })
 })

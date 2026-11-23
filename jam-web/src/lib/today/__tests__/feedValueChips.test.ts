@@ -8,7 +8,9 @@ import {
   buildValueChips,
   checkChipTextLength,
   FEED_CHIP_TEXT_MAX_LENGTH,
+  FEED_DIVIDER_ENGLISH,
   FEED_DROP_PICKUP_PHRASES,
+  toEnglishDivider,
   FEED_VALUE_CHIP_RULES,
   formatBadgeCriteriaChip,
   formatBadgeLevelChip,
@@ -26,13 +28,13 @@ const DAY = 24 * HOUR
 const after = (ms: number) => new Date(NOW.getTime() + ms).toISOString()
 
 describe('규칙표', () => {
-  it('자원 다섯 가지의 구분 칩 문구가 PRD 표와 같다', () => {
+  it('자원 다섯 가지의 분류 칩 문구가 영어 대문자다(«배지» 없음)', () => {
     expect(Object.fromEntries(Object.entries(FEED_VALUE_CHIP_RULES).map(([k, v]) => [k, v.divider]))).toEqual({
-      mission: '미션',
-      activity_badge: '액티비티 배지',
-      collection: '컬렉션',
-      checkin: '체크인',
-      drop_pickup: '아이템 배지',
+      mission: 'MISSION',
+      activity_badge: 'ACTIVITY',
+      collection: 'COLLECTION',
+      checkin: 'CHECK IN',
+      drop_pickup: 'ITEM',
     })
   })
 
@@ -42,7 +44,7 @@ describe('규칙표', () => {
     expect(FEED_VALUE_CHIP_RULES.collection.values).toEqual(['item-count'])
     expect(FEED_VALUE_CHIP_RULES.checkin.values).toEqual(['required-badges', 'place-name'])
     expect(FEED_VALUE_CHIP_RULES.drop_pickup.values).toEqual([])
-    expect(FEED_DROP_PICKUP_PHRASES).toEqual(['드랍', '픽업'])
+    expect(FEED_DROP_PICKUP_PHRASES).toEqual(['DROP', 'PICKUP'])
   })
 })
 
@@ -254,5 +256,26 @@ describe('문구 칩 글자 수 경고', () => {
 
   it('상한을 바꿔 넣을 수 있다', () => {
     expect(checkChipTextLength('가나다', 2)).toMatchObject({ exceeds: true, max: 2 })
+  })
+})
+
+describe('한글 구분 문구 → 영어 분류 문구', () => {
+  it('저장된 한글 문구 일곱 개를 영어 대문자로 바꾼다', () => {
+    expect(FEED_DIVIDER_ENGLISH).toEqual({
+      미션: 'MISSION',
+      '액티비티 배지': 'ACTIVITY',
+      '아이템 배지': 'ITEM',
+      컬렉션: 'COLLECTION',
+      체크인: 'CHECK IN',
+      드랍: 'DROP',
+      픽업: 'PICKUP',
+    })
+    expect(toEnglishDivider('아이템 배지')).toBe('ITEM')
+  })
+
+  it('표에 없는 문구(값 칩 글자·이미 영어인 문구·표 키와 같은 이름의 내장 속성)는 그대로 둔다', () => {
+    expect(toEnglishDivider('2일 남음')).toBe('2일 남음')
+    expect(toEnglishDivider('MISSION')).toBe('MISSION')
+    expect(toEnglishDivider('constructor')).toBe('constructor')
   })
 })

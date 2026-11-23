@@ -13,7 +13,8 @@
  * - 저장된 `chips`(NULL이 아님): 그것을 그린다. 문구 칩은 `text`, 구분 칩은 `text` 또는 자원의 구분 문구, 값 칩은 `source`가 가리키는 값을 문구로 바꾼다
  *   (알려진 출처 키만: `mission.remaining`·`mission.reward_points`·`mission.condition`·`activity_badge.criteria`·`activity_badge.level`·`collection.item_count`·`checkin.required_badges`·`checkin.place_name`. 읽지 못하면 그 칩은 없다).
  * - NULL(자동): 첫 값 칩 → 구분 칩 순이다. 값이 없으면 구분 칩 하나, 구분 칩이 없는 자원이면 값 칩을 앞에서 두 개까지.
- *   **드랍·픽업(`drop_pickup`)만 다르다**: 자원과 무관하게 «드랍»(색 칩)·«픽업»(검정 칩) 문구 칩 둘이다(샘플).
+ *   **드랍·픽업(`drop_pickup`)만 다르다**: 자원과 무관하게 «DROP»·«PICKUP» 분류 칩(검정) 둘이다(티켓 20261122_2228 R1).
+ *   분류 칩 문구는 영어 대문자(ACTIVITY·ITEM·MISSION·CHECK IN·COLLECTION·DROP·PICKUP)다. 저장된 한글 구분 문구(미션·액티비티 배지·아이템 배지·컬렉션·체크인, 문구 칩의 드랍·픽업)는 `toEnglishDivider`로 영어로 바꿔 보여 준다.
  * - 개수는 카드당 최대 2개이고 유형의 한도(`chipLimitOf`)로 한 번 더 자른다. 첫 칩은 큰 칩, 둘째는 작은 칩이다(샘플). 구분 칩은 검정이다. 드랍·픽업은 두 칩 모두 큰 칩이다(샘플).
  *
  * ## 지원 유형 목록
@@ -51,6 +52,7 @@ import { limitChipsForType } from './feedChipLayout'
 import {
   FEED_DROP_PICKUP_PHRASES,
   FEED_VALUE_CHIP_RULES,
+  toEnglishDivider,
   buildValueChips,
   formatBadgeCriteriaChip,
   formatBadgeLevelChip,
@@ -236,19 +238,29 @@ function draftChips(
     const drafts: ChipDraft[] = []
     for (const spec of stored) {
       let text: string | null
-      if (spec.kind === 'phrase') text = spec.text?.trim() || null
-      else if (spec.kind === 'label') text = spec.text?.trim() || divider
-      else text = valueChipTextOf(spec.source, valueSource, now)
+      let kind: FeedLookChip['kind'] = spec.kind
+      if (spec.kind === 'phrase') {
+        text = spec.text?.trim() || null
+        // 저장된 «드랍»·«픽업» 문구 칩은 분류 칩이다(둘 다 분류 칩, 티켓 20261122_2228 R1). 다른 문구 칩은 그대로 둔다.
+        if (text === '드랍' || text === '픽업') {
+          text = toEnglishDivider(text)
+          kind = 'label'
+        }
+      } else if (spec.kind === 'label') {
+        // 저장된 한글 구분 문구(미션 등)는 영어 대문자로 보여 준다. 표에 없는 문구는 그대로다.
+        const stored = spec.text?.trim()
+        text = stored ? toEnglishDivider(stored) : divider
+      } else text = valueChipTextOf(spec.source, valueSource, now)
       if (!text) continue
-      drafts.push({ kind: spec.kind, text, fixed: { slot: spec.slot ?? null, tilt: spec.tilt ?? null } })
+      drafts.push({ kind, text, fixed: { slot: spec.slot ?? null, tilt: spec.tilt ?? null } })
     }
     return drafts
   }
-  // 드랍·픽업의 자동 칩: «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이다(샘플, 티켓 20261121_0115 재작업)
+  // 드랍·픽업의 자동 칩: «DROP»·«PICKUP» 두 칩이고 둘 다 분류 칩(검정)이다(티켓 20261122_2228 R1, 전에는 «드랍» 색 칩·«픽업» 검정 칩)
   if (feedType === 'drop_pickup') {
     const [drop, pickup] = FEED_DROP_PICKUP_PHRASES
     return [
-      { kind: 'phrase', text: drop, fixed: {} },
+      { kind: 'label', text: drop, fixed: {} },
       { kind: 'label', text: pickup, fixed: {} },
     ]
   }

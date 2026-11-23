@@ -109,9 +109,9 @@ describe('컬렉션 소개 — 구성', () => {
     // 걸침 한도: 가로 12 < 안쪽 여백 16이고 앵커(그림)가 가운데에 있어 카드 바깥으로 나가지 않는다
     expect(html).toContain('left:-12px')
     expect(html).toContain('top:-16px')
-    // 칩 크기는 작은 칩(높이 32)이다
-    expect(html).toContain('height:32px')
-    expect(html).not.toContain('height:40px')
+    // 칩 크기는 작은 코너 칩(높이 40)이다(큰 코너 칩 52는 아니다)
+    expect(html).toContain('height:40px')
+    expect(html).not.toContain('height:52px')
   })
 
   it('칩이 둘이어도 모두 작은 칩이다', () => {
@@ -123,7 +123,7 @@ describe('컬렉션 소개 — 구성', () => {
     })
     const html = render(view)
     expect(count(html, 'rounded-full')).toBe(2)
-    expect(html).not.toContain('height:40px')
+    expect(html).not.toContain('height:52px')
   })
 
   it('계측 정보가 있으면 카드 전체 링크가 하나이고 클릭을 기록한다(목록형과 달리 일반 카드)', () => {

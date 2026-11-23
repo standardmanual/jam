@@ -19,6 +19,7 @@ import {
   type ResolveFeedLookInput,
 } from '../feedLook'
 import type { FeedValueChipSource } from '../feedValueChips'
+import type { TodayChipSpec } from '@/types/database'
 
 const NOW = new Date('2026-11-21T12:00:00+09:00')
 const MISSION: FeedValueChipSource = { resource: 'mission', endsAt: '2026-11-23T12:00:00+09:00', rewardPoints: 300 }
@@ -111,9 +112,10 @@ describe('resolveFeedLook — 칩', () => {
         { kind: 'label', text: '아이템 배지' },
       ],
     })
+    // 저장된 한글 구분 문구는 영어로 바꿔 보여 준다(문구 칩 글자는 그대로)
     expect(chips.map((chip) => [chip.kind, chip.text])).toEqual([
       ['phrase', '이번 주 미션'],
-      ['label', '아이템 배지'],
+      ['label', 'ITEM'],
     ])
   })
 
@@ -127,9 +129,25 @@ describe('resolveFeedLook — 칩', () => {
   })
 
   it('구분 칩 글자를 저장하지 않으면 자원의 구분 문구를 쓴다', () => {
-    expect(look('hero_box', { chips: [{ kind: 'label' }] }, MISSION).chips[0].text).toBe('미션')
+    expect(look('hero_box', { chips: [{ kind: 'label' }] }, MISSION).chips[0].text).toBe('MISSION')
     // 칩을 내지 않는 자원이면 글자가 없어 칩이 없다
     expect(look('hero_box', { chips: [{ kind: 'label' }] }, null).chips).toEqual([])
+  })
+
+  it('저장된 한글 구분 문구는 영어 대문자로 보이고, 표에 없는 구분 문구는 그대로다', () => {
+    const texts = (specs: TodayChipSpec[]) => look('hero_box', { chips: specs }).chips.map((chip) => chip.text)
+    expect(texts([{ kind: 'label', text: '미션' }, { kind: 'label', text: '체크인' }])).toEqual(['MISSION', 'CHECK IN'])
+    expect(texts([{ kind: 'label', text: '액티비티 배지' }])).toEqual(['ACTIVITY'])
+    expect(texts([{ kind: 'label', text: '컬렉션' }])).toEqual(['COLLECTION'])
+    expect(texts([{ kind: 'label', text: '새 구분' }])).toEqual(['새 구분'])
+  })
+
+  it('저장된 «드랍»·«픽업» 문구 칩은 분류 칩(검정)이 되어 영어로 보인다', () => {
+    const chips = look('drop_pickup', { chip_color_key: 'green', chips: [{ kind: 'phrase', text: '드랍' }, { kind: 'phrase', text: '픽업' }] }).chips
+    expect(chips.map((chip) => [chip.kind, chip.text, chip.color])).toEqual([
+      ['label', 'DROP', 'black'],
+      ['label', 'PICKUP', 'black'],
+    ])
   })
 
   it('값 칩은 출처 키가 가리키는 값을 문구로 바꾼다(알 수 없는 출처·값 없음은 칩이 없다)', () => {
@@ -152,26 +170,26 @@ describe('resolveFeedLook — 칩', () => {
     const chips = look('hero_box', { chips: null }).chips
     expect(chips.map((chip) => [chip.kind, chip.text])).toEqual([
       ['value', '2일 남음'],
-      ['label', '미션'],
+      ['label', 'MISSION'],
     ])
   })
 
   it('NULL이고 값이 없으면 구분 칩 하나, 칩을 내지 않는 자원이면 칩이 없다', () => {
     const noValues: FeedValueChipSource = { resource: 'mission', endsAt: null, rewardPoints: null }
-    expect(look('hero_box', {}, noValues).chips.map((chip) => chip.text)).toEqual(['미션'])
+    expect(look('hero_box', {}, noValues).chips.map((chip) => chip.text)).toEqual(['MISSION'])
     expect(look('hero_box', {}, null).chips).toEqual([])
   })
 
   it('구분 칩이 없는 자원(드랍·픽업은 구분 칩이 있고 값이 없다)도 한도를 지킨다', () => {
-    expect(look('hero_box', {}, { resource: 'drop_pickup' }).chips.map((chip) => chip.text)).toEqual(['아이템 배지'])
+    expect(look('hero_box', {}, { resource: 'drop_pickup' }).chips.map((chip) => chip.text)).toEqual(['ITEM'])
   })
 
-  it('드랍·픽업의 자동 칩은 «드랍»(색 칩)·«픽업»(검정 칩) 두 문구 칩이고 둘 다 큰 칩이다(값 출처와 무관)', () => {
+  it('드랍·픽업의 자동 칩은 «DROP»·«PICKUP» 두 분류 칩(검정)이고 둘 다 큰 칩이다(값 출처와 무관)', () => {
     for (const source of [{ resource: 'drop_pickup' } as FeedValueChipSource, MISSION, null]) {
       const chips = look('drop_pickup', { chip_color_key: 'green' }, source).chips
       expect(chips.map((chip) => [chip.kind, chip.text, chip.color, chip.size])).toEqual([
-        ['phrase', '드랍', 'green', 'lg'],
-        ['label', '픽업', 'black', 'lg'],
+        ['label', 'DROP', 'black', 'lg'],
+        ['label', 'PICKUP', 'black', 'lg'],
       ])
     }
   })

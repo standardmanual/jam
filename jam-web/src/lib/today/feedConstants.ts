@@ -144,6 +144,28 @@ export const FEED_CHIP = {
   large: { height: 40, fontSize: 18, paddingX: 16 },
 } as const;
 
+/**
+ * 카드 모서리 칩(분류·값) 전용 크기 (티켓 20261122_2228 R1, 상위 20261122_2217 §3·§7, 2026-11-22 사용자 확정).
+ * 제목 속 칩(`ChipTitle`)은 위 `FEED_CHIP` 그대로이고 이 상수를 쓰지 않는다(두 칩이 같은 크기로 합쳐지지 않는다).
+ * 글자 굵기는 900(`font-black`)이다. 글자 24·18px은 `--text-2xl`·`--text-lg` 눈금에 대응한다. 가로 여백은 `FEED_CHIP`과 같다.
+ */
+export const FEED_CORNER_CHIP = {
+  /** 큰 칩: 높이 52px, 글자 24px(`--text-2xl`), 가로 여백 16px */
+  large: { height: 52, fontSize: 24, paddingX: 16 },
+  /** 작은 칩: 높이 40px, 글자 18px(`--text-lg`), 가로 여백 12px */
+  small: { height: 40, fontSize: 18, paddingX: 12 },
+  fontWeight: 900,
+} as const;
+
+/** 카드 모서리 칩 기울기 범위(deg, 절댓값). 3~12 사이 자유 각도이고 한 카드의 두 칩은 반대 방향이다. 계산값으로만 쓰고 저장하지 않는다(`FeedTilt`·DB CHECK는 그대로). 2026-11-22 사용자 확정, 상위 20261122_2217 §3·§7. */
+export const FEED_CORNER_TILT_RANGE = { min: 3, max: 12 } as const;
+
+/** 카드 모서리 칩이 카드 가장자리에서 안쪽으로 지켜야 할 한도(카드 폭·높이 대비 %). 가로 6%·세로 5%. 배치 계산은 R3·R4가 쓴다. 2026-11-22 사용자 확정. */
+export const FEED_CORNER_INSET = { x: 6, y: 5 } as const;
+
+/** 카드 모서리 칩이 카드 밖으로 나가도 되는 최대 px. 배치 계산은 R3·R4가 쓴다. 2026-11-22 사용자 확정. */
+export const FEED_CORNER_OVERHANG = 6;
+
 /** 칩·도장 외곽선 두께 px. 디자인 시스템에 2px 외곽선 토큰이 없어 서비스 전용으로 둔다(`--list-row-selected-ring`은 선택 링 전용). */
 export const FEED_OUTLINE_WIDTH = 2;
 
@@ -158,6 +180,7 @@ export type FeedTilt = (typeof FEED_TILTS)[number];
  * 근거: x 12는 작은 칩의 가로 여백(`--spacing-12`)과 같아 칩 글자 시작이 모서리 선에 놓이고,
  * y 16은 작은 칩 높이 32px의 절반이라 칩 가운데가 모서리 선에 놓인다. 디자인 시스템 눈금에 오프셋 토큰이 없어 서비스 전용으로 둔다.
  * 채원 확인 필요(PRD 「치수 원칙」이 새 값으로 꼽은 항목). 폭 320px에서 칩이 좌우 16px 바깥으로 나가지 않게 하는 한도는 4회차(자리 배치)가 정한다.
+ * 코너 칩이 새 크기(`FEED_CORNER_CHIP`, 높이 52·40)가 된 뒤에도 이 값은 그대로 둔다 — R3·R4(티켓 20261122_2228)에서 재계산한다.
  */
 export const FEED_CHIP_OFFSET = { x: 12, y: 16 } as const;
 
@@ -207,11 +230,10 @@ export const FEED_FULL_IMAGE_SCRIM = { opacity: 0, heightPercent: 60 } as const;
 
 /**
  * 카드 유형별 최소 높이 px(샘플 치수, 2026-11-20 사용자 확정, 폭 390 화면의 카드 폭 358 기준). 높이는 `min-height`로 두고 내용이 길면 늘어난다.
- * `full_image`는 정사각이라 높이 대신 비율(1:1)로 둔다(358은 참고 값).
+ * `full_image`는 정사각이라 높이 대신 비율(1:1)로 둔다(358은 참고 값). `text_box`도 티켓 20261122_2228 R2부터 정사각(`aspect-square`)이라 최소 높이가 없다(키를 지웠다).
  */
 export const FEED_CARD_MIN_HEIGHT = {
   hero_box: 360,
-  text_box: 440,
   badge_intro: 384,
   badge_only: 332,
   full_image: 358,
@@ -224,8 +246,32 @@ export const FEED_CARD_MIN_HEIGHT = {
 /** 히어로 이미지 박스 높이(샘플 326×184). 폭은 카드 폭에서 좌우 여백 16px씩을 뺀 값을 채운다. */
 export const FEED_HERO_IMAGE_HEIGHT = 184;
 
-/** 텍스트 박스 최소 높이(샘플 326×408 = 카드 440 − 위아래 여백 16×2). 티켓 모양 홈(지름 56)이 겹치지 않는 190px 이상이다. */
-export const FEED_TEXT_BOX_MIN_HEIGHT = 408;
+/**
+ * 사진이 실제로 그려지는 텍스트형(이미지 마스크 박스)의 어둠 막 농도(0~1, 박스 전체에 균일한 단색 한 겹). 2026-11-22 사용자 확정 32%, 상위 20261122_2217 §7.
+ * 색은 `--foreground`를 섞어 만든다(hex 없음). 이 위의 제목은 `--snow` 흰 글자다. 대비가 모자라 보여도 값은 바꾸지 말고 보고한다.
+ */
+export const FEED_PHOTO_TEXT_SCRIM = 0.32;
+
+/**
+ * 텍스트형 큰 제목의 글자 크기 단계(티켓 20261122_2228 R2). 정사각형이라 긴 제목이 박스를 넘기 쉬워 2~3단계로만 낮춘다.
+ * 제목을 데이터 줄바꿈으로 나눈 줄마다 `charsPerLine`자씩 접힌다고 어림해 줄 수를 세고, 그 줄 수가 `maxLines` 이하인 첫 단계를 쓴다. 마지막 단계는 한도가 없다.
+ * 근거: 폭 358 카드의 글자 영역은 약 262×262px(박스 326 − 안쪽 여백 32×2)다. 글자 48px(줄 높이 1.1 = 52.8px)는 한 줄 약 5자·4줄(211px),
+ * 36px(39.6px)는 약 7자·6줄(238px)이다. 클래스는 Tailwind 눈금(`text-5xl` 48·`text-4xl` 36·`text-3xl` 30)이다.
+ * 어림이라 320 화면(글자 영역 약 192px) 등 이 한도를 넘는 경우는 글자 층의 `max-h-full`·`overflow-hidden`이 박스 안에 가둔다.
+ */
+export const FEED_TEXT_BOX_TITLE_STEPS = [
+  { charsPerLine: 5, maxLines: 4, className: 'text-5xl' },
+  { charsPerLine: 7, maxLines: 6, className: 'text-4xl' },
+  { charsPerLine: 10, maxLines: Infinity, className: 'text-3xl' },
+] as const;
+
+/** 텍스트형 큰 제목의 글자 크기 클래스. 제목의 줄바꿈은 데이터 그대로 본다(빈 줄도 한 줄이다). */
+export function feedTextBoxTitleSizeClass(title: string | null | undefined): string {
+  const dataLines = (title ?? '').split('\n').map((line) => line.trim().length)
+  const wrapped = (charsPerLine: number) => dataLines.reduce((sum, length) => sum + Math.max(1, Math.ceil(length / charsPerLine)), 0)
+  const step = FEED_TEXT_BOX_TITLE_STEPS.find((candidate) => wrapped(candidate.charsPerLine) <= candidate.maxLines)
+  return (step ?? FEED_TEXT_BOX_TITLE_STEPS[FEED_TEXT_BOX_TITLE_STEPS.length - 1]).className
+}
 
 /** 배지 그림 한 변(샘플 208×208)과 그림이 놓이는 영역 높이(샘플 216). */
 export const FEED_BADGE_SIZE = 208;

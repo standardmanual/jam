@@ -10,7 +10,7 @@ import type { ComponentProps } from 'react'
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from '@/lib/testing/renderStable'
 import FeedChip, { type FeedChipColor } from '../FeedChip'
-import { FEED_CHIP, FEED_COLOR_KEYS, FEED_OUTLINE_WIDTH, FEED_TILTS, feedColorVar } from '@/lib/today/feedConstants'
+import { FEED_CHIP, FEED_COLOR_KEYS, FEED_CORNER_CHIP, FEED_OUTLINE_WIDTH, FEED_TILTS, feedColorVar } from '@/lib/today/feedConstants'
 
 const render = (props: Partial<ComponentProps<typeof FeedChip>> = {}) =>
   renderToStaticMarkup(
@@ -38,6 +38,51 @@ describe('FeedChip — 크기', () => {
 
   it('크기를 주지 않으면 작은 칩이다', () => {
     expect(render()).toContain('height:32px')
+  })
+})
+
+describe('FeedChip — 코너 변형 (티켓 20261122_2228 R1)', () => {
+  it('큰 칩: 높이 52·글자 24(text-2xl)·굵기 900(font-black)·가로 여백 16', () => {
+    const html = render({ variant: 'corner', size: 'lg' })
+    expect(FEED_CORNER_CHIP.large).toEqual({ height: 52, fontSize: 24, paddingX: 16 })
+    expect(html).toContain('height:52px')
+    expect(html).toContain('text-2xl')
+    expect(html).toContain('font-black')
+    expect(html).toContain('px-4')
+    expect(html).not.toContain('font-bold')
+  })
+
+  it('작은 칩: 높이 40·글자 18(text-lg)·굵기 900·가로 여백 12, 크기를 주지 않으면 작은 칩이다', () => {
+    const html = render({ variant: 'corner', size: 'sm' })
+    expect(FEED_CORNER_CHIP.small).toEqual({ height: 40, fontSize: 18, paddingX: 12 })
+    expect(html).toContain('height:40px')
+    expect(html).toContain('text-lg')
+    expect(html).toContain('font-black')
+    expect(html).toContain('px-3')
+    expect(render({ variant: 'corner' })).toContain('height:40px')
+  })
+
+  it('테두리 2px·알약·한 줄 글자·검정 칩 글자색은 기본 변형과 같다', () => {
+    const html = render({ variant: 'corner', size: 'lg', color: 'black' })
+    expect(html).toContain(`border-width:${FEED_OUTLINE_WIDTH}px`)
+    expect(html).toContain('rounded-full')
+    expect(html).toContain('whitespace-nowrap')
+    expect(html).toContain('text-snow')
+  })
+
+  it('기울기는 3~12° 자유 각도(number)와 기존 FeedTilt 여섯 값을 모두 받는다', () => {
+    expect(render({ variant: 'corner', tilt: 11.5 })).toContain('transform:rotate(11.5deg)')
+    expect(render({ variant: 'corner', tilt: -3 })).toContain('transform:rotate(-3deg)')
+    for (const tilt of FEED_TILTS) expect(render({ variant: 'corner', tilt })).toContain(`transform:rotate(${tilt}deg)`)
+  })
+
+  it('변형을 주지 않는 기본 경로(제목 속 칩)는 지금 크기·font-bold 그대로다', () => {
+    const large = render({ size: 'lg' })
+    expect(large).toContain('height:40px')
+    expect(large).toContain('text-lg')
+    expect(large).toContain('font-bold')
+    expect(large).not.toContain('font-black')
+    expect(render({ size: 'sm' })).toContain('height:32px')
   })
 })
 

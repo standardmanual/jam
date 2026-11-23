@@ -2,7 +2,14 @@ import type { CSSProperties, ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import type { FeedCardView } from '@/lib/today/cardView'
 import { chipPositionOf, stampPositionOf, stampTiltOf, type ChipAnchorMode, type ChipPosition } from '@/lib/today/feedChipLayout'
-import { FEED_BADGE_SIZE, FEED_CARD_ROOT_ATTR, FEED_STAMP_TILT, feedColorVar, feedTextOnBg } from '@/lib/today/feedConstants'
+import {
+  FEED_BADGE_SIZE,
+  FEED_CARD_ROOT_ATTR,
+  FEED_STAMP_TILT,
+  feedColorVar,
+  feedTextBoxTitleSizeClass,
+  feedTextOnBg,
+} from '@/lib/today/feedConstants'
 import ChipTitle from '../ChipTitle'
 import FeedChip, { type FeedChipSize } from '../FeedChip'
 import FeedStamp from '../FeedStamp'
@@ -21,9 +28,10 @@ import FeedStamp from '../FeedStamp'
 
 /** 제목 글자 클래스(30/36). 큰 글자 변형은 텍스트 박스가 쓰는 48/1.1이다. */
 const TITLE_CLASS = 'text-3xl font-black tracking-[-0.02em] whitespace-pre-line'
-const BIG_TITLE_CLASS = 'text-5xl leading-[1.1] font-black tracking-[-0.02em] whitespace-pre-line text-center'
+/** 큰 글자 변형(텍스트형). 글자 크기는 제목 길이에 따라 `feedTextBoxTitleSizeClass`가 2~3단계로 고른다(기본 48). */
+const BIG_TITLE_CLASS = 'leading-[1.1] font-black tracking-[-0.02em] whitespace-pre-line text-center'
 
-/** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. `markRoot`가 참이면 카드 루트 표식을 단다(생략하면 마크업이 그대로다). */
+/** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. `minHeight`를 생략하면 높이를 `className`이 정한다(텍스트형은 `aspect-square`). `markRoot`가 참이면 카드 루트 표식을 단다(생략하면 마크업이 그대로다). */
 export function FeedCardShell({
   view,
   minHeight,
@@ -32,7 +40,7 @@ export function FeedCardShell({
   children,
 }: {
   view: FeedCardView
-  minHeight: number
+  minHeight?: number
   className?: string
   markRoot?: boolean
   children: ReactNode
@@ -40,7 +48,7 @@ export function FeedCardShell({
   const classes = ['relative flex flex-col rounded-2xl p-4', className].filter(Boolean).join(' ')
   const rootProps = markRoot ? { [FEED_CARD_ROOT_ATTR]: '' } : undefined
   return (
-    <div className={classes} style={{ backgroundColor: feedColorVar(view.look.colors.bg), minHeight }} {...rootProps}>
+    <div className={classes} style={{ backgroundColor: feedColorVar(view.look.colors.bg), ...(minHeight === undefined ? {} : { minHeight }) }} {...rootProps}>
       {children}
     </div>
   )
@@ -49,16 +57,19 @@ export function FeedCardShell({
 /**
  * 제목(제목 속 칩 포함). 낱말이 없거나 제목에 없으면 글자만 그린다.
  * 글자색은 바탕 키를 따른다(`feedTextOnBg`). 박스 안에 놓는 제목은 `onBox`를 주면 바탕과 무관하게 `--foreground`다(텍스트 박스 카드).
+ * `onPhoto`는 박스에 사진이 실제로 그려질 때 흰 글자(`--snow`)로 바꾼다(`onBox`보다 앞선다, 티켓 20261122_2228 R2). 큰 글자(`big`)는 제목 길이에 따라 크기가 낮아진다.
  */
 export function FeedTitle({
   view,
   big = false,
   onBox = false,
+  onPhoto = false,
   className,
 }: {
   view: FeedCardView
   big?: boolean
   onBox?: boolean
+  onPhoto?: boolean
   className?: string
 }) {
   const { titleChips } = view.look
@@ -70,8 +81,8 @@ export function FeedTitle({
       size="lg"
       colors={titleChips.colors}
       tilts={titleChips.tilts}
-      className={[big ? BIG_TITLE_CLASS : TITLE_CLASS, className].filter(Boolean).join(' ')}
-      style={{ color: onBox ? 'var(--foreground)' : feedTextOnBg(view.look.colors.bg) }}
+      className={[big ? `${BIG_TITLE_CLASS} ${feedTextBoxTitleSizeClass(view.title)}` : TITLE_CLASS, className].filter(Boolean).join(' ')}
+      style={{ color: onPhoto ? 'var(--snow)' : onBox ? 'var(--foreground)' : feedTextOnBg(view.look.colors.bg) }}
     />
   )
 }
@@ -101,7 +112,7 @@ function positionStyle(position: ChipPosition): CSSProperties {
 }
 
 /**
- * 칩 층. 앵커(`relative` 부모) 안에 형제로 놓아 칩을 모서리에 건다. 허용하지 않는 자리의 칩은 그리지 않는다.
+ * 칩 층. 앵커(`relative` 부모) 안에 형제로 놓아 칩을 모서리에 건다. 칩은 코너 변형(`FeedChip variant="corner"`, 큰 칩 52·작은 칩 40, 굵기 900)이다(티켓 20261122_2228 R1). 허용하지 않는 자리의 칩은 그리지 않는다.
  * `mode`를 생략하면 유형의 기본(걸침, `full_image`는 안쪽)이다.
  *
  * 4회차-3이 더한 선택 인자(생략하면 4-2의 출력 그대로다): `positionOf`는 자리 이름 → 위치를 직접 정한다(모서리 자리가 아닌 `card-top-right`용, 이때 `mode`는 쓰지 않는다),
@@ -125,7 +136,7 @@ export function FeedChipLayer({
         if (!position) return null
         return (
           <span key={index} className="absolute z-10 flex" style={positionStyle(position)}>
-            <FeedChip size={size ?? chip.size} color={chip.color} tilt={chip.tilt}>
+            <FeedChip variant="corner" size={size ?? chip.size} color={chip.color} tilt={chip.tilt}>
               {chip.text}
             </FeedChip>
           </span>

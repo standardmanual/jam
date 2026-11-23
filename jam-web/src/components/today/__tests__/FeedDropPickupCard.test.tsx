@@ -118,19 +118,18 @@ describe('드랍·픽업 — 구성', () => {
 })
 
 describe('드랍·픽업 — 칩·링크·설명', () => {
-  it('칩이 저장되지 않으면 «드랍»(색 칩)·«픽업»(검정 칩) 두 칩이고 둘 다 큰 칩(40)이다', () => {
+  it('칩이 저장되지 않으면 «DROP»·«PICKUP» 두 분류 칩(검정)이고 둘 다 큰 코너 칩(52)이다', () => {
     const view = dropView({ chip_color_key: 'green' })
     expect(view.look.chips.map((chip) => [chip.text, chip.color, chip.size])).toEqual([
-      ['드랍', 'green', 'lg'],
-      ['픽업', 'black', 'lg'],
+      ['DROP', 'black', 'lg'],
+      ['PICKUP', 'black', 'lg'],
     ])
     const html = render(view)
     expect(count(html, 'rounded-full')).toBe(2)
-    expect(count(html, 'height:40px')).toBe(2)
-    expect(html).toContain('드랍')
-    expect(html).toContain('픽업')
-    // 색 칩은 색 변수, 검정 칩은 --foreground 면에 --snow 글자
-    expect(html).toContain('background-color:var(--jam-green)')
+    expect(count(html, 'height:52px')).toBe(2)
+    expect(html).toContain('>DROP<')
+    expect(html).toContain('>PICKUP<')
+    // 두 칩 모두 분류 칩이라 --foreground 면에 --snow 글자다
     expect(html).toContain('background-color:var(--foreground)')
     expect(html).toContain('text-snow')
   })
@@ -162,7 +161,7 @@ describe('드랍·픽업 — 칩·링크·설명', () => {
     expect(html).toContain('드랍 예정')
     expect(html).toContain('bottom:-16px')
     expect(html).toContain('right:-12px')
-    expect(html).not.toContain('픽업')
+    expect(html).not.toContain('PICKUP')
   })
 
   it('저장된 칩이 셋이어도 두 개까지만 그린다', () => {

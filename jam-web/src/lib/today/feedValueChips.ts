@@ -53,15 +53,34 @@ export interface ValueChipRule {
  * | place-name      | 카드의 `region_label` 또는 `PoiRow.name`                                                    |
  */
 export const FEED_VALUE_CHIP_RULES: Readonly<Record<ValueChipResource, ValueChipRule>> = {
-  mission: { divider: '미션', values: ['remaining', 'reward-points', 'condition'] },
-  activity_badge: { divider: '액티비티 배지', values: ['criteria', 'level'] },
-  collection: { divider: '컬렉션', values: ['item-count'] },
-  checkin: { divider: '체크인', values: ['required-badges', 'place-name'] },
-  drop_pickup: { divider: '아이템 배지', values: [] },
+  mission: { divider: 'MISSION', values: ['remaining', 'reward-points', 'condition'] },
+  activity_badge: { divider: 'ACTIVITY', values: ['criteria', 'level'] },
+  collection: { divider: 'COLLECTION', values: ['item-count'] },
+  checkin: { divider: 'CHECK IN', values: ['required-badges', 'place-name'] },
+  drop_pickup: { divider: 'ITEM', values: [] },
 }
 
-/** 드랍·픽업 카드의 문구 칩(값이 아니라 기획자·에이전트가 고르는 문구). 규칙표의 «없음(문구 칩 드랍·픽업)». */
-export const FEED_DROP_PICKUP_PHRASES = ['드랍', '픽업'] as const
+/** 드랍·픽업 카드의 분류 칩 문구(영어 대문자, 티켓 20261122_2228 R1). 둘 다 분류 칩(`label`)이다. 규칙표의 «없음(문구 칩 드랍·픽업)». */
+export const FEED_DROP_PICKUP_PHRASES = ['DROP', 'PICKUP'] as const
+
+/**
+ * 저장된 한글 구분 문구 → 화면에 보이는 영어 대문자 분류 문구(티켓 20261122_2228 R1, 2026-11-22 사용자 확정: 분류 칩은 «배지»를 빼고 영어 대문자).
+ * 어드민이 옛 문구(`미션` 등)를 저장해 둔 카드도 영어로 보인다. 표에 없는 문구는 그대로 둔다(`toEnglishDivider`).
+ */
+export const FEED_DIVIDER_ENGLISH: Readonly<Record<string, string>> = {
+  미션: 'MISSION',
+  '액티비티 배지': 'ACTIVITY',
+  '아이템 배지': 'ITEM',
+  컬렉션: 'COLLECTION',
+  체크인: 'CHECK IN',
+  드랍: 'DROP',
+  픽업: 'PICKUP',
+}
+
+/** 한글 구분 문구를 영어 대문자 분류 문구로 바꾼다. 표에 없으면(이미 영어이거나 다른 문구) 그대로 돌려준다. */
+export function toEnglishDivider(text: string): string {
+  return Object.prototype.hasOwnProperty.call(FEED_DIVIDER_ENGLISH, text) ? FEED_DIVIDER_ENGLISH[text] : text
+}
 
 /** 문구 칩 글자 수 상한(12자 제안, PRD «문구 칩», 확정은 1회차 후속 결정). 어겨도 막지 않고 경고만 한다. */
 export const FEED_CHIP_TEXT_MAX_LENGTH = 12

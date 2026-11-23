@@ -179,7 +179,7 @@ describe('구역별 가짜 데이터', () => {
 
   it('값 칩 입력이 칩 문구로 나온다(미션 조건·배지 달성 기준·레벨·아이템 수)', () => {
     const texts = (feedType: (typeof FEED_RENDERED_TYPES)[number]) => previewView(feedType, { chips: null }).look.chips.map((chip) => chip.text)
-    expect(texts('hero_box')).toContain('미션')
+    expect(texts('hero_box')).toContain('MISSION')
     expect(texts('badge_intro').length).toBeGreaterThan(0)
     expect(texts('badge_intro')[0]).toBe('고도 700m')
     expect(texts('collection_intro')[0]).toBe('아이템 12개')

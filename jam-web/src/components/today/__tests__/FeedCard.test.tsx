@@ -30,7 +30,7 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 import FeedCard from '../feed/FeedCard'
 import TodayCard from '../TodayCard'
 import type { FeedCardView } from '@/lib/today/cardView'
-import { FEED_CARD_MIN_HEIGHT, FEED_FULL_IMAGE_SCRIM } from '@/lib/today/feedConstants'
+import { FEED_CARD_MIN_HEIGHT, FEED_FULL_IMAGE_SCRIM, FEED_PHOTO_TEXT_SCRIM } from '@/lib/today/feedConstants'
 import { resolveFeedLook, type FeedLookCard, type RenderedFeedType } from '@/lib/today/feedLook'
 import type { FeedValueChipSource } from '@/lib/today/feedValueChips'
 
@@ -134,7 +134,9 @@ describe('히어로(hero_box)', () => {
     const two = render(feedView('hero_box', { chips: TWO_CHIPS }))
     expect(count(two, 'rounded-full')).toBe(2)
     expect(two).toContain('이번 주 미션')
-    expect(two).toContain('아이템 배지')
+    // 저장된 한글 구분 문구(아이템 배지)는 영어 분류 문구로 보인다
+    expect(two).toContain('>ITEM<')
+    expect(two).not.toContain('아이템 배지')
     expect(two).toContain('background-color:var(--foreground)')
     expect(two).toContain('text-snow')
   })
@@ -208,10 +210,12 @@ describe('짙은 초록 바탕 — 바탕 위 글자는 --snow, 박스 안 글�
 })
 
 describe('텍스트(text_box)', () => {
-  it('최소 높이 440, 박스 최소 높이 408, 큰 글자 48/1.1 굵기 900 가운데 정렬', () => {
+  it('정사각형(aspect-square)이고 높이 숫자(440·408)가 없으며, 큰 글자 48/1.1 굵기 900 가운데 정렬', () => {
     const html = render(feedView('text_box', { title: '잠긴 채\n온 배지,\n열어\n볼까요', box_shape: 'round' }))
-    expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.text_box}px`)
-    expect(html).toContain('min-height:408px')
+    expect(html).toContain('aspect-square')
+    expect(html).not.toContain('min-height')
+    expect(html).not.toContain('min-height:440px')
+    expect(html).not.toContain('min-height:408px')
     expect(html).toContain('text-5xl')
     expect(html).toContain('leading-[1.1]')
     expect(html).toContain('font-black')
@@ -224,11 +228,47 @@ describe('텍스트(text_box)', () => {
     expect(html).not.toContain('그려지지 않는 설명')
   })
 
-  it('티켓 모양의 최소 높이가 190 이상이다', () => {
+  it('박스가 카드(안쪽 여백 16)를 채운다: 앵커·박스가 flex-1이고 글자 층이 박스 밖으로 나가지 않는다', () => {
     const html = render(feedView('text_box', { box_shape: 'ticket' }))
-    const minHeights = [...html.matchAll(/min-height:(\d+)px/g)].map((match) => Number(match[1]))
-    expect(Math.max(...minHeights)).toBeGreaterThanOrEqual(190)
-    expect(html).toContain('min-height:408px')
+    expect(html).toContain('p-4')
+    expect(html).toContain('relative flex min-h-0 flex-1')
+    expect(html).toContain('relative flex flex-1 items-center justify-center overflow-hidden')
+    expect(html).toContain('max-h-full')
+  })
+
+  it('긴 제목은 글자 크기를 낮춘다(48 → 36 → 30)', () => {
+    expect(render(feedView('text_box', { title: '짧은 제목' }))).toContain('text-5xl')
+    expect(render(feedView('text_box', { title: '가나다라마\n가나다라마\n가나다라마\n가나다라마\n가나다라마' }))).toContain('text-4xl')
+    const longest = render(feedView('text_box', { title: '가을 숲길을 따라 걷다가 만나는 작은 쉼터에서 한숨 돌려요 오늘도 수고했어요 아주 길고 긴 제목입니다 끝' }))
+    expect(longest).toContain('text-3xl')
+    expect(longest).not.toContain('text-5xl')
+  })
+
+  it('색 면 박스의 제목은 --foreground이고 막이 없다', () => {
+    const html = render(feedView('text_box', { box_kind: 'text', bg_color_key: 'yellow' }))
+    expect(html).toContain('color:var(--foreground)')
+    expect(html).not.toContain('color:var(--snow)')
+    expect(html).not.toContain('color-mix')
+  })
+
+  it('사진이 그려지는 텍스트형은 제목이 --snow이고 박스 전체에 어둠 막 32%가 깔린다', () => {
+    const html = render(feedView('text_box', { box_kind: 'image_mask', bg_color_key: 'yellow' }))
+    expect(FEED_PHOTO_TEXT_SCRIM).toBe(0.32)
+    expect(html).toContain('cover.png')
+    expect(html).toContain('color:var(--snow)')
+    expect(html).toContain('background-color:color-mix(in srgb, var(--foreground) 32%, transparent)')
+    expect(html).toContain('pointer-events-none absolute inset-0')
+    // 막은 사진 뒤가 아니라 사진 위·글자 앞에 있다
+    expect(html.indexOf('cover.png')).toBeLessThan(html.indexOf('color-mix'))
+    expect(html.indexOf('color-mix')).toBeLessThan(html.indexOf('color:var(--snow)'))
+    expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
+  })
+
+  it('이미지 마스크인데 이미지가 없으면 색 면으로 대신하므로 글자는 검정이고 막이 없다', () => {
+    const html = render(feedView('text_box', { box_kind: 'image_mask', imageUrl: null, bg_color_key: 'yellow' }))
+    expect(html).toContain('color:var(--foreground)')
+    expect(html).not.toContain('color:var(--snow)')
+    expect(html).not.toContain('color-mix')
   })
 
   it('글자 안쪽 여백 32px을 부모가 준다(물결·티켓 홈이 글자에 닿지 않게)', () => {

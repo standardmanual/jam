@@ -18,6 +18,7 @@ const meta: Meta<typeof FeedChip> = {
       description: {
         component:
           '검정 2px 외곽선 알약 칩. 큰 칩은 높이 40·글자 18·가로 여백 16, 작은 칩은 높이 32·글자 14·가로 여백 12. 기울기는 −8°·−6°·−4°·4°·6°·8° 여섯 값뿐이다. ' +
+          '카드 모서리 칩(`variant="corner"`)은 큰 칩 높이 52·글자 24, 작은 칩 높이 40·글자 18, 굵기 900이고 기울기를 3~12° 자유 각도(number)로 받는다. 제목 속 칩은 변형을 주지 않는다. ' +
           '자리는 부모가 정한다(칩은 위치 클래스를 받아 쓸 뿐이다). 서비스 전용 컴포넌트라 MODULAR이 아니다.',
       },
     },
@@ -50,6 +51,44 @@ export const Sizes: Story = {
         10일 남음
       </FeedChip>
     </Row>
+  ),
+}
+
+/** 카드 모서리 칩(코너 변형): 큰 칩 52/24·작은 칩 40/18·굵기 900, 영어 대문자 분류 칩과 한국어 값 칩, 3~12° 자유 각도. */
+export const Corner: Story = {
+  name: '카드 모서리 칩 — 크기 52/24·40/18·굵기 900',
+  render: () => (
+    <>
+      <Row caption="큰 칩 52px · 분류 칩(영어 대문자, 검정)">
+        {['ACTIVITY', 'ITEM', 'MISSION', 'CHECK IN', 'COLLECTION', 'DROP', 'PICKUP'].map((label, index) => (
+          <FeedChip key={label} variant="corner" size="lg" color="black" tilt={index % 2 === 0 ? 4 : -4}>
+            {label}
+          </FeedChip>
+        ))}
+      </Row>
+      <Row caption="작은 칩 40px · 값 칩(한국어)">
+        {['2일 남음', 'Lv.1', '누적 3일', '500 포인트'].map((label, index) => (
+          <FeedChip key={label} variant="corner" size="sm" color="yellow" tilt={index % 2 === 0 ? 4 : -4}>
+            {label}
+          </FeedChip>
+        ))}
+      </Row>
+      <Row caption="자유 각도 3~12°(number)">
+        {[3, 5.5, 8, 10.5, 12, -3, -7.5, -12].map((tilt) => (
+          <FeedChip key={tilt} variant="corner" size="lg" color="green" tilt={tilt}>
+            {tilt}도
+          </FeedChip>
+        ))}
+      </Row>
+      <Row caption="제목 속 칩(변형 없음)은 지금 크기 그대로: 큰 40/18 · 작은 32/14, font-bold">
+        <FeedChip size="lg" color="yellow" tilt={-4}>
+          제목 속 큰 칩
+        </FeedChip>
+        <FeedChip size="sm" color="yellow" tilt={-4}>
+          제목 속 작은 칩
+        </FeedChip>
+      </Row>
+    </>
   ),
 }
 

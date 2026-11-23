@@ -91,7 +91,7 @@ function ChipRow({ view }: { view: FeedCardView }) {
   return (
     <div className="flex justify-end gap-2">
       {chips.map((chip, index) => (
-        <FeedChip key={index} size={chip.size} color={chip.color} tilt={chip.tilt}>
+        <FeedChip key={index} variant="corner" size={chip.size} color={chip.color} tilt={chip.tilt}>
           {chip.text}
         </FeedChip>
       ))}
