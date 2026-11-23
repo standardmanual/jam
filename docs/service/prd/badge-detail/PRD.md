@@ -1,11 +1,12 @@
 ---
 type: prd
 status: draft
-description: "배지 상세 화면 3종(아이템·체크인·액티비티)의 티켓 디자인 규격이다. 기본 바탕 위 티켓 머리, 절취선, 그라데이션 아래 블록, 티켓 범위 토큰, 랜덤 색 규칙을 정한다."
+description: "배지 상세 화면 3종(아이템·체크인·액티비티)의 티켓 디자인 규격이다. 기본 바탕 위 티켓 머리, 절취선, 그라데이션 아래 블록, 티켓 범위 토큰, 티켓색 결정(홈 카드 이어받기·무작위), 사진 자리와 미획득 실루엣, Strava 버튼을 정한다."
 related:
   - "20261122_1221"
   - "20261122_1222"
   - "20261122_1223"
+  - "20261122_2226"
 ---
 
 # 배지 상세 티켓 PRD
@@ -41,16 +42,22 @@ related:
 - 배경 `linear-gradient(180deg, 티켓색, 끝색)`. 끝색은 일반 `oklch(from 티켓색 calc(l - 0.08) calc(c * 1.2) h)`, 노랑(HSL 색상 40~70°) `oklch(from 티켓색 calc(l - 0.03) calc(c * 1.15) calc(h - 20))`.
 - 그레인: 오라와 같은 노이즈(`AURA_GRAIN_URL`) 180px 타일, soft-light, opacity .55.
 - 1회차: 사진 자리에 히어로 카드를 통째로 넣는다. 2회차에서 사진과 글자 상자로 나눈다.
+- 사진 자리(통합 팔레트 4, 티켓 20261122_2226): 이미지 색 그라데이션(Aura)과 그림자는 없다. 바탕은 `--card-bg`(티켓색 70% + 흰색) 단색이다. 어드민이 배지에 지정한 블롭 애니메이션 테마가 있으면 그 배경이 그대로 깔린다.
+- 미획득 배지: 회색·반투명 대신 같은 그림의 알파 모양을 티켓색을 깊게 낮춘 단색 실루엣(`--ticket-silhouette`)으로 칠한다. 색은 키별 hex 표 `TICKET_SILHOUETTE`다: 노랑 `#B4600F`(오렌지 쪽), 초록 `#2E6B17`, 분홍 `#8E2C69`, 하늘 `#1D6F8E`, 빨강 `#8A1414`, 보라 `#5E3E92`, 파랑 `#0B4E80`. 일곱 색 모두 사진 자리 바탕(티켓색 70% + 흰색 30%)과 휘도 대비 3:1 이상이고, 단위 시험이 이를 고정한다. 칠하기는 SVG 필터(`feFlood` + `SourceAlpha`)다 — CSS mask는 다른 출처 이미지가 CORS 없이는 비어 그림이 사라질 수 있다. 그림이 없거나 불러오지 못하면 메달 아이콘을 같은 색으로 그린다.
+- 획득 정보 카드의 «Strava에서 보기» 버튼: 검정 바탕(`--foreground`)·흰 굵은 글씨(`--snow`), 폭 100%·높이 최소 44px·완전 둥근 필. 같은 부품을 쓰는 POI 이력의 Strava 버튼도 같은 모양이다. 칩(등급·레벨·방문 횟수)은 제목 상자 안에 그대로 둔다.
 
 ## 6. 티켓 범위 토큰 덮어쓰기
 
 `--card-bg`·`--surface` = 티켓색 70% + 흰색, `--background-secondary` = 티켓색 45% + 흰색, `--muted` = `rgba(23,23,23,.8)`, `--border` = `rgba(23,23,23,.12)`. 티켓 루트 클래스에서만 덮어쓰고 `:root`에는 쓰지 않는다.
 
-## 7. 랜덤 색
+## 7. 티켓색 결정
 
-- 후보는 원색 5개(`--jam-red`·`yellow`·`green`·`purple`·`blue`). 홈피드 `--feed-color-*`는 쓰지 않는다.
-- 서버에서 요청마다 고른다. 배지 이미지 대표 색(`bg_colors`)과 `violatesImageColorRule`에 걸리는 색은 뺀다. 모두 빠지면 5개 전체에서 고른다.
-- 첫 HTML에 인라인 `--ticket`·`--ticket-end`와 CSS 모듈 클래스가 담긴다. 클라이언트 JS로 색·모양을 정하지 않는다.
+- 후보는 통합 팔레트 일곱 색(`--jam-yellow`·`green`·`pink`·`sky`·`red`·`purple`·`blue`). 짙은 초록(`green-deep`)·흰색은 후보가 아니다. 홈피드 `--feed-color-*`는 쓰지 않는다.
+- 홈 카드에서 들어오면 그 카드의 바탕색을 이어받는다. 짙은 초록은 초록으로 접는다. 홈 카드가 배지 상세 한 건(`/badges/{id}`) 주소로 가는 링크에는 `tc`(카드 바탕 키)와 `tb`(박스 키) 쿼리가 붙는다(`cardView.ts`가 `withTicketColorQuery`로 한 번에 붙인다). 다른 목적지와 목록 항목 주소에는 붙지 않는다.
+- 이어받은 색이 배지 이미지 대표 색(`bg_colors`)과 `violatesImageColorRule`에 걸리면 박스 색을, 그것도 걸리면 일곱 색 중 걸리지 않는 색에서 서버가 요청마다 무작위로 고른다. 모두 걸리면 일곱 색 전체에서 고른다.
+- 탭 바·직접 링크 등 다른 경로(쿼리가 없거나 `tc`·`tb`가 허용 목록 밖: 배열·빈 값·`white`·옛 키·대소문자 틀림)는 오류 없이 위 무작위와 같다.
+- 쿼리 값은 신뢰하지 않는다. `FEED_COLOR_KEYS` 허용 목록으로만 읽고 주소·화면에 그대로 반영하지 않는다. 공유 버튼은 배지 그림 이미지 한 장을 내보내고 주소를 복사하지 않는다(`BadgeShareButton.tsx`에 `location`·주소 복사 호출이 없다). 사용자가 주소창의 주소를 직접 복사해 보내면 `tc`·`tb`가 딸려 가 받는 사람도 같은 색을 본다.
+- 첫 HTML에 인라인 `--ticket`·`--ticket-end`·`--ticket-silhouette`와 CSS 모듈 클래스가 담긴다. 클라이언트 JS로 색·모양을 정하지 않는다.
 
 ## 8. 구현 위치
 
@@ -60,6 +67,8 @@ related:
 | 사진 박스(배경+이미지만) | `jam-web/src/app/(main)/badges/[id]/TicketPhoto.tsx` |
 | 글자 상자(칩·이름 / 설명, 2px 테두리 두 칸) | `jam-web/src/app/(main)/badges/[id]/TicketTitleBoxes.tsx`, `BadgeTicket.module.css`의 `.titleBox` |
 | 부품 제목 숨김(`hideTitle`, sr-only) | `PoiEarnHistory.tsx`·`ItemEarnHistory.tsx`·`BadgeConditionCard.tsx` — 배지 상세만 켠다 |
-| 색 선택·끝색·날짜 | `jam-web/src/lib/badgeTicket/ticketColor.ts` |
+| 색 결정·끝색·실루엣 색·쿼리 검증·날짜 | `jam-web/src/lib/badgeTicket/ticketColor.ts` |
+| 홈 카드 → 상세 쿼리 | `jam-web/src/lib/today/cardView.ts`(`withTicketColorQuery`) |
+| Strava 버튼 | `jam-web/src/components/StravaLink.tsx` |
 | 세 변형 조립 | `jam-web/src/app/(main)/badges/[id]/page.tsx` |
 | 종류 글자 | `jam-web/src/lib/i18n/ko.ts`의 `badges.ticketKind*` |

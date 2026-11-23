@@ -6,7 +6,7 @@ import styles from './BadgeTicket.module.css'
 
 /**
  * 배지 상세 티켓 틀 (티켓 20261122_1222, 서비스 전용).
- * 서버 컴포넌트다 — 클라이언트 훅으로 색이나 모양을 정하지 않는다. 티켓색은 서버가 고른 값을 인라인 CSS 변수로 첫 HTML에 담고,
+ * 서버 컴포넌트다 — 클라이언트 훅으로 색이나 모양을 정하지 않는다. 티켓색·끝색·미획득 실루엣 색은 서버가 정한 값을 인라인 CSS 변수로 첫 HTML에 담고,
  * 모양·그라데이션·토큰 덮어쓰기는 CSS 모듈이 그린다(내용 먼저·티켓 나중 깜빡임 방지).
  *
  * 구성: 머리(로고·종류·날짜) → 절취선 1 → 아래 블록[사진 → afterPhoto → 절취선 2 → body].
@@ -30,7 +30,7 @@ export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPh
   // 로고 마스크 이미지는 CSS 안에서야 요청되므로 미리 받아 두어 머리가 늦게 칠해지지 않게 한다
   preload('/jam-logo-white.png', { as: 'image' })
 
-  const vars = { '--ticket': `var(${color.cssVar})`, '--ticket-end': color.endColor } as CSSProperties
+  const vars = { '--ticket': `var(${color.cssVar})`, '--ticket-end': color.endColor, '--ticket-silhouette': color.silhouette } as CSSProperties
 
   return (
     <div className={styles.ticket} style={vars} data-ticket-color={color.key}>

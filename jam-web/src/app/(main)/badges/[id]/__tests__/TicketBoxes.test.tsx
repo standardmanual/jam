@@ -5,7 +5,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/components/SafeImage', () => ({ default: ({ alt }: { alt: string }) => <span data-img={alt} /> }))
-vi.mock('@/components/BadgeAuraBackground', () => ({ default: () => <i data-aura /> }))
 vi.mock('@/components/BlobAnimationBackground', () => ({ default: () => <i data-blob /> }))
 
 import TicketPhoto from '../TicketPhoto'
@@ -25,17 +24,30 @@ const base = {
 }
 
 describe('TicketPhoto', () => {
-  it('사진 박스에는 이름·설명 글자가 없고 Aura 배경과 이미지만 있다', () => {
-    const html = renderToStaticMarkup(<TicketPhoto badge={base as never} hasEarned />)
-    expect(html).toContain('data-aura')
+  it('사진 박스에는 이름·설명 글자가 없고 단색 바탕(--card-bg)과 이미지만 있다 — Aura는 없다', () => {
+    const html = renderToStaticMarkup(<TicketPhoto badge={base as never} hasEarned silhouette="#2E6B17" />)
+    expect(html).not.toContain('data-aura')
+    expect(html).toContain('bg-card-bg')
     expect(html).toContain('rounded-2xl')
     expect(html).not.toContain('<h1')
     expect(html).not.toContain('첫 문장')
+    // 획득이면 실루엣 필터를 쓰지 않는다
+    expect(html).not.toContain('feComposite')
+    expect(html).not.toContain('filter:url')
   })
 
-  it('미획득이면 대체 아이콘이 흑백이다', () => {
-    const html = renderToStaticMarkup(<TicketPhoto badge={{ ...base, image_url: null } as never} hasEarned={false} />)
-    expect(html).toContain('grayscale')
+  it('미획득이면 그림 칸에 티켓색 실루엣 필터를 건다(회색·반투명 아님)', () => {
+    const html = renderToStaticMarkup(<TicketPhoto badge={base as never} hasEarned={false} silhouette="#2E6B17" />)
+    expect(html).toContain('flood-color="#2E6B17"')
+    expect(html).toContain('filter:url(#ticket-silhouette)')
+    expect(html).not.toContain('grayscale')
+    expect(html).not.toContain('opacity-50')
+  })
+
+  it('미획득이고 그림이 없으면 대체 아이콘을 실루엣 색으로 칠한다', () => {
+    const html = renderToStaticMarkup(<TicketPhoto badge={{ ...base, image_url: null } as never} hasEarned={false} silhouette="#2E6B17" />)
+    expect(html).toContain('color:var(--ticket-silhouette)')
+    expect(html).not.toContain('grayscale')
   })
 })
 

@@ -354,7 +354,12 @@ describe('toCardView — 표시 데이터', () => {
 
   it('기본 필드: 제목·부제·링크·라벨. 비었거나 공백뿐인 값은 싣지 않는다', () => {
     const view = toCardView(makeCard({ subtitle: ' 부제 ', resolved_href: '/badges/b1' }))
-    expect(view).toMatchObject({ title: '제목', subtitle: '부제', href: '/badges/b1', label: '배지' })
+    // 배지 상세 한 건 주소에는 카드의 바탕·박스 색이 tc·tb로 붙는다(티켓 20261122_2226)
+    expect(view.href).toBe(`/badges/b1?tc=${view.look.colors.bg}&tb=${view.look.colors.box}`)
+    expect(view).toMatchObject({ title: '제목', subtitle: '부제', label: '배지' })
+    // 단건 배지가 아닌 목적지는 주소가 그대로다
+    expect(toCardView(makeCard({ resolved_href: '/missions/m1' })).href).toBe('/missions/m1')
+    expect(toCardView(makeCard({ resolved_href: '/badges' })).href).toBe('/badges')
     const bare = toCardView(makeCard({ subtitle: '  ', resolved_href: '' }))
     expect(bare.subtitle).toBeUndefined()
     expect(bare.href).toBeUndefined()
