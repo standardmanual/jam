@@ -288,12 +288,17 @@ export function stickerShape(shape, seed) {
 }
 
 /* ───────── 둘레 글자 ───────── */
-/** 굵기 900 대문자 한 글자의 대략 폭(em). 실제 폰트 폭보다 넉넉하게 잡아 잘리지 않게 한다 */
+/**
+ * 굵기 900 한 글자 폭(em). Noto Sans KR 900을 실제로 재서(2026-11-23) 4% 여유를 더한 값이다.
+ * 예전 추정(평균 0.84em)은 실제보다 25% 넓어 둘레의 70~77%만 채우고 한쪽이 비었다
+ */
+const CHAR_EM = {
+  A: 0.69, B: 0.72, C: 0.69, D: 0.76, E: 0.66, F: 0.63, G: 0.76, H: 0.8, I: 0.37, J: 0.61, K: 0.74, L: 0.62, M: 0.91,
+  N: 0.79, O: 0.82, P: 0.71, Q: 0.82, R: 0.74, S: 0.66, T: 0.67, U: 0.79, V: 0.67, W: 0.97, X: 0.68, Y: 0.63, Z: 0.64,
+  ' ': 0.29, '·': 0.37,
+};
 function charEm(ch) {
-  if (ch === ' ') return 0.3;
-  if (ch === '·') return 0.34;
-  if (ch === 'I') return 0.4;
-  if (ch === 'M' || ch === 'W') return 1.05;
+  if (CHAR_EM[ch] !== undefined) return CHAR_EM[ch];
   if (/[가-힣]/.test(ch)) return 1.02;
   return 0.84;
 }
@@ -310,7 +315,8 @@ export function fitRingText(label, ringLength, baseSize) {
   const unit = `${text} · `;
   const unitEm = textEm(unit);
   const usable = ringLength * RING_USABLE;
-  const repeat = Math.max(2, Math.floor(usable / (unitEm * baseSize)));
+  // 가장 가까운 정수만큼 되풀이한다(내림이면 한쪽이 비고, 올림이면 글자가 조금 줄어 맞는다)
+  const repeat = Math.max(2, Math.round(usable / (unitEm * baseSize)));
   const fontSize = Math.floor(Math.min(baseSize, usable / (repeat * unitEm)) * 100) / 100;
   const used = repeat * unitEm * fontSize;
   const letterSpacing = r2(

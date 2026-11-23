@@ -98,7 +98,7 @@ describe('둘레 글자', () => {
   })
   it('긴 문구는 글자가 기준보다 작아지고 짧은 문구는 기준 크기를 지킨다', () => {
     const g = waveShape('x')
-    expect(fitRingText('COLLECTION', g.ringLength, 10).fontSize).toBeLessThan(10)
+    expect(fitRingText('COLLECTION COLLECTION', g.ringLength, 10).fontSize).toBeLessThan(10)
     expect(fitRingText('ITEM', g.ringLength, 10).fontSize).toBe(10)
   })
   it('CHECK IN은 «CHECK IN · CHECK IN ·»으로 읽힌다', () => {
