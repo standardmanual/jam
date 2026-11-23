@@ -140,7 +140,8 @@ describe('TodayCardPreview — 계측과 이동을 모두 끈다', () => {
       expect(html).not.toContain('data-tracker')
       expect(html).not.toContain('<a')
       // `ListRow`가 행마다 내보내는 `<style>`에 `href` 속성이 있어 먼저 걷는다(티켓 20261107_1947)
-      expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
+      // 분류 스티커의 `<textPath href="#…">`(SVG 둘레 글자 선)는 링크가 아니라서 svg 안은 걷고 본다(통합 팔레트 6 R6)
+      expect(html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '')).not.toContain('href=')
       expect(html).not.toContain('jam-press')
     },
   )
@@ -157,7 +158,8 @@ describe('TodayCardPreview — 계측과 이동을 모두 끈다', () => {
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([ranking])} />)
     expect(html).toContain('이번 주 러너 순위')
     expect(html).not.toContain('김잼')
-    expect(html.replace(/<style[\s\S]*?<\/style>/g, '')).not.toContain('href=')
+    // 분류 스티커의 `<textPath href="#…">`(SVG 둘레 글자 선)는 링크가 아니라서 svg 안은 걷고 본다(통합 팔레트 6 R6)
+      expect(html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '')).not.toContain('href=')
   })
 
   it('표시 데이터에 계측 정보(tracking)가 없다', () => {
@@ -205,7 +207,8 @@ describe('TodayCardPreview — 칸 폭에 맞춘 축소', () => {
   it('서버 렌더(측정 전)는 축소 없이 기존 모습이고 가로 스크롤 상자를 쓰지 않는다', () => {
     const html = renderToStaticMarkup(<TodayCardPreview views={previewViews([LEGACY_CARDS[0].card])} />)
     expect(html).toContain('data-preview-scale="1"')
-    expect(html).not.toContain('scale(')
+    // 칩·스티커의 `rotate() scale()`(통합 팔레트 6 R6)와 구분하려고 미리보기 축소 상자의 `transform:scale(`만 본다
+    expect(html).not.toMatch(/transform:scale\(/)
     expect(html).not.toContain('overflow-x-auto')
   })
 })
