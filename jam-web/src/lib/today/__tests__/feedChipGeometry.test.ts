@@ -18,6 +18,7 @@ import {
   chipWidthOf,
   cornerOffsetLimits,
   cornerRect,
+  dropPickupBoundsOf,
   inLowerBand,
   overlapArea,
   overlapWithAll,
@@ -31,7 +32,7 @@ import {
   type CardGeometryInput,
   type ChipGeometryType,
 } from '../feedChipGeometry'
-import { FEED_CARD_MIN_HEIGHT, FEED_CORNER_INSET, FEED_CORNER_OVERHANG } from '../feedConstants'
+import { FEED_CARD_MIN_HEIGHT, FEED_CORNER_INSET, FEED_CORNER_OVERHANG, dropPickupAreaHeightOf } from '../feedConstants'
 import type { ChipCorner } from '../feedChipLayout'
 
 const ALL_CORNERS: ChipCorner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
@@ -241,8 +242,8 @@ describe('피할 영역', () => {
     }
   })
 
-  it('그림이 없으면 그림 가운데를 피하지 않고, 있으면 피한다', () => {
-    for (const type of ['badge_intro', 'badge_only', 'drop_pickup', 'collection_intro'] as const) {
+  it('그림이 없으면 그림 가운데를 피하지 않고, 있으면 피한다(드랍·픽업은 그림이 없어도 이름 글자가 읽혀야 해서 늘 피한다)', () => {
+    for (const type of ['badge_intro', 'badge_only', 'collection_intro'] as const) {
       const withArt = cardGeometryOf(inputOf(type, 358, { hasImage: true }))
       const noArt = cardGeometryOf(inputOf(type, 358, { hasImage: false }))
       expect(withArt.avoid.length).toBeGreaterThan(noArt.avoid.length)
@@ -261,10 +262,40 @@ describe('피할 영역', () => {
     expect(g.avoid).toEqual(g.textRects)
   })
 
-  it('드랍·픽업은 배지 칸마다 가운데를 피한다(칸 수를 따른다)', () => {
-    const three = cardGeometryOf(inputOf('drop_pickup', 358))
-    const one = cardGeometryOf(inputOf('drop_pickup', 358, { imageCount: 1 }))
-    expect(three.avoid.length - one.avoid.length).toBe(2)
+  it('드랍·픽업은 배지마다 기울인 상자의 가운데를 피한다(배지 수를 따르고, 그림 유무와 무관하다)', () => {
+    const textOnly = cardGeometryOf(inputOf('drop_pickup', 358, { imageCount: 0 })).avoid.length
+    for (const n of [1, 2, 3, 4, 5]) {
+      for (const hasImage of [true, false]) {
+        expect(cardGeometryOf(inputOf('drop_pickup', 358, { imageCount: n, hasImage })).avoid.length - textOnly).toBe(n)
+      }
+    }
+    // 생략하면 한도(5개)다
+    expect(cardGeometryOf(inputOf('drop_pickup', 358)).avoid.length - textOnly).toBe(5)
+  })
+
+  it('드랍·픽업의 피할 영역은 기울인 상자 가운데 50%이고 상자 가장자리·모서리는 피하지 않는다', () => {
+    for (const width of [320, 358, 430]) {
+      for (const n of [1, 2, 3, 4, 5]) {
+        const boxes = dropPickupBoundsOf(width, n)
+        const base = cardGeometryOf(inputOf('drop_pickup', width, { imageCount: 0 })).avoid.length
+        const zones = cardGeometryOf(inputOf('drop_pickup', width, { imageCount: n })).avoid.slice(base)
+        expect(zones).toHaveLength(n)
+        zones.forEach((zone, i) => {
+          expect(zone.r - zone.l).toBeCloseTo((boxes[i].r - boxes[i].l) / 2)
+          expect(zone.b - zone.t).toBeCloseTo((boxes[i].b - boxes[i].t) / 2)
+          expect((zone.l + zone.r) / 2).toBeCloseTo((boxes[i].l + boxes[i].r) / 2)
+        })
+      }
+    }
+  })
+
+  it('드랍·픽업 카드 높이는 최소 400이고 배지 영역 높이는 폭에 비례한다(도장 앵커도 같은 영역)', () => {
+    for (const width of [320, 358, 430]) {
+      expect(cardHeightOf(inputOf('drop_pickup', width))).toBeGreaterThanOrEqual(400)
+      const stamped = cardGeometryOf(inputOf('drop_pickup', width, { imageCount: 0, stampCorner: 'bottom-right' }))
+      const stampZone = stamped.avoid[stamped.avoid.length - 1]
+      expect(stampZone.b).toBeLessThanOrEqual(16 + dropPickupAreaHeightOf(width) + 16)
+    }
   })
 
   it('컬렉션 소개는 퍼진 배지 자리를 피할 영역에 넣고, 폭에 따라 가로로 따라간다', () => {

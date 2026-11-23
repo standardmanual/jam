@@ -21,7 +21,7 @@ import type { FeedCardView } from './cardView'
 import type { ChipCorner } from './feedChipLayout'
 import { cornerOfSlot } from './feedChipLayout'
 import { chipPlanCandidates, signatureOf, type ChipPlan, type ChipPlanDraft, type ChipPlanInput, type PlannedChip } from './feedChipPlan'
-import type { FeedColorKey } from './feedConstants'
+import { FEED_DROP_PICKUP, type FeedColorKey } from './feedConstants'
 
 const LETTERS = ['J', 'a', 'm'] as const
 const PAIR_KEYS = Object.keys(STICKER_COLOR_PAIRS) as CategoryStickerPair[]
@@ -216,7 +216,7 @@ export function chainInputOf(view: FeedCardView): ChainCardInput {
     descriptionLength: [...description].length,
     descriptionVisible: look.showDescription && description.length > 0,
     hasImage: view.feedType === 'drop_pickup' ? itemBadgeCount > 0 : Boolean(view.imageUrl || view.badgeImageUrl),
-    ...(view.feedType === 'drop_pickup' && itemBadgeCount > 0 ? { imageCount: Math.min(3, itemBadgeCount) } : {}),
+    ...(view.feedType === 'drop_pickup' && itemBadgeCount > 0 ? { imageCount: Math.min(FEED_DROP_PICKUP.max, itemBadgeCount) } : {}),
     ...(look.burst ? { burst: look.burst.map((b) => ({ x: b.x, y: b.y, size: b.size })) } : {}),
     ...(stampCorner ? { stampCorner } : {}),
   }

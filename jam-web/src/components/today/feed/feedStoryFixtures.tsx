@@ -32,12 +32,13 @@ export function fakeImage(background: string, accent: string): string {
 export const IMAGE = fakeImage('#3a5f7d', '#f2c14e')
 export const BADGE = '/badges/sample/s142.png'
 
-/** 컬렉션 소개·드랍·픽업이 쓰는 아이템 배지 샘플 그림(`public/badges/sample`). 외부 요청이 없다. */
+/** 컬렉션 소개·드랍·픽업이 쓰는 아이템 배지 샘플 그림 5종(`public/badges/sample`, 드랍·픽업의 배지 한도 5). 외부 요청이 없다. */
 export const ITEM_BADGES: FeedCardViewBadge[] = [
   { name: '황동 카메라', imageUrl: '/badges/sample/s001.png' },
   { name: '다 쓴 필름통', imageUrl: '/badges/sample/s003.png' },
   { name: '인화 타이머', imageUrl: '/badges/sample/s004.png' },
   { name: '압정 한 줌', imageUrl: '/badges/sample/s005.png' },
+  { name: '손때 묻은 열쇠', imageUrl: '/badges/sample/s006.png' },
 ]
 
 /** 컬렉션 대표 그림 샘플(168×168 정사각) */

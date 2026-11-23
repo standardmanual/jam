@@ -55,9 +55,9 @@ describe('이름 표 — 상수와 같은 키를 모두 덮는다', () => {
 })
 
 describe('feedFieldVisibility — 유형이 쓰는 칸', () => {
-  it('박스가 있는 유형은 히어로·텍스트·드랍·픽업이고, 용도는 텍스트만 고른다', () => {
+  it('박스가 있는 유형은 히어로·텍스트이고(드랍·픽업은 박스 없이 배지를 흩뿌린다), 용도는 텍스트만 고른다', () => {
     const withBox = FEED_TYPES.filter((t) => feedFieldVisibility(t).boxShape)
-    expect(withBox).toEqual(['hero_box', 'drop_pickup', 'text_box'])
+    expect(withBox).toEqual(['hero_box', 'text_box'])
     expect(FEED_TYPES.filter((t) => feedFieldVisibility(t).boxKind)).toEqual(['text_box'])
     for (const t of FEED_TYPES) expect(feedFieldVisibility(t).boxColor, t).toBe(feedFieldVisibility(t).boxShape)
   })

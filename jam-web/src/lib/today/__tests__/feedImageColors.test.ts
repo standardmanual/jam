@@ -12,10 +12,12 @@ const BADGE_A = ['#aa0000', '#00aa00', '#0000aa']
 const BADGE_B = ['#bb0000']
 const BADGE_C = ['#cc0000', '#cc00cc']
 const BADGE_D = ['#dd0000']
+const BADGE_E = ['#ee0000']
+const BADGE_F = ['#ff0000']
 const NONE = { imageHexes: [], chipOnImage: false }
 
 describe('imageColorsForCard — 적용 대상 표', () => {
-  const badgeColors = [BADGE_A, BADGE_B, BADGE_C, BADGE_D]
+  const badgeColors = [BADGE_A, BADGE_B, BADGE_C, BADGE_D, BADGE_E, BADGE_F]
 
   it('히어로·컬렉션 소개: 커버 대표 색을 쓰고 칩이 이미지 위에 걸친다', () => {
     for (const feedType of ['hero_box', 'collection_intro']) {
@@ -38,9 +40,9 @@ describe('imageColorsForCard — 적용 대상 표', () => {
     }
   })
 
-  it('드랍·픽업: 아이템 배지 최대 3개의 대표 색을 전부 쓴다(네 번째는 쓰지 않는다)', () => {
+  it('드랍·픽업: 아이템 배지 최대 5개의 대표 색을 전부 쓴다(여섯째는 쓰지 않는다)', () => {
     expect(imageColorsForCard({ feedType: 'drop_pickup', boxKind: null, coverColors: COVER, badgeColors })).toEqual({
-      imageHexes: [...BADGE_A, ...BADGE_B, ...BADGE_C],
+      imageHexes: [...BADGE_A, ...BADGE_B, ...BADGE_C, ...BADGE_D, ...BADGE_E],
       chipOnImage: false,
     })
   })

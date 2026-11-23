@@ -17,7 +17,9 @@ import {
   FEED_CORNER_CHIP,
   FEED_CORNER_INSET,
   FEED_CORNER_OVERHANG,
+  dropPickupAreaHeightOf,
   FEED_DROP_PICKUP,
+  dropPickupFrameOf,
   FEED_HERO_IMAGE_HEIGHT,
   FEED_OUTLINE_WIDTH,
   FEED_STAMP_INSET,
@@ -159,9 +161,9 @@ export interface CardGeometryInput extends CardTextInput {
   feedType: ChipGeometryType
   /** 카드 폭 px */
   width: number
-  /** 그림(배지 그림·대표 그림)이 실제로 있는가. 없으면 그림 가운데를 피하지 않는다. 히어로의 사진 박스는 가운데 구역이 없어 이 값과 무관하다. */
+  /** 그림(배지 그림·대표 그림)이 실제로 있는가. 없으면 그림 가운데를 피하지 않는다. 히어로의 사진 박스는 가운데 구역이 없어 이 값과 무관하다. 드랍·픽업은 그림이 없는 배지도 이름 글자가 읽혀야 해서 이 값과 무관하게 늘 피한다. */
   hasImage: boolean
-  /** 드랍·픽업의 배지 칸 수(1~3, 기본 3). 칸마다 가운데를 피한다. */
+  /** 드랍·픽업의 배지 수(1~5, 기본 5). 수가 배치 틀을 정하고, 배지마다 기울인 상자의 가운데를 피한다. */
   imageCount?: number
   /** 컬렉션 소개의 퍼진 배지 자리(`look.burst`와 같은 모양: x·y는 −1~1, size px). 기준 영역은 326×240이다. */
   burst?: ReadonlyArray<{ x: number; y: number; size: number }>
@@ -246,7 +248,7 @@ export function cardHeightOf(input: Omit<CardGeometryInput, 'hasImage'>): number
     case 'badge_intro':
       return Math.max(FEED_CARD_MIN_HEIGHT.badge_intro, PAD + FEED_BADGE_AREA_HEIGHT + PAD + block + PAD)
     case 'drop_pickup':
-      return Math.max(FEED_CARD_MIN_HEIGHT.drop_pickup, PAD + FEED_DROP_PICKUP.rowHeight + PAD + block + PAD)
+      return Math.max(FEED_CARD_MIN_HEIGHT.drop_pickup, PAD + dropPickupAreaHeightOf(width) + PAD + block + PAD)
     case 'collection_intro':
       return Math.max(FEED_CARD_MIN_HEIGHT.collection_intro, PAD + FEED_BURST.areaHeight + PAD + block + PAD)
     case 'badge_only': {
@@ -258,10 +260,26 @@ export function cardHeightOf(input: Omit<CardGeometryInput, 'hasImage'>): number
   }
 }
 
+/**
+ * 드랍·픽업 배지마다 «기울인 상자»(`tiltedBounds`)의 경계(카드 왼쪽 위 기준 px). 배지 수가 틀을 정하고, 영역 폭은 카드 폭 − 32, 높이는 `dropPickupAreaHeightOf`다.
+ * 중심 %는 영역 폭·높이 대비, 한 변은 기준 폭 326 대비 비율로 줄어 폭이 달라도 틀 모양이 같다.
+ */
+export function dropPickupBoundsOf(cardWidth: number, count: number): Rect[] {
+  const areaW = cardWidth - PAD * 2
+  const areaH = dropPickupAreaHeightOf(cardWidth)
+  return dropPickupFrameOf(count).map((item) => {
+    const size = (item.size * areaW) / FEED_DROP_PICKUP.refWidth
+    const box = tiltedBounds(size, size, item.tilt)
+    const cx = PAD + (item.x / 100) * areaW
+    const cy = PAD + (item.y / 100) * areaH
+    return { l: cx - box.w / 2, t: cy - box.h / 2, r: cx + box.w / 2, b: cy + box.h / 2 }
+  })
+}
+
 /** 도장이 놓이는 기준 상자(칩의 앵커와 같은 상자). */
 function stampAnchorOf(type: ChipGeometryType, width: number, art: Rect | null, textBox: Rect | null): Rect | null {
   if (type === 'hero_box') return { l: PAD, t: PAD, r: width - PAD, b: PAD + FEED_HERO_IMAGE_HEIGHT }
-  if (type === 'drop_pickup') return { l: PAD, t: PAD, r: width - PAD, b: PAD + FEED_DROP_PICKUP.rowHeight }
+  if (type === 'drop_pickup') return { l: PAD, t: PAD, r: width - PAD, b: PAD + dropPickupAreaHeightOf(width) }
   if (type === 'text_box') return textBox
   if (type === 'badge_intro' || type === 'collection_intro') return art
   return null
@@ -299,20 +317,8 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
     const top = height - PAD - FEED_BADGE_AREA_HEIGHT + (FEED_BADGE_AREA_HEIGHT - FEED_BADGE_SIZE) / 2
     if (input.hasImage) avoid.push(centerZone({ l: centerX - FEED_BADGE_SIZE / 2, t: top, r: centerX + FEED_BADGE_SIZE / 2, b: top + FEED_BADGE_SIZE }))
   } else if (type === 'drop_pickup') {
-    const { columns, gap, rowHeight } = FEED_DROP_PICKUP
-    const cell = (w - PAD * 2 - gap * (columns - 1)) / columns
-    const count = Math.min(columns, Math.max(1, input.imageCount ?? columns))
-    const group = count * cell + (count - 1) * gap
-    const first = centerX - group / 2
-    if (input.hasImage) {
-      for (let i = 0; i < count; i += 1) {
-        // 그림 상자는 칸 가운데의 배지 그림(80×80)이다
-        const cx = first + i * (cell + gap) + cell / 2
-        const cy = PAD + rowHeight / 2
-        const half = FEED_DROP_PICKUP.badgeSize / 2
-        avoid.push(centerZone({ l: cx - half, t: cy - half, r: cx + half, b: cy + half }))
-      }
-    }
+    // 그림이 없는 배지도 이름 글자가 읽혀야 해서 `hasImage`와 상관없이 배지마다 기울인 상자의 가운데 구역을 피한다(상자 가장자리·모서리는 피하지 않는다)
+    for (const box of dropPickupBoundsOf(w, input.imageCount ?? FEED_DROP_PICKUP.max)) avoid.push(centerZone(box))
   } else if (type === 'collection_intro') {
     const cy = PAD + FEED_BURST.areaHeight / 2
     art = { l: centerX - FEED_BURST.artSize / 2, t: cy - FEED_BURST.artSize / 2, r: centerX + FEED_BURST.artSize / 2, b: cy + FEED_BURST.artSize / 2 }

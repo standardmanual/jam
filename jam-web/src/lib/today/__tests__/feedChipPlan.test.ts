@@ -116,7 +116,7 @@ describe('두 칩의 규칙', () => {
   it('각도는 3~12°이고 두 칩은 반대 방향이다', () => {
     for (const type of ['hero_box', 'badge_intro', 'text_box', 'drop_pickup', 'collection_intro', 'badge_only'] as const) {
       for (const seed of seeds) {
-        const plan = planCardChips(inputOf(type, seed, [value('2일 남음'), label('MISSION', 'sm')], { hasImage: false }))
+        const plan = planCardChips(inputOf(type, seed, [value('2일 남음'), label('MISSION', 'sm')], { hasImage: false, imageCount: 0 }))
         expect(plan.chips).toHaveLength(2)
         for (const chip of plan.chips) {
           expect(Math.abs(chip.tilt)).toBeGreaterThanOrEqual(3)
@@ -250,8 +250,8 @@ describe('스티커와 알약', () => {
   it('드랍·픽업은 두 칩이 모두 분류 칩이지만 스티커는 한 카드에 한 개 이하이고 나머지는 검정 알약이다', () => {
     let withSticker = 0
     for (let seed = 0; seed < 1500; seed += 1) {
-      // 그림을 빼 자리가 넉넉하게 한다(그림이 있으면 물러서기에서 스티커가 알약으로 바뀌는 일이 잦다)
-      const plan = planCardChips(inputOf('drop_pickup', seed, [label('DROP'), label('PICKUP', 'sm')], { hasImage: false }))
+      // 배지를 빼(imageCount 0) 자리가 넉넉하게 한다(배지가 있으면 물러서기에서 스티커가 알약으로 바뀌거나 둘째 칩이 빠지는 일이 잦다)
+      const plan = planCardChips(inputOf('drop_pickup', seed, [label('DROP'), label('PICKUP', 'sm')], { hasImage: false, imageCount: 0 }))
       const stickers = plan.chips.filter((chip) => chip.presentation === 'sticker')
       expect(stickers.length).toBeLessThanOrEqual(MAX_STICKERS_PER_CARD)
       for (const chip of plan.chips) if (chip.presentation === 'pill') expect(chip.black).toBe(true)
@@ -465,7 +465,7 @@ describe('가리지 않기(7개 유형, 시드 표본)', () => {
           descriptionVisible: seed % 4 !== 0,
           burst: type === 'collection_intro' ? burst : undefined,
           stampCorner: seed % 5 === 0 ? 'top-left' : null,
-          imageCount: type === 'drop_pickup' ? 1 + (seed % 3) : undefined,
+          imageCount: type === 'drop_pickup' ? 1 + (seed % 5) : undefined,
         })
         const plan = planCardChips(input)
         expect(plan.fit).toBe(true)

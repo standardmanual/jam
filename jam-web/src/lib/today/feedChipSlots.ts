@@ -78,12 +78,12 @@ export const FEED_CHIP_SLOT_SPECS: Readonly<Record<FeedType, FeedChipSlotSpec>> 
 }
 
 /**
- * 박스 모양·박스 색을 쓰는 유형(히어로의 이미지 박스, 텍스트의 박스, 드랍·픽업의 박스 줄). 나머지 유형은 박스(`FeedBox`)를 그리지 않는다.
+ * 박스 모양·박스 색을 쓰는 유형(히어로의 이미지 박스, 텍스트의 박스). 드랍·픽업은 박스 없이 배지를 흩뿌려 그려 이 목록에서 빠졌다(티켓 20261122_2229). 나머지 유형도 박스(`FeedBox`)를 그리지 않는다.
  * 어드민 「카드 모양」 섹션이 박스 칸을 보일지 정하는 기준이다. 홈 컴포넌트와 같은 유형인지는 `components/today/__tests__/FeedCard.boxTypes.test.tsx`가 지킨다(티켓 20261121_2113).
  */
-export const BOX_FEED_TYPES: readonly FeedType[] = ['hero_box', 'text_box', 'drop_pickup']
+export const BOX_FEED_TYPES: readonly FeedType[] = ['hero_box', 'text_box']
 
-/** 박스 용도(글자 박스·이미지 마스크)를 고르는 유형. 히어로는 늘 이미지 박스, 드랍·픽업은 배지 칸이라 텍스트만 용도를 고른다. */
+/** 박스 용도(글자 박스·이미지 마스크)를 고르는 유형. 히어로는 늘 이미지 박스라 텍스트만 용도를 고른다. */
 export const BOX_KIND_FEED_TYPES: readonly FeedType[] = ['text_box']
 
 /** 유형이 가질 수 있는 칩 개수 상한. 자리가 없으면 0, 대각선 짝이 없으면 1, 있으면 `MAX_CARD_CHIPS`. */
