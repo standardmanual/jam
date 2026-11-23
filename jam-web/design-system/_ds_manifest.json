@@ -130,6 +130,10 @@
       "sourcePath": "components/cards/LabelChip.jsx"
     },
     {
+      "name": "CategorySticker",
+      "sourcePath": "components/cards/CategorySticker.jsx"
+    },
+    {
       "name": "LockedTile",
       "sourcePath": "components/cards/LockedTile.jsx"
     },

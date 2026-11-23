@@ -484,6 +484,8 @@ code:
 4. ~~이미지 위 칩과 이미지를 채운 박스의 색 규칙.~~ 해결(7회차-6): 이미지 대표 색은 저장하고(`cover_colors`, 7회차-3) 규칙 ⑤·⑥으로 자동 배정에 쓴다(위 «이미지 대표 색 규칙»). 수동 지정 경고 화면은 7-7이다.
 5. 랭킹·배지 목록의 `list` 모양을 새 목록형으로 대신할지.
 
+**분류 스티커 부품**(통합 팔레트 5, 티켓 20261122_2227, 부품만 만들었고 호출부는 없다 — 어느 카드에 어느 자리로 붙일지는 6번 티켓 20261122_2228이 정한다): MODULAR `jam-web/design-system/components/cards/CategorySticker.jsx`(Story `MODULAR/Cards/CategorySticker`, 규칙 `CategorySticker.prompt.md`). 모양은 조약돌 116×84와 물결 덩어리 112×92이고 `shape`·`seed`로 정하며 같은 (shape, seed)는 늘 같은 윤곽이다. 조약돌은 호의 굽기가 시드마다 다르다. 물결은 혹 7~9개·높이 4~8.5px이고 크기·간격이 불규칙하다. 테두리는 `--foreground` 2px이다. 둘레 글자는 분류 문구(ACTIVITY·ITEM·MISSION·CHECK IN·COLLECTION·DROP·PICKUP)를 «문구 · » 단위로 최소 두 번 되풀이해 한 바퀴를 채운다. 굵기 900, 조약돌 11px·물결 10px이 기준이고 길면 글자를 줄이며(하한 7px) 압축하지 않는다. 글자 선은 조약돌 가장자리에서 17px 안쪽, 물결은 혹을 뺀 바탕 모양에서 15px 안쪽이다. 가운데에는 로고 원본 `design-system/assets/logo/jam-logo.svg`의 J·a·m 한 글자를 벡터로 그리고 색 채움에 `--foreground` 외곽선 약 1.6px를 두른다. 색은 보색 짝 8개(노랑+보라, 보라+노랑, 초록+분홍, 분홍+초록, 하늘+빨강, 빨강+하늘, 파랑+노랑, 노랑+파랑 — 앞이 바탕, 뒤가 로고 글자)이고 `var(--jam-*)`로만 참조한다. 시험은 `jam-web/src/components/CategorySticker.test.tsx`다.
+
 ## 7. 이동 목적지
 
 카드를 누르면 가는 곳은 **유형 ID가 아니라 템플릿과 대상 필드**로 정해진다. 기사(`editorial_article`)는 항상 기사 상세로 가고, 그 밖의 템플릿은 `target_href`가 있으면 그 값, 없으면 템플릿 규칙을 따른다. 트라이브를 보여 주는 화면은 없다.
