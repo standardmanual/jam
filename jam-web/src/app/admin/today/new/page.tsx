@@ -3,8 +3,6 @@ import Link from 'next/link'
 import TodayCardForm from '../TodayCardForm'
 import { normalizeDateParam } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
-import { buildFeedPalette } from '@/lib/today/feedColorOverrides'
-import { getFeedColorOverrides } from '@/lib/today/feedColorOverridesServer'
 import type { TribeTagSource } from '@/lib/admin/todayTribeTags'
 import { TODAY_RECIPE_OPTION_COLUMNS, toTodayRecipeOptions, type TodayRecipeOptionRow } from '@/lib/admin/todayRecipeOptions'
 
@@ -34,8 +32,6 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
   const rankingModes = (rankingModesRaw ?? []) as { id: string; title: string }[]
   const tribes = (tribesRaw ?? []) as TribeTagSource[]
   const recipes = toTodayRecipeOptions((recipesRaw ?? []) as TodayRecipeOptionRow[])
-  // 색 덮어쓰기(티켓 20261121_2145): 색 경고·미리보기의 자동 배정이 덮어쓴 hex로 계산되도록 팔레트를 내려준다(실패하면 기본 팔레트).
-  const feedPalette = buildFeedPalette(await getFeedColorOverrides())
 
   return (
     <div className="w-full p-4 md:p-8">
@@ -46,7 +42,6 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
         rankingModes={rankingModes}
         recipes={recipes}
         tribes={tribes}
-        feedPalette={feedPalette}
         badgeLabels={[]}
         initialDate={date}
         returnDate={date}

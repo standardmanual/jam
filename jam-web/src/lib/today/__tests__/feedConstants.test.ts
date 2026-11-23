@@ -72,8 +72,8 @@ describe('FEED_TILTS 기울기', () => {
 
 describe('feedColorVar 색 키 → CSS 변수', () => {
   it.each(FEED_COLOR_KEYS)('%s: var(--…) 문자열로 바뀌고 표의 변수 이름을 가리킨다', (key) => {
-    expect(feedColorVar(key)).toBe(`var(--feed-color-${key}, var(${FEED_COLORS[key].cssVar}))`)
-    expect(feedColorVar(key)).toMatch(/^var\(--feed-color-[\w-]+, var\(--[\w-]+\)\)$/)
+    expect(feedColorVar(key)).toBe(`var(${FEED_COLORS[key].cssVar})`)
+    expect(feedColorVar(key)).toMatch(/^var\(--jam-[\w-]+\)$/)
   })
 
   it('9키에 없는 값(저장된 옛 키 등)은 던지지 않고 노랑으로 그린다', () => {

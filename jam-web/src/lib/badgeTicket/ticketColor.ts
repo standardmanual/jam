@@ -4,7 +4,7 @@ import { hexToHsl, violatesImageColorRule } from '@/lib/today/feedColorRules'
 /**
  * 배지 상세 티켓의 색 규칙 (티켓 20261122_1222 → 통합 팔레트 4, 20261122_2226).
  * 후보는 통합 팔레트 일곱 색이다(짙은 초록 `green-deep`·흰색 `white`은 후보가 아니다).
- * 홈피드의 `--feed-color-*` 덮어쓰기 변수는 쓰지 않고 `--jam-*`를 그대로 가리킨다.
+ * `--jam-*`를 그대로 가리킨다.
  */
 export const TICKET_COLOR_KEYS = ['yellow', 'green', 'pink', 'sky', 'red', 'purple', 'blue'] as const
 export type TicketColorKey = (typeof TICKET_COLOR_KEYS)[number]

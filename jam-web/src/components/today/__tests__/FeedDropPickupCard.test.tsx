@@ -80,7 +80,7 @@ describe('드랍·픽업 — 구성', () => {
 
   it('배지 3개가 박스에 담기고 박스 색은 색 변수다(외곽선 없음, hex 없음)', () => {
     const html = render(dropView({ box_color_key: 'green', box_shape: 'round' }))
-    expect(count(html, 'background-color:var(--feed-color-green, var(--jam-green))')).toBe(3)
+    expect(count(html, 'background-color:var(--jam-green)')).toBe(3)
     for (const badge of BADGES) expect(html).toContain(badge.imageUrl as string)
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
     // 칩에만 외곽선(border-width)이 있다
@@ -103,7 +103,7 @@ describe('드랍·픽업 — 구성', () => {
   it('배지가 1~2개여도 있는 만큼 같은 칸 폭으로 그린다', () => {
     for (const n of [1, 2]) {
       const html = render(dropView({ badges: BADGES.slice(0, n), box_color_key: 'red' }))
-      expect(count(html, 'background-color:var(--feed-color-red, var(--jam-red))')).toBe(n)
+      expect(count(html, 'background-color:var(--jam-red)')).toBe(n)
       expect(count(html, 'width:calc((100% - 16px) / 3)')).toBe(n)
     }
   })
@@ -130,7 +130,7 @@ describe('드랍·픽업 — 칩·링크·설명', () => {
     expect(html).toContain('드랍')
     expect(html).toContain('픽업')
     // 색 칩은 색 변수, 검정 칩은 --foreground 면에 --snow 글자
-    expect(html).toContain('background-color:var(--feed-color-green, var(--jam-green))')
+    expect(html).toContain('background-color:var(--jam-green)')
     expect(html).toContain('background-color:var(--foreground)')
     expect(html).toContain('text-snow')
   })
