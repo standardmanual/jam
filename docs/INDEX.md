@@ -730,6 +730,7 @@ status: active
 - [latest.md](operations/trendresearch/culture/misc/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/convenience/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/food/latest.md) — (description 없음)
+- [latest.md](operations/trendresearch/places/michelin/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/mountain/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/nature/latest.md) — (description 없음)
 - [latest.md](operations/trendresearch/places/park/latest.md) — (description 없음)
@@ -860,6 +861,10 @@ status: active
 ### docs/operations/trendresearch/places/food/notes/
 
 - [2026-11-02_메일-트렌드.md](operations/trendresearch/places/food/notes/2026-11-02_메일-트렌드.md) — 식사빵 전문 빵집, 구둣방을 개조한 카페, 가을 시즌 음료 카페, 오차즈케 식당 등 메일에서 모은 음식점·카페 소식
+
+### docs/operations/trendresearch/places/michelin/
+
+- [latest.md](operations/trendresearch/places/michelin/latest.md) — (description 없음)
 
 ### docs/operations/trendresearch/places/mountain/
 
