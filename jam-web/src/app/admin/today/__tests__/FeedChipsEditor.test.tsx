@@ -17,6 +17,11 @@ import FeedChipsEditor, {
   chipsWithPatch,
   chipsWithSlot,
   chipValidation,
+  slotHelpOf,
+  SLOT_HELP_AUTO,
+  SLOT_HELP_DIRECT,
+  SLOT_HELP_SECOND,
+  VALUE_KIND_LABELS,
   valueChipResourcesOf,
   valueChipSourceOptions,
 } from '../FeedChipsEditor'
@@ -69,6 +74,7 @@ describe('FeedChipsEditor — 모드별 마크업', () => {
   it('칩이 2개이면 두 번째 칩에 «대각선 자리에 놓여요» 안내가 있고, 첫 칩 자리가 자동이면 안내가 바뀐다', () => {
     const html = render({ mode: 'custom', chips: [chip({ text: 'A', slot: 'image-top-left' }), chip({ text: 'B', slot: 'image-bottom-right' })] })
     expect(html).toContain('대각선 자리에 놓여요')
+    expect(html).toContain(SLOT_HELP_SECOND)
     const waiting = render({ mode: 'custom', chips: [chip({ text: 'A' }), chip({ text: 'B' })] })
     expect(waiting).toContain('첫 번째 칩의 자리를 고르면 이 칩이 대각선 자리에 놓여요')
   })
@@ -190,5 +196,48 @@ describe('값 칩 출처 — 카드 템플릿에 맞는 것만', () => {
     expect(valueChipSourceOptions('mission_spotlight').map((o) => o.value)).toEqual(['mission.remaining', 'mission.reward_points', 'mission.condition'])
     expect(valueChipSourceOptions('location_trend').map((o) => o.value)).toEqual(['checkin.required_badges', 'checkin.place_name'])
     expect(valueChipSourceOptions('drop_alert')).toEqual([])
+  })
+})
+
+describe('값 칩 출처 선택지 — 분류 문구(영어) · 값 이름(한국어)', () => {
+  it('자원마다 선택지가 «영어 분류 · 한국어 값 이름»이고 영어만 있거나 한국어만 있는 라벨이 없다', () => {
+    const labelsOf = (resource: Parameters<typeof valueChipResourcesOf>[0]) => valueChipSourceOptions(resource).map((o) => o.label)
+    expect(labelsOf('mission_spotlight')).toEqual(['MISSION · 남은 기간(N일 남음)', 'MISSION · 보상 포인트', 'MISSION · 미션 조건 값'])
+    expect(labelsOf('badge_spotlight')).toEqual(['ACTIVITY · 달성 기준', 'ACTIVITY · 배지 레벨'])
+    expect(labelsOf('itembook_milestone')).toEqual(['COLLECTION · 아이템 수'])
+    expect(labelsOf('location_trend')).toEqual(['CHECK IN · 필요한 배지 수', 'CHECK IN · 장소 이름'])
+    expect(labelsOf('drop_alert')).toEqual([])
+    // 템플릿을 모르면 폼이 아는 자원 전부, 모든 라벨이 영어 대문자 + « · » + 한글 이름이다
+    for (const label of labelsOf(undefined)) expect(label).toMatch(/^[A-Z ]+ · [가-힣]/)
+  })
+
+  it('값 이름 표는 명사형이고 해요체 서술문이 아니다', () => {
+    for (const name of Object.values(VALUE_KIND_LABELS)) expect(name).not.toMatch(/(해요|이에요|예요|요)\.?$/)
+  })
+})
+
+describe('자리·기울기 도움말 — 새 배치 규칙', () => {
+  it('비워 두면 자동 안내, 직접 정한 값이 있으면 존중·물러서기 안내, 두 번째 칩이면 두 칩 안내다', () => {
+    expect(slotHelpOf(chip(), false)).toBe(SLOT_HELP_AUTO)
+    expect(slotHelpOf(chip({ slot: 'image-top-left' }), false)).toBe(SLOT_HELP_DIRECT)
+    expect(slotHelpOf(chip({ tilt: '4' }), false)).toBe(SLOT_HELP_DIRECT)
+    expect(slotHelpOf(chip(), true)).toBe(SLOT_HELP_SECOND)
+    expect(slotHelpOf(chip({ slot: 'image-bottom-right' }), true)).toBe(SLOT_HELP_SECOND)
+  })
+
+  it('화면에 문구가 나오고 내부 용어(시드·물러서기 단계)는 나오지 않으며 «저장할 때 정해져요»는 자리 칸에 붙지 않는다', () => {
+    const auto = render({ mode: 'custom', chips: [chip({ text: 'A' })] })
+    expect(auto).toContain('자리와 기울기는 비워 두면 카드마다 자동으로 정해져요.')
+    const direct = render({ mode: 'custom', chips: [chip({ text: 'A', slot: 'image-top-left' })] })
+    expect(direct).toContain('직접 정한 값은 존중하지만, 앞 카드와 겹치면 자리 이동을 뺀 방식으로 조금 물러서요.')
+    for (const html of [auto, direct]) {
+      expect(html).not.toMatch(/시드|단계/)
+      // 모드 줄의 «저장할 때 자동으로 정해져요»는 «자동» 모드 문구라 «직접»에서는 나오지 않는다
+      expect(html).not.toContain('저장할 때 자동으로 정해져요')
+    }
+  })
+
+  it('«자동» 모드나 모드 문구는 그대로다', () => {
+    expect(render()).toContain('저장할 때 자동으로 정해져요')
   })
 })

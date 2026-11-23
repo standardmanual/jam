@@ -68,6 +68,7 @@ export function ChoiceField({
   onChange,
   themeContainer,
   help,
+  autoHint = AUTO_HINT,
   disabled,
   required,
 }: {
@@ -81,6 +82,8 @@ export function ChoiceField({
   onChange: (value: string) => void
   themeContainer?: HTMLElement | null
   help?: string
+  /** «자동»일 때 도움말 뒤에 붙는 문구. 기본은 «저장할 때 자동으로 정해져요»이고, 그릴 때 정해지는 칸(칩 자리·기울기)은 `null`로 끈다 */
+  autoHint?: string | null
   /** 고를 수 없는 상태(선택지가 없을 때) */
   disabled?: boolean
   /** 비워 둘 수 없는 칸. «자동» 선택지를 두지 않는다(값이 선택지에 없을 때만 «자동» 문구가 자리표시로 보인다) */
@@ -120,7 +123,7 @@ export function ChoiceField({
         </SelectContent>
       </Select>
       <FieldMessage id={helpId} className={TEXT_CLASS}>
-        {isAuto ? (help ? `${help} ${AUTO_HINT}` : AUTO_HINT) : help}
+        {isAuto ? [help, autoHint].filter(Boolean).join(' ') : help}
       </FieldMessage>
     </div>
   )

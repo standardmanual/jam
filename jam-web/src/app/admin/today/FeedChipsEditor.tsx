@@ -48,16 +48,30 @@ const KIND_OPTIONS: readonly SegmentOption<FeedChipFormValue['kind']>[] = [
   { value: 'label', label: '구분' },
 ]
 
-/** 값 칩 종류 이름. 키는 `ValueChipKind`와 같다. */
-const VALUE_KIND_LABELS: Readonly<Record<ValueChipKind, string>> = {
-  remaining: '남은 기간',
+/**
+ * 값 칩 종류 이름(명사형). 키는 `ValueChipKind`와 같다. 출처 선택지에서 «분류 문구(영어) · 값 이름»으로 읽힌다(예: «MISSION · 남은 기간(N일 남음)»).
+ * 앞의 영어는 칩 구분 문구(`FEED_VALUE_CHIP_RULES[].divider`, 홈에 나가는 값 그대로)다.
+ */
+export const VALUE_KIND_LABELS: Readonly<Record<ValueChipKind, string>> = {
+  remaining: '남은 기간(N일 남음)',
   'reward-points': '보상 포인트',
   condition: '미션 조건 값',
-  criteria: '배지 달성 기준',
+  criteria: '달성 기준',
   level: '배지 레벨',
   'item-count': '아이템 수',
   'required-badges': '필요한 배지 수',
   'place-name': '장소 이름',
+}
+
+/** 칩 자리·기울기 칸 도움말. 칩 자리·각도는 그릴 때 카드 시드와 피드 순서로 정해진다(티켓 20261122_2228). */
+export const SLOT_HELP_AUTO = '자리와 기울기는 비워 두면 카드마다 자동으로 정해져요.'
+export const SLOT_HELP_DIRECT = '직접 정한 값은 존중하지만, 앞 카드와 겹치면 자리 이동을 뺀 방식으로 조금 물러서요.'
+export const SLOT_HELP_SECOND = '두 칩은 같은 줄에 서지 않아요. 두 번째 칩은 대각선 자리에 놓여요.'
+
+/** 자리 칸 도움말: 두 번째 칩이 첫 칩을 따라가면 두 칩 안내, 직접 정한 자리·기울기가 있으면 존중 안내, 아니면 자동 안내. */
+export function slotHelpOf(chip: FeedChipFormValue, followsFirst: boolean): string {
+  if (followsFirst) return SLOT_HELP_SECOND
+  return chip.slot.trim() !== '' || chip.tilt.trim() !== '' ? SLOT_HELP_DIRECT : SLOT_HELP_AUTO
 }
 
 const TILT_OPTIONS: readonly ChoiceOption[] = FEED_TILTS.map((tilt) => ({ value: String(tilt), label: `${tilt}도` }))
@@ -285,7 +299,8 @@ export default function FeedChipsEditor({ feedType, templateType, mode, chips, o
                       options={slotChoice.options}
                       onChange={(slot) => onChange({ chips: chipsWithSlot(feedType, chips, index, slot) })}
                       themeContainer={themeContainer}
-                      help={slotChoice.followsFirst ? '대각선 자리에 놓여요.' : undefined}
+                      help={slotHelpOf(chip, slotChoice.followsFirst)}
+                      autoHint={null}
                       disabled={slotChoice.waitingForFirst}
                     />
                     <ChoiceField
@@ -295,6 +310,7 @@ export default function FeedChipsEditor({ feedType, templateType, mode, chips, o
                       options={TILT_OPTIONS}
                       onChange={(tilt) => onChange({ chips: chipsWithPatch(chips, index, { tilt }) })}
                       themeContainer={themeContainer}
+                      autoHint={null}
                     />
                   </div>
                   {slotChoice.waitingForFirst && (
