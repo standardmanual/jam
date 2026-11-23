@@ -81,6 +81,17 @@ export const CHIP_GAP = 6
  * (칩 폭은 고정 px이고 안쪽 한도는 카드 비율이라 넓어질수록 여유가 늘어난다). 구형 320 화면(카드 폭 288)은 맞춰 보지 않는다(티켓 20261122_2228 결정, 카리나 2026-11-23).
  */
 export const PLAN_WIDTHS = [343] as const
+/**
+ * 드랍·픽업의 «제목 옆 가장자리» 칩 자리(티켓 20261122_2229 재작업, 시안 `docs/assets/prototypes/drop-pickup-a5/board-a5.jpg`): 칩이 카드 오른쪽 가장자리에 걸쳐 제목 줄 높이에 놓인다.
+ * `centerBand`는 칩 가운데의 세로 위치(카드 높이 대비, 시안에서 읽은 62~78%)이고, 제목 글자가 카드 폭의 `maxTitleRatio`를 넘으면 이 자리를 후보에서 뺀다.
+ * 가로는 기존 모서리 한도(바깥 6px ~ 안쪽 6%)를 그대로 쓴다. 이 자리는 드랍·픽업에만 있다(다른 유형의 후보는 그대로다).
+ * 화면은 모서리 `top-right`에 세로 오프셋을 크게 준 위치로 그린다(`plannedChipPositionOf`가 그대로 읽는다).
+ */
+export const TITLE_EDGE = { centerBand: { min: 0.62, max: 0.78 }, maxTitleRatio: 0.6, corner: 'top-right' } as const satisfies {
+  centerBand: { min: number; max: number }
+  maxTitleRatio: number
+  corner: ChipCorner
+}
 /** 기울기 상한(deg): `FEED_CORNER_TILT_RANGE.max`. 보수적 경계 상자는 이 각도로 잰다. */
 const WORST_TILT = 12
 
@@ -181,6 +192,8 @@ export interface CardGeometry {
   avoid: Rect[]
   /** 이 중 글자 영역(테스트·진단용). */
   textRects: Rect[]
+  /** 드랍·픽업만: 제목 글자가 카드 폭의 60% 이하라 «제목 옆 가장자리» 칩 자리를 쓸 수 있는가. 다른 유형은 늘 false. */
+  titleEdgeOpen: boolean
 }
 
 const TITLE_FONT = 30
@@ -225,6 +238,14 @@ export function textBoxTitleFontOf(titleLines: readonly number[], width: number)
   )
   const step = FEED_TEXT_BOX_TITLE_STEPS[index]
   return { fontSize: inner * TEXT_BOX_FONT_RATIO[index], charsPerLine: step.charsPerLine }
+}
+
+/** 설명 글자 묶음의 높이와 폭(제목과 따로, 제목과의 간격 `TEXT_GAP`은 넣지 않는다). 설명이 안 보이면 null. */
+function descriptionBlockOf(text: CardTextInput, width: number): { height: number; maxWidth: number } | null {
+  if (!(text.descriptionVisible && text.descriptionLength > 0)) return null
+  const inner = width - PAD * 2
+  const desc = wrapEstimate([text.descriptionLength], Math.max(1, Math.floor(inner / DESC_FONT)))
+  return { height: desc.count * DESC_LINE, maxWidth: Math.ceil(Math.min(inner, desc.maxChars * DESC_FONT)) }
 }
 
 const pad = (rect: Rect, d: number): Rect => ({ l: rect.l - d, t: rect.t - d, r: rect.r + d, b: rect.b + d })
@@ -299,8 +320,20 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
     avoid.push(pad(rect, AVOID_PAD))
   }
   const centerX = w / 2
+  let titleEdgeOpen = false
 
-  if (type === 'hero_box' || type === 'badge_intro' || type === 'drop_pickup' || type === 'collection_intro') {
+  if (type === 'drop_pickup') {
+    // 드랍·픽업은 제목과 설명을 따로 피한다: 설명이 카드 폭을 채워도 제목 글자의 오른쪽 빈 곳이 «제목 옆 가장자리» 칩 자리로 남는다.
+    // `textRects`는 다른 유형처럼 글자 묶음 전체 하나(진단용)다.
+    const block = textBlockOf(input, w)
+    const title = textBlockOf(input, w, false)
+    const desc = descriptionBlockOf(input, w)
+    const top = height - PAD - block.height
+    textRects.push(pad({ l: PAD, t: top, r: PAD + block.maxWidth, b: height - PAD }, AVOID_PAD))
+    avoid.push(pad({ l: PAD, t: top, r: PAD + title.maxWidth, b: top + title.height }, AVOID_PAD))
+    if (desc) avoid.push(pad({ l: PAD, t: top + title.height + TEXT_GAP, r: PAD + desc.maxWidth, b: height - PAD }, AVOID_PAD))
+    titleEdgeOpen = title.maxWidth <= w * TITLE_EDGE.maxTitleRatio
+  } else if (type === 'hero_box' || type === 'badge_intro' || type === 'collection_intro') {
     const block = textBlockOf(input, w)
     addText({ l: PAD, t: height - PAD - block.height, r: PAD + block.maxWidth, b: height - PAD })
   }
@@ -354,7 +387,7 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
   for (const extra of input.extraAvoid ?? []) {
     avoid.push({ l: extra.l * w, t: extra.t * height, r: extra.r * w, b: extra.b * height })
   }
-  return { width: w, height, spec, avoid, textRects }
+  return { width: w, height, spec, avoid, textRects, titleEdgeOpen }
 }
 
 /** px 영역 → 카드 비율(0~1). */

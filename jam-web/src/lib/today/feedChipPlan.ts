@@ -11,6 +11,8 @@
  * - 제목·설명 글자와 그림 안전 구역을 가리지 않는다. 자리를 못 찾으면 이 순서로 물러선다(`BackoffLevel`):
  *   1 기울기 3° → 2 스티커 80% → 3 스티커를 검정 알약 분류 칩으로 → 4 값 칩을 작게 → 5 분류 칩 빼기. 칩이 하나뿐이면 1~3 뒤에 그 칩만 작게(6) 한다.
  *   고정한 자리는 물러서기에서도 옮기지 않는다(자리 이동은 단계가 아니다).
+ * - 드랍·픽업만 «제목 옆 가장자리» 자리(`TITLE_EDGE`)가 후보에 더해진다: 한 칩은 위쪽 모서리, 다른 칩은 카드 오른쪽 가장자리의 제목 줄 높이(칩 가운데가 카드 높이의 62~78%).
+ *   제목 글자가 카드 폭의 60%를 넘으면 빠지고, 어드민이 자리를 정한 칩이 있으면 쓰지 않는다. 다른 유형의 후보는 그대로다.
  * - 목록형(`gallery_list`)은 제목 위 흐름 줄이라 이 계산 대상이 아니다(`flow: true`, 결정 6). 칩이 없는 카드(`[]`)는 빈 계획이다.
  * - 계획은 폭 343 카드(아이폰 최소 화면 375의 카드 폭)에서 겹치지 않아야 맞는 것으로 본다(서버는 실제 폭을 모른다, `PLAN_WIDTHS`).
  */
@@ -23,6 +25,7 @@ import {
   FEED_CHIP_TYPE_TABLE,
   LOWER_BAND,
   PLAN_WIDTHS,
+  TITLE_EDGE,
   cardGeometryOf,
   chipHeightOf,
   chipWidthOf,
@@ -111,6 +114,8 @@ export interface PlannedChip {
   inset: { x: number; y: number }
   /** 같은 가장자리의 둘째 칩이라 내려 앉았는가(높이 12~22%). */
   lowered: boolean
+  /** 드랍·픽업만: «제목 옆 가장자리»(카드 오른쪽 가장자리, 칩 가운데가 카드 높이의 62~78%)에 놓인 칩인가. 아니면 생략한다. */
+  edge?: boolean
   /** 부호 있는 기울기(deg), 절댓값 3~12 */
   tilt: number
   size: ChipTextSize
@@ -199,13 +204,16 @@ interface Arrangement {
   corner: Map<number, ChipCorner>
   /** 내려 앉는 칩의 입력 순서(없으면 null) */
   low: number | null
+  /** «제목 옆 가장자리»에 놓는 칩의 입력 순서(드랍·픽업만, 없으면 null). 이 칩은 `low`와 같은 칩이 아니다. */
+  edge: number | null
 }
 
-function arrangementsOf(feedType: ChipGeometryType, works: readonly PlanWork[]): Arrangement[] {
+function arrangementsOf(feedType: ChipGeometryType, works: readonly PlanWork[], titleEdgeOpen: boolean): Arrangement[] {
   const spec = FEED_CHIP_TYPE_TABLE[feedType]
-  const make = (corners: ChipCorner[], low: number | null): Arrangement => ({
+  const make = (corners: ChipCorner[], low: number | null, edge: number | null = null): Arrangement => ({
     corner: new Map(works.map((w, i) => [w.index, corners[i]] as const)),
     low: low === null ? null : works[low].index,
+    edge: edge === null ? null : works[edge].index,
   })
   if (works.length === 1) {
     const fixed = works[0].fixedCorner
@@ -229,6 +237,12 @@ function arrangementsOf(feedType: ChipGeometryType, works: readonly PlanWork[]):
     if (spec.diagonal) out.push(make([c0, diagonalOf(c0)], null))
     else for (const low of [0, 1]) out.push(make([c0, mirrorX(c0)], low))
   }
+  if (feedType === 'drop_pickup' && titleEdgeOpen) {
+    // 시안처럼 한 칩은 위쪽 모서리, 다른 칩은 카드 오른쪽 가장자리의 제목 줄 높이에 둔다(기존 «내려 앉히기» 후보는 그대로 두고 후보를 더한다)
+    for (const c0 of spec.corners) {
+      for (const edge of [0, 1]) out.push(make(edge === 0 ? [TITLE_EDGE.corner, c0] : [c0, TITLE_EDGE.corner], null, edge))
+    }
+  }
   return out
 }
 
@@ -239,6 +253,7 @@ interface Placed {
   corner: ChipCorner
   offset: CornerOffset
   lowered: boolean
+  edge: boolean
   rects: Rect[]
 }
 
@@ -276,6 +291,21 @@ function offsetCandidates(rng: () => number, limits: ReturnType<typeof cornerOff
 }
 
 /**
+ * «제목 옆 가장자리» 칩의 후보 자리: 칩 가운데가 카드 높이의 62~78%(`TITLE_EDGE.centerBand`)이고, 가로는 바깥 6px에서 안쪽 한도까지다.
+ * 세로 오프셋은 칩 경계 상자의 위쪽 끝 기준이라 «가운데 비율 − 경계 상자 높이의 반 / 카드 높이»로 바꾼다.
+ */
+function edgeOffsetCandidates(rng: () => number, limits: ReturnType<typeof cornerOffsetLimits>, boundsH: number, cardHeight: number): CornerOffset[] {
+  const { min, max } = TITLE_EDGE.centerBand
+  const lerp = (a: number, b: number) => a + rng() * (b - a)
+  const toY = (center: number) => center - boundsH / 2 / cardHeight
+  const out: CornerOffset[] = []
+  for (let i = 0; i < POSITION_SAMPLES; i += 1) out.push({ x: lerp(limits.xMin, limits.xMax), y: toY(lerp(min, max)) })
+  const centers = [min, (min * 2 + max) / 3, (min + max * 2) / 3, max]
+  for (const center of centers) out.push({ x: limits.xMin, y: toY(center) }, { x: (limits.xMin + limits.xMax) / 2, y: toY(center) })
+  return out.map((o) => ({ x: trunc3(o.x), y: trunc3(o.y) }))
+}
+
+/**
  * 칩들을 차례로 놓는다(내려 앉는 칩은 마지막). 앞 칩의 자리를 바꿔 가며 뒤 칩까지 모두 겹치지 않는 조합을 처음 찾는 대로 쓰고,
  * 없으면 겹침 합이 가장 작은 조합을 쓴다(앞 칩이 뒤 칩의 자리를 막지 않게 되돌아가며 찾는다).
  */
@@ -289,7 +319,8 @@ function placeAll(
 ): { placed: Placed[]; cost: number } {
   const spec = FEED_CHIP_TYPE_TABLE[feedType]
   const lowIndex = works.length > 1 ? arrangement.low : null
-  const order = [...works].sort((a, b) => Number(a.index === lowIndex) - Number(b.index === lowIndex))
+  const edgeIndex = works.length > 1 ? arrangement.edge : null
+  const order = [...works].sort((a, b) => Number(a.index === lowIndex || a.index === edgeIndex) - Number(b.index === lowIndex || b.index === edgeIndex))
   const limits = cornerOffsetLimits(Math.max(...geoms.map((g) => g.geometry.width)), Math.max(...geoms.map((g) => g.geometry.height)))
 
   // 칩마다 후보 자리(모서리 × 오프셋)를 미리 만든다
@@ -297,14 +328,21 @@ function placeAll(
     const first = arrangement.corner.get(work.index) as ChipCorner
     const corners = shrunk && !work.fixedCorner ? [first, ...spec.corners.filter((c) => c !== first)] : [first]
     const lowered = work.index === lowIndex
+    const edge = work.index === edgeIndex
     const box = boxOf(work)
     const bounds = tiltedBounds(box.w, box.h, work.mag)
-    return corners.flatMap((corner) =>
-      offsetCandidates(rng, limits, lowered).map((offset) => ({
+    // 가장자리 칩은 자기 모서리에서만 찾는다(다른 칩의 모서리로 옮겨 앉지 않는다)
+    const cornersOf = edge ? [first] : corners
+    return cornersOf.flatMap((corner) =>
+      (edge
+        ? edgeOffsetCandidates(rng, limits, bounds.h, Math.max(...geoms.map((g) => g.geometry.height)))
+        : offsetCandidates(rng, limits, lowered)
+      ).map((offset) => ({
         work,
         corner,
         offset,
         lowered,
+        edge,
         rects: geoms.map(({ geometry: g }) => cornerRect(corner, bounds.w, bounds.h, offset, g.width, g.height)),
       })),
     )
@@ -392,6 +430,7 @@ function toPlanned(item: Placed, work: PlanWork, box: { w: number; h: number }):
     corner: item.corner,
     inset: { x: Math.round(item.offset.x * 1000) / 10, y: Math.round(item.offset.y * 1000) / 10 },
     lowered: item.lowered,
+    ...(item.edge ? { edge: true } : {}),
     tilt: work.sign * work.mag,
     size: work.size,
     scale: work.scale,
@@ -423,11 +462,14 @@ export function chipPlanCandidates(input: ChipPlanInput): ChipPlan[] {
 
   // 조합: 자리 배치 × 첫 칩의 기울기 방향(둘째는 반대). 어드민이 정한 기울기가 있으면 그 방향을 따른다.
   const combos: Array<{ arrangement: Arrangement; sign: 1 | -1 }> = []
-  for (const arrangement of arrangementsOf(type, works)) {
+  // «제목 옆 가장자리» 자리는 제목 글자가 카드 폭의 60% 이하인 계획 폭에서만 쓴다(하나라도 넘으면 뺀다)
+  const titleEdgeOpen = geoms.every(({ geometry }) => geometry.titleEdgeOpen)
+  for (const arrangement of arrangementsOf(type, works, titleEdgeOpen)) {
     const signs: Array<1 | -1> = works[0].mag > 0 ? [works[0].sign] : works[1] && works[1].mag > 0 ? [works[1].sign === 1 ? -1 : 1] : [1, -1]
     for (const sign of signs) combos.push({ arrangement, sign })
   }
-  const ordered = shuffled(rng, combos).slice(0, MAX_CANDIDATES)
+  // 드랍·픽업은 «제목 옆 가장자리» 후보가 더해져 조합이 늘어난다(전부 쓴다). 다른 유형은 그대로 8개다.
+  const ordered = shuffled(rng, combos).slice(0, type === 'drop_pickup' ? MAX_CANDIDATES * 2 : MAX_CANDIDATES)
 
   const results = ordered.map(({ arrangement, sign }, order) => {
     const comboRng = createRng(`${input.seed}:chipplan:${order}`)
@@ -476,7 +518,7 @@ export function signatureOf(plan: ChipPlan): string {
   return plan.chips
     .map((chip) => {
       const form = chip.presentation === 'sticker' && chip.sticker ? `s${chip.sticker.shape === 'wave' ? 'w' : 'p'}` : 'p'
-      return `${chip.kind === 'label' ? 'L' : 'V'}${form}:${chip.corner}${chip.lowered ? '~' : ''}:${chip.tilt < 0 ? '-' : '+'}${tiltBandOf(chip.tilt)}`
+      return `${chip.kind === 'label' ? 'L' : 'V'}${form}:${chip.corner}${chip.lowered ? '~' : chip.edge ? '^' : ''}:${chip.tilt < 0 ? '-' : '+'}${tiltBandOf(chip.tilt)}`
     })
     .join('|')
 }
