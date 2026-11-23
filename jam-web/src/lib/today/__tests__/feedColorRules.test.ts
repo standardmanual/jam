@@ -11,6 +11,7 @@ import {
   firstViolatedRule,
   hexToHsl,
   hexToRgb,
+  chipExclusionRule,
   hueDifference,
   isHexColor,
   isVividPrimary,
@@ -239,5 +240,36 @@ describe('규칙 ⑤·⑥ 그림과 배경·칩 (티켓 20261121_1828)', () => {
     expect(isHexColor('#ggg')).toBe(false)
     expect(isHexColor(null)).toBe(false)
     expect(isHexColor(12)).toBe(false)
+  })
+})
+
+describe('배제 표(chipExclusionRule)', () => {
+  it('같은 색끼리는 걸린다', () => {
+    for (const key of ['yellow', 'green', 'pink', 'sky', 'purple']) expect(chipExclusionRule(key, key)).toBe('table')
+  })
+
+  it('빨강과 초록·짙은 초록은 칩과 면이 바뀌어도 걸린다', () => {
+    for (const green of ['green', 'green-deep']) {
+      expect(chipExclusionRule('red', green)).toBe('table')
+      expect(chipExclusionRule(green, 'red')).toBe('table')
+    }
+  })
+
+  it('노랑 위 흰 칩과 분홍 위 보라 칩은 걸리고 반대 방향은 통과한다', () => {
+    expect(chipExclusionRule('white', 'yellow')).toBe('table')
+    expect(chipExclusionRule('yellow', 'white')).toBeNull()
+    expect(chipExclusionRule('purple', 'pink')).toBe('table')
+    expect(chipExclusionRule('pink', 'purple')).toBeNull()
+  })
+
+  it('표에 없는 조합은 통과한다', () => {
+    expect(chipExclusionRule('white', 'green-deep')).toBeNull()
+    expect(chipExclusionRule('red', 'yellow')).toBeNull()
+    expect(chipExclusionRule('purple', 'sky')).toBeNull()
+    expect(chipExclusionRule('sky', 'pink')).toBeNull()
+  })
+
+  it('기존 hex 규칙은 그대로다: firstViolatedRule은 table을 돌려주지 않는다', () => {
+    expect(firstViolatedRule('#FF1D1D', '#59C02B')).not.toBe('table')
   })
 })
