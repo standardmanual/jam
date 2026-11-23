@@ -216,7 +216,7 @@ describe('텍스트(text_box)', () => {
     expect(html).not.toContain('min-height')
     expect(html).not.toContain('min-height:440px')
     expect(html).not.toContain('min-height:408px')
-    expect(html).toContain('text-5xl')
+    expect(html).toContain('text-[14.7cqw]')
     expect(html).toContain('leading-[1.1]')
     expect(html).toContain('font-black')
     expect(html).toContain('text-center')
@@ -237,11 +237,11 @@ describe('텍스트(text_box)', () => {
   })
 
   it('긴 제목은 글자 크기를 낮춘다(48 → 36 → 30)', () => {
-    expect(render(feedView('text_box', { title: '짧은 제목' }))).toContain('text-5xl')
-    expect(render(feedView('text_box', { title: '가나다라마\n가나다라마\n가나다라마\n가나다라마\n가나다라마' }))).toContain('text-4xl')
+    expect(render(feedView('text_box', { title: '짧은 제목' }))).toContain('text-[14.7cqw]')
+    expect(render(feedView('text_box', { title: '가나다라마\n가나다라마\n가나다라마\n가나다라마\n가나다라마' }))).toContain('text-[11cqw]')
     const longest = render(feedView('text_box', { title: '가을 숲길을 따라 걷다가 만나는 작은 쉼터에서 한숨 돌려요 오늘도 수고했어요 아주 길고 긴 제목입니다 끝' }))
-    expect(longest).toContain('text-3xl')
-    expect(longest).not.toContain('text-5xl')
+    expect(longest).toContain('text-[9.2cqw]')
+    expect(longest).not.toContain('text-[14.7cqw]')
   })
 
   it('색 면 박스의 제목은 --foreground이고 막이 없다', () => {

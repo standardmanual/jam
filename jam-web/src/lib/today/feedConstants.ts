@@ -257,12 +257,14 @@ export const FEED_PHOTO_TEXT_SCRIM = 0.32;
  * 제목을 데이터 줄바꿈으로 나눈 줄마다 `charsPerLine`자씩 접힌다고 어림해 줄 수를 세고, 그 줄 수가 `maxLines` 이하인 첫 단계를 쓴다. 마지막 단계는 한도가 없다.
  * 근거: 폭 358 카드의 글자 영역은 약 262×262px(박스 326 − 안쪽 여백 32×2)다. 글자 48px(줄 높이 1.1 = 52.8px)는 한 줄 약 5자·4줄(211px),
  * 36px(39.6px)는 약 7자·6줄(238px)이다. 클래스는 Tailwind 눈금(`text-5xl` 48·`text-4xl` 36·`text-3xl` 30)이다.
- * 어림이라 320 화면(글자 영역 약 192px) 등 이 한도를 넘는 경우는 글자 층의 `max-h-full`·`overflow-hidden`이 박스 안에 가둔다.
+ * 글자 크기는 px가 아니라 카드 폭 비율(`cqw`, 카드가 `@container`)이다. 카드 안쪽 폭(358 화면에서 326) 대비 14.7%·11%·9.2%가 각각 48·36·30px라서,
+ * 폭 288 화면(안쪽 256)에서는 37.6·28.2·23.6px로 같은 비율을 지킨다(폭 288에서 48px 그대로면 5자×4줄이 박스 256을 넘어 잘렸다, 판정 2026-11-23).
+ * 그래도 한도를 넘는 경우는 글자 층의 `max-h-full`·`overflow-hidden`이 박스 안에 가둔다.
  */
 export const FEED_TEXT_BOX_TITLE_STEPS = [
-  { charsPerLine: 5, maxLines: 4, className: 'text-5xl' },
-  { charsPerLine: 7, maxLines: 6, className: 'text-4xl' },
-  { charsPerLine: 10, maxLines: Infinity, className: 'text-3xl' },
+  { charsPerLine: 5, maxLines: 4, className: 'text-[14.7cqw]' },
+  { charsPerLine: 7, maxLines: 6, className: 'text-[11cqw]' },
+  { charsPerLine: 10, maxLines: Infinity, className: 'text-[9.2cqw]' },
 ] as const;
 
 /** 텍스트형 큰 제목의 글자 크기 클래스. 제목의 줄바꿈은 데이터 그대로 본다(빈 줄도 한 줄이다). */

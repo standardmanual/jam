@@ -26,7 +26,7 @@ export default function FeedTextBoxCard({ view }: { view: FeedCardView }) {
   const { look } = view
   const useImage = look.boxKind === 'image_mask' && Boolean(view.imageUrl)
   return (
-    <FeedCardShell view={view} className="aspect-square">
+    <FeedCardShell view={view} className="aspect-square @container">
       <div className="relative flex min-h-0 flex-1">
         <FeedBox
           shape={look.boxShape}
