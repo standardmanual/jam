@@ -3,7 +3,7 @@
 /**
  * 투데이 카드 작성·수정 화면의 「카드 모양」 섹션 — 홈피드 개편 5회차-2 (티켓 20261121_1316, 상위 20261120_2026).
  *
- * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(15색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
+ * 유형(8개)·박스 모양(5개)과 용도·배경/칩/박스 색(19색)·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 값으로 정한다.
  * 칸마다 «자동»이 기본이고, 비워 두면 저장할 때 자동 규칙이 정한다(값 의미는 `lib/admin/feedCardFields.ts` 머리 주석).
  * 칩·목록 항목·컬렉션 모션 입력 칸은 5-3(티켓 20261121_1317)이 만든 `FeedChipsEditor`·`FeedListItemsEditor`·`FeedBurstEditor`가 맡고, 이 섹션은 유형에 맞는 것만 렌더한다.
  *
@@ -18,10 +18,12 @@ import { FieldLabel, FieldMessage, SegmentedControl, type SegmentOption } from '
 import { FIELD_GRID_CLASS } from '@/components/admin/today/TodayEditorLayout'
 import {
   COLOR_RULE_REASON,
+  colorRuleWarnings,
   type FeedCardFormValues,
   type FeedDescriptionMode,
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
+import { FEED_COLOR_LABELS } from '@/lib/admin/feedColorLabels'
 import { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
 import { cornerOfSlot } from '@/lib/today/feedChipLayout'
 import {
@@ -34,7 +36,7 @@ import {
   isFeedType,
   type FeedType,
 } from '@/lib/today/feedChipSlots'
-import { firstViolatedRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
+import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
@@ -70,28 +72,8 @@ export const BOX_KIND_LABELS: Readonly<Record<TodayBoxKind, string>> = {
   image_mask: '이미지 마스크',
 }
 
-/** 색 이름(PRD «색» 표). 키는 `FEED_COLOR_KEYS`와 같다. 스크린리더는 이 이름으로 읽는다. */
-export const FEED_COLOR_LABELS: Readonly<Record<FeedColorKey, string>> = {
-  red: '레드',
-  yellow: '옐로',
-  green: '그린',
-  purple: '퍼플',
-  blue: '블루',
-  'red-soft': '연한 레드',
-  'yellow-soft': '연한 옐로',
-  'green-soft': '연한 그린',
-  'purple-soft': '연한 퍼플',
-  'blue-soft': '연한 블루',
-  'ref-red': '참조 레드',
-  'ref-blue': '참조 블루',
-  'ref-lime': '참조 라임',
-  'ref-pink': '참조 핑크',
-  'ref-yellow': '참조 옐로',
-  'green-deep': '짙은 그린',
-  pink: '핑크',
-  sky: '스카이',
-  white: '화이트',
-}
+// 색 이름 표는 서버 모듈도 쓰도록 순수 파일(`lib/admin/feedColorLabels.ts`)로 옮겼다(티켓 20261122_2224 회차 9). 기존 가져오기 경로를 위해 다시 내보낸다.
+export { FEED_COLOR_LABELS }
 
 // ── 유형별로 보이는 칸 ──────────────────────────────────────────
 
@@ -171,35 +153,26 @@ const colorName = (key: FeedColorKey): string => FEED_COLOR_LABELS[key]
 
 /**
  * 고른 색 조합이 규칙에 걸리거나 사용자가 제외한 조합이면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
- * 판정은 `feedColorRules.ts`의 함수다. 두 칸 다 고른 짝만 본다. 보이지 않는 칸(`show`가 거짓)이 낀 짝은 건너뛴다.
- * `palette`는 컬러셋 교체로 덮어쓴 hex를 합친 표다(티켓 20261121_2145). 안 주면 기본 15색 hex로 판정한다.
+ * 칩의 배제 표 위반·바탕–박스 같은 색·글자 박스에 짙은 초록 박스는 서버 검증 경고와 같은 함수(`colorRuleWarnings`)가 판정한다(티켓 20261122_2224 회차 9).
+ * 두 칸 다 고른 짝만 본다. 보이지 않는 칸(`show`가 거짓)이 낀 짝은 건너뛴다.
+ * `palette`는 이미지 색 경고(hex로 겹침을 판정)가 쓴다. 안 주면 기본 hex로 판정한다.
  */
 export function feedColorWarnings(
-  values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'>,
+  values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'> & Partial<Pick<FeedCardFormValues, 'feedType' | 'boxKind'>>,
   show: { chip: boolean; box: boolean },
   excludedPairs: readonly ExcludedColorPair[] = [],
   imageColors?: FeedImageColorInput,
   palette?: FeedPalette,
 ): string[] {
-  const hexOf = (key: FeedColorKey): string => palette?.[key] ?? FEED_COLORS[key].hex
-  const warnings: string[] = []
-  const pairs: ReadonlyArray<readonly [string, FeedColorKey | '', string, FeedColorKey | '', boolean]> = [
-    ['배경색', values.bgColorKey, '칩 색', values.chipColorKey, true],
-    ['칩 색', values.chipColorKey, '박스 색', values.boxColorKey, true],
-    ['배경색', values.bgColorKey, '박스 색', values.boxColorKey, false],
-  ]
-  for (const [labelA, keyA, labelB, keyB, involvesChip] of pairs) {
-    if (!keyA || !keyB) continue
-    if ((labelA === '칩 색' || labelB === '칩 색') && !show.chip) continue
-    if ((labelA === '박스 색' || labelB === '박스 색') && !show.box) continue
-    const head = `${labelA} ${colorName(keyA)} · ${labelB} ${colorName(keyB)} 조합이`
-    if (excludedPairs.some(([x, y]) => (x === keyA && y === keyB) || (x === keyB && y === keyA))) {
-      warnings.push(`${head} 제외하기로 한 조합이에요. 저장은 되지만 다른 색을 골라 보세요.`)
-      continue
-    }
-    const violated = firstViolatedRule(hexOf(keyA), hexOf(keyB), { involvesChip })
-    if (violated) warnings.push(`${head} 색 규칙에 걸려요. ${COLOR_RULE_REASON[violated]}. 저장은 되지만 다른 색을 골라 보세요.`)
-  }
+  const warnings = colorRuleWarnings({
+    bg: values.bgColorKey,
+    chip: values.chipColorKey,
+    box: values.boxColorKey,
+    feedType: values.feedType,
+    boxKind: values.boxKind,
+    show,
+    excludedPairs,
+  })
   warnings.push(...imageColorWarnings(values, show, imageColors, palette))
   return warnings
 }

@@ -153,16 +153,20 @@ describe('덮어쓴 팔레트가 규칙 판정을 바꾼다', () => {
     expect(firstViolatedRule(palette[a], palette[b])).toBe('same')
   })
 
-  it('validateFeedCardColumns: palette를 주면 덮어쓴 hex로 색 경고를 판정하고, 안 주면 이전과 같다', () => {
-    const [a, b] = passingChipPair()
-    const columns = { feed_type: 'hero_box', bg_color_key: a, chip_color_key: b }
-    const base = validateFeedCardColumns(columns, { title: '제목' })
-    expect(base.warnings.filter((w) => w.includes('색 규칙에 걸려요'))).toEqual([])
-    const palette = buildFeedPalette({ [b]: DEFAULT_FEED_PALETTE[a] })
-    const overridden = validateFeedCardColumns(columns, { title: '제목', palette })
-    expect(overridden.warnings.some((w) => w.includes('색 규칙에 걸려요') && w.includes(a) && w.includes(b))).toBe(true)
-    expect(overridden.errors).toEqual(base.errors)
-    expect(validateFeedCardColumns(columns, { title: '제목', palette: DEFAULT_FEED_PALETTE })).toEqual(base)
+  // 통합 팔레트 규칙(티켓 20261122_2224 회차 9)에서 색 조합 경고는 키 기반 배제 표라 hex를 읽지 않는다. palette는 호출부 호환용으로 남은 옵션이다.
+  it('validateFeedCardColumns: 색 조합 경고는 키로 판정해 palette를 줘도 결과가 같다', () => {
+    const palette = buildFeedPalette({ pink: DEFAULT_FEED_PALETTE.yellow })
+    for (const colors of [
+      { bg_color_key: 'yellow', chip_color_key: 'pink' },
+      { bg_color_key: 'green', chip_color_key: 'red' },
+    ]) {
+      const columns = { feed_type: 'hero_box', ...colors }
+      const base = validateFeedCardColumns(columns, { title: '제목' })
+      expect(validateFeedCardColumns(columns, { title: '제목', palette })).toEqual(base)
+      expect(validateFeedCardColumns(columns, { title: '제목', palette: DEFAULT_FEED_PALETTE })).toEqual(base)
+    }
+    expect(validateFeedCardColumns({ feed_type: 'hero_box', bg_color_key: 'yellow', chip_color_key: 'pink' }, { title: '제목', palette }).warnings).toEqual([])
+    expect(validateFeedCardColumns({ feed_type: 'hero_box', bg_color_key: 'green', chip_color_key: 'red' }, { title: '제목', palette }).warnings).toHaveLength(1)
   })
 })
 

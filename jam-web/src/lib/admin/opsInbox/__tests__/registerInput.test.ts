@@ -1816,7 +1816,7 @@ describe('toTodayCardRegisterInput · 홈피드 개편 새 칸 (티켓 20261121_
     expect(errors).toEqual([])
     expect(payload).not.toBeNull()
     expect(paths(warnings)).toEqual(['resource.chips', 'resource.bg_color_key'])
-    expect(warnings[1].message).toMatch(/^card\.bg_color_key: 고른 색 조합\(red, red\)이 색 규칙에 걸려요/)
+    expect(warnings[1].message).toMatch(/^card\.bg_color_key: 배경색 레드 · 칩 색 레드 조합이 색 규칙에 걸려요/)
   })
 
   it('컬렉션 소개는 연결된 컬렉션이 있으면 «컬렉션 없음» 경고가 없고, 없으면 경고다', () => {
