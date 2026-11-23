@@ -24,7 +24,7 @@ import {
   violatesKidsRule,
   violatesLightnessRule,
 } from '../feedColorRules'
-import { FEED_COLORS } from '../feedConstants'
+import { FEED_COLORS, FEED_LEGACY_COLOR_KEYS } from '../feedConstants'
 
 describe('색 계산', () => {
   it('hex를 읽는다(대소문자·#·3자리). 읽을 수 없으면 던진다', () => {
@@ -143,11 +143,11 @@ describe('규칙별 경계값', () => {
   })
 })
 
-describe('15색 순서쌍 필터', () => {
+describe('옛 15색 순서쌍 필터', () => {
   const summary = summarizeFeedColors()
 
-  it('색 키 표의 15색을 키 순서대로 낸다', () => {
-    expect(feedColorHexes()).toEqual(Object.values(FEED_COLORS).map((color) => color.hex))
+  it('색 키 표의 옛 15색을 키 순서대로 낸다(통합 팔레트 새 키 4개는 넣지 않는다)', () => {
+    expect(feedColorHexes()).toEqual(FEED_LEGACY_COLOR_KEYS.map((key) => FEED_COLORS[key].hex))
     expect(feedColorHexes()).toHaveLength(15)
   })
 

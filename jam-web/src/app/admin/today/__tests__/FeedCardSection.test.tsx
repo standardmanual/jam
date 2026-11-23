@@ -40,7 +40,7 @@ const render = (patch: Partial<FeedCardFormValues> = {}, props: Partial<Componen
   renderToStaticMarkup(<FeedCardSection values={values(patch)} onChange={() => {}} title="핫한 성수동 배지" {...props} />)
 
 describe('이름 표 — 상수와 같은 키를 모두 덮는다', () => {
-  it('유형 8개·박스 모양 5개·색 15개·박스 용도 2개에 한국어 이름이 있다', () => {
+  it('유형 8개·박스 모양 5개·색 19개·박스 용도 2개에 한국어 이름이 있다', () => {
     expect(Object.keys(FEED_TYPE_LABELS).sort()).toEqual([...FEED_TYPES].sort())
     expect(Object.keys(BOX_SHAPE_LABELS).sort()).toEqual([...BOX_SHAPES].sort())
     expect(Object.keys(FEED_COLOR_LABELS).sort()).toEqual([...FEED_COLOR_KEYS].sort())

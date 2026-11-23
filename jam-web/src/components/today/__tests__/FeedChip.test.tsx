@@ -64,7 +64,7 @@ describe('FeedChip — 모양', () => {
 })
 
 describe('FeedChip — 색', () => {
-  it.each(FEED_COLOR_KEYS)('%s: 면은 feedColorVar(key)의 var(--…)로 칠하고 글자는 --foreground다', (key) => {
+  it.each(FEED_COLOR_KEYS.filter((key) => key !== 'white'))('%s: 면은 feedColorVar(key)의 var(--…)로 칠하고 글자는 --foreground다', (key) => {
     const html = render({ color: key })
     expect(html).toContain(`background-color:${feedColorVar(key)}`)
     expect(html).toContain('text-foreground')

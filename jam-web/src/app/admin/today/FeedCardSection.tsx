@@ -87,6 +87,10 @@ export const FEED_COLOR_LABELS: Readonly<Record<FeedColorKey, string>> = {
   'ref-lime': '참조 라임',
   'ref-pink': '참조 핑크',
   'ref-yellow': '참조 옐로',
+  'green-deep': '짙은 그린',
+  pink: '핑크',
+  sky: '스카이',
+  white: '화이트',
 }
 
 // ── 유형별로 보이는 칸 ──────────────────────────────────────────

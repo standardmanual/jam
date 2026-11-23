@@ -10,7 +10,17 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { FEED_BOX, FEED_CHIP_OFFSET, FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS, feedColorVar, feedTypeUsesCoverImage } from '../feedConstants'
+import {
+  FEED_BOX,
+  FEED_CHIP_OFFSET,
+  FEED_COLORS,
+  FEED_COLOR_KEYS,
+  FEED_LEGACY_COLOR_KEYS,
+  FEED_NEW_COLOR_KEYS,
+  FEED_TILTS,
+  feedColorVar,
+  feedTypeUsesCoverImage,
+} from '../feedConstants'
 import { FEED_TYPES } from '../feedChipSlots'
 
 const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/colors.css'), 'utf8')
@@ -24,12 +34,14 @@ function parseHexVars(css: string): Map<string, string> {
   return vars
 }
 
-describe('FEED_COLORS 15색 표', () => {
+describe('FEED_COLORS 색 표(19색)', () => {
   const cssVars = parseHexVars(colorsCss)
 
-  it('색 키가 15개이고 표와 키 목록이 일치한다', () => {
-    expect(FEED_COLOR_KEYS).toHaveLength(15)
-    expect(new Set(FEED_COLOR_KEYS).size).toBe(15)
+  it('색 키가 19개(옛 15 + 새 4)이고 표와 키 목록이 일치한다', () => {
+    expect(FEED_COLOR_KEYS).toHaveLength(19)
+    expect(new Set(FEED_COLOR_KEYS).size).toBe(19)
+    expect(FEED_LEGACY_COLOR_KEYS).toHaveLength(15)
+    expect(FEED_NEW_COLOR_KEYS).toEqual(['green-deep', 'pink', 'sky', 'white'])
     expect(Object.keys(FEED_COLORS).sort()).toEqual([...FEED_COLOR_KEYS].sort())
   })
 
@@ -44,7 +56,7 @@ describe('FEED_COLORS 15색 표', () => {
 
   it('CSS 변수 이름이 서로 다르다', () => {
     const names = FEED_COLOR_KEYS.map((k) => FEED_COLORS[k].cssVar)
-    expect(new Set(names).size).toBe(15)
+    expect(new Set(names).size).toBe(19)
   })
 })
 

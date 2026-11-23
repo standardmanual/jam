@@ -8,7 +8,7 @@
  * 키 표를 기본값으로 쓰는 편의 함수(`summarizeFeedColors`)만 아래쪽에 따로 있다.
  * 서버 모듈·사전·난수·시각을 읽지 않는다(서버와 브라우저가 같은 값을 낸다).
  */
-import { FEED_COLORS } from './feedConstants'
+import { FEED_COLORS, FEED_LEGACY_COLOR_KEYS } from './feedConstants'
 
 // ── 임계값 (PRD §6 «자동으로 거르는 규칙», 2026-11-20 샘플 계산) ─────────────────────────
 
@@ -245,9 +245,9 @@ export function summarizeColorPairs(hexes: readonly string[]): ColorPairSummary 
   }
 }
 
-/** 색 키 표(`FEED_COLORS`)의 15색 hex를 키 순서대로 낸다. 키 표를 기본값으로 쓰는 편의 함수다. */
+/** 색 키 표(`FEED_COLORS`)의 옛 15색 hex를 키 순서대로 낸다(통합 팔레트 새 키 4개는 옛 규칙의 표본이 아니다). 키 표를 기본값으로 쓰는 편의 함수다. */
 export function feedColorHexes(): string[] {
-  return Object.values(FEED_COLORS).map((color) => color.hex)
+  return FEED_LEGACY_COLOR_KEYS.map((key) => FEED_COLORS[key].hex)
 }
 
 /** 15색 전체의 단계별 제외 개수. 키 표를 기본값으로 쓰는 편의 함수다. */

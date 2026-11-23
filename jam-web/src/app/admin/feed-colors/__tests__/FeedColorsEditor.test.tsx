@@ -1,7 +1,7 @@
 /**
  * 홈피드 컬러셋 편집기 서버 렌더 (티켓 20261121_2146)
  *
- * 확인하는 것: 15행(이름·hex 칸, 기본값·저장된 값은 «기본값» 버튼 설명에), 저장된 덮어쓰기가 있는 행의 «바뀜» 없음(저장된 값 = 편집 값), 미리보기 컨테이너에만 변수가 걸림,
+ * 확인하는 것: 색 키 수만큼의 행(이름·hex 칸, 기본값·저장된 값은 «기본값» 버튼 설명에), 저장된 덮어쓰기가 있는 행의 «바뀜» 없음(저장된 값 = 편집 값), 미리보기 컨테이너에만 변수가 걸림,
  * 규칙 재계산 문구, 영향받는 카드 목록, 잘못된 hex 오류 문구. 저장소에 jsdom이 없어(`environment: 'node'`) `renderToStaticMarkup`으로 확인한다.
  * 클릭·입력 동작(바뀜 표시·오류 문구 갱신·확인 대화상자)은 순수 함수 시험(`feedColorImpact.test.ts`)과 이 파일의 초기 렌더로 나눠 지킨다.
  *
@@ -30,9 +30,9 @@ const html = (props: { savedOverrides?: Record<string, string>; cards?: FeedColo
   renderToStaticMarkup(<FeedColorsEditor savedOverrides={props.savedOverrides ?? {}} cards={props.cards ?? []} />)
 
 describe('FeedColorsEditor 초기 렌더', () => {
-  it('15색이 이름·기본값과 함께 한 줄씩 그려진다', () => {
+  it('색 19개가 이름·기본값과 함께 한 줄씩 그려진다', () => {
     const out = html()
-    expect((out.match(/data-color-key="/g) ?? []).length).toBe(15)
+    expect((out.match(/data-color-key="/g) ?? []).length).toBe(FEED_COLOR_KEYS.length)
     for (const key of FEED_COLOR_KEYS) expect(out).toContain(FEED_COLOR_LABELS[key])
     expect(out).toContain('#ff1d1d')
     expect(out).toContain('저장된 값 없음')
@@ -67,7 +67,7 @@ describe('FeedColorsEditor 초기 렌더', () => {
 
   it('색 선택기와 hex 글자 칸이 행마다 있고 네이티브 select는 쓰지 않는다', () => {
     const out = html()
-    expect((out.match(/type="color"/g) ?? []).length).toBe(15)
+    expect((out.match(/type="color"/g) ?? []).length).toBe(FEED_COLOR_KEYS.length)
     expect((out.match(/id="feed-color-[a-z-]+-hex"/g) ?? []).length).toBe(15)
     expect(out).not.toContain('<select')
   })

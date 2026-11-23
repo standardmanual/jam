@@ -585,7 +585,7 @@ code:
 | `feed_type` | `hero_box`·`full_image`·`badge_intro`·`badge_only`·`collection_intro`·`drop_pickup`·`text_box`·`gallery_list` | 새 카드 유형 8가지. 옛 모양 `shape`와 이름이 겹치지 않도록 별도 칸이다 |
 | `box_shape` | `round`·`ticket`·`stamp`(우표)·`wave`(물결)·`bump`(반원 돌출) | 박스 모양 5가지. 텍스트 박스와 이미지 마스크 양쪽에 쓴다 |
 | `box_kind` | `text`·`image_mask` | 박스 용도(글자를 담는 박스 / 이미지를 박스 모양으로 자른 마스크) |
-| `bg_color_key`·`chip_color_key`·`box_color_key` | 색 키 15개: `red`·`yellow`·`green`·`purple`·`blue`, `red-soft`·`yellow-soft`·`green-soft`·`purple-soft`·`blue-soft`, `ref-red`·`ref-blue`·`ref-lime`·`ref-pink`·`ref-yellow` | 배경·칩·박스 색. hex가 아니라 키를 저장한다 |
+| `bg_color_key`·`chip_color_key`·`box_color_key` | 색 키 19개(마이그레이션 357로 새 키 4개 추가): `red`·`yellow`·`green`·`purple`·`blue`, `red-soft`·`yellow-soft`·`green-soft`·`purple-soft`·`blue-soft`, `ref-red`·`ref-blue`·`ref-lime`·`ref-pink`·`ref-yellow`, `green-deep`·`pink`·`sky`·`white` | 배경·칩·박스 색. hex가 아니라 키를 저장한다 |
 | `chips` | JSONB 배열 최대 2개. 원소 `{kind: value\|phrase\|label, source?, text?, slot?, tilt?}` | 칩 목록. `value`는 `source`(값의 출처 키), `phrase`는 `text`가 필수이고 `label`은 구분 칩이다. `tilt`는 −8·−6·−4·4·6·8. `slot`은 유형마다 다른 자리 이름(코드 상수가 정본, DB는 소문자·숫자·하이픈 24자 이하만 본다). NULL은 자동, `[]`는 칩 없음 |
 | `title_chip_words` | 텍스트 배열 최대 2개 | 제목 속 칩으로 만들 낱말. 제목에 그대로 들어 있어야 하는 검사는 저장하는 코드가 한다(제목을 고칠 때 DB 오류가 나지 않게 DB는 개수와 공백만 본다). NULL과 `[]`는 같은 뜻(칩 없음) |
 | `show_description` | 불리언 | 설명 문장 노출 여부. NULL이면 유형 기본값 |

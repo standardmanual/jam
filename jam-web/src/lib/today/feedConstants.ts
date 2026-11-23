@@ -25,7 +25,10 @@
 
 // ── 15색 표 ──────────────────────────────────────────────────
 
-/** 색 키 15개. 원색 5개(기존 `--jam-*`), 연한 색 5개(`--jam-*-soft`), 참조 색 5개(`--feed-ref-*`). */
+/**
+ * 색 키 19개. 원색 5개(기존 `--jam-*`), 연한 색 5개(`--jam-*-soft`), 참조 색 5개(`--feed-ref-*`), 통합 팔레트 새 키 4개.
+ * 새 키 4개(티켓 20261122_2224 회차 2)는 통합 팔레트 키다. 옛 15키는 12회차(축소)까지 읽기 전용으로 남는다.
+ */
 export const FEED_COLOR_KEYS = [
   'red',
   'yellow',
@@ -42,9 +45,21 @@ export const FEED_COLOR_KEYS = [
   'ref-lime',
   'ref-pink',
   'ref-yellow',
+  'green-deep',
+  'pink',
+  'sky',
+  'white',
 ] as const;
 
 export type FeedColorKey = (typeof FEED_COLOR_KEYS)[number];
+
+/** 통합 팔레트 새 키 4개. 자동 배정에는 4·5회차가 쓰기 전까지 쓰지 않고, 옛 15색 규칙 계산(`feedColorHexes`)에도 넣지 않는다. */
+export const FEED_NEW_COLOR_KEYS = ['green-deep', 'pink', 'sky', 'white'] as const satisfies readonly FeedColorKey[];
+
+/** 옛 15키(12회차까지 읽기 전용). 옛 색 규칙(대비·키즈·명도, 컬러셋 메뉴가 읽는다)의 15색 표본이다. */
+export const FEED_LEGACY_COLOR_KEYS: readonly FeedColorKey[] = FEED_COLOR_KEYS.filter(
+  (key) => !(FEED_NEW_COLOR_KEYS as readonly string[]).includes(key),
+);
 
 export interface FeedColor {
   /** `colors.css`에 정의된 CSS 변수 이름 */
@@ -73,6 +88,11 @@ export const FEED_COLORS = {
   'ref-lime': { cssVar: '--feed-ref-lime', hex: '#C0DC66' },
   'ref-pink': { cssVar: '--feed-ref-pink', hex: '#E57FBB' },
   'ref-yellow': { cssVar: '--feed-ref-yellow', hex: '#F2EC6A' },
+  // 통합 팔레트 새 키 4개 — 값 정본은 colors.css(티켓 20261122_2223)
+  'green-deep': { cssVar: '--jam-green-deep', hex: '#3D851E' },
+  pink: { cssVar: '--jam-pink', hex: '#F372C1' },
+  sky: { cssVar: '--jam-sky', hex: '#51CDF5' },
+  white: { cssVar: '--jam-chip-white', hex: '#FFFFFF' },
 } as const satisfies Record<FeedColorKey, FeedColor>;
 
 /**
