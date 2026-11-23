@@ -1,0 +1,1139 @@
+{
+"snapshotAt": "2026-11-23",
+"note": "today_cards 121장의 재배정 재료(읽기 전용 SELECT, 2026-11-23). createdAt·startsAt·endsAt는 에포크 초, badgeColors는 첫 배지의 bg_colors.",
+"cards": [
+{
+"id": "044370a3-2748-4bc8-8711-693130480e8e",
+"feedType": "text_box",
+"seed": 1963138631,
+"createdAt": 1785030296,
+"startsAt": 1785375896,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "078590a4-d082-4fa9-a03e-9065cd859e1b",
+"feedType": "hero_box",
+"seed": 1606425596,
+"createdAt": 1785030296,
+"startsAt": 1785030240,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "09647f9a-3621-402b-afb0-700bcaa1c968",
+"feedType": "text_box",
+"seed": 1097793252,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "127a9530-d450-416a-86c0-d4e3e85f80d5",
+"feedType": "text_box",
+"seed": 1156305933,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "1d9f1fdb-06af-4dfe-b564-d9ebb41b29b7",
+"feedType": "hero_box",
+"seed": 1765673476,
+"createdAt": 1785030296,
+"startsAt": 1785548640,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "464d9191-35e7-4cf8-9c63-b67e65e54dcc",
+"feedType": "text_box",
+"seed": 1071658875,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "56074bf0-946d-480d-98ad-21d761689a4d",
+"feedType": "text_box",
+"seed": 89349045,
+"createdAt": 1785030296,
+"startsAt": 1785289496,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "72dfffed-95d7-45a1-9765-b03fdeb0d4b3",
+"feedType": "text_box",
+"seed": 1704729335,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "8cb05339-68db-4d52-9b09-db0b7135e632",
+"feedType": "hero_box",
+"seed": 4279000265,
+"createdAt": 1785030296,
+"startsAt": 1785030240,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "95ad3ba1-03de-4a8a-90c4-fb87b638944c",
+"feedType": "hero_box",
+"seed": 1123168584,
+"createdAt": 1785030296,
+"startsAt": 1785030240,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "b62305e7-b277-439d-97cd-3df1213358cd",
+"feedType": "text_box",
+"seed": 3772305248,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "c641cc61-a32e-4ff6-929b-5993544d561e",
+"feedType": "hero_box",
+"seed": 182589682,
+"createdAt": 1785030296,
+"startsAt": 1785030240,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "cf533e90-9aae-4287-8c7f-7291a790e21e",
+"feedType": "hero_box",
+"seed": 2148254871,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "d165c023-fca5-4683-a62b-c4457ad1172d",
+"feedType": "hero_box",
+"seed": 3349965139,
+"createdAt": 1785030296,
+"startsAt": 1785030240,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "d48cf785-4335-4fbf-ac7a-98ecab902028",
+"feedType": "hero_box",
+"seed": 3722361109,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "dd03d2b1-8c60-4bc8-8b79-9f307572f621",
+"feedType": "text_box",
+"seed": 3440039629,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "df85ff57-19cf-4c13-a1bb-773224fbfdeb",
+"feedType": "text_box",
+"seed": 453606503,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "e3ff7931-d7af-419a-b0e1-d18e090a8255",
+"feedType": "text_box",
+"seed": 3034497569,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "e60abeed-92cb-4b21-8054-10aab40d129b",
+"feedType": "text_box",
+"seed": 3996682403,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "f3f1acc9-2669-4139-bcac-51481677d76c",
+"feedType": "text_box",
+"seed": 3917875847,
+"createdAt": 1785030296,
+"startsAt": 1785030296,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "0bf2965c-0aa9-40ce-9afc-ec43efbce81b",
+"feedType": "text_box",
+"seed": 2881552169,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "186048e6-0216-4083-bbc8-61a8bac0270b",
+"feedType": "text_box",
+"seed": 313656031,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "1eab3a96-b7e1-4aa5-bc0a-e931f1076e77",
+"feedType": "hero_box",
+"seed": 2424277549,
+"createdAt": 1785049216,
+"startsAt": 1785049200,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "29937ae8-2053-443f-94ea-fa02c9e99e17",
+"feedType": "text_box",
+"seed": 3094882322,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "2e7a5847-b6f5-4fe6-9aae-b880b27ba8fc",
+"feedType": "text_box",
+"seed": 4208349723,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "3a879ab5-7df4-4f5b-b4df-048f39d89c5c",
+"feedType": "text_box",
+"seed": 117842959,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "3e4b8f2a-b202-4f4a-80fd-213170304ed7",
+"feedType": "text_box",
+"seed": 3774291251,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "77491196-e980-43cd-8695-513be0a839aa",
+"feedType": "text_box",
+"seed": 2858457066,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "77c2299d-6627-4c9c-b296-d64f1fa31514",
+"feedType": "text_box",
+"seed": 4050194324,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "80455dc3-0835-4c91-a1d0-41abda6dce04",
+"feedType": "text_box",
+"seed": 311356129,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "8651eb10-f6d8-4f30-832d-263c0484a172",
+"feedType": "hero_box",
+"seed": 2151589031,
+"createdAt": 1785049216,
+"startsAt": 1785049200,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "9152cdeb-5404-4dc1-8e08-d10aff0a498e",
+"feedType": "hero_box",
+"seed": 2303367057,
+"createdAt": 1785049216,
+"startsAt": 1785049200,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "91cff23a-e048-48f4-b8bc-96f40fc89d30",
+"feedType": "text_box",
+"seed": 1478297763,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "a4464a1a-b018-4f54-811b-6cb35e400fea",
+"feedType": "text_box",
+"seed": 4294230611,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "a8ed15ca-129f-4df9-819d-d6b89357d77f",
+"feedType": "text_box",
+"seed": 1803404640,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "c8b94296-c96a-4f32-8dd7-4c3931550dc7",
+"feedType": "hero_box",
+"seed": 2846975798,
+"createdAt": 1785049216,
+"startsAt": 1785049200,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "d3453a2b-cefe-40be-9b2f-0cc29bb58995",
+"feedType": "text_box",
+"seed": 1038865783,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "e0c1644d-0067-491c-9412-218e9ff4566e",
+"feedType": "text_box",
+"seed": 543674719,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "ec923116-152e-4408-a223-bd7c97f35e9f",
+"feedType": "hero_box",
+"seed": 691897975,
+"createdAt": 1785049216,
+"startsAt": 1785049200,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "f9695151-4bea-4648-b3f5-7fb921c9b1bd",
+"feedType": "text_box",
+"seed": 2893349813,
+"createdAt": 1785049216,
+"startsAt": 1785049216,
+"endsAt": 1790521199,
+"badgeColors": null
+},
+{
+"id": "1a3df805-bab2-4e32-bc18-5015601e9444",
+"feedType": "text_box",
+"seed": 2872583430,
+"createdAt": 1790202080,
+"startsAt": 1790780400,
+"endsAt": 1790866799,
+"badgeColors": null
+},
+{
+"id": "33c30177-a8bc-4666-b34d-fe014380dd3b",
+"feedType": "text_box",
+"seed": 1499462531,
+"createdAt": 1790202080,
+"startsAt": 1790607600,
+"endsAt": 1790693999,
+"badgeColors": null
+},
+{
+"id": "5d1053cd-79a9-4e3d-b918-9dbe5dacebd2",
+"feedType": "text_box",
+"seed": 2651625926,
+"createdAt": 1790202080,
+"startsAt": 1790521200,
+"endsAt": 1790607599,
+"badgeColors": null
+},
+{
+"id": "84adca04-5d60-4467-803b-a4d38dfd77ab",
+"feedType": "text_box",
+"seed": 3636292009,
+"createdAt": 1790202080,
+"startsAt": 1790780400,
+"endsAt": 1790866799,
+"badgeColors": null
+},
+{
+"id": "b16677b7-9ae8-48dd-b28d-ea14116430c2",
+"feedType": "text_box",
+"seed": 3300651075,
+"createdAt": 1790202080,
+"startsAt": 1790780400,
+"endsAt": 1790866799,
+"badgeColors": null
+},
+{
+"id": "b419ed70-8ca4-4875-9526-9b050b114b9d",
+"feedType": "text_box",
+"seed": 3692402719,
+"createdAt": 1790202080,
+"startsAt": 1791039600,
+"endsAt": 1791125999,
+"badgeColors": null
+},
+{
+"id": "e92ba6e8-3aa3-41c0-be32-c2d6271b6b9a",
+"feedType": "text_box",
+"seed": 1504116027,
+"createdAt": 1790202080,
+"startsAt": 1790953200,
+"endsAt": 1791039599,
+"badgeColors": null
+},
+{
+"id": "fd5ca5ad-6dae-40b7-a85a-ec2fe8a23364",
+"feedType": "text_box",
+"seed": 2411618278,
+"createdAt": 1790202080,
+"startsAt": 1790694000,
+"endsAt": 1790780399,
+"badgeColors": null
+},
+{
+"id": "06d6b6a2-3b04-4fad-a689-ed3531a260e1",
+"feedType": "text_box",
+"seed": 4282654364,
+"createdAt": 1790206121,
+"startsAt": 1790607600,
+"endsAt": 1790693999,
+"badgeColors": null
+},
+{
+"id": "45340202-1c70-4d97-81a3-2537817aee25",
+"feedType": "text_box",
+"seed": 3199365778,
+"createdAt": 1790206121,
+"startsAt": 1790866800,
+"endsAt": 1790953199,
+"badgeColors": null
+},
+{
+"id": "f409a12e-0f71-4a14-a2b0-abc7a1f5dac5",
+"feedType": "text_box",
+"seed": 3227318655,
+"createdAt": 1790206121,
+"startsAt": 1790521200,
+"endsAt": 1790607599,
+"badgeColors": null
+},
+{
+"id": "f7d50af3-8958-48fd-8ed5-9bcfdd1b900a",
+"feedType": "text_box",
+"seed": 2127934789,
+"createdAt": 1790211892,
+"startsAt": 1790866800,
+"endsAt": 1790953199,
+"badgeColors": null
+},
+{
+"id": "78e01a91-21c9-4e1e-b093-9fe1587f546f",
+"feedType": "text_box",
+"seed": 2533410630,
+"createdAt": 1790216381,
+"startsAt": 1790607600,
+"endsAt": 1790693999,
+"badgeColors": null
+},
+{
+"id": "02bb220c-a48c-47d6-bf7a-744e86be6156",
+"feedType": "text_box",
+"seed": 3538810963,
+"createdAt": 1790411112,
+"startsAt": 1790780400,
+"endsAt": 1790866799,
+"badgeColors": null
+},
+{
+"id": "29f8a42a-c651-42fc-ac6d-bf9079bd6335",
+"feedType": "text_box",
+"seed": 471527908,
+"createdAt": 1790411112,
+"startsAt": 1791039600,
+"endsAt": 1791125999,
+"badgeColors": null
+},
+{
+"id": "67daff84-795e-4669-b14b-de31c9fc5e6d",
+"feedType": "text_box",
+"seed": 1434770315,
+"createdAt": 1790411112,
+"startsAt": 1790953200,
+"endsAt": 1791039599,
+"badgeColors": null
+},
+{
+"id": "7aa48627-42e5-475d-969c-0f4ce07b5e4a",
+"feedType": "text_box",
+"seed": 4042614020,
+"createdAt": 1790411112,
+"startsAt": 1790780400,
+"endsAt": 1790866799,
+"badgeColors": null
+},
+{
+"id": "9b8a16c7-64be-437a-95b8-26c16df3b264",
+"feedType": "text_box",
+"seed": 2129262762,
+"createdAt": 1790411112,
+"startsAt": 1790694000,
+"endsAt": 1790780399,
+"badgeColors": null
+},
+{
+"id": "b3ff9bf0-f81c-4184-ac8b-5ca314ccd7fd",
+"feedType": "hero_box",
+"seed": 1325242356,
+"createdAt": 1790411112,
+"startsAt": 1790866800,
+"endsAt": 1790953199,
+"badgeColors": null
+},
+{
+"id": "c8885e3d-e572-4f55-9d4b-45e65d866808",
+"feedType": "text_box",
+"seed": 2697569570,
+"createdAt": 1790411112,
+"startsAt": 1790953200,
+"endsAt": 1791039599,
+"badgeColors": null
+},
+{
+"id": "cebac3ad-278b-432d-a1b5-56af66a740a8",
+"feedType": "text_box",
+"seed": 537341421,
+"createdAt": 1790411112,
+"startsAt": 1790607600,
+"endsAt": 1790693999,
+"badgeColors": null
+},
+{
+"id": "dec90a48-d3a4-450f-af52-ea7611cf1a0a",
+"feedType": "text_box",
+"seed": 3576479228,
+"createdAt": 1790411112,
+"startsAt": 1790607600,
+"endsAt": 1790693999,
+"badgeColors": null
+},
+{
+"id": "f1dec605-cc03-4637-8809-692528f6c362",
+"feedType": "text_box",
+"seed": 1669479692,
+"createdAt": 1790411112,
+"startsAt": 1790694000,
+"endsAt": 1790780399,
+"badgeColors": null
+},
+{
+"id": "562a4af0-d80d-45c8-ad68-a1c36fe064e9",
+"feedType": "hero_box",
+"seed": 753463506,
+"createdAt": 1790411190,
+"startsAt": 1790521200,
+"endsAt": 1790607540,
+"badgeColors": null
+},
+{
+"id": "11ffdd57-8a3f-4fe9-bbc4-534e33fc5a2d",
+"feedType": "hero_box",
+"seed": 839721089,
+"createdAt": 1790657905,
+"startsAt": 1791126000,
+"endsAt": 1791212340,
+"badgeColors": null
+},
+{
+"id": "45b8d32a-0516-47db-a58a-1c25367300aa",
+"feedType": "badge_intro",
+"seed": 3289296737,
+"createdAt": 1790657907,
+"startsAt": 1791212400,
+"endsAt": 1791298740,
+"badgeColors": null
+},
+{
+"id": "74e665c6-b55d-427b-9490-9b8781ec9f65",
+"feedType": "hero_box",
+"seed": 1566350409,
+"createdAt": 1790657909,
+"startsAt": 1791385200,
+"endsAt": 1791471540,
+"badgeColors": null
+},
+{
+"id": "17a10aaf-a453-4f22-93da-5ad372e142b9",
+"feedType": "hero_box",
+"seed": 4030110485,
+"createdAt": 1790657911,
+"startsAt": 1791471600,
+"endsAt": 1791557940,
+"badgeColors": null
+},
+{
+"id": "51578929-9ad6-4fe2-9b93-9075e8bfc74f",
+"feedType": "hero_box",
+"seed": 2736061254,
+"createdAt": 1790657913,
+"startsAt": 1791558000,
+"endsAt": 1791644340,
+"badgeColors": null
+},
+{
+"id": "949767d7-2b51-4349-a726-ab9e1dc3e75e",
+"feedType": "hero_box",
+"seed": 3316473524,
+"createdAt": 1790657914,
+"startsAt": 1791644400,
+"endsAt": 1791730740,
+"badgeColors": null
+},
+{
+"id": "480c3c80-4e28-4e92-a934-9a59526a3a6f",
+"feedType": "hero_box",
+"seed": 4199029279,
+"createdAt": 1790657921,
+"startsAt": 1791298800,
+"endsAt": 1791385199,
+"badgeColors": null
+},
+{
+"id": "e0000000-0000-4000-8000-000000000001",
+"feedType": "hero_box",
+"seed": 3246936818,
+"createdAt": 1792678702,
+"startsAt": 1792594800,
+"endsAt": 1793458799,
+"badgeColors": null
+},
+{
+"id": "e0000000-0000-4000-8000-000000000002",
+"feedType": "hero_box",
+"seed": 1124223151,
+"createdAt": 1792678702,
+"startsAt": 1792594800,
+"endsAt": 1793458799,
+"badgeColors": null
+},
+{
+"id": "e0000000-0000-4000-8000-000000000003",
+"feedType": "hero_box",
+"seed": 2568048446,
+"createdAt": 1792678702,
+"startsAt": 1792594800,
+"endsAt": 1793458799,
+"badgeColors": null
+},
+{
+"id": "741d421c-6b16-4709-b2ed-7deaa4a28064",
+"feedType": "hero_box",
+"seed": 2760970828,
+"createdAt": 1793611144,
+"startsAt": 1793611637,
+"endsAt": 1793804399,
+"badgeColors": null
+},
+{
+"id": "18a6efa0-cd8b-4534-823f-d86ac81d6d0b",
+"feedType": "hero_box",
+"seed": 3062078518,
+"createdAt": 1793611145,
+"startsAt": 1793611637,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "260aa769-070d-483f-86da-60fa7fd3f7c3",
+"feedType": "text_box",
+"seed": 2272374816,
+"createdAt": 1793611145,
+"startsAt": 1793611637,
+"endsAt": 1793717999,
+"badgeColors": null
+},
+{
+"id": "391b8638-5bee-4797-af59-3b243f05c5d5",
+"feedType": "hero_box",
+"seed": 3044631752,
+"createdAt": 1793611145,
+"startsAt": 1793804400,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "4e3d6299-f314-453e-b975-7580e3f2837b",
+"feedType": "hero_box",
+"seed": 3981176205,
+"createdAt": 1793611145,
+"startsAt": 1793611637,
+"endsAt": 1793890799,
+"badgeColors": null
+},
+{
+"id": "626c1e62-1726-4b4c-a0e6-235f952e9b85",
+"feedType": "hero_box",
+"seed": 601453563,
+"createdAt": 1793611145,
+"startsAt": 1793718000,
+"endsAt": 1794063599,
+"badgeColors": null
+},
+{
+"id": "464a990c-11bb-4d4f-b7fa-8a183f5e62ed",
+"feedType": "text_box",
+"seed": 1448950760,
+"createdAt": 1793611146,
+"startsAt": 1793631600,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "4c7902e5-f082-4ab4-8eb6-1f7ee28bb05d",
+"feedType": "text_box",
+"seed": 3636549827,
+"createdAt": 1793611146,
+"startsAt": 1793611637,
+"endsAt": 1793890799,
+"badgeColors": null
+},
+{
+"id": "59a0864f-9d15-4f18-88dd-0445614c4b90",
+"feedType": "text_box",
+"seed": 2979346870,
+"createdAt": 1793611146,
+"startsAt": 1793890800,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "67735398-3097-428e-bf72-777c9289539e",
+"feedType": "text_box",
+"seed": 1549908156,
+"createdAt": 1793611146,
+"startsAt": 1793890800,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "a69966fb-b4ae-49ea-926e-9444cebeb141",
+"feedType": "text_box",
+"seed": 2285460339,
+"createdAt": 1793611146,
+"startsAt": 1793804400,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "df6ae827-40ca-4c9b-a71b-0624fe2aab4d",
+"feedType": "hero_box",
+"seed": 1425910078,
+"createdAt": 1793611146,
+"startsAt": 1793890800,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "ec950464-2a8a-4ee5-98f7-a35978791b4e",
+"feedType": "text_box",
+"seed": 308182509,
+"createdAt": 1793611146,
+"startsAt": 1793611637,
+"endsAt": 1793804399,
+"badgeColors": null
+},
+{
+"id": "0bc05266-8632-45d8-9937-d14092c60808",
+"feedType": "text_box",
+"seed": 2400137125,
+"createdAt": 1793611147,
+"startsAt": 1793977200,
+"endsAt": 1794063599,
+"badgeColors": null
+},
+{
+"id": "ffdda97f-d655-4da2-ab21-6ff1b49d1683",
+"feedType": "text_box",
+"seed": 2926826299,
+"createdAt": 1793611147,
+"startsAt": 1793977200,
+"endsAt": 1794149999,
+"badgeColors": null
+},
+{
+"id": "0240fa74-9a6d-49a5-961b-d1dc1f7fa00e",
+"feedType": "badge_intro",
+"seed": 2201458021,
+"createdAt": 1793669386,
+"startsAt": 1794150000,
+"endsAt": 1794495600,
+"badgeColors": [
+"#ee9800",
+"#0a8a0c"
+]
+},
+{
+"id": "6fb9152d-46f8-4e54-ac75-b361f2dba373",
+"feedType": "hero_box",
+"seed": 4160380814,
+"createdAt": 1793669386,
+"startsAt": 1794150000,
+"endsAt": 1794754800,
+"badgeColors": null
+},
+{
+"id": "ab48df93-b5a1-4745-bb04-427888914a3e",
+"feedType": "text_box",
+"seed": 1066699369,
+"createdAt": 1793669386,
+"startsAt": 1794150000,
+"endsAt": 1794754800,
+"badgeColors": null
+},
+{
+"id": "b7bda830-8c9e-43c5-a5c3-e3f9cb990303",
+"feedType": "badge_intro",
+"seed": 2595754023,
+"createdAt": 1793669386,
+"startsAt": 1794150000,
+"endsAt": 1794754800,
+"badgeColors": [
+"#5be5ee"
+]
+},
+{
+"id": "11af4a68-2319-448a-b340-362a20aa4b21",
+"feedType": "badge_intro",
+"seed": 2195853485,
+"createdAt": 1793669387,
+"startsAt": 1794150000,
+"endsAt": 1794409200,
+"badgeColors": [
+"#a71ef6"
+]
+},
+{
+"id": "121a4d77-8a54-4903-a4f3-857607b083f8",
+"feedType": "badge_intro",
+"seed": 72395627,
+"createdAt": 1793669387,
+"startsAt": 1794495600,
+"endsAt": 1794754800,
+"badgeColors": [
+"#a9b2d7",
+"#d4629f",
+"#09eaf2"
+]
+},
+{
+"id": "3a8a9e4f-fc5d-4808-8706-9aae774d38bb",
+"feedType": "badge_intro",
+"seed": 3041676135,
+"createdAt": 1793669387,
+"startsAt": 1794409200,
+"endsAt": 1794754800,
+"badgeColors": [
+"#077717"
+]
+},
+{
+"id": "79916e12-8ab3-4b84-ab53-20b4c91374c0",
+"feedType": "text_box",
+"seed": 2916922564,
+"createdAt": 1793669387,
+"startsAt": 1794150000,
+"endsAt": 1794409200,
+"badgeColors": null
+},
+{
+"id": "8ebb295e-767b-4eec-8d3f-821a8cbc863b",
+"feedType": "text_box",
+"seed": 2800995271,
+"createdAt": 1793669387,
+"startsAt": 1794322800,
+"endsAt": 1794754800,
+"badgeColors": null
+},
+{
+"id": "1ac2259d-92ca-46c5-9df2-85c2589953ac",
+"feedType": "badge_intro",
+"seed": 1436637548,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": [
+"#f91211"
+]
+},
+{
+"id": "35e32bed-577f-44fa-9300-bb84d90c9898",
+"feedType": "hero_box",
+"seed": 581341570,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "3e3ad4b5-226d-4cde-9501-0359fa0db2c6",
+"feedType": "text_box",
+"seed": 2337256409,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "4a93c821-c166-4eb3-aa0c-2125d0e624e2",
+"feedType": "text_box",
+"seed": 1004208471,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "4d446b51-ecf7-4997-b6aa-abf2ce4d9ee0",
+"feedType": "text_box",
+"seed": 544678573,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "8c41e775-0cf9-4d79-9701-682470d44c5d",
+"feedType": "badge_intro",
+"seed": 3150408757,
+"createdAt": 1794277220,
+"startsAt": 1794927600,
+"endsAt": 1795359599,
+"badgeColors": [
+"#89fb10"
+]
+},
+{
+"id": "9078602a-3189-47d4-a683-a82704a0bf36",
+"feedType": "text_box",
+"seed": 27482488,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "9d928a53-960b-4c86-af3a-594a1529b7ee",
+"feedType": "badge_intro",
+"seed": 2259151907,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": [
+"#f816a5"
+]
+},
+{
+"id": "cc339be7-8662-4ed4-adeb-2317bb73d373",
+"feedType": "badge_intro",
+"seed": 1754775174,
+"createdAt": 1794277220,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": [
+"#d33300"
+]
+},
+{
+"id": "4103db14-7741-4575-832c-ae43e74b3495",
+"feedType": "badge_intro",
+"seed": 1476385701,
+"createdAt": 1794277221,
+"startsAt": 1794754800,
+"endsAt": 1795359599,
+"badgeColors": [
+"#5be5ee"
+]
+},
+{
+"id": "4dd251d3-e7aa-4a7c-a91a-dbd52031e79d",
+"feedType": "badge_intro",
+"seed": 3257484670,
+"createdAt": 1794277221,
+"startsAt": 1795100400,
+"endsAt": 1795359599,
+"badgeColors": [
+"#d83200"
+]
+},
+{
+"id": "d6f8dcc2-45e9-4957-8f6f-2985fd80827c",
+"feedType": "hero_box",
+"seed": 1380574423,
+"createdAt": 1794277221,
+"startsAt": 1795273200,
+"endsAt": 1795359599,
+"badgeColors": null
+},
+{
+"id": "0c8a9f80-2872-40b9-adca-4b951cb6369f",
+"feedType": "badge_intro",
+"seed": 300299466,
+"createdAt": 1794892627,
+"startsAt": 1794927600,
+"endsAt": 1795532399,
+"badgeColors": [
+"#cf4f03"
+]
+},
+{
+"id": "4c18a9fd-0b45-4bf8-b474-a0728545f52a",
+"feedType": "badge_intro",
+"seed": 2971556547,
+"createdAt": 1794892627,
+"startsAt": 1794927600,
+"endsAt": 1795532399,
+"badgeColors": [
+"#dc5fd5",
+"#dc1c19",
+"#e7cc01"
+]
+},
+{
+"id": "821b6d08-9318-4688-8ce4-c78126332dd2",
+"feedType": "text_box",
+"seed": 1601193475,
+"createdAt": 1794892627,
+"startsAt": 1794927600,
+"endsAt": 1795532399,
+"badgeColors": null
+},
+{
+"id": "3718c6a3-84a0-43d2-b851-15e904b5d10f",
+"feedType": "badge_intro",
+"seed": 1979148552,
+"createdAt": 1794892628,
+"startsAt": 1795186800,
+"endsAt": 1795532399,
+"badgeColors": [
+"#deb901"
+]
+},
+{
+"id": "4c496912-773c-414d-9a02-095eb437214e",
+"feedType": "badge_intro",
+"seed": 1139467490,
+"createdAt": 1794892628,
+"startsAt": 1794927600,
+"endsAt": 1795273199,
+"badgeColors": [
+"#399e54"
+]
+},
+{
+"id": "4ec62e7d-365e-4bb3-aa21-dcb1968c6a65",
+"feedType": "text_box",
+"seed": 1916427726,
+"createdAt": 1794892628,
+"startsAt": 1794927600,
+"endsAt": 1795273199,
+"badgeColors": null
+},
+{
+"id": "b5aaa516-88f0-4e10-b8f2-933a032ec554",
+"feedType": "badge_intro",
+"seed": 526660891,
+"createdAt": 1794892628,
+"startsAt": 1795186800,
+"endsAt": 1795532399,
+"badgeColors": [
+"#f816a5"
+]
+},
+{
+"id": "33f97f0d-ab4f-4171-aa90-c76988f1a023",
+"feedType": "badge_intro",
+"seed": 3449855211,
+"createdAt": 1794892629,
+"startsAt": 1794927600,
+"endsAt": 1795532399,
+"badgeColors": [
+"#de1902",
+"#c19800",
+"#078142"
+]
+},
+{
+"id": "380a4fd0-6159-4c96-8bac-8701b4910a83",
+"feedType": "badge_intro",
+"seed": 767920743,
+"createdAt": 1794892629,
+"startsAt": 1794927600,
+"endsAt": 1795532399,
+"badgeColors": [
+"#a37ff2",
+"#dc6500"
+]
+},
+{
+"id": "06887e41-db88-45bd-8f20-d4bc5e924f08",
+"feedType": "text_box",
+"seed": 1310045220,
+"createdAt": 1794982588,
+"startsAt": 1794983700,
+"endsAt": 1795532399,
+"badgeColors": null
+},
+{
+"id": "dc2e4cf4-e3cc-4ed9-82b0-af9e1c863f60",
+"feedType": "text_box",
+"seed": 413035018,
+"createdAt": 1794982588,
+"startsAt": 1794983700,
+"endsAt": 1795532399,
+"badgeColors": null
+}
+]
+}
