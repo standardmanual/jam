@@ -12,7 +12,7 @@ import type { FeedPalette } from '@/lib/today/feedAssign'
 import { BOX_FEED_TYPES, chipLimitOf, isFeedType } from '@/lib/today/feedChipSlots'
 import { isOverrideHex } from '@/lib/today/feedColorOverrides'
 import { firstViolatedRule, summarizeColorPairs, type ColorPairSummary, type ColorRuleName } from '@/lib/today/feedColorRules'
-import { FEED_COLOR_KEYS, type FeedColorKey } from '@/lib/today/feedConstants'
+import { FEED_COLOR_KEYS, FEED_LEGACY_COLOR_KEYS, type FeedColorKey } from '@/lib/today/feedConstants'
 
 /** 영향받는 카드 목록에 보이는 최대 장수. 넘으면 «외 N장»으로 적는다. */
 export const IMPACT_CARD_LIMIT = 20
@@ -45,9 +45,9 @@ export function changedColorKeys(before: FeedPalette, after: FeedPalette): FeedC
 
 // ── 규칙 재계산 ───────────────────────────────────────────────
 
-/** 팔레트 15색의 순서쌍을 규칙에 통과시킨 요약. */
+/** 팔레트 옛 15색의 순서쌍을 규칙에 통과시킨 요약(통합 팔레트 새 키 4개는 옛 규칙의 표본이 아니다). */
 export function summarizePalette(palette: FeedPalette): ColorPairSummary {
-  return summarizeColorPairs(FEED_COLOR_KEYS.map((key) => palette[key]))
+  return summarizeColorPairs(FEED_LEGACY_COLOR_KEYS.map((key) => palette[key]))
 }
 
 export interface PaletteComparison {
