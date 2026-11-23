@@ -110,17 +110,20 @@ interface WeightedPair {
 const NORMAL_POOL: readonly WeightedPair[] = FEED_BG_BOX_COMBOS.map(({ bg, box, weight }) => ({ bg, box, weight }))
 const DEEP_GREEN_POOL: readonly WeightedPair[] = FEED_DEEP_GREEN_COMBOS.map(({ bg, box }) => ({ bg, box, weight: 1 }))
 
-/** 마지막 짙은 초록 바탕 이후 장수. 짙은 초록이 목록에 없으면 목록 전체 장수다. */
+/**
+ * 새 카드가 마지막 짙은 초록 바탕 카드로부터 몇 번째 카드인가(바로 다음이면 1). «다섯~여섯 장에 한 장꼴»은 이 값이 5~6이라는 뜻이다(사이에 4~5장).
+ * 짙은 초록이 목록에 없으면 목록 앞에 짙은 초록이 하나 있었던 것으로 본다(목록이 n장이면 n+1).
+ */
 function cardsSinceDeepGreen(recent: readonly string[]): number {
   const last = recent.lastIndexOf(FEED_DEEP_GREEN_KEY)
-  return last < 0 ? recent.length : recent.length - 1 - last
+  return last < 0 ? recent.length + 1 : recent.length - last
 }
 
 /**
  * 배경·칩·박스 색을 통합 팔레트 규칙으로 정한다.
  *
  * 1. 바탕+박스: `FEED_BG_BOX_COMBOS` 9개를 가중치대로 추첨한다. 짙은 초록 바탕 조합(`FEED_DEEP_GREEN_COMBOS`)은 따로 두고 리듬으로만 뽑는다 —
- *    마지막 짙은 초록 바탕 이후 `everyMin`장 미만이면 빼고, 정확히 `everyMin`장이면 `DEEP_GREEN_CHANCE_AT_MIN` 확률로, `everyMax`장 이상이면 반드시 뽑는다.
+ *    새 카드가 마지막 짙은 초록 바탕 카드로부터 `everyMin`번째 미만이면 빼고, 정확히 `everyMin`번째면 `DEEP_GREEN_CHANCE_AT_MIN` 확률로, `everyMax`번째 이상이면 반드시 뽑는다.
  *    바탕을 지정했으면 리듬은 보지 않는다. 지정값은 존중하고 나머지 칸만 고른다(지정값에 맞는 조합이 없으면 모든 조합의 나머지 칸 중에서 고른다).
  * 2. 자동으로 고르는 바탕은 바로 앞 카드(`recentBgKeys` 마지막)와 같은 바탕을 피한다. 자동으로 고르는 박스는 글자가 들어가는 카드(`boxHasText`)에서 짙은 초록을 피한다.
  * 3. 칩: 값 칩 7색(`FEED_COLOR_USAGE.valueChip`) 중 `chipExclusionRule`에 바탕·박스 어느 쪽으로도 걸리지 않는 색을 시드로 고른다. 제외 목록에 든 쌍은 뺀다. 지정값끼리의 쌍은 검사하지 않는다.
