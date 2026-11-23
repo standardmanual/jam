@@ -180,7 +180,8 @@ export type FeedTilt = (typeof FEED_TILTS)[number];
  * 근거: x 12는 작은 칩의 가로 여백(`--spacing-12`)과 같아 칩 글자 시작이 모서리 선에 놓이고,
  * y 16은 작은 칩 높이 32px의 절반이라 칩 가운데가 모서리 선에 놓인다. 디자인 시스템 눈금에 오프셋 토큰이 없어 서비스 전용으로 둔다.
  * 채원 확인 필요(PRD 「치수 원칙」이 새 값으로 꼽은 항목). 폭 320px에서 칩이 좌우 16px 바깥으로 나가지 않게 하는 한도는 4회차(자리 배치)가 정한다.
- * 코너 칩이 새 크기(`FEED_CORNER_CHIP`, 높이 52·40)가 된 뒤에도 이 값은 그대로 둔다 — R3·R4(티켓 20261122_2228)에서 재계산한다.
+ * 홈피드의 카드 모서리 칩은 이 값을 쓰지 않는다 — 칩 계획(`feedChipPlan.ts`, 안쪽 6%·5%·바깥 6px)을 `FeedChipPlanLayer`가 그린다(티켓 20261122_2228 R6).
+ * 이 값은 옛 앵커 걸침 위치(`chipPositionOf`)를 쓰는 전체 배경 이미지(`full_image`, 서비스에서 꺼짐)에만 남았다.
  */
 export const FEED_CHIP_OFFSET = { x: 12, y: 16 } as const;
 
@@ -331,7 +332,7 @@ export const FEED_CARD_ROOT_ATTR = 'data-feed-card-root';
 
 /**
  * 드랍·픽업(`drop_pickup`): 박스 줄 높이 184(샘플), 칸 간격 8(`gap-2`), 칸마다 배지 80×80을 가운데에 둔다. 칸 수는 3이다.
- * 칩 «드랍»·«픽업»(큰 칩 두 개)은 박스 줄의 대각선 모서리(`box-row-*`)에 걸친다(걸침 정도는 `FEED_CHIP_OFFSET`).
+ * 칩 «DROP»·«PICKUP»(큰 칩 두 개)은 카드 모서리에 칩 계획대로 놓인다(`FeedChipPlanLayer`, 박스 줄 자리 이름 `box-row-*`는 어드민이 정한 자리를 읽을 때만 쓴다).
  */
 export const FEED_DROP_PICKUP = { rowHeight: 184, badgeSize: 80, columns: 3, gap: 8 } as const;
 

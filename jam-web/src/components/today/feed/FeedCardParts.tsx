@@ -21,7 +21,7 @@ import {
   feedTextOnBg,
 } from '@/lib/today/feedConstants'
 import ChipTitle from '../ChipTitle'
-import FeedChip, { type FeedChipSize } from '../FeedChip'
+import FeedChip from '../FeedChip'
 import FeedStamp from '../FeedStamp'
 
 /**
@@ -30,10 +30,10 @@ import FeedStamp from '../FeedStamp'
  * 값만 받아 그린다(DB·조회·훅 없음, 서버 컴포넌트). 링크·계측은 `CardFrame`이 맡고 여기에는 없다. 칩·박스·도장 부품(`FeedChip`·`FeedBox`·`FeedStamp`)은 3회차 것을 그대로 쓴다.
  *
  * - 카드 면: 카드 배경색(`look.colors.bg`)·모서리 `rounded-2xl`·안쪽 여백 `p-4`. 외곽선은 없다(외곽선은 칩과 도장에만). `overflow-hidden`을 걸지 않는다 —
- *   칩이 앵커 모서리에 걸쳐 카드 가장자리 가까이까지 나가므로 잘리지 않게 한다(걸침 한도는 `FEED_CHIP_OFFSET`, 폭 320px에서도 가장자리 안쪽이다).
+ *   칩이 카드 모서리에 걸쳐 가장자리 바깥 6px까지 나가므로 잘리지 않게 한다(한도는 계획이 지킨다, `FeedChipPlanLayer`).
  * - 글자: 바탕 위 제목·설명 색은 바탕 키를 따른다(`feedTextOnBg`: 짙은 초록 바탕이면 `--snow`, 아니면 `--foreground`, 인라인 color 한 곳). 박스 안 제목(`onBox`)은 늘 `--foreground`다. 제목 30/36 굵기 900 자간 −0.02em, 설명 14/20 굵기 500, 제목과 설명 사이 8px. 제목은 데이터의 줄바꿈을 그대로 따른다(`whitespace-pre-line`).
  *   글자 크기·여백은 디자인 시스템 눈금(`text-3xl`·`text-sm`·`gap-2`)이다.
- * - 칩 층·도장은 앵커(이미지 박스·박스·배지 영역·카드)의 `relative` 자식으로 놓는다. 칩은 박스를 자르는 마스크 밖의 형제 층이다.
+ * - 도장은 앵커(이미지 박스·박스·배지 영역)의 `relative` 자식으로 놓는다. 칩 층(`FeedChipPlanLayer`)은 카드 셸의 직계 자식이다. 둘 다 박스를 자르는 마스크 밖의 형제 층이다.
  */
 
 /** 제목 글자 클래스(30/36). 큰 글자 변형은 텍스트 박스가 쓰는 48/1.1이다. */
@@ -122,31 +122,19 @@ function positionStyle(position: ChipPosition): CSSProperties {
 }
 
 /**
- * 칩 층. 앵커(`relative` 부모) 안에 형제로 놓아 칩을 모서리에 건다. 칩은 코너 변형(`FeedChip variant="corner"`, 큰 칩 52·작은 칩 40, 굵기 900)이다(티켓 20261122_2228 R1). 허용하지 않는 자리의 칩은 그리지 않는다.
- * `mode`를 생략하면 유형의 기본(걸침, `full_image`는 안쪽)이다.
- *
- * 4회차-3이 더한 선택 인자(생략하면 4-2의 출력 그대로다): `positionOf`는 자리 이름 → 위치를 직접 정한다(모서리 자리가 아닌 `card-top-right`용, 이때 `mode`는 쓰지 않는다),
- * `size`는 칩 크기를 모두 이 값으로 맞춘다(컬렉션 소개는 작은 칩이다).
+ * 옛 칩 층: 앵커(`relative` 부모) 안에 형제로 놓아 칩을 앵커 모서리에 건다. 홈피드의 칩은 `FeedChipPlanLayer`(계획대로 그리는 층)로 옮겼고(티켓 20261122_2228 R6),
+ * 이 층은 아직 옛 앵커 걸침 위치(`chipPositionOf`)를 쓰는 전체 배경 이미지(`full_image`, 서비스에서 꺼져 있고 Story만 그린다)만 쓴다. 칩은 코너 변형(`FeedChip variant="corner"`)이다.
+ * `mode`를 생략하면 유형의 기본(걸침, `full_image`는 안쪽)이다. 허용하지 않는 자리의 칩은 그리지 않는다.
  */
-export function FeedChipLayer({
-  view,
-  mode,
-  positionOf,
-  size,
-}: {
-  view: FeedCardView
-  mode?: ChipAnchorMode
-  positionOf?: (slot: string) => ChipPosition | null
-  size?: FeedChipSize
-}) {
+export function FeedChipLayer({ view, mode }: { view: FeedCardView; mode?: ChipAnchorMode }) {
   return (
     <>
       {view.look.chips.map((chip, index) => {
-        const position = positionOf ? positionOf(chip.slot) : chipPositionOf(view.feedType, chip.slot, mode)
+        const position = chipPositionOf(view.feedType, chip.slot, mode)
         if (!position) return null
         return (
           <span key={index} className="absolute z-10 flex" style={positionStyle(position)}>
-            <FeedChip variant="corner" size={size ?? chip.size} color={chip.color} tilt={chip.tilt}>
+            <FeedChip variant="corner" size={chip.size} color={chip.color} tilt={chip.tilt}>
               {chip.text}
             </FeedChip>
           </span>
@@ -218,7 +206,7 @@ export function FeedStampLayer({ view }: { view: FeedCardView }) {
  * 배지 그림 앵커 — 배지 소개·배지만이 함께 쓰는 208×208 칸.
  * 그림은 카드에 걸린 첫 배지의 그림(`badgeImageUrl`), 없으면 카드 이미지(`imageUrl`)다. 둘 다 없으면 같은 크기의 빈 칸을 남긴다(높이가 흔들리지 않는다).
  * `alt`는 배지 이름(`badgeName`)이고 없으면 비어 있다(제목이 글자로 보인다). 박스·외곽선이 없고 그림을 자르지 않는다(`object-contain`).
- * `children`(칩·도장 층)은 이 칸을 앵커로 놓는다.
+ * `children`(도장 층)은 이 칸을 앵커로 놓는다.
  */
 export function FeedBadgeArt({ view, children }: { view: FeedCardView; children?: ReactNode }) {
   const src = view.badgeImageUrl ?? view.imageUrl

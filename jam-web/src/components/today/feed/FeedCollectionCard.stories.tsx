@@ -5,7 +5,7 @@ import { CARD_WIDTH_320, COLLECTION_ART, CardBox, Cell, ITEM_BADGES, Row, feedVi
 /**
  * 컬렉션 소개(`collection_intro`) 상태 행렬 (티켓 20261121_0115, 상위 20261120_2026 4회차-3). 서비스 전용(홈피드 한정).
  * 위 영역(높이 240) 가운데에 대표 그림 168×168, 그 뒤에서 아이템 배지 4개(68~84)가 둘레로 퍼지고, 아래에 제목(컬렉션 이름)과 설명. 샘플 카드 높이 416.
- * 칩은 작은 칩이 그림 모서리에 걸친다. 모션은 «모인 모습»과 «퍼진 모습»을 따로 고정해 볼 수 있다(`previewPhase`, Story 전용 입력).
+ * 칩은 카드 모서리에 걸쳐 계획(`look.chipPlan`)대로 놓이고 퍼진 배지 자리·대표 그림 가운데를 피한다. 모션은 «모인 모습»과 «퍼진 모습»을 따로 고정해 볼 수 있다(`previewPhase`, Story 전용 입력).
  * 「스크롤로 재생」은 실제 관찰자(55%·재생 반복)가 돌아가고, 동작 줄이기를 켠 기기에서는 퍼진 모습만 보인다(전환 없음).
  */
 const meta: Meta<typeof FeedCollectionCard> = {
@@ -124,7 +124,7 @@ export const SeedBursts: Story = {
 }
 
 export const ChipSlots: Story = {
-  name: '칩 자리 네 모서리와 칩 2개',
+  name: '어드민이 자리를 정한 칩(자리는 계획이 옮기지 않는다)',
   render: () => (
     <Row>
       {(['art-top-left', 'art-top-right', 'art-bottom-left', 'art-bottom-right'] as const).map((slot) => (

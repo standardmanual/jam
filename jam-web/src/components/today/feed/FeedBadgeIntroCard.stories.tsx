@@ -4,7 +4,7 @@ import { BADGE, CARD_WIDTH_320, CardBox, Cell, ONE_CHIP, Row, TWO_CHIPS, feedVie
 
 /**
  * 배지 소개(`badge_intro`) 상태 행렬 (티켓 20261121_0041, 상위 20261120_2026 4회차-2). 서비스 전용(홈피드 한정).
- * 위에 배지 그림을 박스 없이 가운데에(208×208, 영역 높이 216), 아래에 제목과 설명. 샘플 카드 높이 384. 칩은 배지 그림 둘레 모서리에 걸친다.
+ * 위에 배지 그림을 박스 없이 가운데에(208×208, 영역 높이 216), 아래에 제목과 설명. 샘플 카드 높이 384. 칩은 카드 모서리에 걸쳐 계획(`look.chipPlan`)대로 놓이고 배지 그림 가운데를 가리지 않는다.
  */
 const meta: Meta<typeof FeedBadgeIntroCard> = {
   title: '서비스/Today/Feed/배지 소개(badge_intro)',

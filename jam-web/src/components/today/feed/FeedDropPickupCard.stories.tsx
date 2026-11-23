@@ -6,7 +6,7 @@ import { CARD_WIDTH_320, CardBox, Cell, ITEM_BADGES, Row, feedView, type StoryCa
 /**
  * 드랍·픽업(`drop_pickup`) 상태 행렬 (티켓 20261121_0115, 상위 20261120_2026 4회차-3). 서비스 전용(홈피드 한정).
  * 위에 아이템 배지 3개를 박스에 담아 한 줄(영역 높이 184, 칸 간격 8, 칸마다 배지 80×80을 가운데에), 아래에 제목과 설명. 샘플 카드 높이 360.
- * 박스 모양은 5종 중 하나를 아이템 방향으로 그린다. 칩은 «DROP»·«PICKUP» 분류 칩(검정) 큰 코너 칩(52) 두 개가 박스 줄의 대각선 모서리(`box-row-*`)에 걸친다(샘플 기준, 위쪽은 위로·아래쪽은 아래로).
+ * 박스 모양은 5종 중 하나를 아이템 방향으로 그린다. 칩은 «DROP»·«PICKUP» 분류 칩 두 개가 카드 모서리에 계획(`look.chipPlan`)대로 놓인다(스티커는 한 개뿐이고 둘째는 검정 알약, 칩을 못 놓으면 계획이 둘째를 뺀다).
  * 칩이 저장되지 않은 카드는 이 두 칩이 자동으로 붙고, 저장된 chips가 있으면 그것을 따른다.
  */
 const meta: Meta<typeof FeedDropPickupCard> = {
@@ -79,7 +79,7 @@ export const NoImages: Story = {
 }
 
 export const DiagonalChipPairs: Story = {
-  name: '칩 2개(대각선 두 짝)',
+  name: '어드민이 자리를 정한 칩 2개(대각선 두 짝)',
   render: () => (
     <Row>
       <Cell label="왼쪽 위 ↔ 오른쪽 아래">

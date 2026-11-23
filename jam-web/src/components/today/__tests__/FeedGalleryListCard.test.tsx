@@ -286,8 +286,9 @@ describe('목록형 — 칩', () => {
     expect(html).toContain('요즘 인기')
     expect(html).toContain('justify-end')
     expect(html).not.toContain('position:absolute')
-    // 칩 층(`FeedChipLayer`)은 `absolute z-10` 래퍼를 쓴다. 칩 줄은 흐름 안에 있어 이 래퍼가 없다.
+    // 칩 계획 층(`FeedChipPlanLayer`, `data-chip-plan`)과 옛 칩 층(`absolute z-10`)은 목록형에 없다. 칩 줄은 흐름 안에 있다(결정 6).
     expect(html).not.toContain('absolute z-10')
+    expect(html).not.toContain('data-chip-plan')
     // 칩 줄이 제목보다 앞에 온다.
     expect(html.indexOf('요즘 인기')).toBeLessThan(html.indexOf('<h3'))
   })

@@ -6,7 +6,7 @@ import { BADGE, CARD_WIDTH_320, CardBox, Cell, ONE_CHIP, Row, TWO_CHIPS, feedVie
 /**
  * 히어로(`hero_box`) 상태 행렬 (티켓 20261121_0041, 상위 20261120_2026 4회차-2). 서비스 전용(홈피드 한정).
  * 위에 이미지 박스(마스크 모양 5종 중 하나), 아래에 제목과 설명. 샘플 카드 높이 360, 이미지 박스 높이 184.
- * 칩은 이미지 박스 모서리에 걸치고(코너 칩: 큰 칩 52·작은 칩 40), 도장은 이미지 모서리 안쪽이다. 폭은 고정 래퍼다(358은 390 화면, 288은 320 화면).
+ * 칩은 카드 모서리에 걸쳐 계획(`look.chipPlan`, Story는 단건이라 «앞 카드 없음» 계획)대로 알약 또는 분류 스티커로 놓이고(코너 칩: 큰 칩 52·작은 칩 40), 도장은 이미지 모서리 안쪽이다. 폭은 고정 래퍼다(358은 390 화면, 288은 320 화면).
  */
 const meta: Meta<typeof FeedHeroBoxCard> = {
   title: '서비스/Today/Feed/히어로(hero_box)',
@@ -61,6 +61,21 @@ export const ChipCounts: Story = {
   ),
 }
 
+export const ChipShapes: Story = {
+  name: '칩 모양: 알약·분류 스티커(시드별 계획)',
+  render: () => (
+    <Row>
+      {[1, 2, 3, 4, 5, 6].map((seed) => (
+        <Cell key={seed} label={`시드 ${seed}`}>
+          <CardBox>
+            <FeedHeroBoxCard view={feedView('hero_box', { ...base, feed_seed: seed })} />
+          </CardBox>
+        </Cell>
+      ))}
+    </Row>
+  ),
+}
+
 export const TitleChipCounts: Story = {
   name: '제목 속 칩 0·1·2개',
   render: () => (
@@ -104,7 +119,7 @@ export const DescriptionHidden: Story = {
 }
 
 export const Narrow320: Story = {
-  name: '폭 320 화면(카드 288) — 칩이 가장자리 안쪽',
+  name: '폭 320 화면(카드 288) — 칩 배치 계획은 폭 343 기준',
   render: () => (
     <CardBox width={CARD_WIDTH_320}>
       <FeedHeroBoxCard
