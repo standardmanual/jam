@@ -64,7 +64,7 @@ describe('FeedChip — 모양', () => {
 })
 
 describe('FeedChip — 색', () => {
-  it.each(FEED_COLOR_KEYS.filter((key) => key !== 'white'))('%s: 면은 feedColorVar(key)의 var(--…)로 칠하고 글자는 --foreground다', (key) => {
+  it.each(FEED_COLOR_KEYS)('%s: 면은 feedColorVar(key)의 var(--…)로 칠하고 글자는 --foreground다', (key) => {
     const html = render({ color: key })
     expect(html).toContain(`background-color:${feedColorVar(key)}`)
     expect(html).toContain('text-foreground')
@@ -78,14 +78,16 @@ describe('FeedChip — 색', () => {
     expect(html).not.toContain('text-foreground')
   })
 
-  it('흰색 칩은 면이 --snow이고 글자는 --foreground다', () => {
+  it('white 키 칩은 면이 --jam-chip-white이고 글자는 --foreground다(직접 지정용 --snow 흰색은 없다)', () => {
     const html = render({ color: 'white' })
-    expect(html).toContain('background-color:var(--snow)')
+    expect(html).toContain(`background-color:${feedColorVar('white')}`)
+    expect(html).toContain('var(--jam-chip-white)')
+    expect(html).not.toContain('var(--snow)')
     expect(html).toContain('text-foreground')
   })
 
   it('면 색에 hex 값이 새지 않는다', () => {
-    const colors: FeedChipColor[] = [...FEED_COLOR_KEYS, 'black', 'white']
+    const colors: FeedChipColor[] = [...FEED_COLOR_KEYS, 'black']
     for (const color of colors) expect(render({ color })).not.toMatch(/#[0-9a-fA-F]{3,8}/)
   })
 })

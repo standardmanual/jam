@@ -32,7 +32,7 @@ export default function FeedTextBoxCard({ view }: { view: FeedCardView }) {
         >
           {useImage && <SafeImage src={view.imageUrl} alt="" sizes={IMAGE_SIZES} className="object-cover" />}
           <div className="relative" style={{ padding: FEED_TEXT_BOX_PADDING }}>
-            <FeedTitle view={view} big />
+            <FeedTitle view={view} big onBox />
           </div>
         </FeedBox>
         <FeedChipLayer view={view} />

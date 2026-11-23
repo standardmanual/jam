@@ -177,3 +177,13 @@ export const Narrow320: Story = {
     </CardBox>
   ),
 }
+
+/** 짙은 초록 바탕(`green-deep`) + 노랑 타일: 제목·설명·항목 이름은 흰색(`--snow`), 타일 안 글자는 검정이다. */
+export const DeepGreenBackground: Story = {
+  name: '짙은 초록 바탕 — 흰 제목·설명·이름',
+  render: () => (
+    <CardBox>
+      <FeedGalleryListCard view={view({ bg_color_key: 'green-deep', box_color_key: 'yellow', linked: true })} />
+    </CardBox>
+  ),
+}

@@ -1,4 +1,4 @@
-import type { ElementType } from 'react'
+import type { CSSProperties, ElementType } from 'react'
 import type { FeedTilt } from '@/lib/today/feedConstants'
 import { splitTitleByWords } from '@/lib/today/titleChips'
 import FeedChip, { type FeedChipColor, type FeedChipSize } from './FeedChip'
@@ -27,6 +27,7 @@ export default function ChipTitle({
   defaultColor = 'yellow',
   as: Tag = 'p',
   className,
+  style,
 }: {
   title: string
   words: readonly string[]
@@ -36,12 +37,14 @@ export default function ChipTitle({
   defaultColor?: FeedChipColor
   as?: ElementType
   className?: string
+  /** 글자색 같은 인라인 스타일. 제목 속 칩은 자기 글자색 클래스를 가져 영향받지 않는다. */
+  style?: CSSProperties
 }) {
   const pieces = splitTitleByWords(title, words)
   const classes = ['break-keep wrap-break-word', className].filter(Boolean).join(' ')
 
   return (
-    <Tag className={classes}>
+    <Tag className={classes} style={style}>
       {pieces.map((piece, index) => {
         if (piece.type === 'text') return piece.text
         return (

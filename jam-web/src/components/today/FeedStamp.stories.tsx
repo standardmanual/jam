@@ -16,7 +16,7 @@ const meta: Meta<typeof FeedStamp> = {
     layout: 'padded',
     docs: {
       description: {
-        component: '60px 도넛 도장. 띠 면은 색 키 15개 중 하나, 글자는 검정. 서비스 전용 컴포넌트라 MODULAR이 아니다.',
+        component: '60px 도넛 도장. 띠 면은 색 키 19개 중 하나, 글자는 검정. 서비스 전용 컴포넌트라 MODULAR이 아니다.',
       },
     },
   },
@@ -25,9 +25,9 @@ const meta: Meta<typeof FeedStamp> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** 색 키 15개 전부. */
+/** 색 키 19개 전부. */
 export const Colors: Story = {
-  name: '도장 색 — 15색',
+  name: '도장 색 — 19색',
   render: () => (
     <div className="flex flex-wrap items-center gap-4">
       {FEED_COLOR_KEYS.map((key) => (

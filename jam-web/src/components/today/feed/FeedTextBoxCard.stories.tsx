@@ -130,3 +130,13 @@ export const Narrow320: Story = {
     </CardBox>
   ),
 }
+
+/** 짙은 초록 바탕(`green-deep`) + 노랑 박스: 박스 안 큰 글자는 검정(`--foreground`)이다. 바탕 위 글자(흰색)는 이 유형에 없다. */
+export const DeepGreenBackground: Story = {
+  name: '짙은 초록 바탕 — 박스 안 글자 검정',
+  render: () => (
+    <CardBox>
+      <FeedTextBoxCard view={feedView('text_box', { ...base, bg_color_key: 'green-deep', box_color_key: 'yellow' })} />
+    </CardBox>
+  ),
+}

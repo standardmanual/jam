@@ -104,6 +104,18 @@ describe('목록형 — 구성', () => {
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 
+  it('짙은 초록 바탕이면 제목·설명·항목 이름이 --snow이고 타일 안 글자는 검정 그대로다', () => {
+    const html = render(listView({ bg_color_key: 'green-deep', box_color_key: 'yellow', description: '가까운 곳에서 픽업해 봐요.' }))
+    expect(count(html, 'color:var(--snow)')).toBe(5) // 제목 1 + 설명 1 + 항목 이름 3
+    expect(html).toContain('<span aria-hidden="true" class="px-1 text-center text-xs font-bold text-foreground')
+  })
+
+  it('짙은 초록 바탕이 아니면 이름이 --foreground다', () => {
+    const html = render(listView({ bg_color_key: 'yellow', box_color_key: 'pink' }))
+    expect(count(html, 'color:var(--foreground)')).toBe(4) // 제목 1 + 항목 이름 3
+    expect(html).not.toContain('color:var(--snow)')
+  })
+
   it('이름은 12px 굵게 두 줄까지(line-clamp-2)이고 한국어 줄바꿈 클래스를 갖는다', () => {
     const html = render(listView())
     expect(count(html, 'line-clamp-2')).toBe(3)

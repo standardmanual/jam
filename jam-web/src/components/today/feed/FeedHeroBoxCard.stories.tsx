@@ -113,3 +113,15 @@ export const Narrow320: Story = {
     </CardBox>
   ),
 }
+
+/** 짙은 초록 바탕(`green-deep`) + 노랑 박스: 바탕 위 제목·설명은 흰색(`--snow`), 제목 속 칩 글자는 검정이다. */
+export const DeepGreenBackground: Story = {
+  name: '짙은 초록 바탕 — 흰 제목·설명',
+  render: () => (
+    <CardBox>
+      <FeedHeroBoxCard
+        view={feedView('hero_box', { ...base, title_chip_words: ['걷는'], bg_color_key: 'green-deep', box_color_key: 'yellow' })}
+      />
+    </CardBox>
+  ),
+}

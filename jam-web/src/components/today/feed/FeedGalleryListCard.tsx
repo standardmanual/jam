@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import type { FeedCardView, FeedCardViewListItem } from '@/lib/today/cardView'
-import { FEED_CARD_MIN_HEIGHT, FEED_GALLERY, feedColorVar } from '@/lib/today/feedConstants'
+import { FEED_CARD_MIN_HEIGHT, FEED_GALLERY, feedColorVar, feedTextOnBg } from '@/lib/today/feedConstants'
 import { d, t } from '@/lib/i18n'
 import { isSafeListHref } from '@/lib/today/listHref'
 import FeedChip from '../FeedChip'
@@ -21,11 +21,11 @@ import { FeedCardShell, FeedTextBlock } from './FeedCardParts'
  * 화살표 칸의 접근성 이름은 «{제목} 전체 보기»이고 항목 칸은 아래 이름 글자가 곧 이름이다(그림은 장식이라 `alt`가 비어 있다).
  */
 
-const CELL_CLASS = 'flex flex-col gap-1 text-foreground'
+const CELL_CLASS = 'flex flex-col gap-1'
 /** `CardFrame`의 `CardLink`와 같은 눌림·키보드 포커스 윤곽선(`--link`)을 칸 단위로 건다. 윤곽선이 칸 모서리를 따라 둥글게 그려지도록 `rounded-xl`이다. */
 const LINK_CLASS =
   'rounded-xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]'
-const NAME_CLASS = 'line-clamp-2 text-center text-xs font-bold text-foreground break-keep wrap-break-word'
+const NAME_CLASS = 'line-clamp-2 text-center text-xs font-bold break-keep wrap-break-word'
 const TILE_CLASS = 'relative flex aspect-square items-center justify-center overflow-hidden rounded-xl'
 
 /** 주소 안전 규칙은 순수 파일(`lib/today/listHref.ts`)로 옮겼다. 기존 가져오기가 깨지지 않게 같은 이름으로 다시 내보낸다(티켓 20261121_1530). */
@@ -53,7 +53,9 @@ function ItemCell({ view, item }: { view: FeedCardView; item: FeedCardViewListIt
           fallback={<span aria-hidden="true" className="px-1 text-center text-xs font-bold text-foreground break-keep wrap-break-word">{item.name}</span>}
         />
       </span>
-      <span className={NAME_CLASS}>{item.name}</span>
+      <span className={NAME_CLASS} style={{ color: feedTextOnBg(view.look.colors.bg) }}>
+        {item.name}
+      </span>
     </Cell>
   )
 }

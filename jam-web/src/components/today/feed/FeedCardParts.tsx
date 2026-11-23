@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import type { FeedCardView } from '@/lib/today/cardView'
 import { chipPositionOf, stampPositionOf, stampTiltOf, type ChipAnchorMode, type ChipPosition } from '@/lib/today/feedChipLayout'
-import { FEED_BADGE_SIZE, FEED_CARD_ROOT_ATTR, FEED_STAMP_TILT, feedColorVar } from '@/lib/today/feedConstants'
+import { FEED_BADGE_SIZE, FEED_CARD_ROOT_ATTR, FEED_STAMP_TILT, feedColorVar, feedTextOnBg } from '@/lib/today/feedConstants'
 import ChipTitle from '../ChipTitle'
 import FeedChip, { type FeedChipSize } from '../FeedChip'
 import FeedStamp from '../FeedStamp'
@@ -14,14 +14,14 @@ import FeedStamp from '../FeedStamp'
  *
  * - 카드 면: 카드 배경색(`look.colors.bg`)·모서리 `rounded-2xl`·안쪽 여백 `p-4`. 외곽선은 없다(외곽선은 칩과 도장에만). `overflow-hidden`을 걸지 않는다 —
  *   칩이 앵커 모서리에 걸쳐 카드 가장자리 가까이까지 나가므로 잘리지 않게 한다(걸침 한도는 `FEED_CHIP_OFFSET`, 폭 320px에서도 가장자리 안쪽이다).
- * - 글자: 색은 `--foreground`, 제목 30/36 굵기 900 자간 −0.02em, 설명 14/20 굵기 500, 제목과 설명 사이 8px. 제목은 데이터의 줄바꿈을 그대로 따른다(`whitespace-pre-line`).
+ * - 글자: 바탕 위 제목·설명 색은 바탕 키를 따른다(`feedTextOnBg`: 짙은 초록 바탕이면 `--snow`, 아니면 `--foreground`, 인라인 color 한 곳). 박스 안 제목(`onBox`)은 늘 `--foreground`다. 제목 30/36 굵기 900 자간 −0.02em, 설명 14/20 굵기 500, 제목과 설명 사이 8px. 제목은 데이터의 줄바꿈을 그대로 따른다(`whitespace-pre-line`).
  *   글자 크기·여백은 디자인 시스템 눈금(`text-3xl`·`text-sm`·`gap-2`)이다.
  * - 칩 층·도장은 앵커(이미지 박스·박스·배지 영역·카드)의 `relative` 자식으로 놓는다. 칩은 박스를 자르는 마스크 밖의 형제 층이다.
  */
 
 /** 제목 글자 클래스(30/36). 큰 글자 변형은 텍스트 박스가 쓰는 48/1.1이다. */
-const TITLE_CLASS = 'text-3xl font-black tracking-[-0.02em] text-foreground whitespace-pre-line'
-const BIG_TITLE_CLASS = 'text-5xl leading-[1.1] font-black tracking-[-0.02em] text-foreground whitespace-pre-line text-center'
+const TITLE_CLASS = 'text-3xl font-black tracking-[-0.02em] whitespace-pre-line'
+const BIG_TITLE_CLASS = 'text-5xl leading-[1.1] font-black tracking-[-0.02em] whitespace-pre-line text-center'
 
 /** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. `markRoot`가 참이면 카드 루트 표식을 단다(생략하면 마크업이 그대로다). */
 export function FeedCardShell({
@@ -46,8 +46,21 @@ export function FeedCardShell({
   )
 }
 
-/** 제목(제목 속 칩 포함). 낱말이 없거나 제목에 없으면 글자만 그린다. */
-export function FeedTitle({ view, big = false, className }: { view: FeedCardView; big?: boolean; className?: string }) {
+/**
+ * 제목(제목 속 칩 포함). 낱말이 없거나 제목에 없으면 글자만 그린다.
+ * 글자색은 바탕 키를 따른다(`feedTextOnBg`). 박스 안에 놓는 제목은 `onBox`를 주면 바탕과 무관하게 `--foreground`다(텍스트 박스 카드).
+ */
+export function FeedTitle({
+  view,
+  big = false,
+  onBox = false,
+  className,
+}: {
+  view: FeedCardView
+  big?: boolean
+  onBox?: boolean
+  className?: string
+}) {
   const { titleChips } = view.look
   return (
     <ChipTitle
@@ -58,6 +71,7 @@ export function FeedTitle({ view, big = false, className }: { view: FeedCardView
       colors={titleChips.colors}
       tilts={titleChips.tilts}
       className={[big ? BIG_TITLE_CLASS : TITLE_CLASS, className].filter(Boolean).join(' ')}
+      style={{ color: onBox ? 'var(--foreground)' : feedTextOnBg(view.look.colors.bg) }}
     />
   )
 }
@@ -65,7 +79,11 @@ export function FeedTitle({ view, big = false, className }: { view: FeedCardView
 /** 설명. 이 카드가 설명을 보이지 않거나 값이 없으면 아무것도 그리지 않는다. */
 export function FeedDescription({ view }: { view: FeedCardView }) {
   if (!view.look.showDescription || !view.description) return null
-  return <p className="text-sm font-medium text-foreground break-keep wrap-break-word">{view.description}</p>
+  return (
+    <p className="text-sm font-medium break-keep wrap-break-word" style={{ color: feedTextOnBg(view.look.colors.bg) }}>
+      {view.description}
+    </p>
+  )
 }
 
 /** 제목과 설명 묶음(간격 8px). 설명이 없으면 제목만 남는다. */

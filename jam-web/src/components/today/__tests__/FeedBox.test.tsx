@@ -64,12 +64,15 @@ describe('FeedBox — 외곽선 없음·색', () => {
     expect(html).not.toMatch(/border|outline/)
   })
 
-  it.each(FEED_COLOR_KEYS.filter((key) => key !== 'white'))('%s: 면은 feedColorVar(key)의 var(--…)다', (key) => {
+  it.each(FEED_COLOR_KEYS)('%s: 면은 feedColorVar(key)의 var(--…)다', (key) => {
     expect(render('round', 'text', { color: key })).toContain(`background-color:${feedColorVar(key)}`)
   })
 
-  it('흰색은 --snow다', () => {
-    expect(render('round', 'text', { color: 'white' })).toContain('background-color:var(--snow)')
+  it('white 키는 --jam-chip-white다(--snow가 아니다)', () => {
+    const html = render('round', 'text', { color: 'white' })
+    expect(html).toContain(`background-color:${feedColorVar('white')}`)
+    expect(html).toContain('var(--jam-chip-white)')
+    expect(html).not.toContain('var(--snow)')
   })
 
   it('className을 이어 붙인다', () => {

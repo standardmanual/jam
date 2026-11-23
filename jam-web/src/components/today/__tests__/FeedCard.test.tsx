@@ -95,7 +95,7 @@ describe('FeedCard — 공통', () => {
     expect(html).toContain('whitespace-pre-line')
     expect(html).toContain('break-keep')
     expect(html).toContain('wrap-break-word')
-    expect(html).toContain('text-foreground')
+    expect(html).toMatch(/<h3[^>]*style="color:var\(--foreground\)"/)
     expect(html).toContain('font-black')
   })
 
@@ -170,6 +170,40 @@ describe('히어로(hero_box)', () => {
       expect(html).toContain('background-color:var(--')
       if (shape !== 'round') expect(html).toMatch(/mask-image|-webkit-mask-image/)
     }
+  })
+})
+
+describe('짙은 초록 바탕 — 바탕 위 글자는 --snow, 박스 안 글자는 --foreground (통합 팔레트 2 회차 8)', () => {
+  const DEEP = { bg_color_key: 'green-deep', box_color_key: 'yellow' } as const
+  const titleColor = (html: string) => html.match(/<h3[^>]*style="[^"]*?color:(var\([^)]*\))/)?.[1]
+  const descriptionColor = (html: string) => html.match(/<p class="text-sm font-medium[^"]*" style="color:(var\([^)]*\))/)?.[1]
+
+  it.each(['hero_box', 'drop_pickup', 'badge_intro', 'badge_only'] as const)('%s: 제목이 --snow다', (type) => {
+    const html = render(feedView(type, { ...DEEP, description: '먼저 참가해 봐요.', badgeImageUrl: 'https://cdn.example/b.png', badgeName: '배지' }))
+    expect(titleColor(html)).toBe('var(--snow)')
+  })
+
+  it.each(['hero_box', 'badge_intro'] as const)('%s: 설명도 --snow다', (type) => {
+    const html = render(feedView(type, { ...DEEP, description: '먼저 참가해 봐요.', badgeImageUrl: 'https://cdn.example/b.png' }))
+    expect(descriptionColor(html)).toBe('var(--snow)')
+  })
+
+  it('text_box: 박스 안 제목은 짙은 초록 바탕에서도 --foreground다', () => {
+    const html = render(feedView('text_box', DEEP))
+    expect(titleColor(html)).toBe('var(--foreground)')
+    expect(html).not.toContain('color:var(--snow)')
+  })
+
+  it('짙은 초록 바탕이 아니면 제목·설명이 --foreground다(변경 전과 같다)', () => {
+    const html = render(feedView('hero_box', { bg_color_key: 'yellow', box_color_key: 'pink', description: '먼저 참가해 봐요.' }))
+    expect(titleColor(html)).toBe('var(--foreground)')
+    expect(descriptionColor(html)).toBe('var(--foreground)')
+    expect(html).not.toContain('color:var(--snow)')
+  })
+
+  it('제목 속 칩 글자는 짙은 초록 바탕에서도 --foreground 클래스다(칩 자기 글자색)', () => {
+    const html = render(feedView('hero_box', { ...DEEP, title: '해가 짧아진 저녁의 한 바퀴', title_chip_words: ['저녁'] }))
+    expect(html).toContain('text-foreground')
   })
 })
 

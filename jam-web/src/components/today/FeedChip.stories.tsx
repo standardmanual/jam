@@ -5,7 +5,7 @@ import FeedChip, { type FeedChipColor } from './FeedChip'
 
 /**
  * 홈피드 새 카드의 칩 `FeedChip` (티켓 20261120_2144, 상위 20261120_2026 3회차-2). 서비스 전용(홈피드 한정) — 채원 판정·사용자 승인 2026-11-20.
- * 값만 받아 그린다. 면 색은 색 키 15개 + 검정(구분 칩) + 흰색(직접 지정용)이고, 글자는 `--foreground` 고정(검정 칩만 `--snow`)이다.
+ * 값만 받아 그린다. 면 색은 통합 팔레트 색 키 19개(`white`는 `--jam-chip-white`) + 검정(구분 칩)이고, 글자는 `--foreground` 고정(검정 칩만 `--snow`)이다.
  * 아래 Story는 큰·작은 칩, 기울기 여섯 값, 색 17가지 위 글자 대비, 한 줄 긴 글자(12자)를 차례로 보인다.
  */
 
@@ -36,7 +36,7 @@ function Row({ caption, children }: { caption: string; children: ReactNode }) {
   )
 }
 
-const ALL_COLORS: readonly FeedChipColor[] = [...FEED_COLOR_KEYS, 'black', 'white']
+const ALL_COLORS: readonly FeedChipColor[] = [...FEED_COLOR_KEYS, 'black']
 
 /** 큰 칩(높이 40·글자 18)과 작은 칩(높이 32·글자 14). */
 export const Sizes: Story = {
@@ -76,19 +76,19 @@ export const Tilts: Story = {
   ),
 }
 
-/** 색 15개 + 검정 + 흰색 위 글자 대비. 글자는 모두 `--foreground`이고 검정 칩만 `--snow`다. */
+/** 색 19개 + 검정 위 글자 대비. 글자는 모두 `--foreground`이고 검정 칩만 `--snow`다. */
 export const Colors: Story = {
-  name: '색 15개 + 검정·흰색 — 글자 대비',
+  name: '색 19개 + 검정 — 글자 대비',
   render: () => (
     <>
-      <Row caption="큰 칩 — 색 키 15개 + 검정(구분 칩) + 흰색">
+      <Row caption="큰 칩 — 색 키 19개 + 검정(구분 칩)">
         {ALL_COLORS.map((color) => (
           <FeedChip key={color} size="lg" color={color} tilt={4}>
             {color}
           </FeedChip>
         ))}
       </Row>
-      <Row caption="작은 칩 — 같은 17가지">
+      <Row caption="작은 칩 — 같은 20가지">
         {ALL_COLORS.map((color) => (
           <FeedChip key={color} size="sm" color={color} tilt={-4}>
             {color}
