@@ -9,7 +9,6 @@ import {
 } from '@/lib/admin/feedCardFields'
 import { completeFeedCardValues } from '@/lib/admin/feedCardServer'
 import { coverColorsFields, type CoverColorsFields } from '@/lib/admin/coverColors'
-import { fetchFeedPalette } from '@/lib/today/feedColorOverridesRead'
 
 export async function GET() {
   const authError = await requireAdmin()
@@ -51,12 +50,9 @@ export async function POST(req: NextRequest) {
   const warnings: string[] = []
   if (hasFeedCardColumns(safeBody)) {
     const columns = pickFeedCardColumns(safeBody)
-    // 컬러셋 교체로 덮어쓴 hex를 합친 팔레트(티켓 20261121_2145) — 색 규칙 경고와 자동 배정이 같은 표를 쓴다. 읽기가 실패하면 기본 팔레트다.
-    const palette = await fetchFeedPalette(supabase, '[today POST 색 덮어쓰기 조회 오류]')
     const checked = validateFeedCardColumns(columns, {
       title: typeof safeBody.title === 'string' ? safeBody.title : '',
       itemBookId: typeof safeBody.item_book_id === 'string' ? safeBody.item_book_id : null,
-      palette,
     })
     if (checked.errors.length > 0) {
       return NextResponse.json({ error: checked.errors.join(' '), errors: checked.errors }, { status: 400 })
@@ -78,7 +74,6 @@ export async function POST(req: NextRequest) {
           badgeIds: Array.isArray(safeBody.badge_ids) ? (safeBody.badge_ids as string[]) : null,
           itemBookId: typeof safeBody.item_book_id === 'string' ? safeBody.item_book_id : null,
         },
-        palette,
       )
       if (decided.imageRuleSkipped) console.warn('[today POST 색 자동 배정] 이미지 규칙까지 통과하는 조합이 없어 이미지 규칙 없이 정했어요')
       safeBody.feed_seed = decided.feed_seed

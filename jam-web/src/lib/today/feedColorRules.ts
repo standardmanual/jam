@@ -1,35 +1,20 @@
 /**
- * 홈피드 색 자동 규칙 — 두 색이 한 카드에서 짝을 이룰 수 있는지 판정한다 (티켓 20261121_0012, 상위 20261120_2026 4회차-1).
+ * 홈피드 색 규칙 — 배지 그림 색 겹침(⑤·⑥)과 칩 배제 표 (티켓 20261121_0012·20261121_1828·20261122_2224, 상위 20261122_2217).
  *
- * 규격 정본은 docs/service/prd/home-feed/PRD.md §6 「개편 규격」의 «색 → 자동으로 거르는 규칙» 1~4번이다.
- * 기준값은 카리나의 초안이고 사용자가 검수표에서 다듬는다(PRD). 그래서 임계값은 아래 이름 있는 상수 한곳에 모은다.
+ * 규격 정본은 docs/service/prd/home-feed/PRD.md §6이다. 옛 hex 규칙(대비·키즈·명도)은 컬러셋 메뉴와 함께 걷었다(티켓 20261122_2225) —
+ * 통합 팔레트의 칩과 면 조합은 아래 배제 표(`chipExclusionRule`)가 정한다.
  *
- * **hex를 입력으로 받는 순수 함수다.** 색 키 표(`FEED_COLORS`)에 묶이지 않는다 — 컬러셋 교체 어드민(6회차)이 hex를 바꿔도 그대로 쓴다.
- * 키 표를 기본값으로 쓰는 편의 함수(`summarizeFeedColors`)만 아래쪽에 따로 있다.
+ * **그림 색 규칙은 hex를 입력으로 받는 순수 함수다.** 색 키 표(`FEED_COLORS`)에 묶이지 않는다. 배제 표는 색 키 이름으로만 적는다.
  * 서버 모듈·사전·난수·시각을 읽지 않는다(서버와 브라우저가 같은 값을 낸다).
  */
-import { FEED_COLOR_KEYS, FEED_COLORS } from './feedConstants'
 
-// ── 임계값 (PRD §6 «자동으로 거르는 규칙», 2026-11-20 샘플 계산) ─────────────────────────
+// ── 임계값 (PRD §6 «자동으로 거르는 규칙») ─────────────────────────
 
 export const COLOR_RULE_THRESHOLDS = {
-  /** 규칙 ② 대비: «밝기 대비(상대 휘도 비)가 1.15 미만이면 제외» */
-  minLuminanceRatio: 1.15,
-  /** 규칙 ② 대비: «색상 차이가 30도 미만이면서 밝기(HSL 명도) 차이가 0.09 미만이면 제외» */
+  /** 규칙 ⑤·⑥ 그림 색 겹침: «색상 차이가 30도 미만» */
   closeHueDegrees: 30,
-  closeLightnessDiff: 0.09,
-  /** 규칙 ② 대비·③ 키즈: «채도가 높은 원색(채도 0.85 초과, 명도 0.4~0.62)» */
-  vividMinSaturation: 0.85,
-  vividMinLightness: 0.4,
-  vividMaxLightness: 0.62,
-  /** 규칙 ② 대비: «원색 둘이 색상 차이 90도를 넘으면 제외» */
-  vividMaxHueDegrees: 90,
-  /** 규칙 ③ 키즈: «밝은 색(명도 0.7 초과) 둘이 색상 차이 40도를 넘는 조합을 제외» */
-  paleMinLightness: 0.7,
-  paleMaxHueDegrees: 40,
-  /** 규칙 ④ 명도: «눈에 보이는 밝기(L*) 차이가 15 이상이거나 색상 차이가 150도 이상(보색)이어야 한다» */
+  /** 규칙 ⑤·⑥ 그림 색 겹침: «눈에 보이는 밝기(L*) 차이가 15 미만» */
   minCieLightnessDiff: 15,
-  complementaryHueDegrees: 150,
 } as const
 
 // ── 색 계산 (hex 입력) ───────────────────────────────────────
@@ -73,13 +58,6 @@ export function relativeLuminance(hex: string): number {
   return 0.2126 * linearChannel(r) + 0.7152 * linearChannel(g) + 0.0722 * linearChannel(b)
 }
 
-/** 두 색의 상대 휘도 비(WCAG 대비 비). 1(같음)~21. 순서와 무관하다. */
-export function luminanceRatio(hexA: string, hexB: string): number {
-  const a = relativeLuminance(hexA)
-  const b = relativeLuminance(hexB)
-  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
-}
-
 /** 표준 HSL. 색상은 0~360, 채도·명도는 0~1. */
 export function hexToHsl(hex: string): Hsl {
   const [r8, g8, b8] = hexToRgb(hex)
@@ -113,40 +91,7 @@ export function hueDifference(hueA: number, hueB: number): number {
   return diff > 180 ? 360 - diff : diff
 }
 
-/** «채도가 높은 원색»: 채도 0.85 초과이고 명도 0.4~0.62. */
-export function isVividPrimary(hsl: Hsl): boolean {
-  const t = COLOR_RULE_THRESHOLDS
-  return hsl.s > t.vividMinSaturation && hsl.l >= t.vividMinLightness && hsl.l <= t.vividMaxLightness
-}
-
-// ── 규칙 판정 (hex 순서쌍) ───────────────────────────────────
-
-/** 규칙 ② 대비에 걸리면 true. */
-export function violatesContrastRule(hexA: string, hexB: string): boolean {
-  const t = COLOR_RULE_THRESHOLDS
-  if (luminanceRatio(hexA, hexB) < t.minLuminanceRatio) return true
-  const a = hexToHsl(hexA)
-  const b = hexToHsl(hexB)
-  const hue = hueDifference(a.h, b.h)
-  if (hue < t.closeHueDegrees && Math.abs(a.l - b.l) < t.closeLightnessDiff) return true
-  return isVividPrimary(a) && isVividPrimary(b) && hue > t.vividMaxHueDegrees
-}
-
-/** 규칙 ③ 키즈에 걸리면 true. */
-export function violatesKidsRule(hexA: string, hexB: string): boolean {
-  const t = COLOR_RULE_THRESHOLDS
-  const a = hexToHsl(hexA)
-  const b = hexToHsl(hexB)
-  if (isVividPrimary(a) && isVividPrimary(b)) return true
-  return a.l > t.paleMinLightness && b.l > t.paleMinLightness && hueDifference(a.h, b.h) > t.paleMaxHueDegrees
-}
-
-/** 규칙 ④ 명도에 걸리면 true. 칩과 칩이 아닌 것(배경·박스) 사이에만 쓴다. */
-export function violatesLightnessRule(hexA: string, hexB: string): boolean {
-  const t = COLOR_RULE_THRESHOLDS
-  if (Math.abs(cieLightness(hexA) - cieLightness(hexB)) >= t.minCieLightnessDiff) return false
-  return hueDifference(hexToHsl(hexA).h, hexToHsl(hexB).h) < t.complementaryHueDegrees
-}
+// ── 그림 색 규칙 (hex 입력) ──────────────────────────────────
 
 /**
  * 규칙 ⑤ 그림과 배경 · ⑥ 그림과 칩(티켓 20261121_1828, 상위 20261120_2026 7회차-6): 후보 색이 이미지 대표 색과 «색상 차이 30° 미만이고
@@ -167,42 +112,14 @@ export function violatesImageColorRule(candidateHex: string, imageHexes: readonl
   })
 }
 
-/** 걸린 규칙의 이름. 규칙 ①~④는 적용하는 순서 그대로이고, `image`(⑤·⑥)는 쌍 판정이 아니라 `violatesImageColorRule`이 돌려주는 이름이고, `table`은 통합 팔레트의 배제 표(`chipExclusionRule`)가 돌려주는 이름이다. */
-export type ColorRuleName = 'same' | 'contrast' | 'kids' | 'lightness' | 'image' | 'table'
-
-export interface ColorPairCheckOptions {
-  /** 둘 중 하나가 칩이면 true — 규칙 ④(명도)는 칩과 칩이 아닌 것 사이에만 적용한다. 기본 true. */
-  involvesChip?: boolean
-}
-
-/**
- * 한 순서쌍이 걸리는 첫 규칙. 규칙 ①→②→③→④ 순서로 보고 하나라도 걸리면 거기서 멈춘다. 모두 통과하면 null.
- * 규칙은 두 색에 대해 대칭이라 순서를 바꿔도 결과가 같다.
- */
-export function firstViolatedRule(
-  hexA: string,
-  hexB: string,
-  options: ColorPairCheckOptions = {},
-): ColorRuleName | null {
-  const involvesChip = options.involvesChip ?? true
-  if (hexA.trim().toLowerCase() === hexB.trim().toLowerCase()) return 'same'
-  if (violatesContrastRule(hexA, hexB)) return 'contrast'
-  if (violatesKidsRule(hexA, hexB)) return 'kids'
-  if (involvesChip && violatesLightnessRule(hexA, hexB)) return 'lightness'
-  return null
-}
-
-/** 두 색이 규칙 ①~④(칩이 끼지 않으면 ①~③)를 모두 통과하는가. */
-export function passesColorRules(hexA: string, hexB: string, options: ColorPairCheckOptions = {}): boolean {
-  return firstViolatedRule(hexA, hexB, options) === null
-}
+/** 걸린 규칙의 이름. `same`은 같은 색, `image`(⑤·⑥)는 `violatesImageColorRule`이 판정하는 그림 색 겹침, `table`은 통합 팔레트의 배제 표(`chipExclusionRule`)가 돌려주는 이름이다. */
+export type ColorRuleName = 'same' | 'image' | 'table'
 
 // ── 배제 표 (통합 팔레트, 티켓 20261122_2224 회차 3) ─────────────────────────
 
 /**
  * 칩과 그 아래 면(바탕·박스)이 서로 어울리지 않는 색 조합 — 상위 티켓 20261122_2217 결정 §5의 «배제 표» 초안.
- * 대비·키즈·명도 계산 규칙을 대체할 표다. 이번 회차는 표와 함수만 만들고 배정은 아직 이 표를 읽지 않는다(5회차).
- * 옛 키가 읽는 컬러셋 메뉴는 위 hex 규칙(`firstViolatedRule`)을 그대로 쓴다.
+ * 옛 대비·키즈·명도 계산 규칙을 대체한 표다. 자동 배정(`assignFeedColors`)과 어드민 폼 경고(`colorRuleWarnings`)가 읽는다.
  *
  * 항목은 색 키 이름으로 적고 hex를 읽지 않는다. 같은 색끼리도 표의 한 항목이다(`chipExclusionRule`이 먼저 본다).
  */
@@ -229,62 +146,4 @@ export function chipExclusionRule(chipKey: string, baseKey: string): ColorRuleNa
   )
   if (mutual) return 'table'
   return CHIP_EXCLUSION_DIRECTED.some(([chip, base]) => chipKey === chip && baseKey === base) ? 'table' : null
-}
-
-// ── 전체 순서쌍 필터 ─────────────────────────────────────────
-
-export interface ColorPairSummary {
-  /** 서로 다른 색의 순서쌍 수(n색이면 n×(n−1), 9색이면 72) */
-  total: number
-  /** 규칙을 순서대로 적용했을 때 그 단계에서 새로 빠진 수(누적 제외 개수의 증분) */
-  excludedByContrast: number
-  excludedByKids: number
-  excludedByLightness: number
-  /** 모두 통과한 순서쌍 수 */
-  remaining: number
-  /** 통과한 순서쌍(입력 목록의 위치 번호) */
-  remainingPairs: ReadonlyArray<readonly [number, number]>
-}
-
-/**
- * hex 목록의 모든 순서쌍(같은 색 제외)에 규칙 ②→③→④를 순서대로 적용해 단계별로 빠진 개수를 센다.
- * 모든 쌍을 «칩과 칩이 아닌 것»으로 보고 규칙 ④까지 적용한다(PRD의 210→74 샘플 계산과 같은 가정).
- */
-export function summarizeColorPairs(hexes: readonly string[]): ColorPairSummary {
-  let total = 0
-  let excludedByContrast = 0
-  let excludedByKids = 0
-  let excludedByLightness = 0
-  const remainingPairs: Array<readonly [number, number]> = []
-  for (let i = 0; i < hexes.length; i += 1) {
-    for (let j = 0; j < hexes.length; j += 1) {
-      if (i === j) continue
-      total += 1
-      const failed = firstViolatedRule(hexes[i], hexes[j], { involvesChip: true })
-      if (failed === 'contrast') excludedByContrast += 1
-      else if (failed === 'kids') excludedByKids += 1
-      else if (failed === 'lightness') excludedByLightness += 1
-      else if (failed === null) remainingPairs.push([i, j])
-      // 'same'은 hex가 같은 서로 다른 위치 쌍이다. 색 표에는 없다(표의 hex는 모두 다르다)
-      else total -= 1
-    }
-  }
-  return {
-    total,
-    excludedByContrast,
-    excludedByKids,
-    excludedByLightness,
-    remaining: remainingPairs.length,
-    remainingPairs,
-  }
-}
-
-/** 색 키 표(`FEED_COLORS`)의 9색 hex를 키 순서대로 낸다. 컬러셋 메뉴의 옛 색 규칙(대비·키즈·명도) 표본이다. 키 표를 기본값으로 쓰는 편의 함수다. */
-export function feedColorHexes(): string[] {
-  return FEED_COLOR_KEYS.map((key) => FEED_COLORS[key].hex)
-}
-
-/** 9색 전체의 단계별 제외 개수. 키 표를 기본값으로 쓰는 편의 함수다. */
-export function summarizeFeedColors(): ColorPairSummary {
-  return summarizeColorPairs(feedColorHexes())
 }

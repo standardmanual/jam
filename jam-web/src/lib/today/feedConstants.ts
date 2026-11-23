@@ -57,15 +57,14 @@ export const FEED_COLORS = {
 
 /**
  * 색 키 → CSS `var(--…)` 문자열. 부품은 색을 이 함수만 거쳐 칠한다(hex를 직접 쓰지 않는다).
- * 컬러셋 교체(티켓 20261121_2145): 카드 전용 변수 `--feed-color-<키>`를 먼저 읽고, 덮어쓴 값이 없으면 기존 변수(`--jam-*`)를 읽는다.
- * 덮어쓴 키만 `feedColorOverrideCss`가 `:root`에 내려주므로 디자인 시스템의 다른 곳은 그대로다.
+ * 값은 디자인 시스템 토큰(`--jam-*`)만 가리킨다. 색 값을 바꾸는 곳은 디자인 시스템 파일이다(어드민 컬러셋 메뉴는 통합 팔레트로 없앴다, 티켓 20261122_2225).
  * 위 색 표가 «키 → 변수 이름 + 기본 hex»의 순수 데이터라, hex를 입력으로 받는 순수 함수(자동 제외 규칙)가 그 위에 붙을 수 있다.
  */
 export function feedColorVar(key: FeedColorKey): string {
   // 9키에 없는 값(저장된 옛 키 등)이 와도 던지거나 undefined를 칠하지 않고 노랑으로 그린다.
   const known = (FEED_COLOR_KEYS as readonly string[]).includes(key);
   const safeKey: FeedColorKey = known ? key : 'yellow';
-  return `var(--feed-color-${safeKey}, var(${FEED_COLORS[safeKey].cssVar}))`;
+  return `var(${FEED_COLORS[safeKey].cssVar})`;
 }
 
 // ── 통합 팔레트 쓰임 표·조합 (티켓 20261122_2224 회차 3) ─────────────────

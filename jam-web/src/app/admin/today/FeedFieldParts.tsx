@@ -63,6 +63,7 @@ export function ChoiceField({
   label,
   value,
   options,
+  currentValueOption,
   autoLabel = '자동',
   onChange,
   themeContainer,
@@ -74,6 +75,8 @@ export function ChoiceField({
   label: string
   value: string
   options: readonly ChoiceOption[]
+  /** 저장된 값이 `options` 밖일 때 닫힌 칸에만 보이는 «현재 값» 선택지. 목록에는 들어가지 않아 다시 고를 수 없다. */
+  currentValueOption?: ChoiceOption
   autoLabel?: string
   onChange: (value: string) => void
   themeContainer?: HTMLElement | null
@@ -83,7 +86,7 @@ export function ChoiceField({
   /** 비워 둘 수 없는 칸. «자동» 선택지를 두지 않는다(값이 선택지에 없을 때만 «자동» 문구가 자리표시로 보인다) */
   required?: boolean
 }) {
-  const selected = options.find((o) => o.value === value)
+  const selected = options.find((o) => o.value === value) ?? (currentValueOption && currentValueOption.value === value ? currentValueOption : undefined)
   const isAuto = !selected
   const helpId = `${id}-help`
   return (

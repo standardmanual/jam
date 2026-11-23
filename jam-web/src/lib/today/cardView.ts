@@ -14,7 +14,6 @@ import type { ResolvedBadge, TodayCardWithHref } from './cards'
 import type { TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
-import type { FeedPalette } from './feedAssign'
 import { resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import { resolveFeedType, usableListItems } from './feedType'
 import type { FeedValueChipSource } from './feedValueChips'
@@ -264,8 +263,6 @@ export interface ToCardViewOptions {
   now?: Date
   /** true면 계측 정보를 싣는다(홈 그리기). 기본은 싣지 않는다 — 미리보기가 계측을 남기지 않게 하려는 기본값이다. */
   tracking?: boolean
-  /** 색 키 → hex 표(컬러셋 교체, 티켓 20261121_2145). 색이 비어 있는 개편 카드의 자동 배정에 쓴다. 없으면 기본 팔레트라 이전과 같다. */
-  palette?: FeedPalette
 }
 
 /**
@@ -388,7 +385,7 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
     badgeCount: badges.length,
     firstBadge: first,
   })
-  const look = resolveFeedLook({ card, feedType, valueSource: lookSource, now, palette: options.palette })
+  const look = resolveFeedLook({ card, feedType, valueSource: lookSource, now })
   // 이미지 순서: 커버 → 미션 대표 이미지(미션 소개 카드만) → 첫 배지 그림
   let imageUrl = card.cover_image_url || null
   if (!imageUrl && card.template_type === 'mission_spotlight' && mission?.image_url) imageUrl = mission.image_url

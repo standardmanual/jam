@@ -34,7 +34,6 @@ import {
   FEED_FALLBACK_COLORS,
   type ExcludedColorPair,
   type FeedChipFixedPlacement,
-  type FeedPalette,
 } from './feedAssign'
 import { FEED_CHIP_SLOT_SPECS, isAllowedSlot, isFeedType, MAX_CARD_CHIPS } from './feedChipSlots'
 import {
@@ -171,8 +170,6 @@ export interface ResolveFeedLookInput {
   now: Date
   /** 미리보기 전용: 사용자가 검수표에서 제외한 색 조합(색 키 쌍, 순서 무관). 생략하면 제외 없이 배정한다(서비스 홈은 주지 않는다). */
   excludedColorPairs?: readonly ExcludedColorPair[]
-  /** 색 키 → hex 표. 컬러셋 교체 때 덮어쓴 값을 합친 표(`buildFeedPalette`)를 넘긴다. 생략하면 기본 팔레트라 결과가 이전과 같다(티켓 20261121_2145). */
-  palette?: FeedPalette
 }
 
 // ── 보조 ─────────────────────────────────────────────────────
@@ -383,7 +380,7 @@ export function resolveCollectionBurst(stored: readonly TodayBurstPoint[] | null
 // ── 해석 ─────────────────────────────────────────────────────
 
 /** 카드 행의 새 칸과 4-1 계산을 합쳐 «그릴 값»을 낸다. 같은 입력은 언제 어디서 열어도 같은 값이다. */
-export function resolveFeedLook({ card, feedType, valueSource, now, excludedColorPairs, palette }: ResolveFeedLookInput): FeedLook {
+export function resolveFeedLook({ card, feedType, valueSource, now, excludedColorPairs }: ResolveFeedLookInput): FeedLook {
   const seed: number = typeof card.feed_seed === 'number' ? card.feed_seed : hashSeed(card.id)
   const seedKey: BoxSeed = seed
 
@@ -398,7 +395,7 @@ export function resolveFeedLook({ card, feedType, valueSource, now, excludedColo
       recentBgKeys: [],
       boxHasText: boxKind !== 'image_mask',
     },
-    { ...(excludedColorPairs ? { excludedPairs: excludedColorPairs } : {}), ...(palette ? { palette } : {}) },
+    { ...(excludedColorPairs ? { excludedPairs: excludedColorPairs } : {}) },
   )
   const colors = {
     bg: colorKeyOr(assigned.bg, FEED_FALLBACK_COLORS.bg as FeedColorKey),

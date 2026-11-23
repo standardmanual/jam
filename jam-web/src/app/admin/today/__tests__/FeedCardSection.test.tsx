@@ -25,7 +25,6 @@ import FeedCardSection, {
 import { EMPTY_FEED_CARD_FORM_VALUES, type FeedCardFormValues } from '@/lib/admin/feedCardFields'
 import { FEED_CHIP_SLOT_SPECS, FEED_TYPES } from '@/lib/today/feedChipSlots'
 import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
-import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 
 vi.mock('next/navigation', () => ({
@@ -166,8 +165,15 @@ describe('FeedCardSection — 색 견본과 이름', () => {
   it('고른 색은 견본(색 변수)과 한국어 이름이 함께 보이고 견본은 보조 기술이 읽지 않는다', () => {
     const html = render({ feedType: 'hero_box', bgColorKey: 'green' })
     expect(html).toContain('그린')
-    expect(html).toContain('background-color:var(--feed-color-green, var(--jam-green))')
+    expect(html).toContain('background-color:var(--jam-green)')
     expect(html).toContain('aria-hidden="true"')
+  })
+
+  // 저장된 값이 쓰임 표 밖이면(칩에 짙은 초록) 닫힌 칸에 «현재 값»으로만 보이고, 선택지 목록은 표 안 색만 둔다(티켓 20261122_2225)
+  it('쓰임 표 밖의 저장값은 «현재 값»으로 보인다', () => {
+    const html = render({ feedType: 'hero_box', chipColorKey: 'green-deep' })
+    expect(html).toContain('짙은 그린 (현재 값)')
+    expect(render({ feedType: 'hero_box', chipColorKey: 'pink' })).not.toContain('(현재 값)')
   })
 })
 
@@ -249,25 +255,6 @@ describe('feedColorWarnings — 규칙에 걸리는 조합은 경고만', () => 
     expect(html).toContain('함께 쓰지 않기로 한 색 조합이에요')
     expect(render({ feedType: 'hero_box', bgColorKey: 'yellow', chipColorKey: 'red' })).not.toContain('feed-color-warnings')
     expect(render({ feedType: 'text_box', boxColorKey: 'green-deep' })).toContain('글자가 들어가는 박스에는 맞지 않아요')
-  })
-
-  describe('덮어쓴 팔레트 (티켓 20261121_2145) — 색 조합 경고는 키 기반이라 hex를 읽지 않고 이미지 경고만 읽는다', () => {
-    const overridden = { ...DEFAULT_FEED_PALETTE, red: DEFAULT_FEED_PALETTE.pink }
-
-    it('palette를 줘도 키 기반 색 조합 경고는 그대로다', () => {
-      const colors = { bgColorKey: 'yellow', chipColorKey: 'pink', boxColorKey: '' } as const
-      expect(feedColorWarnings(colors, show, [], undefined, overridden)).toEqual([])
-      expect(feedColorWarnings({ ...colors, bgColorKey: 'green', chipColorKey: 'red' }, show, [], undefined, overridden)).toHaveLength(1)
-    })
-
-    it('이미지 색 경고도 덮어쓴 hex로 판정한다', () => {
-      const image = { imageHexes: [DEFAULT_FEED_PALETTE.blue], chipOnImage: false }
-      const only = { bgColorKey: 'green', chipColorKey: '', boxColorKey: '' } as const
-      expect(feedColorWarnings(only, show, [], image)).toEqual([])
-      const warnings = feedColorWarnings(only, show, [], image, { ...DEFAULT_FEED_PALETTE, green: DEFAULT_FEED_PALETTE.blue })
-      expect(warnings).toHaveLength(1)
-      expect(warnings[0]).toContain('이미지의 대표 색과 너무 비슷해서 묻혀요')
-    })
   })
 })
 

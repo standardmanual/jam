@@ -21,7 +21,7 @@ import type {
 } from '@/types/database'
 import { isSafeListHref } from '@/lib/today/listHref'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
-import { assignFeedColors, type ExcludedColorPair, type FeedPalette } from '@/lib/today/feedAssign'
+import { assignFeedColors, type ExcludedColorPair } from '@/lib/today/feedAssign'
 import {
   chipLimitOf,
   diagonalOf,
@@ -318,8 +318,6 @@ export interface FeedCardValidateOptions {
   title: string
   /** 카드에 연결된 컬렉션 id. 넘기면(`null` 포함) «컬렉션 소개인데 컬렉션이 없음» 경고를 판정하고, 안 넘기면 그 경고는 건너뛴다. */
   itemBookId?: string | null
-  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 호출부 호환용으로 남겼다 — 색 조합 경고는 키 기반 규칙(`colorRuleWarnings`)이라 hex를 읽지 않는다(회차 9). */
-  palette?: FeedPalette
 }
 
 /** 컬렉션 모션 배지의 값 범위. x·y는 PRD 「컬렉션 모션」, 크기는 `FEED_BURST.badgeSize`, 기울기·지연은 PRD 칸 표다. */
@@ -337,9 +335,6 @@ const SEED_MAX = 2 ** 32 - 1
 /** 색 규칙 이름 → 경고에 붙는 이유 문구. 작성 화면(`FeedCardSection`)이 같은 문구를 쓴다(티켓 20261121_1316). */
 export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
   same: '두 색이 같아서 구분이 안 돼요',
-  contrast: '두 색이 너무 비슷하거나 원색끼리 부딪혀요',
-  kids: '원색끼리거나 밝은 색끼리 색 차이가 커서 어수선해요',
-  lightness: '밝기 차이가 모자라 칩이 묻혀요',
   image: '이미지의 대표 색과 너무 비슷해서 묻혀요',
   table: '함께 쓰지 않기로 한 색 조합이에요',
 }
@@ -683,8 +678,6 @@ export interface DecideFeedCardValuesInput {
   excludedPairs?: readonly ExcludedColorPair[]
   /** 이미지 대표 색(규칙 ⑤·⑥, 티켓 20261121_1828). `imageColorsForCard`가 만든 값이다. 없으면 이미지 규칙 없이 정한다. */
   image?: FeedImageColorInput
-  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 자동 배정이 이 hex로 규칙을 판정한다. 생략하면 기본 팔레트다. */
-  palette?: FeedPalette
 }
 
 export interface DecidedFeedCardValues {
@@ -720,7 +713,7 @@ export function decideFeedCardValues(input: DecideFeedCardValuesInput): DecidedF
       imageHexes: input.image?.imageHexes,
       chipOnImage: input.image?.chipOnImage,
     },
-    { excludedPairs: input.excludedPairs, ...(input.palette ? { palette: input.palette } : {}) },
+    { excludedPairs: input.excludedPairs },
   )
   const warnings = assigned.usedFallback
     ? ['자동으로 고를 수 있는 색 조합이 없어 기본 조합으로 저장했어요. 마음에 들지 않으면 색을 직접 골라 주세요.']

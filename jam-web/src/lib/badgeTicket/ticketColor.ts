@@ -3,7 +3,7 @@ import { hexToHsl, violatesImageColorRule } from '@/lib/today/feedColorRules'
 
 /**
  * 배지 상세 티켓의 랜덤 색 규칙 (티켓 20261122_1222).
- * 후보는 원색 5개다. 홈피드의 `--feed-color-*` 덮어쓰기 변수는 쓰지 않고 `--jam-*`를 그대로 가리킨다.
+ * 후보는 원색 5개다. `--jam-*`를 그대로 가리킨다.
  */
 export const TICKET_COLOR_KEYS = ['red', 'yellow', 'green', 'purple', 'blue'] as const
 export type TicketColorKey = (typeof TICKET_COLOR_KEYS)[number]

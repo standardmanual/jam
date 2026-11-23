@@ -23,7 +23,7 @@ import {
   type FeedDescriptionMode,
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
-import { FEED_COLOR_LABELS } from '@/lib/admin/feedColorLabels'
+import { currentColorChoice, FEED_COLOR_LABELS, feedColorChoices, type FeedColorRole } from '@/lib/admin/feedColorLabels'
 import { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
 import { cornerOfSlot } from '@/lib/today/feedChipLayout'
 import {
@@ -38,10 +38,10 @@ import {
 } from '@/lib/today/feedChipSlots'
 import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
-import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
+import { FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
-import type { ExcludedColorPair, FeedPalette } from '@/lib/today/feedAssign'
+import type { ExcludedColorPair } from '@/lib/today/feedAssign'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
 import type { TodayBoxKind, TodayBoxShape, TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -155,14 +155,13 @@ const colorName = (key: FeedColorKey): string => FEED_COLOR_LABELS[key]
  * 고른 색 조합이 규칙에 걸리거나 사용자가 제외한 조합이면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
  * 칩의 배제 표 위반·바탕–박스 같은 색·글자 박스에 짙은 초록 박스는 서버 검증 경고와 같은 함수(`colorRuleWarnings`)가 판정한다(티켓 20261122_2224 회차 9).
  * 두 칸 다 고른 짝만 본다. 보이지 않는 칸(`show`가 거짓)이 낀 짝은 건너뛴다.
- * `palette`는 이미지 색 경고(hex로 겹침을 판정)가 쓴다. 안 주면 기본 hex로 판정한다.
+ * 이미지 색 경고는 `FEED_COLORS`의 hex로 겹침을 판정한다.
  */
 export function feedColorWarnings(
   values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey' | 'boxColorKey'> & Partial<Pick<FeedCardFormValues, 'feedType' | 'boxKind'>>,
   show: { chip: boolean; box: boolean },
   excludedPairs: readonly ExcludedColorPair[] = [],
   imageColors?: FeedImageColorInput,
-  palette?: FeedPalette,
 ): string[] {
   const warnings = colorRuleWarnings({
     bg: values.bgColorKey,
@@ -173,7 +172,7 @@ export function feedColorWarnings(
     show,
     excludedPairs,
   })
-  warnings.push(...imageColorWarnings(values, show, imageColors, palette))
+  warnings.push(...imageColorWarnings(values, show, imageColors))
   return warnings
 }
 
@@ -186,7 +185,6 @@ function imageColorWarnings(
   values: Pick<FeedCardFormValues, 'bgColorKey' | 'chipColorKey'>,
   show: { chip: boolean },
   imageColors: FeedImageColorInput | undefined,
-  palette?: FeedPalette,
 ): string[] {
   if (!imageColors || imageColors.imageHexes.length === 0) return []
   const candidates: ReadonlyArray<readonly [string, FeedColorKey | '', boolean]> = [
@@ -197,7 +195,7 @@ function imageColorWarnings(
   for (const [label, key, applies] of candidates) {
     if (!applies || !key) continue
     // 저장된 값이 9키에 없으면(옛 키) 색을 모르니 건너뛴다
-    const hex = palette?.[key] ?? (FEED_COLORS as Readonly<Record<string, { hex: string } | undefined>>)[key]?.hex
+    const hex = (FEED_COLORS as Readonly<Record<string, { hex: string } | undefined>>)[key]?.hex
     if (!hex || !violatesImageColorRule(hex, imageColors.imageHexes)) continue
     warnings.push(`${label}(${colorName(key)})이 색 규칙에 걸려요. ${COLOR_RULE_REASON.image}. 저장은 되지만 다른 색을 골라 보세요.`)
   }
@@ -213,11 +211,12 @@ export function titleChipWordError(word: string, title: string): string | null {
 
 // ── 부품 ──────────────────────────────────────────────────────
 
-const COLOR_OPTIONS: readonly ChoiceOption[] = FEED_COLOR_KEYS.map((key) => ({
-  value: key,
-  label: FEED_COLOR_LABELS[key],
-  colorKey: key,
-}))
+/** 색 고르기 선택지: 자리마다 쓰임 표(`FEED_COLOR_USAGE`)의 색만 보인다(`feedColorChoices`). 비워 두면 «자동»이다. */
+const COLOR_OPTIONS: Readonly<Record<FeedColorRole, readonly ChoiceOption[]>> = {
+  bg: feedColorChoices('bg'),
+  chip: feedColorChoices('chip'),
+  box: feedColorChoices('box'),
+}
 
 const BOX_SHAPE_OPTIONS: readonly ChoiceOption[] = BOX_SHAPES.map((shape) => ({
   value: shape,
@@ -263,8 +262,6 @@ export interface FeedCardSectionProps {
   badgeColors?: readonly unknown[]
   /** 커버 대표 색이 저장 전이라 아직 없다(새 카드이거나 커버 이미지를 바꿨다). 커버 색 규칙을 쓰는 유형에서 안내 한 줄을 보인다. */
   coverColorsPending?: boolean
-  /** 색 키 → hex 표(컬러셋 교체로 덮어쓴 값을 합친 것, 티켓 20261121_2145). 색 경고 판정에 쓴다. 생략하면 기본 팔레트다. */
-  palette?: FeedPalette
 }
 
 /** 커버 이미지 대표 색으로 이미지 규칙을 판정하는 유형인가 — 규칙 표(`imageColorsForCard`)를 그대로 읽어 따로 목록을 만들지 않는다. */
@@ -283,7 +280,6 @@ export default function FeedCardSection({
   coverColors,
   badgeColors,
   coverColorsPending,
-  palette,
 }: FeedCardSectionProps) {
   const feedType: FeedType | null = isFeedType(values.feedType) ? values.feedType : null
   const visible = feedType ? feedFieldVisibility(feedType) : null
@@ -296,7 +292,7 @@ export default function FeedCardSection({
     ? imageColorsForCard({ feedType, boxKind: values.boxKind, coverColors, badgeColors })
     : undefined
   const colorWarnings = visible
-    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs, imageColors, palette)
+    ? feedColorWarnings(values, { chip: visible.chipColor, box: visible.boxColor }, excludedColorPairs, imageColors)
     : []
   const showCoverColorsNotice = Boolean(coverColorsPending && feedType && usesCoverColorRule(feedType, values.boxKind))
 
@@ -358,7 +354,8 @@ export default function FeedCardSection({
               id="feed-card-bg-color"
               label="배경색"
               value={values.bgColorKey}
-              options={COLOR_OPTIONS}
+              options={COLOR_OPTIONS.bg}
+              currentValueOption={currentColorChoice('bg', values.bgColorKey)}
               onChange={(v) => onChange({ bgColorKey: v as FeedCardFormValues['bgColorKey'] })}
               themeContainer={themeContainer}
             />
@@ -367,7 +364,8 @@ export default function FeedCardSection({
                 id="feed-card-chip-color"
                 label="칩 색"
                 value={values.chipColorKey}
-                options={COLOR_OPTIONS}
+                options={COLOR_OPTIONS.chip}
+                currentValueOption={currentColorChoice('chip', values.chipColorKey)}
                 onChange={(v) => onChange({ chipColorKey: v as FeedCardFormValues['chipColorKey'] })}
                 themeContainer={themeContainer}
               />
@@ -377,7 +375,8 @@ export default function FeedCardSection({
                 id="feed-card-box-color"
                 label="박스 색"
                 value={values.boxColorKey}
-                options={COLOR_OPTIONS}
+                options={COLOR_OPTIONS.box}
+                currentValueOption={currentColorChoice('box', values.boxColorKey)}
                 onChange={(v) => onChange({ boxColorKey: v as FeedCardFormValues['boxColorKey'] })}
                 themeContainer={themeContainer}
               />

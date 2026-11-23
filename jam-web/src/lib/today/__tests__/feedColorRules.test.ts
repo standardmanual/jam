@@ -1,31 +1,20 @@
 /**
- * 홈피드 색 자동 규칙 (티켓 20261121_0012)
+ * 홈피드 색 규칙: 그림 색 겹침(⑤·⑥)과 칩 배제 표 (티켓 20261121_0012, 옛 hex 규칙은 티켓 20261122_2225에서 제거)
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/feedColorRules.test.ts
  */
 import { describe, it, expect } from 'vitest'
 import {
+  chipExclusionRule,
   cieLightness,
   COLOR_RULE_THRESHOLDS,
-  feedColorHexes,
-  firstViolatedRule,
   hexToHsl,
   hexToRgb,
-  chipExclusionRule,
   hueDifference,
   isHexColor,
-  isVividPrimary,
-  luminanceRatio,
-  passesColorRules,
   relativeLuminance,
-  summarizeColorPairs,
-  summarizeFeedColors,
-  violatesContrastRule,
   violatesImageColorRule,
-  violatesKidsRule,
-  violatesLightnessRule,
 } from '../feedColorRules'
-import { FEED_COLORS, FEED_COLOR_KEYS } from '../feedConstants'
 
 describe('색 계산', () => {
   it('hex를 읽는다(대소문자·#·3자리). 읽을 수 없으면 던진다', () => {
@@ -36,11 +25,9 @@ describe('색 계산', () => {
     expect(() => hexToRgb('red')).toThrow()
   })
 
-  it('상대 휘도·대비 비·CIE L*가 기준값과 맞는다', () => {
+  it('상대 휘도·CIE L*가 기준값과 맞는다', () => {
     expect(relativeLuminance('#000000')).toBe(0)
     expect(relativeLuminance('#FFFFFF')).toBeCloseTo(1, 10)
-    expect(luminanceRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 5)
-    expect(luminanceRatio('#FFFFFF', '#000000')).toBeCloseTo(21, 5)
     expect(cieLightness('#000000')).toBeCloseTo(0, 5)
     expect(cieLightness('#FFFFFF')).toBeCloseTo(100, 5)
     // 중간 회색(#777777)의 L*는 약 50이다
@@ -59,133 +46,6 @@ describe('색 계산', () => {
     expect(hueDifference(10, 350)).toBe(20)
     expect(hueDifference(0, 180)).toBe(180)
     expect(hueDifference(90, 90)).toBe(0)
-  })
-
-  it('원색 판정: 채도 0.85 초과·명도 0.4~0.62(경계 명도는 포함, 경계 채도는 제외)', () => {
-    expect(isVividPrimary({ h: 0, s: 0.86, l: 0.5 })).toBe(true)
-    expect(isVividPrimary({ h: 0, s: 0.85, l: 0.5 })).toBe(false)
-    expect(isVividPrimary({ h: 0, s: 1, l: 0.4 })).toBe(true)
-    expect(isVividPrimary({ h: 0, s: 1, l: 0.62 })).toBe(true)
-    expect(isVividPrimary({ h: 0, s: 1, l: 0.39 })).toBe(false)
-    expect(isVividPrimary({ h: 0, s: 1, l: 0.63 })).toBe(false)
-  })
-})
-
-describe('규칙별 경계값', () => {
-  it('① 같은 색은 대소문자·공백과 무관하게 «같은 색»이다', () => {
-    expect(firstViolatedRule('#FF1D1D', '#ff1d1d')).toBe('same')
-    expect(firstViolatedRule('#FF1D1D', ' #ff1d1d ')).toBe('same')
-  })
-
-  it('② 상대 휘도 비 1.15 미만이면 제외한다(1.15는 통과)', () => {
-    // 같은 색상(0°)·명도 차이를 크게 줘도 휘도 비 자체를 본다: 검정과 아주 짙은 회색
-    expect(luminanceRatio('#000000', '#050505')).toBeLessThan(COLOR_RULE_THRESHOLDS.minLuminanceRatio)
-    expect(violatesContrastRule('#000000', '#050505')).toBe(true)
-    // 색상 차이가 커서 다른 두 갈래에 걸리지 않는 쌍: 회색 두 개의 휘도 비가 1.15를 넘으면 통과
-    expect(luminanceRatio('#808080', '#A0A0A0')).toBeGreaterThan(COLOR_RULE_THRESHOLDS.minLuminanceRatio)
-  })
-
-  it('② 색상 차이 30도 미만이면서 명도 차이 0.09 미만이면 제외한다', () => {
-    // 색상 약 12° 차이(노랑 두 개), 명도 0.73 vs 0.68 → 차이 0.05
-    expect(violatesContrastRule('#FFDD73', '#F2EC6A')).toBe(true)
-    // 같은 색상 계열이라도 명도 차이가 0.09 이상이면 이 갈래에 걸리지 않는다(빨강 vs 연한 빨강: 0.56 vs 0.80)
-    expect(violatesContrastRule('#FF1D1D', '#FF9A9A')).toBe(false)
-  })
-
-  it('② 원색 둘이 색상 차이 90도를 넘으면 제외한다(90도 이하는 걸리지 않는다)', () => {
-    // 빨강(0°)과 파랑(203°)은 둘 다 원색이고 색상 차이가 157°다
-    expect(violatesContrastRule('#FF1D1D', '#0695EC')).toBe(true)
-    // 빨강(0°)과 노랑(46°)은 둘 다 원색이지만 색상 차이가 90° 이하라 이 갈래에는 걸리지 않는다
-    expect(hueDifference(hexToHsl('#FF1D1D').h, hexToHsl('#F9FD69').h)).toBeLessThanOrEqual(90)
-    expect(violatesContrastRule('#FF1D1D', '#F9FD69')).toBe(false)
-  })
-
-  it('③ 채도 높은 원색 둘의 조합은 키즈 규칙으로 제외한다', () => {
-    // 퍼플·노랑은 대비 규칙을 통과하지만 둘 다 원색이라 키즈 규칙에 걸린다(노랑이 연노랑 #F9FD69로 바뀌며 빨강·노랑은 더 이상 걸리지 않는다)
-    expect(violatesKidsRule('#BA8AF7', '#F9FD69')).toBe(true)
-    expect(firstViolatedRule('#BA8AF7', '#F9FD69')).toBe('kids')
-  })
-
-  it('③ 명도 0.7 초과 밝은 색 둘이 색상 차이 40도를 넘으면 제외한다', () => {
-    // 연한 노랑(45°)·연한 파랑(203°): 둘 다 명도 0.7 초과, 색상 차이 158°
-    expect(violatesKidsRule('#FFDD73', '#8FCFF6')).toBe(true)
-    // 연한 빨강(0°)·연한 노랑(45°): 색상 차이 45° → 걸린다
-    expect(violatesKidsRule('#FF9A9A', '#FFDD73')).toBe(true)
-    // 밝은 색이 하나뿐이면 걸리지 않는다: 연한 빨강(명도 0.80)과 빨강(명도 0.56)
-    expect(violatesKidsRule('#FF9A9A', '#FF1D1D')).toBe(false)
-  })
-
-  it('④ 칩과 다른 것은 L* 차이 15 이상이거나 색상 차이 150도 이상이어야 한다', () => {
-    // 레드(L* 54)와 참조 블루(L* 77): 차이 22 → 통과
-    expect(violatesLightnessRule('#FF1D1D', '#95C1F7')).toBe(false)
-    // 빨강(L* 54)과 퍼플(L* 66): L* 차이 11.7, 색상 차이 94° → 제외
-    expect(violatesLightnessRule('#FF1D1D', '#BA8AF7')).toBe(true)
-    // L* 차이가 작아도 색상 차이가 150도 이상(보색)이면 통과한다: 연한 파랑 vs 연한 노랑
-    const t = COLOR_RULE_THRESHOLDS
-    expect(Math.abs(cieLightness('#FFDD73') - cieLightness('#8FCFF6'))).toBeLessThan(t.minCieLightnessDiff)
-    expect(hueDifference(hexToHsl('#FFDD73').h, hexToHsl('#8FCFF6').h)).toBeGreaterThanOrEqual(t.complementaryHueDegrees)
-    expect(violatesLightnessRule('#FFDD73', '#8FCFF6')).toBe(false)
-  })
-
-  it('④는 칩이 끼지 않은 쌍(배경·박스)에는 적용하지 않는다', () => {
-    // 빨강·퍼플은 ④에만 걸린다(L* 차이 11.7, 색상 차이 94°)
-    expect(firstViolatedRule('#FF1D1D', '#BA8AF7', { involvesChip: true })).toBe('lightness')
-    expect(firstViolatedRule('#FF1D1D', '#BA8AF7', { involvesChip: false })).toBeNull()
-  })
-
-  it('규칙은 두 색의 순서와 무관하다', () => {
-    const hexes = feedColorHexes()
-    for (const a of hexes) {
-      for (const b of hexes) {
-        if (a === b) continue
-        expect(firstViolatedRule(a, b)).toBe(firstViolatedRule(b, a))
-      }
-    }
-  })
-})
-
-describe('9색 순서쌍 필터(컬러셋 메뉴 전용 옛 색 규칙)', () => {
-  const summary = summarizeFeedColors()
-
-  it('색 키 표의 9색을 키 순서대로 낸다', () => {
-    expect(feedColorHexes()).toEqual(FEED_COLOR_KEYS.map((key) => FEED_COLORS[key].hex))
-    expect(feedColorHexes()).toHaveLength(9)
-  })
-
-  // 옛 15색 샘플 계산(210 → 86)은 옛 10키를 걷으면서 9색 표본(72쌍)으로 바뀌었다. 컬러셋 메뉴 전용 계산이고 배정은 배제 표를 읽는다.
-  it('72가지 순서쌍에서 대비 10·키즈 4·명도 20이 빠져 38가지가 남는다', () => {
-    expect(summary.total).toBe(72)
-    expect(summary.excludedByContrast).toBe(10)
-    expect(summary.excludedByKids).toBe(4)
-    expect(summary.excludedByLightness).toBe(20)
-    expect(summary.remaining).toBe(38)
-    expect(summary.remainingPairs).toHaveLength(38)
-    expect(summary.excludedByContrast + summary.excludedByKids + summary.excludedByLightness + summary.remaining).toBe(
-      summary.total,
-    )
-  })
-
-  it('남은 쌍은 모두 규칙을 통과하고, 순서를 뒤집은 쌍도 남아 있다', () => {
-    const hexes = feedColorHexes()
-    const set = new Set(summary.remainingPairs.map(([i, j]) => `${i}-${j}`))
-    for (const [i, j] of summary.remainingPairs) {
-      expect(passesColorRules(hexes[i], hexes[j])).toBe(true)
-      expect(set.has(`${j}-${i}`)).toBe(true)
-    }
-  })
-
-  it('hex만 바꿔 넣어도 결과가 달라진다(색 키 표에 묶여 있지 않다)', () => {
-    // 회색 세 개: 같은 색상이라 «색상 30도 미만 & 명도 0.09 미만»·휘도 비 규칙이 결과를 정한다
-    const grays = summarizeColorPairs(['#000000', '#FFFFFF', '#050505'])
-    expect(grays.total).toBe(6)
-    // 검정↔흰색만 통과하고 검정↔짙은 회색·흰색↔짙은 회색 중 흰색↔짙은 회색은 L*·휘도 비가 커서 통과한다
-    expect(grays.remaining).not.toBe(summary.remaining)
-    // 같은 hex를 두 번 넣으면 «같은 색»이라 어느 단계에서도 세지 않고 총 쌍 수에서 뺀다
-    expect(summarizeColorPairs(['#FF1D1D', '#ff1d1d', '#0695EC']).total).toBe(4)
-    // 9색 표의 hex를 다른 색으로 바꾸면 결과가 달라진다
-    const swapped = [...feedColorHexes()]
-    swapped[0] = '#101010'
-    expect(summarizeColorPairs(swapped)).not.toEqual(summary)
   })
 })
 
@@ -227,10 +87,8 @@ describe('규칙 ⑤·⑥ 그림과 배경·칩 (티켓 20261121_1828)', () => {
     expect(violatesImageColorRule('#ff7f00', ['not-a-color', '#ff0000'])).toBe(true)
   })
 
-  it('같은 색은 걸리고, 순서쌍 판정(firstViolatedRule)은 이미지 규칙을 돌려주지 않는다', () => {
+  it('같은 색은 걸린다', () => {
     expect(violatesImageColorRule('#ff0000', ['#ff0000'])).toBe(true)
-    const names = feedColorHexes().flatMap((a) => feedColorHexes().map((b) => firstViolatedRule(a, b)))
-    expect(names).not.toContain('image')
   })
 
   it('isHexColor는 읽을 수 있는 hex만 참이다', () => {
@@ -266,9 +124,5 @@ describe('배제 표(chipExclusionRule)', () => {
     expect(chipExclusionRule('red', 'yellow')).toBeNull()
     expect(chipExclusionRule('purple', 'sky')).toBeNull()
     expect(chipExclusionRule('sky', 'pink')).toBeNull()
-  })
-
-  it('기존 hex 규칙은 그대로다: firstViolatedRule은 table을 돌려주지 않는다', () => {
-    expect(firstViolatedRule('#FF1D1D', '#59C02B')).not.toBe('table')
   })
 })
