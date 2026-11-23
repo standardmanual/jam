@@ -5,7 +5,7 @@
  * `FeedCollectionBurst.test.tsx`가 맡는다. 여기서는 «기본 HTML이 퍼진 모습인가»를 본다.
  *
  * 확인하는 것: 구성(최소 높이 416·영역 높이 240·대표 그림 168·`alt`는 컬렉션 이름), 기본 HTML은 퍼진 모습(불투명도 1·전환 없음·배지 `aria-hidden`·`alt=""`),
- * 배지 0~4개(0개면 모션 래퍼 없이 대표 그림만), 작은 칩 하나가 그림 모서리에 걸침, 설명 숨김, 폭 320 한도, hex 없음.
+ * 배지 0~4개(0개면 모션 래퍼 없이 대표 그림만), 칩을 계획 층이 카드 모서리에 그림(퍼진 배지 자리를 피함), 설명 숨김, hex 없음.
  *
  * 실행: cd jam-web && npx vitest run src/components/today/__tests__/FeedCollectionCard.test.tsx
  */
@@ -29,6 +29,8 @@ vi.mock('@/components/today/TodayCardTracker', () => ({
 
 import FeedCard from '../feed/FeedCard'
 import type { FeedCardView } from '@/lib/today/cardView'
+import { chainInputOf, planFeedChips } from '@/lib/today/feedChipChain'
+import { cardGeometryOf, cornerRect, overlapWithAll, tiltedBounds } from '@/lib/today/feedChipGeometry'
 import { FEED_BURST, FEED_CARD_MIN_HEIGHT } from '@/lib/today/feedConstants'
 import { resolveFeedLook, type FeedLookCard } from '@/lib/today/feedLook'
 
@@ -69,6 +71,10 @@ function collectionView(options: Options = {}): FeedCardView {
 
 const render = (view: FeedCardView) => renderToStaticMarkup(<FeedCard view={view} />)
 const count = (html: string, needle: string) => html.split(needle).length - 1
+/** 칩 층이 그린 칩 수: 알약(`rounded-full`)과 스티커(`role="img"`)의 합. 이 카드에는 제목 속 칩이 없다. */
+const chipCount = (html: string) => count(html, 'rounded-full') + count(html, 'role="img"')
+/** 이 view의 칩 계획(`toCardViews`가 없는 단건 경로는 «앞 카드 없음» 계획이다) */
+const planOf = (view: FeedCardView) => view.look.chipPlan ?? planFeedChips([chainInputOf(view)])[0]
 
 describe('컬렉션 소개 — 구성', () => {
   it('카드 면(최소 높이를 가진 요소)이 카드 루트 표식을 달고 있어 모션 래퍼가 카드 전체를 관찰한다', () => {
@@ -101,29 +107,46 @@ describe('컬렉션 소개 — 구성', () => {
     expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}[;"']/)
   })
 
-  it('칩은 작은 칩 하나 이상이 그림 모서리에 걸치고 폭 320에서 카드 안쪽 여백(16) 안에 있다', () => {
-    const view = collectionView({ chips: [{ kind: 'phrase', text: '컬렉션', slot: 'art-top-left' }] })
-    const html = render(view)
-    expect(count(html, 'rounded-full')).toBe(1)
-    expect(html).toContain('컬렉션')
-    // 걸침 한도: 가로 12 < 안쪽 여백 16이고 앵커(그림)가 가운데에 있어 카드 바깥으로 나가지 않는다
-    expect(html).toContain('left:-12px')
-    expect(html).toContain('top:-16px')
-    // 칩 크기는 작은 코너 칩(높이 40)이다(큰 코너 칩 52는 아니다)
-    expect(html).toContain('height:40px')
-    expect(html).not.toContain('height:52px')
+  it('칩은 계획이 카드 모서리에 그리고(모션 래퍼 안이 아니다) 퍼진 배지 자리를 피한다', () => {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const view = collectionView({ feed_seed: seed, chips: [{ kind: 'phrase', text: '아이템 12개' }, { kind: 'label', text: '컬렉션' }] })
+      const html = render(view)
+      const plan = planOf(view)
+      expect(chipCount(html)).toBe(plan.chips.length)
+      // 칩 층은 모션 래퍼(container-type) 뒤, 카드 셸의 마지막 자식이다 — 대표 그림 앵커에는 칩이 없다
+      expect(html.indexOf('data-chip-plan')).toBeGreaterThan(html.indexOf('<h3'))
+      expect(html).not.toContain('left:-12px')
+      expect(html).not.toContain('top:-16px')
+      // 계획이 맞는 배치면 퍼진 배지(기울어도 덮이는 한 변×1.2)와 대표 그림 가운데를 가리지 않는다
+      if (plan.fit) {
+        const { plan: input } = chainInputOf(view)
+        const geometry = cardGeometryOf({ ...input, feedType: 'collection_intro', width: 343 })
+        for (const chip of plan.chips) {
+          const b = tiltedBounds(chip.box.w, chip.box.h, chip.tilt)
+          const rect = cornerRect(chip.corner, b.w, b.h, { x: chip.inset.x / 100, y: chip.inset.y / 100 }, 343, geometry.height)
+          expect(overlapWithAll(rect, geometry.avoid)).toBe(0)
+        }
+      }
+    }
   })
 
-  it('칩이 둘이어도 모두 작은 칩이다', () => {
-    const view = collectionView({
-      chips: [
-        { kind: 'phrase', text: '아이템 12개', slot: 'art-top-left' },
-        { kind: 'label', text: '컬렉션', slot: 'art-bottom-right' },
-      ],
-    })
+  it('한 칩만 저장하면 한 개, 어드민이 정한 자리는 계획이 옮기지 않는다', () => {
+    const view = collectionView({ chips: [{ kind: 'phrase', text: '컬렉션', slot: 'art-top-left' }] })
     const html = render(view)
-    expect(count(html, 'rounded-full')).toBe(2)
-    expect(html).not.toContain('height:52px')
+    expect(chipCount(html)).toBe(1)
+    expect(html).toContain('컬렉션')
+    expect(planOf(view).chips[0].corner).toBe('top-left')
+    expect(html).toMatch(/left:calc\(-?[\d.]+% \+ [\d.]+px\);top:calc\(-?[\d.]+% \+ [\d.]+px\)/)
+  })
+
+  it('칩이 둘이어도 스티커는 한 개까지이고 칩 없음([])이면 칩 층이 없다', () => {
+    for (let seed = 1; seed <= 30; seed += 1) {
+      const html = render(collectionView({ feed_seed: seed, chips: [{ kind: 'phrase', text: '아이템 12개' }, { kind: 'label', text: '컬렉션' }] }))
+      expect(count(html, 'role="img"')).toBeLessThanOrEqual(1)
+    }
+    const empty = render(collectionView({ chips: [] }))
+    expect(chipCount(empty)).toBe(0)
+    expect(empty).not.toContain('data-chip-plan')
   })
 
   it('계측 정보가 있으면 카드 전체 링크가 하나이고 클릭을 기록한다(목록형과 달리 일반 카드)', () => {

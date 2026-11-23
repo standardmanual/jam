@@ -1,14 +1,13 @@
 import SafeImage from '@/components/SafeImage'
 import type { FeedCardView } from '@/lib/today/cardView'
-import { chipPositionOf } from '@/lib/today/feedChipLayout'
 import { FEED_BURST, FEED_CARD_MIN_HEIGHT } from '@/lib/today/feedConstants'
 import FeedCollectionBurst, { type FeedBurstBadge } from './FeedCollectionBurst'
-import { FeedCardShell, FeedChipLayer, FeedStampLayer, FeedTextBlock } from './FeedCardParts'
+import { FeedCardShell, FeedChipPlanLayer, FeedStampLayer, FeedTextBlock } from './FeedCardParts'
 
 /**
  * 컬렉션 소개(`collection_intro`) — 위 영역(높이 240) 가운데에 대표 그림 168×168, 그 뒤에서 아이템 배지 4개가 퍼지고, 아래에 제목(컬렉션 이름)과 설명 (티켓 20261121_0115).
  *
- * 샘플: 카드 최소 높이 416, 안쪽 여백 16. 대표 그림은 카드의 커버(`imageUrl`, 없으면 이 카드는 옛 경로로 간다)이고 `alt`는 컬렉션 이름이다. 칩은 작은 코너 칩(높이 40)이 그림 모서리(`art-*`)에 걸친다.
+ * 샘플: 카드 최소 높이 416, 안쪽 여백 16. 대표 그림은 카드의 커버(`imageUrl`, 없으면 이 카드는 옛 경로로 간다)이고 `alt`는 컬렉션 이름이다. 칩은 카드 모서리에 걸쳐 계획(`look.chipPlan`)대로 놓인다(`FeedChipPlanLayer`, 칩 층은 모션 래퍼 바깥의 카드 셸 직계이고 계획이 퍼진 배지 자리·대표 그림 가운데·글자를 피한다). 도장은 대표 그림 모서리 안쪽이다.
  * 배지는 `look.burst`의 앞에서부터 배지 수만큼 쓴다(4개 미만이면 있는 만큼). 배지가 0개면 모션 래퍼 없이 대표 그림만 그린다(서버 컴포넌트). 모션은 `FeedCollectionBurst`(`'use client'`)가 맡고, 카드 면에 단 루트 표식(`markRoot`)을 그 래퍼가 찾아 카드 전체를 관찰한다.
  */
 
@@ -39,7 +38,6 @@ export default function FeedCollectionCard({
         height={FEED_BURST.artSize}
         className="h-full w-full object-contain"
       />
-      <FeedChipLayer view={view} size="sm" positionOf={(slot) => chipPositionOf('collection_intro', slot)} />
       <FeedStampLayer view={view} />
     </div>
   )
@@ -56,6 +54,7 @@ export default function FeedCollectionCard({
         </div>
       )}
       <FeedTextBlock view={view} />
+      <FeedChipPlanLayer view={view} />
     </FeedCardShell>
   )
 }
