@@ -174,28 +174,35 @@ describe('덮어쓴 팔레트가 자동 배정을 바꾼다', () => {
     }
   })
 
-  it('고른 칩 색의 hex가 배경색과 같아지도록 덮어쓰면 다른 칩 색을 고른다', () => {
-    let changed = 0
+  // 통합 팔레트 규칙(티켓 20261122_2224 회차 4·5)에서 자동 배정이 hex를 읽는 곳은 그림 색 규칙(⑤·⑥)뿐이다.
+  const RED_IMAGE = { imageHexes: [DEFAULT_FEED_PALETTE.red], chipOnImage: true }
+  const pinkAsRed = buildFeedPalette({ pink: DEFAULT_FEED_PALETTE.red })
+  const usesPink = (bg: string, chip: string) => bg === 'pink' || chip === 'pink'
+
+  it('분홍을 빨강 hex로 덮어쓰면 빨강 그림 위에서 분홍은 바탕·칩 후보에서 빠진다', () => {
+    let baselineUsesPink = 0
     for (let seed = 1; seed <= 30; seed++) {
-      const input = { seed, fixed: { bg: 'red-soft', chip: null, box: null } }
-      const before = assignFeedColors(input)
-      const palette = buildFeedPalette({ [before.chip as FeedColorKey]: DEFAULT_FEED_PALETTE['red-soft'] })
-      const after = assignFeedColors(input, { palette })
-      expect(after.bg).toBe('red-soft')
-      expect(firstViolatedRule(palette[after.bg], palette[after.chip], { involvesChip: true })).toBeNull()
-      if (after.chip !== before.chip) changed++
+      const before = assignFeedColors({ seed, ...RED_IMAGE })
+      if (usesPink(before.bg, before.chip)) baselineUsesPink++
+      const after = assignFeedColors({ seed, ...RED_IMAGE }, { palette: pinkAsRed })
+      expect(usesPink(after.bg, after.chip)).toBe(false)
     }
-    expect(changed).toBeGreaterThan(0)
+    expect(baselineUsesPink).toBeGreaterThan(0)
   })
 
-  it('decideFeedCardValues: palette가 자동 배정에 전달돼 덮어쓴 hex로 규칙을 판정한다', () => {
+  it('decideFeedCardValues: palette가 자동 배정에 전달돼 덮어쓴 hex로 그림 색 규칙을 판정한다', () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const columns = { bg_color_key: 'red-soft' as const }
-      const before = decideFeedCardValues({ columns, seed })
-      const palette = buildFeedPalette({ [before.chip_color_key]: DEFAULT_FEED_PALETTE['red-soft'] })
-      const after = decideFeedCardValues({ columns, seed, palette })
-      expect(firstViolatedRule(palette[after.bg_color_key], palette[after.chip_color_key], { involvesChip: true })).toBeNull()
-      expect(decideFeedCardValues({ columns, seed, palette: DEFAULT_FEED_PALETTE })).toEqual(before)
+      const columns = {}
+      const before = decideFeedCardValues({ columns, seed, image: RED_IMAGE })
+      const after = decideFeedCardValues({ columns, seed, image: RED_IMAGE, palette: pinkAsRed })
+      expect(usesPink(after.bg_color_key, after.chip_color_key)).toBe(false)
+      expect(decideFeedCardValues({ columns, seed, image: RED_IMAGE, palette: DEFAULT_FEED_PALETTE })).toEqual(before)
+    }
+  })
+
+  it('그림 색이 없으면 팔레트를 덮어써도 자동 배정은 달라지지 않는다(쓰임 표·배제 표는 hex를 읽지 않는다)', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      expect(assignFeedColors({ seed }, { palette: pinkAsRed })).toEqual(assignFeedColors({ seed }))
     }
   })
 })
@@ -209,8 +216,7 @@ describe('resolveFeedLook의 palette', () => {
     expect(resolveFeedLook({ card, feedType: 'hero_box', valueSource: null, now: NOW, palette: DEFAULT_FEED_PALETTE })).toEqual(baseline)
   })
 
-  it('색이 비어 있는 카드는 덮어쓴 hex로 규칙을 판정해 색을 정한다(저장된 키는 그대로)', () => {
-    let changed = 0
+  it('색이 비어 있는 카드의 자동 배정은 팔레트를 덮어써도 달라지지 않는다(그림 색을 읽지 않는 경로, 저장된 키는 그대로)', () => {
     for (let n = 1; n <= 30; n++) {
       const stored = { id: `card-look-${n}`, feed_type: 'hero_box' as const, bg_color_key: 'red-soft', box_color_key: 'ref-lime' }
       const before = resolveFeedLook({ card: stored, feedType: 'hero_box', valueSource: null, now: NOW })
@@ -218,10 +224,7 @@ describe('resolveFeedLook의 palette', () => {
       expect(before.colors.box).toBe('ref-lime')
       const palette = buildFeedPalette({ [before.colors.chip as FeedColorKey]: DEFAULT_FEED_PALETTE['red-soft'] })
       const after = resolveFeedLook({ card: stored, feedType: 'hero_box', valueSource: null, now: NOW, palette })
-      expect(after.colors.bg).toBe('red-soft')
-      expect(after.colors.box).toBe('ref-lime')
-      if (after.colors.chip !== before.colors.chip) changed++
+      expect(after.colors).toEqual(before.colors)
     }
-    expect(changed).toBeGreaterThan(0)
   })
 })

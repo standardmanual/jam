@@ -2,7 +2,7 @@
  * 홈피드 새 카드 미리보기의 가짜 데이터와 요약 계산 (티켓 20261121_0155, 상위 20261120_2026 4회차-4)
  *
  * 확인하는 것:
- * 1. 120장 자동 배정이 규칙 ①~④를 모두 통과하고(위반 0) 제외 조합과 겹치지 않는다(겹침 0), 되돌림 기본 조합이 쓰이지 않는다.
+ * 1. 120장 자동 배정이 통합 팔레트 배제 표를 모두 통과하고(위반 0) 제외 조합과 겹치지 않는다(겹침 0), 되돌림 기본 조합이 쓰이지 않는다.
  * 2. 같은 입력은 같은 결과다(`Math.random`·`Date.now` 없음). 시드는 서로 다르고 유형 8개가 모두 나온다.
  * 3. 제외 조합 예시가 «제외하지 않으면 실제로 나올 수 있는» 쌍이라 요약의 겹침 0이 의미가 있다(제외 없이 배정하면 겹침이 생긴다).
  * 4. 유형 8개 구역·박스 5종 구역·상태 구역·모션 구역의 가짜 데이터가 모든 유형을 채우고, 값 칩 입력이 칩 문구로 나온다.
@@ -15,6 +15,7 @@ import { BOX_SHAPES } from '../boxShape'
 import { FEED_RENDERED_TYPES } from '../feedLook'
 import { splitTitleByWords } from '../titleChips'
 import { chipLimitOf, FEED_CHIP_SLOT_SPECS } from '../feedChipSlots'
+import { FEED_COLOR_KEYS } from '../feedConstants'
 import {
   PREVIEW_AUTO_COUNT,
   PREVIEW_EXCLUDED_PAIRS,
@@ -80,7 +81,7 @@ describe('자동 배정 120장', () => {
     })
   })
 
-  it('제외 조합 예시는 규칙을 통과하는 쌍이라, 제외하지 않으면 실제로 겹치는 카드가 나온다', () => {
+  it('제외 조합 예시는 규칙에서 나올 수 있는 쌍이라, 제외하지 않으면 실제로 겹치는 카드가 나온다', () => {
     const withoutExclusion = buildAutoAssignment(PREVIEW_AUTO_COUNT, [])
     expect(withoutExclusion.summary.ruleViolationCount).toBe(0)
     // 같은 카드에 같은 색 쌍이 나오는지는 제외 목록이 정한다. 제외가 없으면 예시 쌍이 쓰인 카드가 있다.
@@ -97,11 +98,8 @@ describe('자동 배정 120장', () => {
   })
 
   it('제외 조합을 모두 막으면 되돌림 기본 조합이 쓰이고 요약이 센다(되돌림 수가 실제로 움직인다)', () => {
-    // 15색 모든 쌍을 제외하면 통과하는 조합이 없다 — 배경·칩·박스 모두 기본 조합으로 되돌아간다
-    const keys = [
-      'red', 'yellow', 'green', 'purple', 'blue', 'red-soft', 'yellow-soft', 'green-soft', 'purple-soft', 'blue-soft',
-      'ref-red', 'ref-blue', 'ref-lime', 'ref-pink', 'ref-yellow',
-    ]
+    // 19키 모든 쌍을 제외하면 통과하는 조합이 없다 — 배경·칩·박스 모두 기본 조합으로 되돌아간다
+    const keys = [...FEED_COLOR_KEYS]
     const everything = keys.flatMap((a) => keys.filter((b) => b !== a).map((b) => [a, b] as const))
     const { summary: blocked } = buildAutoAssignment(8, everything)
     expect(blocked.fallbackCount).toBe(8)

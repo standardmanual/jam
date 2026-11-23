@@ -10,7 +10,19 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const h = vi.hoisted(() => ({ override: null as null | (() => unknown) }))
+const h = vi.hoisted(() => ({
+  override: null as null | (() => unknown),
+  /** 자동 색 배정을 «통과하는 조합 없음»으로 바꿔 끼운다(통합 팔레트 규칙에서는 등록 경로로 기본 조합 되돌림을 만들 수 없다). 값이 없으면 실제 배정을 그대로 부른다. */
+  colorAssign: null as null | (() => unknown),
+}))
+
+vi.mock('@/lib/today/feedAssign', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/today/feedAssign')>()
+  return {
+    ...actual,
+    assignFeedColors: (...args: Parameters<typeof actual.assignFeedColors>) => (h.colorAssign ? h.colorAssign() : actual.assignFeedColors(...args)),
+  }
+})
 
 // 표에 없는 라벨의 실패를 만들기 위해 DB 검사 결과를 바꿔 끼울 수 있게 한다. 값이 없으면 실제 검사를 그대로 부른다.
 vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
@@ -23,7 +35,7 @@ vi.mock('@/lib/admin/registerChecks/homeFeed', async (importOriginal) => {
 
 import { asRegisterChecksClient, RESOURCE_KEY_BY_KIND, type CoverColorsFieldsFn, type ExecuteLinkedIds } from '../handlers'
 import { HOME_FEED_CARD_HANDLER as handler } from '../homeFeedCard'
-import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { FEED_COLOR_KEYS, FEED_COLOR_USAGE } from '@/lib/today/feedConstants'
 import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
 import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { DB_SECRET, FakeDb, type Row } from './fakeDb'
@@ -416,9 +428,9 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     for (let i = 0; i < 5; i += 1) expect(await colorsOf()).toEqual(first)
   })
 
-  it('같은 시기에 노출되는 다른 카드의 배경색은 덜 쓰이게 피하고, 자기 자신은 빈도에서 뺀다', async () => {
+  it('같은 시기 카드의 빈도 조회는 자기 자신을 빼고, 색은 통합 팔레트 키로만 정한다(앞 카드 목록으로 바꾸는 일은 6회차)', async () => {
     const db = new FakeDb()
-    // 'green'을 뺀 모든 색이 같은 시기에 한 번씩 쓰이고 있다. 같은 ID의 옛 행(재시도 흔적)이 'green'을 쓰고 있어도 세지 않는다.
+    // 같은 ID의 옛 행(재시도 흔적)이 있어도 빈도에서 뺀다.
     db.tables.today_cards = [
       ...FEED_COLOR_KEYS.filter((key) => key !== 'green').map((key, index) => ({ id: uid(100 + index), bg_color_key: key, starts_at: STARTS_AT, ends_at: ENDS_AT })),
       { id: CARD_ID, bg_color_key: 'green', starts_at: STARTS_AT, ends_at: ENDS_AT },
@@ -426,7 +438,10 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
     await handler.create(db.service, prepared(feedItem()), { now: NOW })
 
     const inserted = db.tables.today_cards[db.tables.today_cards.length - 1]
-    expect(inserted).toMatchObject({ id: CARD_ID, feed_type: 'text_box', bg_color_key: 'green' })
+    expect(inserted).toMatchObject({ id: CARD_ID, feed_type: 'text_box' })
+    expect(FEED_COLOR_USAGE.bg as readonly string[]).toContain(inserted.bg_color_key)
+    expect(FEED_COLOR_USAGE.box as readonly string[]).toContain(inserted.box_color_key)
+    expect(FEED_COLOR_USAGE.valueChip as readonly string[]).toContain(inserted.chip_color_key)
     const usageRead = db.calls.find((call) => call.op === 'select')
     expect(usageRead?.filters[0]).toEqual(['id !=', CARD_ID])
   })
@@ -481,17 +496,18 @@ describe('create — 유형이 있는 카드의 시드·색 자동 정하기(티
 
   it('기본 조합으로 되돌려도 등록은 막지 않고 서버 로그에만 남긴다', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // 통합 팔레트 규칙은 등록 경로에서 조합이 비는 입력을 만들 수 없어, 배정이 기본 조합을 돌려주는 상황을 바꿔 끼운다.
+    h.colorAssign = () => ({ bg: 'red', chip: 'blue-soft', box: 'yellow', usedFallback: true })
     try {
       const db = new FakeDb()
-      // 배경 red와 칩 blue-soft를 지정하면 맞는 박스 색이 없어 기본 조합으로 되돌린다.
       const outcome = await handler.create(db.service, prepared(feedItem({ bg_color_key: 'red', chip_color_key: 'blue-soft' })), { now: NOW })
 
       expect(outcome).toEqual({ ok: true, value: { id: CARD_ID } })
-      expect(db.tables.today_cards[0]).toMatchObject({ bg_color_key: 'red', chip_color_key: 'blue-soft' })
-      expect(FEED_COLORS).toContain(db.tables.today_cards[0].box_color_key)
+      expect(db.tables.today_cards[0]).toMatchObject({ bg_color_key: 'red', chip_color_key: 'blue-soft', box_color_key: 'yellow' })
       expect(warnSpy).toHaveBeenCalledTimes(1)
       expect(String(warnSpy.mock.calls[0][0])).toContain(CARD_ID)
     } finally {
+      h.colorAssign = null
       warnSpy.mockRestore()
     }
   })

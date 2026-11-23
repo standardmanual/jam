@@ -2,32 +2,36 @@
  * 홈피드 새 카드의 자동 배정 — 색(배경·칩·박스)과 칩 자리·기울기를 카드 id 시드로 정한다 (티켓 20261121_0012, 상위 20261120_2026 4회차-1).
  *
  * 규격 정본은 docs/service/prd/home-feed/PRD.md §6 「개편 규격」의 «색 → 자동 배정»·«칩 → 자리와 기울기»·«구현 때 지킬 점 → 무작위 값»이다.
+ * 색은 통합 팔레트 규칙(티켓 20261122_2224 회차 4·5, 상위 20261122_2217 결정 §2·§3·§5)이다: 바탕+박스 조합 가중 추첨, 짙은 초록 바탕 리듬, 값 칩 7색과 배제 표.
  *
- * - 같은 입력(시드·지정값·사용 빈도·제외 목록)은 언제 어디서 열어도 같은 값이다. `Math.random`은 쓰지 않고 `boxShape.ts`의 `createRng`를 쓴다.
+ * - 같은 입력(시드·지정값·최근 바탕 목록·제외 목록)은 언제 어디서 열어도 같은 값이다. `Math.random`은 쓰지 않고 `boxShape.ts`의 `createRng`를 쓴다.
  * - 시각·서버 값을 읽지 않는 순수 함수다. 결과를 카드에 저장하는 일은 호출하는 쪽(등록 경로, 6회차)이 한다.
  * - 사용자가 지정한 값(NULL이 아닌 칸)은 덮어쓰지 않는다. 지정값끼리 규칙에 걸려도 막지 않는다(PRD «수동 지정»: 경고만).
- * - 규칙 판정은 hex를 입력으로 받는 `feedColorRules.ts`가 하고, 이 파일은 색 키 → hex 표(`palette`)를 인자로 받는다(기본값은 `FEED_COLORS`).
+ * - 배지 그림 색 겹침 규칙(⑤·⑥)만 hex를 읽는다. 색 키 → hex 표(`palette`)를 인자로 받고 기본값은 `FEED_COLORS`다.
  */
 import { createRng, type BoxSeed } from './boxShape'
-import { isHexColor, passesColorRules, violatesImageColorRule } from './feedColorRules'
-import { FEED_COLORS, FEED_NEW_COLOR_KEYS, FEED_TILTS } from './feedConstants'
+import { chipExclusionRule, isHexColor, violatesImageColorRule } from './feedColorRules'
+import {
+  boxAllowedFor,
+  FEED_BG_BOX_COMBOS,
+  FEED_COLOR_USAGE,
+  FEED_COLORS,
+  FEED_DEEP_GREEN_COMBOS,
+  FEED_DEEP_GREEN_KEY,
+  FEED_DEEP_GREEN_RHYTHM,
+  FEED_TILTS,
+} from './feedConstants'
 import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, MAX_CARD_CHIPS, type FeedType } from './feedChipSlots'
 
 // ── 색 ────────────────────────────────────────────────────────
 
-/** 색 키 → hex 표. 키는 색 키 15개 말고도 지정값으로 들어온 흰색 같은 키를 담을 수 있다. */
+/** 색 키 → hex 표. 키는 통합 팔레트 말고도 지정값으로 들어온 옛 키를 담을 수 있다. */
 export type FeedPalette = Readonly<Record<string, string>>
 
-/** 기본 표: `FEED_COLORS`의 15색. */
+/** 기본 표: `FEED_COLORS`의 19키. 컬러셋 메뉴·그림 색 규칙이 읽는다. */
 export const DEFAULT_FEED_PALETTE: FeedPalette = Object.fromEntries(
   Object.entries(FEED_COLORS).map(([key, color]) => [key, color.hex]),
 )
-
-/**
- * 자동 배정이 쓰지 않는 색 키. PRD: «흰색은 자동 배정에 쓰지 않는다(사용자가 직접 지정할 때만 쓴다)».
- * 통합 팔레트 새 키 4개(green-deep·pink·sky·white)는 4·5회차(배정)가 쓰기 전까지 임시로 뺀다(티켓 20261122_2224 회차 2) — 5회차가 이 목록을 지운다.
- */
-export const FEED_AUTO_EXCLUDED_KEYS: readonly string[] = ['white', ...FEED_NEW_COLOR_KEYS]
 
 export interface FeedColorTriple {
   bg: string
@@ -36,10 +40,13 @@ export interface FeedColorTriple {
 }
 
 /**
- * 통과하는 조합이 하나도 없을 때 쓰는 안전한 기본 조합(연한 레드 배경·레드 칩·참조 라임 박스).
- * 기본 15색 표에서 규칙 ①~④를 모두 통과하는 조합이다(시험이 확인한다). 컬러셋을 바꾸면 이 값도 다시 고른다.
+ * 통과하는 조합이 하나도 없을 때 쓰는 안전한 기본 조합(노랑 바탕·초록 박스·분홍 칩).
+ * 쓰임 표(바탕·박스·값 칩)와 배제 표를 모두 통과하고 일반 조합 9개 중 하나다(시험이 확인한다).
  */
-export const FEED_FALLBACK_COLORS: FeedColorTriple = { bg: 'red-soft', chip: 'red', box: 'ref-lime' }
+export const FEED_FALLBACK_COLORS: FeedColorTriple = { bg: 'yellow', chip: 'pink', box: 'green' }
+
+/** 짙은 초록 바탕을 «`everyMin`장째»에 낮은 확률로 뽑는 확률. `everyMax`장 이후에는 반드시 뽑는다. */
+export const DEEP_GREEN_CHANCE_AT_MIN = 0.3
 
 /** 사용자가 검수 화면에서 제외한 색 조합(순서 무관). 저장은 6회차이고 이 함수는 입력으로만 받는다. */
 export type ExcludedColorPair = readonly [string, string]
@@ -49,7 +56,14 @@ export interface FeedColorAssignInput {
   seed: BoxSeed
   /** 사용자가 지정한 색 키. 비었거나 null이면 자동으로 정한다. */
   fixed?: { bg?: string | null; chip?: string | null; box?: string | null }
-  /** 같은 시기 노출 카드의 배경색 사용 빈도(색 키 → 장수). 없는 키는 0이다. */
+  /**
+   * 같은 시기 카드의 바탕 키를 «등록 순서»로 늘어놓은 목록(가장 최근 카드가 마지막, 티켓 20261122_2224 결정 2). 바로 앞 카드(마지막 값)와 같은 바탕은 피하고,
+   * 마지막 짙은 초록 바탕 이후 장수로 짙은 초록 리듬을 센다. 없으면 빈 목록과 같다(짙은 초록 바탕은 뽑지 않는다).
+   */
+  recentBgKeys?: readonly string[]
+  /** 박스에 글자가 들어가는 카드인가. 참(기본)이면 자동으로 고르는 박스는 `boxAllowedFor`에 걸려 짙은 초록을 쓰지 않는다. */
+  boxHasText?: boolean
+  /** 옛 규칙의 «같은 시기 배경색 사용 빈도». 통합 팔레트 규칙은 읽지 않는다 — 6회차가 호출부를 `recentBgKeys`로 바꾸면 이 칸도 지운다. */
   bgUsage?: Readonly<Record<string, number>>
   /**
    * 이 카드 이미지의 대표 색 hex(저장된 최대 3개, 티켓 20261121_1828). 비었거나 없으면 이미지 규칙을 쓰지 않는다.
@@ -61,10 +75,8 @@ export interface FeedColorAssignInput {
 }
 
 export interface FeedColorAssignOptions {
-  /** 색 키 → hex. 기본은 15색 표. */
+  /** 색 키 → hex. 그림 색 규칙(⑤·⑥)이 읽는다. 기본은 19키 표. */
   palette?: FeedPalette
-  /** 자동으로 고를 색 키 후보. 기본은 표의 키에서 `FEED_AUTO_EXCLUDED_KEYS`를 뺀 것. */
-  autoKeys?: readonly string[]
   excludedPairs?: readonly ExcludedColorPair[]
   /** 통과하는 조합이 없을 때 쓸 기본 조합. 기본은 `FEED_FALLBACK_COLORS`. */
   fallback?: FeedColorTriple
@@ -74,8 +86,8 @@ export interface FeedColorAssignment extends FeedColorTriple {
   /** 통과하는 조합이 없어 안전한 기본 조합으로 되돌렸으면 true. 되돌린 값은 지정값이 아닌 칸에만 들어간다. */
   usedFallback: boolean
   /**
-   * 이미지 규칙(⑤·⑥)까지 통과하는 조합이 하나도 없어 이미지 규칙을 건너뛰고 기존 규칙(①~④)만으로 정했으면 true.
-   * 이미지 규칙을 쓰지 않았거나 건너뛰지 않았으면 이 칸은 없다(이미지 입력이 없을 때 결과가 예전과 똑같도록). `usedFallback`과 별개다 —
+   * 이미지 규칙(⑤·⑥)까지 통과하는 조합이 하나도 없어 이미지 규칙을 건너뛰고 정했으면 true.
+   * 이미지 규칙을 쓰지 않았거나 건너뛰지 않았으면 이 칸은 없다(이미지 입력이 없을 때 결과가 같도록). `usedFallback`과 별개다 —
    * 건너뛴 뒤에도 조합이 없으면 둘 다 true다.
    */
   imageRuleSkipped?: boolean
@@ -89,55 +101,60 @@ function pickIndex(rng: () => number, length: number): number {
   return Math.min(length - 1, Math.floor(rng() * length))
 }
 
+interface WeightedPair {
+  bg: string
+  box: string
+  weight: number
+}
+
+const NORMAL_POOL: readonly WeightedPair[] = FEED_BG_BOX_COMBOS.map(({ bg, box, weight }) => ({ bg, box, weight }))
+const DEEP_GREEN_POOL: readonly WeightedPair[] = FEED_DEEP_GREEN_COMBOS.map(({ bg, box }) => ({ bg, box, weight: 1 }))
+
+/** 마지막 짙은 초록 바탕 이후 장수. 짙은 초록이 목록에 없으면 목록 전체 장수다. */
+function cardsSinceDeepGreen(recent: readonly string[]): number {
+  const last = recent.lastIndexOf(FEED_DEEP_GREEN_KEY)
+  return last < 0 ? recent.length : recent.length - 1 - last
+}
+
 /**
- * 배경·칩·박스 색을 정한다.
+ * 배경·칩·박스 색을 통합 팔레트 규칙으로 정한다.
  *
- * 1. 지정값과 맞는 «규칙을 모두 통과하는 조합»을 모두 센다. 배경↔칩, 칩↔박스는 규칙 ①~④, 배경↔박스는 ①~③(규칙 ④는 칩이 낀 쌍에만 적용)이고,
- *    제외 목록에 든 쌍은 뺀다. 지정값끼리의 쌍은 검사하지 않는다.
- * 2. 배경이 비어 있으면 조합이 남아 있는 배경 중 «같은 시기에 가장 덜 쓰인 색»을 고르고, 동률이면 시드로 고른다.
- * 3. 그 배경으로 남은 조합에서 칩·박스를 시드로 고른다.
+ * 1. 바탕+박스: `FEED_BG_BOX_COMBOS` 9개를 가중치대로 추첨한다. 짙은 초록 바탕 조합(`FEED_DEEP_GREEN_COMBOS`)은 따로 두고 리듬으로만 뽑는다 —
+ *    마지막 짙은 초록 바탕 이후 `everyMin`장 미만이면 빼고, 정확히 `everyMin`장이면 `DEEP_GREEN_CHANCE_AT_MIN` 확률로, `everyMax`장 이상이면 반드시 뽑는다.
+ *    바탕을 지정했으면 리듬은 보지 않는다. 지정값은 존중하고 나머지 칸만 고른다(지정값에 맞는 조합이 없으면 모든 조합의 나머지 칸 중에서 고른다).
+ * 2. 자동으로 고르는 바탕은 바로 앞 카드(`recentBgKeys` 마지막)와 같은 바탕을 피한다. 자동으로 고르는 박스는 글자가 들어가는 카드(`boxHasText`)에서 짙은 초록을 피한다.
+ * 3. 칩: 값 칩 7색(`FEED_COLOR_USAGE.valueChip`) 중 `chipExclusionRule`에 바탕·박스 어느 쪽으로도 걸리지 않는 색을 시드로 고른다. 제외 목록에 든 쌍은 뺀다. 지정값끼리의 쌍은 검사하지 않는다.
  * 4. 조합이 하나도 없으면 비어 있는 칸만 기본 조합으로 채우고 `usedFallback`을 true로 돌려준다.
  *
- * 이미지 대표 색(`imageHexes`, 티켓 20261121_1828)이 있으면 1번에 규칙 ⑤(자동 배경 후보)와 ⑥(`chipOnImage`일 때 자동 칩 후보)를 더한다. 그 조합이
- * 하나도 없으면 이미지 규칙만 건너뛰고 다시 세며 `imageRuleSkipped`를 true로 남긴다. 이미지 입력이 없으면 결과는 이전과 똑같다.
+ * 그림 대표 색(`imageHexes`, 티켓 20261121_1828)이 있으면 자동 바탕 후보에 규칙 ⑤, `chipOnImage`일 때 자동 칩 후보에 규칙 ⑥을 더한다.
+ * 조건을 한꺼번에 못 맞추면 «바로 앞 카드와 같은 바탕 피하기» → «그림 규칙» 순서로 풀고(그림 규칙을 풀면 `imageRuleSkipped`), 그래도 없으면 기본 조합이다.
  */
 export function assignFeedColors(
   input: FeedColorAssignInput,
   options: FeedColorAssignOptions = {},
 ): FeedColorAssignment {
   const palette = options.palette ?? DEFAULT_FEED_PALETTE
-  const autoKeys = options.autoKeys ?? Object.keys(palette).filter((key) => !FEED_AUTO_EXCLUDED_KEYS.includes(key))
   const fallback = options.fallback ?? FEED_FALLBACK_COLORS
   const excluded = new Set((options.excludedPairs ?? []).map(([a, b]) => pairKey(a, b)))
   const fixedBg = input.fixed?.bg || null
   const fixedChip = input.fixed?.chip || null
   const fixedBox = input.fixed?.box || null
+  const boxHasText = input.boxHasText ?? true
 
-  const memo = new Map<string, boolean>()
-  /** 두 색 키가 한 카드에서 짝을 이룰 수 있는가. 지정값끼리는 검사하지 않고, hex를 모르는 키(표에 없는 지정값)는 규칙을 건너뛴다. */
-  const pairOk = (a: string, b: string, involvesChip: boolean, bothFixed: boolean): boolean => {
-    if (bothFixed) return true
-    const key = `${pairKey(a, b)}\u0000${involvesChip ? 1 : 0}`
-    const cached = memo.get(key)
-    if (cached !== undefined) return cached
-    let ok: boolean
-    if (excluded.has(pairKey(a, b))) ok = false
-    else if (palette[a] === undefined || palette[b] === undefined) ok = true
-    else ok = passesColorRules(palette[a], palette[b], { involvesChip })
-    memo.set(key, ok)
-    return ok
+  // 세 칸을 모두 지정했으면 고를 것이 없다(지정값끼리는 검사하지 않는다)
+  if (fixedBg && fixedChip && fixedBox) {
+    return { bg: fixedBg, chip: fixedChip, box: fixedBox, usedFallback: false }
   }
 
-  const bgOptions = fixedBg ? [fixedBg] : autoKeys
-  const chipOptions = fixedChip ? [fixedChip] : autoKeys
-  const boxOptions = fixedBox ? [fixedBox] : autoKeys
+  const recent = input.recentBgKeys ?? []
+  const previousBg = recent.length > 0 ? recent[recent.length - 1] : null
 
-  // 이미지 규칙(⑤·⑥)은 자동으로 고르는 후보에만 건다. 지정값은 덮어쓰지 않는다. 읽을 수 없는 대표 색은 없는 것으로 본다.
+  // 그림 규칙(⑤·⑥)은 자동으로 고르는 후보에만 건다. 지정값은 덮어쓰지 않는다. 읽을 수 없는 대표 색은 없는 것으로 본다.
   const imageHexes = (input.imageHexes ?? []).filter(isHexColor)
   const bgFiltered = imageHexes.length > 0 && !fixedBg
   const chipFiltered = imageHexes.length > 0 && Boolean(input.chipOnImage) && !fixedChip
   const imageRuleActive = bgFiltered || chipFiltered
-  /** 이 색 키가 이미지에 묻히는가. hex를 모르는 키(표에 없는 값)는 규칙을 건너뛴다. */
+  /** 이 색 키가 그림에 묻히는가. hex를 모르는 키(표에 없는 값)는 규칙을 건너뛴다. */
   const buriedMemo = new Map<string, boolean>()
   const buriedInImage = (key: string): boolean => {
     const cached = buriedMemo.get(key)
@@ -147,29 +164,87 @@ export function assignFeedColors(
     return buried
   }
 
-  const collectTriples = (applyImageRule: boolean): FeedColorTriple[] => {
-    const found: FeedColorTriple[] = []
-    for (const bg of bgOptions) {
-      if (applyImageRule && bgFiltered && buriedInImage(bg)) continue
-      for (const chip of chipOptions) {
-        if (applyImageRule && chipFiltered && buriedInImage(chip)) continue
-        if (!pairOk(bg, chip, true, Boolean(fixedBg && fixedChip))) continue
-        for (const box of boxOptions) {
-          if (!pairOk(chip, box, true, Boolean(fixedChip && fixedBox))) continue
-          if (!pairOk(bg, box, false, Boolean(fixedBg && fixedBox))) continue
-          found.push({ bg, chip, box })
-        }
+  const rng = createRng(`${input.seed}:feed-colors`)
+
+  // 바탕+박스 후보 묶음의 우선순위. 바탕 지정이 없을 때만 짙은 초록 리듬을 본다(마지막 수단으로 다른 묶음도 연다).
+  let pools: ReadonlyArray<readonly WeightedPair[]>
+  if (fixedBg) {
+    pools = [[...NORMAL_POOL, ...DEEP_GREEN_POOL]]
+  } else {
+    const since = cardsSinceDeepGreen(recent)
+    const { everyMin, everyMax } = FEED_DEEP_GREEN_RHYTHM
+    if (since >= everyMax) pools = [DEEP_GREEN_POOL, NORMAL_POOL]
+    else if (since === everyMin && rng() < DEEP_GREEN_CHANCE_AT_MIN) pools = [DEEP_GREEN_POOL, NORMAL_POOL]
+    else pools = [NORMAL_POOL, DEEP_GREEN_POOL]
+  }
+
+  /** 이 칩 색이 이 면(바탕·박스) 위에 올 수 있는가. 지정값끼리의 쌍은 검사하지 않는다. */
+  const chipOnBase = (chip: string, base: string, baseFixed: boolean): boolean => {
+    if (fixedChip && baseFixed) return true
+    if (excluded.has(pairKey(chip, base))) return false
+    return chipExclusionRule(chip, base) === null
+  }
+
+  interface Candidate {
+    bg: string
+    box: string
+    weight: number
+    chips: string[]
+  }
+
+  const collect = (pool: readonly WeightedPair[], applyImageRule: boolean, avoidPrevious: boolean): Candidate[] => {
+    // 지정값에 맞는 조합만 쓰고, 하나도 없으면(통합 팔레트에 없는 지정 키) 모든 조합의 나머지 칸 중에서 고른다
+    const matching = pool.filter((pair) => (!fixedBg || pair.bg === fixedBg) && (!fixedBox || pair.box === fixedBox))
+    const base = matching.length > 0 ? matching : pool
+    const found: Candidate[] = []
+    for (const pair of base) {
+      const bg = fixedBg ?? pair.bg
+      const box = fixedBox ?? pair.box
+      if (!fixedBg) {
+        if (applyImageRule && bgFiltered && buriedInImage(bg)) continue
+        if (avoidPrevious && previousBg !== null && bg === previousBg) continue
       }
+      if (!fixedBox && !boxAllowedFor(box, boxHasText)) continue
+      if (!(fixedBg && fixedBox) && excluded.has(pairKey(bg, box))) continue
+      const chipPool: readonly string[] = fixedChip ? [fixedChip] : FEED_COLOR_USAGE.valueChip
+      const chips = chipPool.filter((chip) => {
+        if (!fixedChip && applyImageRule && chipFiltered && buriedInImage(chip)) return false
+        return chipOnBase(chip, bg, Boolean(fixedBg)) && chipOnBase(chip, box, Boolean(fixedBox))
+      })
+      if (chips.length === 0) continue
+      found.push({ bg, box, weight: pair.weight, chips })
     }
     return found
   }
 
-  let triples = collectTriples(true)
-  // 안전장치: 이미지 규칙까지 통과하는 조합이 없으면 이미지 규칙만 건너뛰고 기존 규칙으로 다시 센다.
-  const imageRuleSkipped = imageRuleActive && triples.length === 0
-  if (imageRuleSkipped) triples = collectTriples(false)
+  // 풀어 가는 순서: 모든 조건 → 앞 카드 바탕 피하기 풀기 → 그림 규칙 풀기(+앞 카드 바탕 피하기) → 둘 다 풀기
+  const levels: ReadonlyArray<{ image: boolean; previous: boolean }> = imageRuleActive
+    ? [
+        { image: true, previous: true },
+        { image: true, previous: false },
+        { image: false, previous: true },
+        { image: false, previous: false },
+      ]
+    : [
+        { image: false, previous: true },
+        { image: false, previous: false },
+      ]
 
-  if (triples.length === 0) {
+  let candidates: Candidate[] = []
+  let imageRuleSkipped = false
+  for (const level of levels) {
+    for (const pool of pools) {
+      candidates = collect(pool, level.image, level.previous)
+      if (candidates.length > 0) break
+    }
+    if (candidates.length > 0) {
+      imageRuleSkipped = imageRuleActive && !level.image
+      break
+    }
+  }
+  if (candidates.length === 0) imageRuleSkipped = imageRuleActive
+
+  if (candidates.length === 0) {
     return {
       bg: fixedBg ?? fallback.bg,
       chip: fixedChip ?? fallback.chip,
@@ -179,22 +254,18 @@ export function assignFeedColors(
     }
   }
 
-  const rng = createRng(`${input.seed}:feed-colors`)
-
-  let bg: string
-  if (fixedBg) {
-    bg = fixedBg
-  } else {
-    const available = [...new Set(triples.map((triple) => triple.bg))]
-    const usageOf = (key: string) => input.bgUsage?.[key] ?? 0
-    const least = Math.min(...available.map(usageOf))
-    const candidates = available.filter((key) => usageOf(key) === least)
-    bg = candidates[pickIndex(rng, candidates.length)]
+  const total = candidates.reduce((sum, candidate) => sum + candidate.weight, 0)
+  let roll = rng() * total
+  let picked = candidates[candidates.length - 1]
+  for (const candidate of candidates) {
+    roll -= candidate.weight
+    if (roll < 0) {
+      picked = candidate
+      break
+    }
   }
-
-  const rest = triples.filter((triple) => triple.bg === bg)
-  const picked = rest[pickIndex(rng, rest.length)]
-  return { bg, chip: picked.chip, box: picked.box, usedFallback: false, ...(imageRuleSkipped ? { imageRuleSkipped: true } : {}) }
+  const chip = picked.chips[pickIndex(rng, picked.chips.length)]
+  return { bg: picked.bg, chip, box: picked.box, usedFallback: false, ...(imageRuleSkipped ? { imageRuleSkipped: true } : {}) }
 }
 
 // ── 칩 자리·기울기 ───────────────────────────────────────────

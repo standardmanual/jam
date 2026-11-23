@@ -11,8 +11,8 @@ import {
   serverRandomUint32,
 } from '@/lib/admin/feedCardServer'
 import { DEFAULT_FEED_PALETTE } from '@/lib/today/feedAssign'
-import { firstViolatedRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
-import { FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { chipExclusionRule, violatesImageColorRule } from '@/lib/today/feedColorRules'
+import { boxAllowedFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE } from '@/lib/today/feedConstants'
 import { FakeDb } from '@/lib/admin/opsInbox/execute/__tests__/fakeDb'
 
 const STARTS = '2026-12-01T00:00:00.000Z'
@@ -146,8 +146,7 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
     expect(second).toEqual(first)
   })
 
-  it('같은 시기에 가장 덜 쓰인 배경색을 고른다', async () => {
-    // 'green'만 비어 있고 나머지 색은 한 번씩 쓰였다.
+  it('같은 시기 사용 빈도는 아직 배정에 쓰이지 않는다(통합 팔레트 규칙은 앞 카드 목록을 읽고, 서버가 그 목록을 채우는 일은 6회차다)', async () => {
     const rows = FEED_COLOR_KEYS.filter((key) => key !== 'green').map((key, index) => ({
       id: `used-${index}`,
       bg_color_key: key,
@@ -155,40 +154,39 @@ describe('completeFeedCardValues — 비어 있는 시드와 색 정하기', () 
       ends_at: ENDS,
     }))
     for (const seed of [1, 2, 3, 4, 5]) {
-      const decided = await completeFeedCardValues(dbWith(rows).service, {}, period, () => seed)
-      expect(decided.bg_color_key).toBe('green')
+      const withRows = await completeFeedCardValues(dbWith(rows).service, {}, period, () => seed)
+      const withoutRows = await completeFeedCardValues(dbWith([]).service, {}, period, () => seed)
+      expect(withRows).toEqual(withoutRows)
     }
   })
 
-  it('excludeId로 자기 자신은 빈도에서 뺀다', async () => {
-    // 자기 자신이 이미 'green'을 쓰고 있어도(수정·재시도), 뺀 빈도로 정한다.
-    const rows = FEED_COLOR_KEYS.map((key, index) => ({ id: key === 'green' ? 'self' : `used-${index}`, bg_color_key: key, starts_at: STARTS, ends_at: ENDS }))
-    const decided = await completeFeedCardValues(dbWith(rows).service, {}, { ...period, excludeId: 'self' }, () => 9)
-    expect(decided.bg_color_key).toBe('green')
-  })
-
-  it('시드 100개의 자동 배정이 색 규칙을 모두 통과하고 기본 조합으로 되돌리지 않는다', async () => {
+  it('시드 100개의 자동 배정이 쓰임 표·배제 표를 모두 통과하고 기본 조합으로 되돌리지 않는다', async () => {
     const db = dbWith([])
     for (let seed = 1; seed <= 100; seed++) {
       const decided = await completeFeedCardValues(db.service, {}, period, () => seed * 40503)
       expect(decided.usedFallback).toBe(false)
       expect(decided.warnings).toEqual([])
-      const bg = DEFAULT_FEED_PALETTE[decided.bg_color_key]
-      const chip = DEFAULT_FEED_PALETTE[decided.chip_color_key]
-      const box = DEFAULT_FEED_PALETTE[decided.box_color_key]
-      expect(firstViolatedRule(bg, chip, { involvesChip: true })).toBeNull()
-      expect(firstViolatedRule(chip, box, { involvesChip: true })).toBeNull()
-      expect(firstViolatedRule(bg, box, { involvesChip: false })).toBeNull()
+      expect(FEED_COLOR_USAGE.bg as readonly string[]).toContain(decided.bg_color_key)
+      expect(FEED_COLOR_USAGE.valueChip as readonly string[]).toContain(decided.chip_color_key)
+      expect(boxAllowedFor(decided.box_color_key, true)).toBe(true)
+      expect(chipExclusionRule(decided.chip_color_key, decided.bg_color_key)).toBeNull()
+      expect(chipExclusionRule(decided.chip_color_key, decided.box_color_key)).toBeNull()
     }
   })
 
-  it('통과하는 조합이 없으면 기본 조합으로 되돌리고 usedFallback으로 알린다', async () => {
-    // 배경 red와 칩 blue-soft를 지정하면 맞는 박스 색이 없다(지정값끼리는 검사하지 않는다).
-    const decided = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red', chip_color_key: 'blue-soft' }, period, () => 1)
-    expect(decided.usedFallback).toBe(true)
-    expect(decided.bg_color_key).toBe('red')
-    expect(decided.chip_color_key).toBe('blue-soft')
-    expect(decided.warnings).toHaveLength(1)
+  it('지정한 칩·바탕은 덮어쓰지 않고, 비어 있는 박스는 지정한 칩과 배제 표를 통과하는 색으로 정한다', async () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const decided = await completeFeedCardValues(
+        dbWith([]).service,
+        { bg_color_key: 'green', chip_color_key: 'red' },
+        period,
+        () => seed * 40503,
+      )
+      expect(decided.bg_color_key).toBe('green')
+      expect(decided.chip_color_key).toBe('red')
+      expect(['green', 'green-deep']).not.toContain(decided.box_color_key)
+      expect(decided.usedFallback).toBe(false)
+    }
   })
 
   it('빈도 조회가 실패해도 정한다(빈 빈도)', async () => {
@@ -329,23 +327,36 @@ describe('색 덮어쓰기 팔레트로 정하기 (티켓 20261121_2145)', () =>
     expect(db.calls.filter((call) => call.table === 'feed_color_overrides')).toHaveLength(1)
   })
 
-  it('표의 덮어쓴 hex로 규칙을 판정한다 — 고른 배경색과 같은 hex로 덮어쓴 색은 칩으로 고르지 않는다', async () => {
+  // 통합 팔레트 규칙에서 hex를 읽는 것은 그림 색 규칙(⑤·⑥)뿐이다. 분홍을 빨강 hex로 덮어쓰면 빨강 그림 위에서 분홍도 묻힌다.
+  const RED_COVER = {
+    feedType: 'hero_box',
+    boxKind: null,
+    coverColors: [DEFAULT_FEED_PALETTE.red],
+    badgeIds: null,
+  } as const
+  const usesPink = (d: { bg_color_key: string; chip_color_key: string }) => d.bg_color_key === 'pink' || d.chip_color_key === 'pink'
+
+  it('표의 덮어쓴 hex로 그림 색 규칙을 판정한다 — 그림 색과 같은 hex로 덮어쓴 색은 바탕·칩으로 고르지 않는다', async () => {
+    let baselineUsesPink = 0
     for (let seed = 1; seed <= 30; seed++) {
-      const baseline = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red-soft' }, period, () => seed * 40503)
+      const baseline = await completeFeedCardValues(dbWith([]).service, {}, period, () => seed * 40503, undefined, RED_COVER)
+      if (usesPink(baseline)) baselineUsesPink += 1
       const db = dbWith([])
-      db.tables.feed_color_overrides = [{ color_key: baseline.chip_color_key, hex: DEFAULT_FEED_PALETTE['red-soft'] }]
-      const decided = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => seed * 40503)
-      expect(decided.bg_color_key).toBe('red-soft')
-      expect(decided.chip_color_key).not.toBe(baseline.chip_color_key)
+      db.tables.feed_color_overrides = [{ color_key: 'pink', hex: DEFAULT_FEED_PALETTE.red }]
+      const decided = await completeFeedCardValues(db.service, {}, period, () => seed * 40503, undefined, RED_COVER)
+      expect(usesPink(decided)).toBe(false)
     }
+    // 덮어쓰지 않으면 분홍이 나오는 카드가 있다(위 단언이 우연히 통과한 것이 아니다)
+    expect(baselineUsesPink).toBeGreaterThan(0)
   })
 
   it('palette를 주면 표를 읽지 않고 그 팔레트를 쓴다', async () => {
-    const baseline = await completeFeedCardValues(dbWith([]).service, { bg_color_key: 'red-soft' }, period, () => 7)
     const db = dbWith([])
-    const palette = { ...DEFAULT_FEED_PALETTE, [baseline.chip_color_key]: DEFAULT_FEED_PALETTE['red-soft'] }
-    const decided = await completeFeedCardValues(db.service, { bg_color_key: 'red-soft' }, period, () => 7, undefined, undefined, palette)
-    expect(decided.chip_color_key).not.toBe(baseline.chip_color_key)
+    const palette = { ...DEFAULT_FEED_PALETTE, pink: DEFAULT_FEED_PALETTE.red }
+    for (let seed = 1; seed <= 30; seed++) {
+      const decided = await completeFeedCardValues(db.service, {}, period, () => seed * 40503, undefined, RED_COVER, palette)
+      expect(usesPink(decided)).toBe(false)
+    }
     expect(db.calls.filter((call) => call.table === 'feed_color_overrides')).toEqual([])
   })
 

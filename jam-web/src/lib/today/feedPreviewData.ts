@@ -6,15 +6,15 @@
  *
  * - 값만 받는 순수 함수다. 같은 입력은 같은 결과이고 `Math.random`·`Date.now`를 쓰지 않는다(시각은 고정값 `PREVIEW_NOW`).
  * - 이미지는 저장소에 이미 있는 정적 자산(`public/dev-sample`·`public/badges/sample`)이거나 비어 있다(색 면). 외부 주소를 쓰지 않는다.
- * - 자동 배정 구역: 서로 다른 시드 120장을 `resolveFeedLook`(칩·색 NULL)으로 배정하고, 4-1의 `feedColorRules`로 규칙 위반을 센다.
+ * - 자동 배정 구역: 서로 다른 시드 120장을 `resolveFeedLook`(칩·색 NULL)으로 배정하고, 통합 팔레트의 배제 표(`chipExclusionRule`)로 규칙 위반을 센다(티켓 20261122_2224 회차 4·5).
  *   사용자가 검수표에서 제외한 조합 «예시»(`PREVIEW_EXCLUDED_PAIRS`)를 입력으로 넣어 제외 조합과 겹치는 카드가 없는지도 센다. 실제 제외 목록은 6회차가 저장한다.
  */
 import type { TodayChipSpec } from '@/types/database'
 import type { FeedCardView, FeedCardViewBadge, FeedCardViewListItem } from './cardView'
 import { BOX_SHAPES, type BoxShape } from './boxShape'
-import { assignFeedColors, DEFAULT_FEED_PALETTE, type ExcludedColorPair } from './feedAssign'
+import { assignFeedColors, type ExcludedColorPair } from './feedAssign'
 import { chipLimitOf, FEED_CHIP_SLOT_SPECS } from './feedChipSlots'
-import { firstViolatedRule, type ColorRuleName } from './feedColorRules'
+import { chipExclusionRule, type ColorRuleName } from './feedColorRules'
 import type { FeedColorKey } from './feedConstants'
 import { FEED_RENDERED_TYPES, resolveFeedLook, type FeedLookCard, type RenderedFeedType } from './feedLook'
 import type { FeedValueChipSource } from './feedValueChips'
@@ -47,15 +47,14 @@ export const PREVIEW_BOX_SHAPE_LABELS: Readonly<Record<BoxShape, string>> = {
 }
 
 /**
- * 검수표에서 사용자가 제외한 색 조합의 «예시». 모두 규칙 ①~④를 통과하는 쌍이라 제외하지 않으면 배정에 나올 수 있다(시험이 확인한다).
+ * 검수표에서 사용자가 제외한 색 조합의 «예시». 모두 통합 팔레트 규칙에서 나올 수 있는 쌍이라 제외하지 않으면 배정에 나온다(시험이 확인한다).
  * 되돌림 기본 조합(`FEED_FALLBACK_COLORS`)의 쌍과는 겹치지 않게 골랐다.
  */
 export const PREVIEW_EXCLUDED_PAIRS: readonly ExcludedColorPair[] = [
-  ['blue', 'ref-yellow'],
-  ['ref-red', 'ref-lime'],
-  ['yellow', 'ref-pink'],
-  ['green-soft', 'ref-pink'],
-  ['purple', 'green'],
+  ['sky', 'yellow'],
+  ['sky', 'pink'],
+  ['green', 'pink'],
+  ['purple', 'sky'],
 ]
 
 // ── 가짜 이미지(정적 자산) ───────────────────────────────────
@@ -457,7 +456,8 @@ export function buildAutoAssignment(
     const pairs = colorPairsOf(view.look.colors)
     const violatedRules: ColorRuleName[] = []
     for (const { a, b, involvesChip } of pairs) {
-      const rule = firstViolatedRule(DEFAULT_FEED_PALETTE[a], DEFAULT_FEED_PALETTE[b], { involvesChip })
+      // 배제 표는 칩과 그 아래 면의 쌍만 본다(바탕↔박스는 조합 9개가 정한다)
+      const rule = involvesChip ? chipExclusionRule(a, b) : null
       if (rule) violatedRules.push(rule)
     }
     const overlapsExcluded = pairs.some(({ a, b }) => excludedKeys.has(pairKey(a, b)))

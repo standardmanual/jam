@@ -2,17 +2,15 @@
  * decideFeedCardValues — 저장 때 시드·색 키를 정해 고정한다 (티켓 20261121_1315)
  *
  *  - 사용자가 고른 값은 보존, 같은 입력은 같은 값
- *  - 같은 시기에 덜 쓰인 배경색이 우선
+ *  - 통합 팔레트 쓰임 표·배제 표를 지킨다(티켓 20261122_2224 회차 4·5)
  *  - 시드 100개를 바꿔 돌려도 색 규칙 위반 0
  *  - 통과 조합이 없어 기본 조합으로 되돌리면 표시한다
  */
 import { describe, expect, it } from 'vitest'
-import { assignFeedColors } from '@/lib/today/feedAssign'
-import { passesColorRules } from '@/lib/today/feedColorRules'
-import { FEED_COLORS, FEED_COLOR_KEYS } from '@/lib/today/feedConstants'
+import { assignFeedColors, FEED_FALLBACK_COLORS } from '@/lib/today/feedAssign'
+import { chipExclusionRule } from '@/lib/today/feedColorRules'
+import { boxAllowedFor, FEED_COLOR_KEYS, FEED_COLOR_USAGE } from '@/lib/today/feedConstants'
 import { countBgUsage, createFeedSeed, decideFeedCardValues } from '../feedCardFields'
-
-const hexOf = (key: string) => FEED_COLORS[key as keyof typeof FEED_COLORS].hex
 
 describe('createFeedSeed — 난수 공급 함수를 인자로 받는다', () => {
   it('공급한 값을 0 이상 2^32 미만 정수로 돌려준다', () => {
@@ -77,56 +75,49 @@ describe('decideFeedCardValues', () => {
     expect(decideFeedCardValues({ columns: { feed_seed: 0 }, seed: 99 }).feed_seed).toBe(0)
   })
 
-  it('같은 시기에 가장 덜 쓰인 배경색을 우선한다', () => {
-    // 한 색만 비워 두고 나머지 후보는 모두 많이 쓰였다고 하면 비어 있는 색이 골라진다
-    const candidates = (FEED_COLOR_KEYS as readonly string[]).filter((key) => key !== 'white')
-    for (const open of ['red-soft', 'blue-soft', 'ref-lime']) {
-      const usage: Record<string, number> = Object.fromEntries(candidates.map((key) => [key, 5]))
-      usage[open] = 0
-      // 시드가 달라도 같은 결론이다
-      for (let seed = 1; seed <= 20; seed += 1) {
-        const decided = decideFeedCardValues({ columns: {}, seed, overlappingBgUsage: usage })
-        // 그 색으로 통과 조합이 있으면 그 색이 배경이다
-        const hasPassingPair = candidates.some((chip) => passesColorRules(hexOf(open), hexOf(chip), { involvesChip: true }))
-        if (hasPassingPair) expect(decided.bg_color_key, `${open} seed ${seed}`).toBe(open)
-      }
+  it('자동으로 정한 세 색은 통합 팔레트 쓰임 표의 키뿐이고, 옛 사용 빈도 입력은 배정에 영향을 주지 않는다', () => {
+    const usage = { yellow: 9, green: 0 }
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const decided = decideFeedCardValues({ columns: {}, seed, overlappingBgUsage: usage })
+      expect(FEED_COLOR_USAGE.bg as readonly string[]).toContain(decided.bg_color_key)
+      expect(FEED_COLOR_USAGE.box as readonly string[]).toContain(decided.box_color_key)
+      expect(FEED_COLOR_USAGE.valueChip as readonly string[]).toContain(decided.chip_color_key)
+      expect(decideFeedCardValues({ columns: {}, seed })).toEqual(decided)
     }
   })
 
-  it('시드 100개를 바꿔 돌려도 자동으로 정한 색 조합이 규칙을 통과한다', () => {
-    let fallbacks = 0
+  it('시드 100개를 바꿔 돌려도 자동으로 정한 색 조합이 쓰임 표와 배제 표를 통과한다', () => {
     for (let seed = 1; seed <= 100; seed += 1) {
       const usage = seed % 2 === 0 ? { red: seed % 5, blue: seed % 3, 'ref-lime': 1 } : undefined
       const d = decideFeedCardValues({ columns: {}, seed: seed * 7919, overlappingBgUsage: usage })
       expect(d.usedFallback, `seed ${seed}`).toBe(false)
-      expect(passesColorRules(hexOf(d.bg_color_key), hexOf(d.chip_color_key), { involvesChip: true }), `bg-chip ${seed}`).toBe(true)
-      expect(passesColorRules(hexOf(d.chip_color_key), hexOf(d.box_color_key), { involvesChip: true }), `chip-box ${seed}`).toBe(true)
-      expect(passesColorRules(hexOf(d.bg_color_key), hexOf(d.box_color_key), { involvesChip: false }), `bg-box ${seed}`).toBe(true)
-      expect(d.bg_color_key).not.toBe('white')
-      if (d.usedFallback) fallbacks += 1
+      expect(FEED_COLOR_USAGE.bg as readonly string[], `bg ${seed}`).toContain(d.bg_color_key)
+      expect(FEED_COLOR_USAGE.valueChip as readonly string[], `chip ${seed}`).toContain(d.chip_color_key)
+      expect(boxAllowedFor(d.box_color_key, true), `box ${seed}`).toBe(true)
+      expect(chipExclusionRule(d.chip_color_key, d.bg_color_key), `chip-bg ${seed}`).toBeNull()
+      expect(chipExclusionRule(d.chip_color_key, d.box_color_key), `chip-box ${seed}`).toBeNull()
     }
-    expect(fallbacks).toBe(0)
   })
 
-  it('지정값 하나를 고정해도 시드 100개 모두 그 값과 규칙을 통과하는 짝을 찾는다', () => {
+  it('지정값 하나를 고정해도 시드 100개 모두 그 값과 배제 표를 통과하는 짝을 찾는다', () => {
     for (let seed = 1; seed <= 100; seed += 1) {
       const d = decideFeedCardValues({ columns: { chip_color_key: 'ref-blue' }, seed })
       expect(d.chip_color_key).toBe('ref-blue')
       expect(d.usedFallback, `seed ${seed}`).toBe(false)
-      expect(passesColorRules(hexOf(d.bg_color_key), hexOf('ref-blue'), { involvesChip: true })).toBe(true)
-      expect(passesColorRules(hexOf('ref-blue'), hexOf(d.box_color_key), { involvesChip: true })).toBe(true)
+      expect(chipExclusionRule('ref-blue', d.bg_color_key)).toBeNull()
+      expect(chipExclusionRule('ref-blue', d.box_color_key)).toBeNull()
     }
   })
 
   it('통과 조합이 없어 기본 조합으로 되돌리면 usedFallback과 경고로 알린다', () => {
-    // 지정값과 규칙을 통과하는 짝이 하나도 없도록 제외 목록으로 모든 짝을 막는다
-    const keys = (FEED_COLOR_KEYS as readonly string[]).filter((key) => key !== 'white')
+    // 지정값과 통과하는 짝이 하나도 없도록 제외 목록으로 모든 짝을 막는다
+    const keys = FEED_COLOR_KEYS as readonly string[]
     const excludedPairs = keys.flatMap((a) => keys.map((b) => [a, b] as const))
     const decided = decideFeedCardValues({ columns: { bg_color_key: 'ref-pink' }, seed: 3, excludedPairs })
     expect(decided.usedFallback).toBe(true)
     expect(decided.bg_color_key).toBe('ref-pink')
-    expect(decided.chip_color_key).toBe('red')
-    expect(decided.box_color_key).toBe('ref-lime')
+    expect(decided.chip_color_key).toBe(FEED_FALLBACK_COLORS.chip)
+    expect(decided.box_color_key).toBe(FEED_FALLBACK_COLORS.box)
     expect(decided.warnings).toHaveLength(1)
     expect(decided.warnings[0]).toContain('기본 조합')
   })
