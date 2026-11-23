@@ -275,7 +275,7 @@ describe('텍스트(text_box)', () => {
     expect(html).toContain('cover.png')
     expect(html).toContain('color:var(--snow)')
     expect(html).toContain('background-color:color-mix(in srgb, var(--foreground) 32%, transparent)')
-    expect(html).toContain('pointer-events-none absolute inset-0')
+    expect(html).toContain('class="pointer-events-none absolute inset-0" style="background-color:color-mix')
     // 막은 사진 뒤가 아니라 사진 위·글자 앞에 있다
     expect(html.indexOf('cover.png')).toBeLessThan(html.indexOf('color-mix'))
     expect(html.indexOf('color-mix')).toBeLessThan(html.indexOf('color:var(--snow)'))
@@ -305,9 +305,16 @@ describe('텍스트(text_box)', () => {
     expect(html).not.toContain('outline')
   })
 
-  it('칩 0·1·2개와 도장 한 개', () => {
-    expect(count(render(feedView('text_box', { chips: [] })), 'rounded-full')).toBe(0)
-    expect(count(render(feedView('text_box', { chips: TWO_CHIPS })), 'rounded-full')).toBe(2)
+  it('칩 0·1·2개는 계획대로 그려지고 도장은 한 개다', () => {
+    expect(chipCount(render(feedView('text_box', { chips: [] })))).toBe(0)
+    expect(chipCount(render(feedView('text_box', { chips: [TWO_CHIPS[0]] })))).toBe(1)
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const view = feedView('text_box', { chips: TWO_CHIPS, feed_seed: seed })
+      const html = render(view)
+      expect(chipCount(html)).toBe(planOf(view).chips.length)
+      // 칩 층은 박스 안이 아니라 카드 셸 직계라 박스 뒤에 온다
+      expect(html.indexOf('data-chip-plan')).toBeGreaterThan(html.indexOf('<h3'))
+    }
     expect(count(render(feedView('text_box', { stamp_enabled: true })), 'JOIN AND MOVE')).toBe(1)
   })
 })
