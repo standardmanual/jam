@@ -25,7 +25,10 @@
 
 // ── 15색 표 ──────────────────────────────────────────────────
 
-/** 색 키 15개. 원색 5개(기존 `--jam-*`), 연한 색 5개(`--jam-*-soft`), 참조 색 5개(`--feed-ref-*`). */
+/**
+ * 색 키 19개. 원색 5개(기존 `--jam-*`), 연한 색 5개(`--jam-*-soft`), 참조 색 5개(`--feed-ref-*`), 통합 팔레트 새 키 4개.
+ * 새 키 4개(티켓 20261122_2224 회차 2)는 통합 팔레트 키다. 옛 15키는 12회차(축소)까지 읽기 전용으로 남는다.
+ */
 export const FEED_COLOR_KEYS = [
   'red',
   'yellow',
@@ -42,9 +45,21 @@ export const FEED_COLOR_KEYS = [
   'ref-lime',
   'ref-pink',
   'ref-yellow',
+  'green-deep',
+  'pink',
+  'sky',
+  'white',
 ] as const;
 
 export type FeedColorKey = (typeof FEED_COLOR_KEYS)[number];
+
+/** 통합 팔레트 새 키 4개. 자동 배정에는 4·5회차가 쓰기 전까지 쓰지 않고, 옛 15색 규칙 계산(`feedColorHexes`)에도 넣지 않는다. */
+export const FEED_NEW_COLOR_KEYS = ['green-deep', 'pink', 'sky', 'white'] as const satisfies readonly FeedColorKey[];
+
+/** 옛 15키(12회차까지 읽기 전용). 옛 색 규칙(대비·키즈·명도, 컬러셋 메뉴가 읽는다)의 15색 표본이다. */
+export const FEED_LEGACY_COLOR_KEYS: readonly FeedColorKey[] = FEED_COLOR_KEYS.filter(
+  (key) => !(FEED_NEW_COLOR_KEYS as readonly string[]).includes(key),
+);
 
 export interface FeedColor {
   /** `colors.css`에 정의된 CSS 변수 이름 */
@@ -73,6 +88,11 @@ export const FEED_COLORS = {
   'ref-lime': { cssVar: '--feed-ref-lime', hex: '#C0DC66' },
   'ref-pink': { cssVar: '--feed-ref-pink', hex: '#E57FBB' },
   'ref-yellow': { cssVar: '--feed-ref-yellow', hex: '#F2EC6A' },
+  // 통합 팔레트 새 키 4개 — 값 정본은 colors.css(티켓 20261122_2223)
+  'green-deep': { cssVar: '--jam-green-deep', hex: '#3D851E' },
+  pink: { cssVar: '--jam-pink', hex: '#F372C1' },
+  sky: { cssVar: '--jam-sky', hex: '#51CDF5' },
+  white: { cssVar: '--jam-chip-white', hex: '#FFFFFF' },
 } as const satisfies Record<FeedColorKey, FeedColor>;
 
 /**
@@ -83,6 +103,73 @@ export const FEED_COLORS = {
  */
 export function feedColorVar(key: FeedColorKey): string {
   return `var(--feed-color-${key}, var(${FEED_COLORS[key].cssVar}))`;
+}
+
+// ── 통합 팔레트 쓰임 표·조합 (티켓 20261122_2224 회차 3) ─────────────────
+
+/**
+ * 색이 어디에 쓰이는지의 표(상위 티켓 20261122_2217 결정 §1·§2). 이번 회차는 표만 만든다 — 배정은 4·5회차가 읽는다.
+ * 키 이름은 위 19키다(노랑 `yellow`·초록 `green`·짙은 초록 `green-deep`·분홍 `pink`·하늘 `sky`·빨강 `red`·보라 `purple`·파랑 `blue`·흰색 `white`).
+ */
+export const FEED_COLOR_USAGE = {
+  /** 카드 바탕에 올 수 있는 색 */
+  bg: ['yellow', 'green', 'green-deep', 'pink', 'sky'],
+  /** 박스 색 */
+  box: ['yellow', 'green', 'green-deep', 'pink', 'sky'],
+  /** 값 칩 색 */
+  valueChip: ['yellow', 'green', 'pink', 'sky', 'red', 'purple', 'white'],
+  /** 분류 스티커 색 */
+  sticker: ['yellow', 'green', 'pink', 'sky', 'red', 'purple', 'blue'],
+} as const satisfies Record<string, readonly FeedColorKey[]>;
+
+export interface FeedBgBoxCombo {
+  readonly bg: FeedColorKey;
+  readonly box: FeedColorKey;
+  /** 가중 추첨의 무게. 클수록 자주 뽑힌다. */
+  readonly weight: number;
+}
+
+/** 일반 카드의 바탕+박스 조합 9개. 노랑·초록 조합 세 개는 가중치 2, 나머지는 1이다(합계 12). */
+export const FEED_BG_BOX_COMBOS: readonly FeedBgBoxCombo[] = [
+  { bg: 'yellow', box: 'green', weight: 2 },
+  { bg: 'green', box: 'yellow', weight: 2 },
+  { bg: 'yellow', box: 'green-deep', weight: 2 },
+  { bg: 'green', box: 'pink', weight: 1 },
+  { bg: 'sky', box: 'yellow', weight: 1 },
+  { bg: 'yellow', box: 'sky', weight: 1 },
+  { bg: 'pink', box: 'yellow', weight: 1 },
+  { bg: 'pink', box: 'green', weight: 1 },
+  { bg: 'sky', box: 'pink', weight: 1 },
+];
+
+/** 짙은 초록 바탕 카드의 바탕+박스 조합 2개. 일반 조합 9개와 따로 두고 아래 리듬으로만 뽑는다. */
+export const FEED_DEEP_GREEN_COMBOS: readonly Omit<FeedBgBoxCombo, 'weight'>[] = [
+  { bg: 'green-deep', box: 'yellow' },
+  { bg: 'green-deep', box: 'pink' },
+];
+
+/** 짙은 초록 바탕 카드의 리듬: «다섯~여섯 장에 한 장꼴»(연속 노출 카드 5~6장마다 하나). */
+export const FEED_DEEP_GREEN_RHYTHM = { everyMin: 5, everyMax: 6 } as const;
+
+/** 짙은 초록 키. 바탕 위 글자가 흰색으로 바뀌고 박스로는 글자 있는 박스에 못 쓴다. */
+export const FEED_DEEP_GREEN_KEY = 'green-deep' as const satisfies FeedColorKey;
+
+/**
+ * 바탕 위 제목·설명 글자 색(CSS 값). 짙은 초록 바탕이면 흰색(`--snow`, 대비 약 4.59:1), 아니면 검정(`--foreground`).
+ * 박스 위 글자는 박스 색과 무관하게 검정이다(짙은 초록 박스는 글자 박스에 쓰지 않는다, `boxAllowedFor`).
+ */
+export function feedTextOnBg(bgKey: string | null | undefined): 'var(--snow)' | 'var(--foreground)' {
+  return bgKey === FEED_DEEP_GREEN_KEY ? 'var(--snow)' : 'var(--foreground)';
+}
+
+/**
+ * 이 색을 이 박스 색으로 써도 되는가. 박스 쓰임 표에 있는 색이어야 하고, 짙은 초록 박스는 글자가 들어가는 박스
+ * (텍스트형·드랍 픽업 배지 상자·목록형 타일)에 쓰지 않는다 — 검정 글자 대비가 3.9라서다(결정 4).
+ * `holdsText`는 박스에 글자가 들어가는지(그림만 담는 박스는 false).
+ */
+export function boxAllowedFor(boxKey: string, holdsText: boolean): boolean {
+  if (!(FEED_COLOR_USAGE.box as readonly string[]).includes(boxKey)) return false;
+  return !(holdsText && boxKey === FEED_DEEP_GREEN_KEY);
 }
 
 // ── 칩 ────────────────────────────────────────────────────────

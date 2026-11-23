@@ -8,7 +8,7 @@
  * 키 표를 기본값으로 쓰는 편의 함수(`summarizeFeedColors`)만 아래쪽에 따로 있다.
  * 서버 모듈·사전·난수·시각을 읽지 않는다(서버와 브라우저가 같은 값을 낸다).
  */
-import { FEED_COLORS } from './feedConstants'
+import { FEED_COLORS, FEED_LEGACY_COLOR_KEYS } from './feedConstants'
 
 // ── 임계값 (PRD §6 «자동으로 거르는 규칙», 2026-11-20 샘플 계산) ─────────────────────────
 
@@ -167,8 +167,8 @@ export function violatesImageColorRule(candidateHex: string, imageHexes: readonl
   })
 }
 
-/** 걸린 규칙의 이름. 규칙 ①~④는 적용하는 순서 그대로이고, `image`(⑤·⑥)는 쌍 판정이 아니라 `violatesImageColorRule`이 돌려주는 이름이다. */
-export type ColorRuleName = 'same' | 'contrast' | 'kids' | 'lightness' | 'image'
+/** 걸린 규칙의 이름. 규칙 ①~④는 적용하는 순서 그대로이고, `image`(⑤·⑥)는 쌍 판정이 아니라 `violatesImageColorRule`이 돌려주는 이름이고, `table`은 통합 팔레트의 배제 표(`chipExclusionRule`)가 돌려주는 이름이다. */
+export type ColorRuleName = 'same' | 'contrast' | 'kids' | 'lightness' | 'image' | 'table'
 
 export interface ColorPairCheckOptions {
   /** 둘 중 하나가 칩이면 true — 규칙 ④(명도)는 칩과 칩이 아닌 것 사이에만 적용한다. 기본 true. */
@@ -195,6 +195,40 @@ export function firstViolatedRule(
 /** 두 색이 규칙 ①~④(칩이 끼지 않으면 ①~③)를 모두 통과하는가. */
 export function passesColorRules(hexA: string, hexB: string, options: ColorPairCheckOptions = {}): boolean {
   return firstViolatedRule(hexA, hexB, options) === null
+}
+
+// ── 배제 표 (통합 팔레트, 티켓 20261122_2224 회차 3) ─────────────────────────
+
+/**
+ * 칩과 그 아래 면(바탕·박스)이 서로 어울리지 않는 색 조합 — 상위 티켓 20261122_2217 결정 §5의 «배제 표» 초안.
+ * 대비·키즈·명도 계산 규칙을 대체할 표다. 이번 회차는 표와 함수만 만들고 배정은 아직 이 표를 읽지 않는다(5회차).
+ * 옛 키가 읽는 컬러셋 메뉴는 위 hex 규칙(`firstViolatedRule`)을 그대로 쓴다.
+ *
+ * 항목은 색 키 이름으로 적고 hex를 읽지 않는다. 같은 색끼리도 표의 한 항목이다(`chipExclusionRule`이 먼저 본다).
+ */
+/** 순서와 무관하게 함께 쓰지 않는 두 색: 빨강과 초록·짙은 초록. */
+export const CHIP_EXCLUSION_MUTUAL: ReadonlyArray<readonly [string, string]> = [
+  ['red', 'green'],
+  ['red', 'green-deep'],
+]
+
+/** 방향이 있는 항목 [칩 색, 면 색]: 노랑 위 흰 칩, 분홍 위 보라 칩. 반대(흰 면 위 노랑 칩)는 막지 않는다. */
+export const CHIP_EXCLUSION_DIRECTED: ReadonlyArray<readonly [string, string]> = [
+  ['white', 'yellow'],
+  ['purple', 'pink'],
+]
+
+/**
+ * 칩 색이 그 아래 면(바탕 또는 박스) 색과 배제 표에 걸리면 `'table'`, 아니면 null.
+ * 걸리는 경우: ① 같은 색끼리 ② 빨강과 초록·짙은 초록(순서 무관) ③ 노랑 위 흰 칩 ④ 분홍 위 보라 칩.
+ */
+export function chipExclusionRule(chipKey: string, baseKey: string): ColorRuleName | null {
+  if (chipKey === baseKey) return 'table'
+  const mutual = CHIP_EXCLUSION_MUTUAL.some(
+    ([a, b]) => (chipKey === a && baseKey === b) || (chipKey === b && baseKey === a),
+  )
+  if (mutual) return 'table'
+  return CHIP_EXCLUSION_DIRECTED.some(([chip, base]) => chipKey === chip && baseKey === base) ? 'table' : null
 }
 
 // ── 전체 순서쌍 필터 ─────────────────────────────────────────
@@ -245,9 +279,9 @@ export function summarizeColorPairs(hexes: readonly string[]): ColorPairSummary 
   }
 }
 
-/** 색 키 표(`FEED_COLORS`)의 15색 hex를 키 순서대로 낸다. 키 표를 기본값으로 쓰는 편의 함수다. */
+/** 색 키 표(`FEED_COLORS`)의 옛 15색 hex를 키 순서대로 낸다(통합 팔레트 새 키 4개는 옛 규칙의 표본이 아니다). 키 표를 기본값으로 쓰는 편의 함수다. */
 export function feedColorHexes(): string[] {
-  return Object.values(FEED_COLORS).map((color) => color.hex)
+  return FEED_LEGACY_COLOR_KEYS.map((key) => FEED_COLORS[key].hex)
 }
 
 /** 15색 전체의 단계별 제외 개수. 키 표를 기본값으로 쓰는 편의 함수다. */

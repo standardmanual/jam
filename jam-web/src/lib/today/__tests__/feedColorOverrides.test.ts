@@ -40,7 +40,7 @@ describe('normalizeOverrides', () => {
   it('모르는 키와 잘못된 hex는 버린다', () => {
     expect(
       normalizeOverrides([
-        { color_key: 'white', hex: '#ffffff' },
+        { color_key: 'black', hex: '#000000' },
         { color_key: 'red', hex: 'not-a-color' },
         { color_key: 'green', hex: '#abc' },
         { color_key: 'yellow', hex: '#f9fd69' },

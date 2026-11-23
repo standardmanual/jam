@@ -367,6 +367,8 @@ code:
 
 참조 그림의 색은 Display P3 프로파일을 화면에 보이는 sRGB 값으로 바꿔 뽑았다. 연한 색 다섯 개는 카리나가 계산한 초안이라 값을 사용자가 다듬는다.
 
+**통합 팔레트 새 키 4개와 쓰임 표**(티켓 20261122_2224 회차 2·3, 상위 20261122_2217 결정 §1·§2·§5): 색 키에 짙은 그린 `green-deep`(`#3D851E`, `--jam-green-deep`), 핑크 `pink`(`#F372C1`, `--jam-pink`), 스카이 `sky`(`#51CDF5`, `--jam-sky`), 화이트 `white`(`#FFFFFF`, `--jam-chip-white`)를 더해 19키가 됐다(DB 제약은 마이그레이션 357). 옛 15키는 12회차(축소)까지 읽기 전용으로 남고, 새 키 4개는 자동 배정이 쓰지 않는다(4·5회차가 켠다). 쓰임 표(`feedConstants.ts`의 `FEED_COLOR_USAGE`)는 다음과 같다. 바탕·박스는 노랑·초록·짙은 초록·분홍·하늘, 값 칩은 노랑·초록·분홍·하늘·빨강·보라·흰색, 스티커는 노랑·초록·분홍·하늘·빨강·보라·파랑이다. 일반 카드의 바탕+박스 조합은 9개이고(노랑+초록, 초록+노랑, 노랑+짙은 초록은 가중치 2, 초록+분홍·하늘+노랑·노랑+하늘·분홍+노랑·분홍+초록·하늘+분홍은 가중치 1) 짙은 초록 바탕 카드는 따로 두 조합(짙은 초록+노랑, 짙은 초록+분홍)이 다섯~여섯 장에 한 장꼴로 나온다. 짙은 초록 바탕 위 제목·설명은 흰색(`--snow`, `feedTextOnBg`), 나머지 바탕 위는 검정이고, 짙은 초록 박스는 글자가 들어가는 박스(텍스트형·드랍 픽업 배지 상자·목록형 타일)에 쓰지 않는다(검정 글자 대비 3.9, `boxAllowedFor`). 칩 색의 배제 표(`feedColorRules.ts`의 `chipExclusionRule`, 초안)는 같은 색끼리, 빨강과 초록·짙은 초록, 노랑 위 흰 칩, 분홍 위 보라 칩이다. 이 표와 조합은 회차 3에서 만들기만 했고 아직 배정·화면은 읽지 않는다. 옛 대비·키즈·명도 규칙과 배지 그림 색 규칙은 그대로다.
+
 **자동으로 거르는 규칙**(2026-11-20 샘플 계산, 기준값은 카리나의 초안이고 사용자가 검수표에서 다듬는다). 아래 순서로 걸러 낸 뒤 남은 조합만 쓴다.
 
 1. 같은 색끼리는 쓰지 않는다.
@@ -587,7 +589,7 @@ code:
 | `feed_type` | `hero_box`·`full_image`·`badge_intro`·`badge_only`·`collection_intro`·`drop_pickup`·`text_box`·`gallery_list` | 새 카드 유형 8가지. 옛 모양 `shape`와 이름이 겹치지 않도록 별도 칸이다 |
 | `box_shape` | `round`·`ticket`·`stamp`(우표)·`wave`(물결)·`bump`(반원 돌출) | 박스 모양 5가지. 텍스트 박스와 이미지 마스크 양쪽에 쓴다 |
 | `box_kind` | `text`·`image_mask` | 박스 용도(글자를 담는 박스 / 이미지를 박스 모양으로 자른 마스크) |
-| `bg_color_key`·`chip_color_key`·`box_color_key` | 색 키 15개: `red`·`yellow`·`green`·`purple`·`blue`, `red-soft`·`yellow-soft`·`green-soft`·`purple-soft`·`blue-soft`, `ref-red`·`ref-blue`·`ref-lime`·`ref-pink`·`ref-yellow` | 배경·칩·박스 색. hex가 아니라 키를 저장한다 |
+| `bg_color_key`·`chip_color_key`·`box_color_key` | 색 키 19개(마이그레이션 357로 새 키 4개 추가): `red`·`yellow`·`green`·`purple`·`blue`, `red-soft`·`yellow-soft`·`green-soft`·`purple-soft`·`blue-soft`, `ref-red`·`ref-blue`·`ref-lime`·`ref-pink`·`ref-yellow`, `green-deep`·`pink`·`sky`·`white` | 배경·칩·박스 색. hex가 아니라 키를 저장한다 |
 | `chips` | JSONB 배열 최대 2개. 원소 `{kind: value\|phrase\|label, source?, text?, slot?, tilt?}` | 칩 목록. `value`는 `source`(값의 출처 키), `phrase`는 `text`가 필수이고 `label`은 구분 칩이다. `tilt`는 −8·−6·−4·4·6·8. `slot`은 유형마다 다른 자리 이름(코드 상수가 정본, DB는 소문자·숫자·하이픈 24자 이하만 본다). NULL은 자동, `[]`는 칩 없음 |
 | `title_chip_words` | 텍스트 배열 최대 2개 | 제목 속 칩으로 만들 낱말. 제목에 그대로 들어 있어야 하는 검사는 저장하는 코드가 한다(제목을 고칠 때 DB 오류가 나지 않게 DB는 개수와 공백만 본다). NULL과 `[]`는 같은 뜻(칩 없음) |
 | `show_description` | 불리언 | 설명 문장 노출 여부. NULL이면 유형 기본값 |

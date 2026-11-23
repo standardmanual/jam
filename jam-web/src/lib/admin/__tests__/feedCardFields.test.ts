@@ -152,9 +152,9 @@ describe('validateFeedCardColumns — errors(저장을 막는다)', () => {
     expect(hasError({ feed_type: 'banner' }, '카드 유형')).toBe(true)
     expect(hasError({ box_shape: 'circle' }, '박스 모양')).toBe(true)
     expect(hasError({ box_kind: 'photo' }, '박스 용도')).toBe(true)
-    expect(hasError({ bg_color_key: 'white' }, '배경색')).toBe(true)
+    expect(hasError({ bg_color_key: 'black' }, '배경색')).toBe(true)
     expect(hasError({ chip_color_key: '#ff0000' }, '칩 색')).toBe(true)
-    expect(hasError({ box_color_key: 'pink' }, '박스 색')).toBe(true)
+    expect(hasError({ box_color_key: 'teal' }, '박스 색')).toBe(true)
     expect(check({ feed_type: 'hero_box', box_shape: 'wave', box_kind: 'image_mask', bg_color_key: 'red-soft', chip_color_key: 'red', box_color_key: 'ref-lime' }).errors).toEqual([])
   })
 

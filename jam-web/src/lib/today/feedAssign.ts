@@ -10,7 +10,7 @@
  */
 import { createRng, type BoxSeed } from './boxShape'
 import { isHexColor, passesColorRules, violatesImageColorRule } from './feedColorRules'
-import { FEED_COLORS, FEED_TILTS } from './feedConstants'
+import { FEED_COLORS, FEED_NEW_COLOR_KEYS, FEED_TILTS } from './feedConstants'
 import { chipLimitOf, diagonalOf, FEED_CHIP_SLOT_SPECS, MAX_CARD_CHIPS, type FeedType } from './feedChipSlots'
 
 // ── 색 ────────────────────────────────────────────────────────
@@ -23,8 +23,11 @@ export const DEFAULT_FEED_PALETTE: FeedPalette = Object.fromEntries(
   Object.entries(FEED_COLORS).map(([key, color]) => [key, color.hex]),
 )
 
-/** 자동 배정이 쓰지 않는 색 키. PRD: «흰색은 자동 배정에 쓰지 않는다(사용자가 직접 지정할 때만 쓴다)». */
-export const FEED_AUTO_EXCLUDED_KEYS: readonly string[] = ['white']
+/**
+ * 자동 배정이 쓰지 않는 색 키. PRD: «흰색은 자동 배정에 쓰지 않는다(사용자가 직접 지정할 때만 쓴다)».
+ * 통합 팔레트 새 키 4개(green-deep·pink·sky·white)는 4·5회차(배정)가 쓰기 전까지 임시로 뺀다(티켓 20261122_2224 회차 2) — 5회차가 이 목록을 지운다.
+ */
+export const FEED_AUTO_EXCLUDED_KEYS: readonly string[] = ['white', ...FEED_NEW_COLOR_KEYS]
 
 export interface FeedColorTriple {
   bg: string

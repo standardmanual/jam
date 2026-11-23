@@ -58,6 +58,7 @@ const RULE_NAMES: Readonly<Record<ColorRuleName, string>> = {
   kids: '어수선함',
   lightness: '밝기 차이',
   image: '이미지 색',
+  table: '배제 표',
 }
 
 const HEX_ERROR = '#과 영문·숫자 6자리로 입력해 주세요. 예: #ff9a9a'

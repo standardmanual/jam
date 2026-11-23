@@ -64,7 +64,7 @@ describe('FeedBox — 외곽선 없음·색', () => {
     expect(html).not.toMatch(/border|outline/)
   })
 
-  it.each(FEED_COLOR_KEYS)('%s: 면은 feedColorVar(key)의 var(--…)다', (key) => {
+  it.each(FEED_COLOR_KEYS.filter((key) => key !== 'white'))('%s: 면은 feedColorVar(key)의 var(--…)다', (key) => {
     expect(render('round', 'text', { color: key })).toContain(`background-color:${feedColorVar(key)}`)
   })
 

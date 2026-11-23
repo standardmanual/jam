@@ -88,11 +88,11 @@ describe('인증', () => {
 })
 
 describe('GET', () => {
-  it('저장된 덮어쓰기와 15색 기본값(소문자)을 돌려준다', async () => {
+  it('저장된 덮어쓰기와 19색 기본값(소문자)을 돌려준다', async () => {
     state.rows = [{ color_key: 'red', hex: '#AABBCC' }]
     const body = await (await GET()).json()
     expect(body.overrides).toEqual({ red: '#aabbcc' })
-    expect(Object.keys(body.defaults)).toHaveLength(15)
+    expect(Object.keys(body.defaults)).toHaveLength(19)
     expect(body.defaults.red).toBe('#ff1d1d')
   })
 })
@@ -109,9 +109,9 @@ describe('PUT 검증', () => {
   })
 
   it('모르는 키는 400이다(같은 요청의 올바른 값도 저장하지 않는다)', async () => {
-    const res = await put({ overrides: { red: '#aabbcc', white: '#ffffff' } })
+    const res = await put({ overrides: { red: '#aabbcc', black: '#000000' } })
     expect(res.status).toBe(400)
-    expect((await res.json()).error).toContain('white')
+    expect((await res.json()).error).toContain('black')
     expect(state.upserts).toEqual([])
   })
 
@@ -122,8 +122,8 @@ describe('PUT 검증', () => {
     expect((await put({ overrides: {} })).status).toBe(400)
   })
 
-  it('키가 15개를 넘거나 본문이 너무 크면 400이다', async () => {
-    const many = Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`k${i}`, '#aabbcc']))
+  it('키가 19개를 넘거나 본문이 너무 크면 400이다', async () => {
+    const many = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`k${i}`, '#aabbcc']))
     expect((await put({ overrides: many })).status).toBe(400)
     expect((await put({ overrides: { red: '#aabbcc' }, memo: 'x'.repeat(3000) })).status).toBe(400)
     expect(state.upserts).toEqual([])

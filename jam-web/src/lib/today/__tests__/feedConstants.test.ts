@@ -10,7 +10,23 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { FEED_BOX, FEED_CHIP_OFFSET, FEED_COLORS, FEED_COLOR_KEYS, FEED_TILTS, feedColorVar, feedTypeUsesCoverImage } from '../feedConstants'
+import {
+  FEED_BG_BOX_COMBOS,
+  FEED_BOX,
+  FEED_CHIP_OFFSET,
+  FEED_COLORS,
+  FEED_COLOR_KEYS,
+  FEED_COLOR_USAGE,
+  FEED_DEEP_GREEN_COMBOS,
+  FEED_DEEP_GREEN_RHYTHM,
+  FEED_LEGACY_COLOR_KEYS,
+  FEED_NEW_COLOR_KEYS,
+  FEED_TILTS,
+  boxAllowedFor,
+  feedColorVar,
+  feedTextOnBg,
+  feedTypeUsesCoverImage,
+} from '../feedConstants'
 import { FEED_TYPES } from '../feedChipSlots'
 
 const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/colors.css'), 'utf8')
@@ -24,12 +40,14 @@ function parseHexVars(css: string): Map<string, string> {
   return vars
 }
 
-describe('FEED_COLORS 15색 표', () => {
+describe('FEED_COLORS 색 표(19색)', () => {
   const cssVars = parseHexVars(colorsCss)
 
-  it('색 키가 15개이고 표와 키 목록이 일치한다', () => {
-    expect(FEED_COLOR_KEYS).toHaveLength(15)
-    expect(new Set(FEED_COLOR_KEYS).size).toBe(15)
+  it('색 키가 19개(옛 15 + 새 4)이고 표와 키 목록이 일치한다', () => {
+    expect(FEED_COLOR_KEYS).toHaveLength(19)
+    expect(new Set(FEED_COLOR_KEYS).size).toBe(19)
+    expect(FEED_LEGACY_COLOR_KEYS).toHaveLength(15)
+    expect(FEED_NEW_COLOR_KEYS).toEqual(['green-deep', 'pink', 'sky', 'white'])
     expect(Object.keys(FEED_COLORS).sort()).toEqual([...FEED_COLOR_KEYS].sort())
   })
 
@@ -44,7 +62,7 @@ describe('FEED_COLORS 15색 표', () => {
 
   it('CSS 변수 이름이 서로 다르다', () => {
     const names = FEED_COLOR_KEYS.map((k) => FEED_COLORS[k].cssVar)
-    expect(new Set(names).size).toBe(15)
+    expect(new Set(names).size).toBe(19)
   })
 })
 
@@ -110,5 +128,92 @@ describe('feedTypeUsesCoverImage (티켓 20261121_1722)', () => {
     expect(FEED_TYPES).toHaveLength(8)
     const used = FEED_TYPES.filter((feedType) => feedTypeUsesCoverImage(feedType, 'image_mask'))
     expect([...used].sort()).toEqual(['collection_intro', 'hero_box', 'text_box'])
+  })
+})
+
+describe('통합 팔레트 쓰임 표', () => {
+  it('바탕·박스는 노랑·초록·짙은 초록·분홍·하늘 다섯 색이다', () => {
+    const five = ['yellow', 'green', 'green-deep', 'pink', 'sky']
+    expect([...FEED_COLOR_USAGE.bg]).toEqual(five)
+    expect([...FEED_COLOR_USAGE.box]).toEqual(five)
+  })
+
+  it('값 칩은 일곱 색, 스티커는 일곱 색이다', () => {
+    expect([...FEED_COLOR_USAGE.valueChip].sort()).toEqual(['green', 'pink', 'purple', 'red', 'sky', 'white', 'yellow'])
+    expect([...FEED_COLOR_USAGE.sticker].sort()).toEqual(['blue', 'green', 'pink', 'purple', 'red', 'sky', 'yellow'])
+  })
+
+  it('표의 모든 키는 색 키 목록에 있다', () => {
+    for (const keys of Object.values(FEED_COLOR_USAGE)) {
+      for (const key of keys) expect(FEED_COLOR_KEYS).toContain(key)
+    }
+  })
+})
+
+describe('바탕+박스 조합', () => {
+  it('일반 조합이 정확히 9개이고 서로 겹치지 않는다', () => {
+    expect(FEED_BG_BOX_COMBOS).toHaveLength(9)
+    expect(new Set(FEED_BG_BOX_COMBOS.map((c) => `${c.bg}+${c.box}`)).size).toBe(9)
+    expect(FEED_BG_BOX_COMBOS.map((c) => `${c.bg}+${c.box}`).sort()).toEqual(
+      [
+        'yellow+green',
+        'green+yellow',
+        'yellow+green-deep',
+        'green+pink',
+        'sky+yellow',
+        'yellow+sky',
+        'pink+yellow',
+        'pink+green',
+        'sky+pink',
+      ].sort(),
+    )
+  })
+
+  it('노랑·초록 조합 세 개만 가중치 2이고 나머지는 1이다(합계 12)', () => {
+    const heavy = FEED_BG_BOX_COMBOS.filter((c) => c.weight === 2).map((c) => `${c.bg}+${c.box}`)
+    expect(heavy.sort()).toEqual(['green+yellow', 'yellow+green', 'yellow+green-deep'])
+    expect(FEED_BG_BOX_COMBOS.filter((c) => c.weight === 1)).toHaveLength(6)
+    expect(FEED_BG_BOX_COMBOS.reduce((sum, c) => sum + c.weight, 0)).toBe(12)
+  })
+
+  it('조합의 바탕은 바탕 표에, 박스는 박스 표에 있고 바탕과 박스가 같은 색이 아니다', () => {
+    for (const { bg, box } of FEED_BG_BOX_COMBOS) {
+      expect(FEED_COLOR_USAGE.bg as readonly string[]).toContain(bg)
+      expect(FEED_COLOR_USAGE.box as readonly string[]).toContain(box)
+      expect(bg).not.toBe(box)
+      expect(bg).not.toBe('green-deep') // 짙은 초록 바탕은 따로 둔 두 조합만 쓴다
+    }
+  })
+
+  it('짙은 초록 바탕 조합은 노랑·분홍 박스 두 개이고 리듬은 다섯~여섯 장에 한 장이다', () => {
+    expect(FEED_DEEP_GREEN_COMBOS.map((c) => `${c.bg}+${c.box}`)).toEqual(['green-deep+yellow', 'green-deep+pink'])
+    expect(FEED_DEEP_GREEN_RHYTHM).toEqual({ everyMin: 5, everyMax: 6 })
+  })
+})
+
+describe('feedTextOnBg', () => {
+  it('짙은 초록 바탕이면 흰색(--snow)이다', () => {
+    expect(feedTextOnBg('green-deep')).toBe('var(--snow)')
+  })
+
+  it('다른 바탕·비어 있는 값은 검정(--foreground)이다', () => {
+    for (const key of ['yellow', 'green', 'pink', 'sky', 'red-soft']) expect(feedTextOnBg(key)).toBe('var(--foreground)')
+    expect(feedTextOnBg(null)).toBe('var(--foreground)')
+    expect(feedTextOnBg(undefined)).toBe('var(--foreground)')
+  })
+})
+
+describe('boxAllowedFor', () => {
+  it('짙은 초록 박스는 글자가 들어가는 박스에 못 쓰고, 글자 없는 박스에는 쓴다', () => {
+    expect(boxAllowedFor('green-deep', true)).toBe(false)
+    expect(boxAllowedFor('green-deep', false)).toBe(true)
+  })
+
+  it('나머지 박스 색은 글자 박스에도 쓸 수 있다', () => {
+    for (const key of ['yellow', 'green', 'pink', 'sky']) expect(boxAllowedFor(key, true)).toBe(true)
+  })
+
+  it('박스 표에 없는 색(빨강·보라·흰색·옛 키)은 쓰지 못한다', () => {
+    for (const key of ['red', 'purple', 'white', 'blue', 'red-soft']) expect(boxAllowedFor(key, false)).toBe(false)
   })
 })

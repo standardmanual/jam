@@ -332,6 +332,7 @@ export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
   kids: '원색끼리거나 밝은 색끼리 색 차이가 커서 어수선해요',
   lightness: '밝기 차이가 모자라 칩이 묻혀요',
   image: '이미지의 대표 색과 너무 비슷해서 묻혀요',
+  table: '함께 쓰지 않기로 한 색 조합이에요',
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
