@@ -24,7 +24,7 @@ import { d, t } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'
 import { getBadgeBackgroundAnimation } from '@/lib/badgeBackgroundTheme'
 import BadgeTicket from './BadgeTicket'
-import { formatTicketDate, pickTicketColor } from '@/lib/badgeTicket/ticketColor'
+import { formatTicketDate, parseTicketColorParams, resolveTicketColor } from '@/lib/badgeTicket/ticketColor'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 import { excludeHiddenUnearned, isHiddenUnearned } from '@/lib/badge-engine/hiddenBadges'
 
@@ -46,7 +46,7 @@ interface BadgeDetailPageProps {
    * 인벤토리 카드·컬렉션 슬롯에서 진입할 때 "어느 개체를 눌렀는가"를 싣는다.
    * 없거나 무효하면 아래에서 조용히 기존 대표 개체(최신 획득분)로 폴백한다.
    */
-  searchParams: Promise<{ u?: SearchParamValue; item?: SearchParamValue }>
+  searchParams: Promise<{ u?: SearchParamValue; item?: SearchParamValue; tc?: SearchParamValue; tb?: SearchParamValue }>
 }
 
 export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
@@ -118,8 +118,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // (우선순위 규칙은 badgeBackgroundTheme.ts 한 곳). 히어로에는 themedBackground 끔을 넘겨 오라 배경이 나오게 한다.
   const badgeCardAnimation = getBadgeBackgroundAnimation(badgeRow)
 
-  // 티켓색은 서버가 요청마다 고른다(원색 5개, 이미지 색과 겹치면 제외). 클라이언트에서 칠하지 않는다.
-  const ticketColor = pickTicketColor(badgeRow.bg_colors ?? [])
+  // 티켓색은 서버가 정한다(클라이언트에서 칠하지 않는다). 홈 카드에서 들어오면 카드 바탕색(`tc`)을 이어받고, 그림 색과 겹치면 박스 색(`tb`),
+  // 그것도 겹치거나 다른 경로로 들어오면 일곱 색 중 그림 색과 겹치지 않는 색을 요청마다 무작위로 고른다. 쿼리 값은 허용 목록으로만 읽는다(티켓 20261122_2226).
+  const ticketColor = resolveTicketColor({
+    ...parseTicketColorParams({ tc: singleQueryParam(rawSearchParams.tc), tb: singleQueryParam(rawSearchParams.tb) }),
+    imageHexes: badgeRow.bg_colors ?? [],
+  })
   // 페이지 바탕은 다른 화면과 같은 기본 --background다(크림 덮어쓰기는 2026-11-22 사용자 지시로 걷었다, 티켓 20261122_1424). 절취선 점·홈도 이 값을 따른다.
   const shareWrapStyle: React.CSSProperties = { padding: '24px 16px calc(32px + env(safe-area-inset-bottom))' }
   // 공유 버튼이 없을 때(미획득·타인 배지)도 티켓과 푸터 사이에 버튼 아래와 같은 여백을 둔다(티켓 20261122_1442, 사용자 지적)
@@ -314,7 +318,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           color={ticketColor}
           kindLabel={d.badges.ticketKindItem}
           dateText={formatTicketDate(activeItem?.obtained_at)}
-          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
+          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} silhouette={ticketColor.silhouette} backgroundAnimation={badgeCardAnimation} />}
           afterPhoto={
             <>
               <TicketTitleBoxes badge={badgeRow} />
@@ -423,7 +427,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           kindLabel={d.badges.ticketKindCheckin}
           dateText={formatTicketDate(checkinEarns[0]?.earned_at)}
           /* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */
-          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
+          photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} silhouette={ticketColor.silhouette} backgroundAnimation={badgeCardAnimation} />}
           afterPhoto={<TicketTitleBoxes badge={badgeRow} chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined} />}
           body={
             <>
@@ -493,7 +497,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         color={ticketColor}
         kindLabel={d.badges.ticketKindActivity}
         dateText={formatTicketDate(earned?.earned_at)}
-        photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />}
+        photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} silhouette={ticketColor.silhouette} backgroundAnimation={badgeCardAnimation} />}
         afterPhoto={<TicketTitleBoxes badge={badgeRow} />}
         body={
           <>

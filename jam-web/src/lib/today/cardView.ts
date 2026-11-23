@@ -15,6 +15,7 @@ import type { TodayCardTemplateType, TodayListItem } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import type { FeedPalette } from './feedAssign'
+import { withTicketColorQuery } from '@/lib/badgeTicket/ticketColor'
 import { resolveFeedLook, type FeedLook, type RenderedFeedType } from './feedLook'
 import { resolveFeedType, usableListItems } from './feedType'
 import type { FeedValueChipSource } from './feedValueChips'
@@ -394,6 +395,8 @@ export function toCardView(card: TodayCardWithHref, options: ToCardViewOptions =
   if (!imageUrl && card.template_type === 'mission_spotlight' && mission?.image_url) imageUrl = mission.image_url
   else if (!imageUrl && first?.image_url) imageUrl = first.image_url
   const feedView: FeedCardView = { ...base, feedType, imageUrl, look }
+  // 배지 1개 카드가 가는 상세(`/badges/{id}`)에는 카드의 바탕·박스 색을 실어 티켓색으로 이어받게 한다(티켓 20261122_2226). 다른 목적지는 그대로다.
+  if (feedView.href) feedView.href = withTicketColorQuery(feedView.href, look.colors)
   if (first?.image_url) feedView.badgeImageUrl = first.image_url
   if (first?.name) feedView.badgeName = first.name
   if (feedType === 'collection_intro') {

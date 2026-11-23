@@ -512,6 +512,8 @@ code:
 
 근거: `jam-web/src/lib/today/targetHref.ts`(`resolveTargetHref`·`resolveArticleCtaTarget`)
 
+**배지 상세로 가는 카드는 카드 색을 함께 넘긴다(티켓 20261122_2226).** 카드 뷰(`cardView.ts`)가 이동 주소가 `/badges/{id}` 한 건일 때만 `?tc={카드 바탕 키}&tb={박스 키}`를 덧붙이고, 배지 상세가 이 값으로 티켓색을 이어받는다(규칙은 `docs/service/prd/badge-detail/PRD.md` §7). `/badges`·`/missions` 같은 다른 목적지, 목록형 카드의 항목 주소, 이미 다른 쿼리가 있는 주소는 그대로다. `resolveTargetHref`가 계산하는 `resolved_href` 자체는 바뀌지 않는다.
+
 <!-- BEGIN generated: destinations -->
 카드 자신의 이동 경로(피드에서 카드를 눌렀을 때 이동하는 곳, `resolveTargetHref`) — 템플릿별 대표 입력:
 

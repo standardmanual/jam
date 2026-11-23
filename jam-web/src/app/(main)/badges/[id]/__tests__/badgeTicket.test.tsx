@@ -17,6 +17,7 @@ describe('BadgeTicket', () => {
     const html = render('2026.11.22')
     expect(html).toContain(`--ticket:var(${color.cssVar})`)
     expect(html).toContain('--ticket-end:')
+    expect(html).toContain(`--ticket-silhouette:${color.silhouette}`)
     expect(html).toContain('CHECK IN')
     expect(html).toContain('2026.11.22')
     expect(html.indexOf('사진')).toBeLessThan(html.indexOf('일련번호'))
@@ -56,6 +57,13 @@ describe('배지 상세 page 세 변형', () => {
     expect(page).toMatch(/<BadgeConditionCard\s+hideTitle/)
   })
 
+  it('티켓색은 쿼리(tc·tb)를 허용 목록으로 읽어 resolveTicketColor로 정하고 TicketPhoto에 실루엣 색을 넘긴다', () => {
+    expect(page).toContain('resolveTicketColor')
+    expect(page).toContain('parseTicketColorParams')
+    expect(page).not.toContain('pickTicketColor')
+    expect(page.match(/silhouette=\{ticketColor\.silhouette\}/g)).toHaveLength(3)
+  })
+
   it('액티비티 획득 정보 카드에 제목을 그리지 않는다', () => {
     expect(page).not.toContain('earnInfoTitle')
   })
@@ -67,5 +75,25 @@ describe('배지 상세 page 세 변형', () => {
     expect(page.match(/공유하기 — 티켓 밖/g)).toHaveLength(3)
     // 공유 버튼이 없을 때도 티켓과 푸터 사이 여백을 둔다(정의 1 + 세 변형 3, 티켓 20261122_1442)
     expect(page.match(/noShareSpacerStyle/g)).toHaveLength(4)
+  })
+})
+
+describe('TicketPhoto·StravaLink', () => {
+  const photo = readFileSync(new URL('../TicketPhoto.tsx', import.meta.url), 'utf-8')
+  const strava = readFileSync(new URL('../../../../../components/StravaLink.tsx', import.meta.url), 'utf-8')
+
+  it('사진 자리에 Aura·회색·반투명 처리가 없고 미획득은 실루엣 필터를 쓴다', () => {
+    expect(photo).not.toMatch(/BadgeAuraBackground|resolveAuraColors|AURA_GLOW/)
+    expect(photo).not.toContain('grayscale')
+    expect(photo).not.toContain('opacity-50')
+    expect(photo).toContain('feComposite')
+    expect(photo).toContain('--ticket-silhouette')
+  })
+
+  it('Strava 버튼은 검정 바탕·흰 굵은 글씨다', () => {
+    expect(strava).toContain("background: 'var(--foreground)'")
+    expect(strava).toContain("color: 'var(--snow)'")
+    expect(strava).toContain('font-bold')
+    expect(strava).not.toContain('#FC4C02')
   })
 })
