@@ -159,6 +159,8 @@ export function imageSpecWarnings(
   path: string,
   allowedHost: string | null = getAllowedAssetHost(),
   kind?: string | null,
+  /** 이 항목의 이미지 색을 시스템이 배정하는가(`isImageColorTarget`, 티켓 20261124_1052). 그러면 `bg`·`end`가 없어도 경고하지 않고, 보냈으면 쓰지 않는다고 알린다. */
+  systemColors = false,
 ): string[] {
   const label = `${path}.image_spec`
   if (spec === undefined || spec === null) return [`${label}: 비어 있어요. 이미지 지시가 없으면 이미지를 자동으로 만들지 않아요.`]
@@ -167,7 +169,8 @@ export function imageSpecWarnings(
   if (Object.keys(record).length === 0) return [`${label}: 비어 있어요. 이미지 지시가 없으면 이미지를 자동으로 만들지 않아요.`]
 
   const warnings: string[] = []
-  for (const key of ['preset_id', 'bg', 'end'] as const) {
+  const colorKeys = systemColors ? (['preset_id'] as const) : (['preset_id', 'bg', 'end'] as const)
+  for (const key of colorKeys) {
     const value = record[key]
     if (value !== undefined && value !== null && (typeof value !== 'string' || value.trim() === '')) {
       warnings.push(`${label}.${key}: 비어 있지 않은 문자열이어야 해요.`)
@@ -195,9 +198,12 @@ export function imageSpecWarnings(
       warnings.push(`${label}.values: ${subject} 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요.`)
     }
   }
+  if (systemColors && ['bg', 'end'].some((key) => record[key] !== undefined && record[key] !== null)) {
+    warnings.push(`${label}.bg·end: 이미지 색은 시스템이 묶음 안에서 쏠리지 않게 정해서, 보낸 값은 쓰지 않아요. 비워서 보내 주세요.`)
+  }
   if (record.preset_id === undefined || record.preset_id === null) {
     warnings.push(`${label}.preset_id: 없어요. 프리셋을 정하지 않으면 이미지를 자동으로 만들지 않아요.`)
-  } else if (typeof record.preset_id === 'string' && record.preset_id.trim() !== '') {
+  } else if (!systemColors && typeof record.preset_id === 'string' && record.preset_id.trim() !== '') {
     // 프리셋은 있는데 색이 없으면 렌더가 실패한다(티켓 20261007_1032). 호출부가 기본 색을 정하지 않고 제출 때 알린다.
     const missing = (['bg', 'end'] as const).filter((key) => record[key] === undefined || record[key] === null)
     if (missing.length > 0) {

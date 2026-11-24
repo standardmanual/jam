@@ -1174,13 +1174,35 @@ describe('패턴 제안 내용 칸 — resource.pattern (티켓 20261007_1746)',
 
 describe('image_spec 경고 (티켓 20261007_1030)', () => {
   // 카드 이미지에는 글자·로고를 넣지 않으므로(티켓 20261121_1722) 카드 항목의 «맞는» 지시에는 values가 없다
-  const SPEC = { preset_id: 'p1', bg: '#111111', end: '#222222' }
+  // 이미지 색은 시스템이 배정하므로(티켓 20261124_1052) 홈피드 카드·미션의 «맞는» 지시에는 bg·end도 없다
+  const SPEC = { preset_id: 'p1' }
 
   it('모양이 맞는 image_spec은 오류도 경고도 없다', () => {
     const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: SPEC })] }))
     expect(result.errors).toEqual([])
     expect(result.warnings).toEqual([])
     expect(result.items[0].warnings).toEqual([])
+  })
+
+  it('배지·컬렉션 종류는 bg·end를 그대로 받고 경고도 없다 (티켓 20261124_1052)', () => {
+    for (const kind of ['jam_badge', 'collection_launch']) {
+      const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind, image_spec: { ...SPEC, bg: '#111111', end: '#222222' } })] }))
+      expect(result.warnings, kind).toEqual([])
+    }
+  })
+
+  it('색을 시스템이 배정하는 항목이 bg·end를 보내면 «쓰지 않아요» 경고만 낸다 (티켓 20261124_1052)', () => {
+    for (const kind of ['home_feed_card', 'mission']) {
+      const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind, image_spec: { ...SPEC, bg: '#111111', end: '#222222' } })] }))
+      expect(result.errors, kind).toEqual([])
+      expect(result.warnings, kind).toEqual([expect.stringContaining('image_spec.bg·end: 이미지 색은 시스템이')])
+    }
+  })
+
+  it('트라이브 카드는 색을 시스템이 배정하지 않아 bg·end 없음 경고가 그대로다 (티켓 20261124_1052)', () => {
+    const tribeId = '73f0f601-2382-900c-8ca2-5cc7c93ed95d'
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ tribe_id: tribeId, image_spec: SPEC })] }))
+    expect(result.warnings).toEqual([expect.stringContaining('image_spec.bg·end: 없어요')])
   })
 
   it('카드 항목의 image_spec.values는 오류 없이 «쓰지 않아요» 경고만 낸다 (티켓 20261121_1722)', () => {
@@ -1217,8 +1239,8 @@ describe('image_spec 경고 (티켓 20261007_1030)', () => {
     expect(result.warnings).toEqual([])
   })
 
-  it('프리셋만 있고 bg·end가 없으면 오류 없이 경고만 낸다', () => {
-    const result = validateOpsBundle(makeBundle({ items: [makeItem({ image_spec: { preset_id: 'p1' } })] }))
+  it('프리셋만 있고 bg·end가 없는 배지 항목은 오류 없이 경고만 낸다', () => {
+    const result = validateOpsBundle(makeBundle({ items: [makeItem({ kind: 'jam_badge', image_spec: { preset_id: 'p1' } })] }))
     expect(result.errors).toEqual([])
     expect(result.items[0].format_errors).toEqual([])
     expect(result.warnings).toEqual([expect.stringContaining('image_spec.bg·end: 없어요')])

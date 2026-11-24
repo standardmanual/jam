@@ -22,6 +22,7 @@ import {
   OPS_ITEM_INITIAL_STATUS,
   OPS_TOKEN_ACTOR,
 } from '@/lib/admin/opsInbox/constants'
+import { applyImageColors } from '@/lib/admin/opsInbox/imageColorAssign'
 import { computeRawHash } from '@/lib/admin/opsInbox/rawHash'
 import { linkRoutineStartToBundle } from '@/lib/admin/opsInbox/routineStart'
 import { formatArrivalMessage, postOpsSlack } from '@/lib/admin/opsInbox/slack'
@@ -173,8 +174,9 @@ export async function POST(req: Request) {
   const bundleDbId = inserted.data.id
 
   if (items.length > 0) {
+    // 이미지 색은 에이전트가 낸 값을 쓰지 않고 시스템이 묶음 안에서 쏠리지 않게 배정한다(티켓 20261124_1052). `ops_bundles.raw`와 `raw_hash`는 제출 원문 그대로다.
     const { error: itemsError } = await service.from('ops_bundle_items').insert(
-      items.map((item) => ({
+      applyImageColors(items).map((item) => ({
         bundle_id: bundleDbId,
         position: item.position,
         item_key: item.item_key,
