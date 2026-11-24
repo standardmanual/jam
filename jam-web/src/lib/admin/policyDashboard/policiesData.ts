@@ -1686,4 +1686,16 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     basisDoc: '운영 로직 19.3절',
     ticketId: '20261022_1137',
   },
+  {
+    id: 'ch19-english-names',
+    chapter: 19,
+    chapterTitle: '운영 설정과 컨텐츠 입력',
+    title: '트라이브·컬렉션 영문 표기',
+    type: 'ticket_decision',
+    currentSpec:
+      '트라이브 영문 이름: 한입만 연구회 ONE BITE CLUB, 찰칵단 CLICK CREW, 비사이드 레코즈 B-SIDE RECORDS, 소나무 잡화점 PINE TREE GENERAL STORE, 혼자들 THE LONERS. 컬렉션 영문 이름은 표지를 만들 때 정해 기준 문서 표에 더함(2026-11-24 기준 5개). 대문자로 표기. 컬렉션 대표 이미지(표지)의 상단에 컬렉션 영문 이름, 하단에 트라이브 영문 이름을 씀. DB에는 영문 이름 칸이 없음',
+    userExperience: '아직 화면에는 보이지 않아요. 컬렉션 대표 이미지가 생기면 표지에 컬렉션과 트라이브의 영문 이름이 들어가요.',
+    basisDoc: '트라이브 보이스 7절 (docs/plan/jam2/service-redesign/트라이브 보이스.md)',
+    ticketId: '20261124_1711',
+  },
 ]
