@@ -46,7 +46,11 @@ export function layoutTitle(measure: MeasureFn, titleEn: string): TitleLayout {
   const parts: string[][] = [];
   const rec = (i: number, acc: string[]) => {
     if (i === words.length) {
-      if (acc.length <= 3) parts.push(acc);
+      parts.push(acc);
+      return;
+    }
+    if (acc.length === 2) {
+      parts.push([...acc, words.slice(i).join(' ')]);
       return;
     }
     for (let j = i + 1; j <= words.length; j++) rec(j, [...acc, words.slice(i, j).join(' ')]);
@@ -109,11 +113,15 @@ export interface BadgePlacement {
 const BADGE_MAX = 450;
 const BADGE_PAD = 36;
 
+/** 배지 투명 여백을 자른 뒤 긴 변 450px에 맞춘 표시 크기 */
+export function badgeDisplaySize(trimW: number, trimH: number): { width: number; height: number } {
+  const k = BADGE_MAX / Math.max(trimW, trimH);
+  return { width: Math.round(trimW * k), height: Math.round(trimH * k) };
+}
+
 /** 제목·하단 사이에 들어가면 가운데, 아니면 하단 글씨 위에 붙여 제목을 가린다 */
 export function placeBadge(trimW: number, trimH: number, titleBottom: number, bottomTop: number): BadgePlacement {
-  const k = BADGE_MAX / Math.max(trimW, trimH);
-  const width = Math.round(trimW * k);
-  const height = Math.round(trimH * k);
+  const { width, height } = badgeDisplaySize(trimW, trimH);
   const zoneTop = titleBottom + BADGE_PAD;
   const zoneBottom = bottomTop - BADGE_PAD;
   const y = Math.round(height <= zoneBottom - zoneTop ? (zoneTop + zoneBottom) / 2 - height / 2 : zoneBottom - height);

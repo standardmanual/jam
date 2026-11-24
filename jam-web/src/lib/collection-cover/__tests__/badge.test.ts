@@ -27,6 +27,18 @@ describe('outlineInteriorMask', () => {
     expect(m[20 * SIZE + 28]).toBe(1); // 고리 몸통
     expect(m[0]).toBe(0); // 바깥 모서리
   });
+
+  it('가장자리가 불투명으로 막혀 있어도 누락 없이 안쪽을 채운다', () => {
+    const w = 5;
+    const d = new Uint8ClampedArray(w * w * 4);
+    for (let y = 0; y < w; y++) {
+      for (let x = 0; x < w; x++) {
+        if (x === 0 || y === 0 || x === w - 1 || y === w - 1) d[(y * w + x) * 4 + 3] = 255;
+      }
+    }
+    const m = outlineInteriorMask(d, w, w);
+    expect(Array.from(m).every((v) => v === 1)).toBe(true);
+  });
 });
 
 describe('alphaBounds', () => {

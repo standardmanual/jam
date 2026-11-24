@@ -55,24 +55,34 @@ export function alphaBounds(data: Bytes, w: number, h: number): { x: number; y: 
  * 선화처럼 속이 빈 배지도 고리 안쪽까지 안쪽으로 잡힌다.
  */
 export function outlineInteriorMask(data: Bytes, w: number, h: number): Uint8Array {
-  const outside = new Uint8Array(w * h);
-  const stack: number[] = [];
-  const solid = (i: number) => data[i * 4 + 3] > 24;
-  for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
-  for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
-  while (stack.length) {
-    const i = stack.pop() as number;
-    if (outside[i] || solid(i)) continue;
+  const total = w * h;
+  const outside = new Uint8Array(total);
+  const stack = new Int32Array(total);
+  let sp = 0;
+  const push = (i: number) => {
+    if (outside[i] || data[i * 4 + 3] > 24) return;
     outside[i] = 1;
+    stack[sp++] = i;
+  };
+  for (let x = 0; x < w; x++) {
+    push(x);
+    push((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    push(y * w);
+    push(y * w + w - 1);
+  }
+  while (sp > 0) {
+    const i = stack[--sp];
     const px = i % w;
     const py = (i - px) / w;
-    if (px > 0) stack.push(i - 1);
-    if (px < w - 1) stack.push(i + 1);
-    if (py > 0) stack.push(i - w);
-    if (py < h - 1) stack.push(i + w);
+    if (px > 0) push(i - 1);
+    if (px < w - 1) push(i + 1);
+    if (py > 0) push(i - w);
+    if (py < h - 1) push(i + w);
   }
-  const mask = new Uint8Array(w * h);
-  for (let i = 0; i < mask.length; i++) mask[i] = outside[i] ? 0 : 1;
+  const mask = new Uint8Array(total);
+  for (let i = 0; i < total; i++) mask[i] = outside[i] ? 0 : 1;
   return mask;
 }
 

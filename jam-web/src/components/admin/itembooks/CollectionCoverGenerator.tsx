@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
@@ -17,9 +17,17 @@ import {
 } from '@/components/admin/ui/alert-dialog'
 import {
   COVER_SIZE,
-  renderCollectionCover,
+  colorsToOklab,
+  createCoverRenderer,
+  defaultTextColors,
+  hexToRgb,
+  prepareCoverBadge,
+  resolveCoverBackground,
   type CoverCanvasLike,
+  type CoverRenderer,
   type CollectionCoverResult,
+  type PreparedCoverBadge,
+  type PreparedCoverDrawInput,
   type TextColors,
 } from '@/lib/collection-cover'
 import {
@@ -48,6 +56,7 @@ const TEXT_LABELS: Record<(typeof TEXT_KEYS)[number], string> = {
   tribe: '트라이브 글자색',
   join: 'JOIN AND MOVE 글자색',
 }
+const GRAIN_DEBOUNCE_MS = 120
 
 export interface CollectionCoverGeneratorProps {
   collectionId: string
@@ -96,6 +105,32 @@ function ColorField({
   extra?: React.ReactNode
 }) {
   const [draft, setDraft] = useState<string | null>(null)
+  const pendingHexRef = useRef<string | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const onCommitRef = useRef(onCommit)
+  useEffect(() => {
+    onCommitRef.current = onCommit
+  }, [onCommit])
+
+  const flushPicker = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    const hex = pendingHexRef.current
+    if (hex !== null) {
+      pendingHexRef.current = null
+      setDraft(null)
+      onCommitRef.current(hex)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
   const shown = draft ?? value
   const invalid = draft !== null && normalizeHex(draft) === null
   return (
@@ -110,9 +145,19 @@ function ColorField({
         onChange={(e) => {
           const hex = normalizeHex(e.target.value)
           if (!hex) return
-          setDraft(null)
-          onCommit(hex)
+          setDraft(hex)
+          pendingHexRef.current = hex
+          if (rafRef.current === null) {
+            rafRef.current = requestAnimationFrame(() => {
+              rafRef.current = null
+              const committed = pendingHexRef.current
+              pendingHexRef.current = null
+              setDraft(null)
+              if (committed) onCommitRef.current(committed)
+            })
+          }
         }}
+        onBlur={flushPicker}
       />
       <Input
         aria-label={label}
@@ -311,6 +356,9 @@ const createCanvas = (w: number, h: number) => {
   return c as unknown as CoverCanvasLike
 }
 
+const formatPreviewError = (e: unknown) =>
+  `[현상] 미리보기를 그리지 못했어요.\n[원인] ${e instanceof Error ? e.message : '알 수 없는 오류'}\n[해결책] 다른 대표 배지를 골라 보세요.`
+
 export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
   const { collectionId, initialNameEn, tribeNameEn, coverParams, badges, otherBgHexes } = props
   const router = useRouter()
@@ -319,8 +367,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
   const [state, setState] = useState<CoverState>(() => initialCoverState(params, badges))
   const [nameEn, setNameEn] = useState(initialNameEn ?? '')
   const [fontReady, setFontReady] = useState(false)
-  const [loaded, setLoaded] = useState<{ src: string; img: HTMLImageElement } | null>(null)
-  const [result, setResult] = useState<CollectionCoverResult | null>(null)
+  const [loaded, setLoaded] = useState<{ src: string; prepared: PreparedCoverBadge } | null>(null)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -328,13 +375,48 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
   const [themeContainer] = useState<HTMLElement | null>(() =>
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
+  const rendererRef = useRef<CoverRenderer | null>(null)
+  const drawInputRef = useRef<PreparedCoverDrawInput | null>(null)
+  const grainAppliedRef = useRef(false)
 
+  const usedLabs = useMemo(() => colorsToOklab(otherBgHexes), [otherBgHexes])
   const titleEn = nameEn.trim().toUpperCase()
   const badge = badges.find((b) => b.id === state.badgeId) ?? null
   const blocked = !badge || !tribeNameEn
-  // 배지를 바꾸면 새 이미지가 올 때까지 이전 이미지를 쓰지 않는다
-  const image = loaded && loaded.src === badge?.image_url ? loaded.img : null
-  const canRender = fontReady && !!image && !!tribeNameEn && titleEn !== ''
+  // 배지를 바꾸면 새 이미지가 준비될 때까지 이전 배지를 쓰지 않는다
+  const preparedBadge = loaded && loaded.src === badge?.image_url ? loaded.prepared : null
+  const canRender = fontReady && !!preparedBadge && !!tribeNameEn && titleEn !== ''
+
+  // 배경색은 배지·시드·다시 뽑기·직접 지정이 바뀔 때만 계산한다(글자색·제목 변경 시 재실행 없음)
+  const bgOverride = state.bgManual ?? state.bgSaved ?? undefined
+  const resolvedBg = useMemo(() => {
+    if (!preparedBadge) return null
+    try {
+      return {
+        ok: true as const,
+        bg: resolveCoverBackground({
+          seed: collectionId,
+          rerolls: state.rerolls,
+          badge: preparedBadge.analysis,
+          usedColors: otherBgHexes,
+          usedLabs,
+          bgOverride,
+        }),
+      }
+    } catch (e) {
+      return { ok: false as const, message: formatPreviewError(e) }
+    }
+  }, [preparedBadge, collectionId, state.rerolls, otherBgHexes, usedLabs, bgOverride])
+
+  const textColors = useMemo<TextColors | null>(() => {
+    if (!resolvedBg?.ok) return null
+    return { ...defaultTextColors(hexToRgb(resolvedBg.bg.bgHex)), ...state.textOverrides }
+  }, [resolvedBg, state.textOverrides])
+
+  const colorResult = useMemo<Pick<CollectionCoverResult, 'bgHex' | 'bgSource' | 'textColors'> | null>(() => {
+    if (!resolvedBg?.ok || !textColors) return null
+    return { bgHex: resolvedBg.bg.bgHex, bgSource: resolvedBg.bg.bgSource, textColors }
+  }, [resolvedBg, textColors])
 
   useEffect(() => {
     let alive = true
@@ -351,47 +433,85 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
     let alive = true
     const src = badge.image_url
     loadBadgeImage(src)
-      .then((img) => alive && setLoaded({ src, img }))
+      .then((img) => {
+        if (!alive) return
+        try {
+          const prepared = prepareCoverBadge(img, createCanvas)
+          setLoaded({ src, prepared })
+          setError(null)
+        } catch (e) {
+          setError(formatPreviewError(e))
+        }
+      })
       .catch(() => alive && setError('[현상] 대표 배지 이미지를 불러오지 못했어요.\n[원인] 이미지 주소가 열리지 않아요.\n[해결책] 다른 배지를 고르거나 배지 이미지를 확인해 주세요.'))
     return () => {
       alive = false
     }
   }, [badge?.image_url])
 
-  // 설정이 바뀔 때마다 다시 그린다(글꼴·배지 이미지 로드 뒤)
+  // 드래그 중에는 rAF당 1회 그레인 생략으로 빠르게 합성하고, 입력이 멈추면 정밀 그레인을 덮는다
   useEffect(() => {
-    if (!canvas || !canRender || !image || !tribeNameEn) return
-    try {
-      const r = renderCollectionCover(
-        canvas as unknown as CoverCanvasLike,
-        {
-          titleEn,
-          tribeEn: tribeNameEn,
-          badgeImage: image,
-          seed: collectionId,
-          rerolls: state.rerolls,
-          usedColors: otherBgHexes,
-          bgOverride: state.bgManual ?? state.bgSaved ?? undefined,
-          textColorOverrides: state.textOverrides,
-        },
-        { createCanvas }
-      )
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 캔버스 그리기는 effect에서만 하고, 그 결과(색 값)를 화면 표시용으로 보관한다
-      setResult(r)
-    } catch (e) {
-      setError(`[현상] 미리보기를 그리지 못했어요.\n[원인] ${e instanceof Error ? e.message : '알 수 없는 오류'}\n[해결책] 다른 대표 배지를 골라 보세요.`)
+    if (!canvas || !canRender || !preparedBadge || !tribeNameEn || !resolvedBg?.ok || !textColors) {
+      drawInputRef.current = null
+      grainAppliedRef.current = false
+      return
     }
-  }, [canvas, canRender, image, tribeNameEn, titleEn, collectionId, state, otherBgHexes])
+    const drawInput: PreparedCoverDrawInput = {
+      titleEn,
+      tribeEn: tribeNameEn,
+      preparedBadge,
+      bgHex: resolvedBg.bg.bgHex,
+      bgSource: resolvedBg.bg.bgSource,
+      relaxStep: resolvedBg.bg.relaxStep,
+      textColors,
+    }
+    drawInputRef.current = drawInput
+    grainAppliedRef.current = false
 
-  const loading = !blocked && (!fontReady || !image)
+    const getRenderer = () => {
+      if (!rendererRef.current) rendererRef.current = createCoverRenderer({ createCanvas })
+      return rendererRef.current
+    }
+
+    let grainTimer: ReturnType<typeof setTimeout> | null = null
+    const rafId = requestAnimationFrame(() => {
+      try {
+        getRenderer().render(canvas as unknown as CoverCanvasLike, { ...drawInput, grain: 'skip' })
+      } catch (e) {
+        setError(formatPreviewError(e))
+        return
+      }
+      grainTimer = setTimeout(() => {
+        try {
+          getRenderer().render(canvas as unknown as CoverCanvasLike, { ...drawInput, grain: 'exact' })
+          grainAppliedRef.current = true
+        } catch (e) {
+          setError(formatPreviewError(e))
+        }
+      }, GRAIN_DEBOUNCE_MS)
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      if (grainTimer !== null) clearTimeout(grainTimer)
+    }
+  }, [canvas, canRender, preparedBadge, tribeNameEn, titleEn, resolvedBg, textColors])
+
+  const loading = !blocked && (!fontReady || !preparedBadge)
 
   const onReset = useCallback(() => {
     setState(initialCoverState(null, badges))
     setError(null)
   }, [badges])
 
+  const onBgManual = useCallback((hex: string) => {
+    setState((s) => (s.bgManual === hex && s.bgSaved === null ? s : { ...s, bgManual: hex, bgSaved: null }))
+  }, [])
+
   const onTextColor = useCallback((key: keyof TextColors, hex: string | null) => {
     setState((s) => {
+      const prev = s.textOverrides[key]
+      if (hex === null ? prev === undefined : prev === hex) return s
       const next = { ...s.textOverrides }
       if (hex === null) delete next[key]
       else next[key] = hex
@@ -400,11 +520,20 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
   }, [])
 
   const submit = useCallback(async () => {
-    if (!canvas || !result || applying) return
+    if (!canvas || !colorResult || applying) return
     setConfirmOpen(false)
     setApplying(true)
     setError(null)
     try {
+      // 디바운스 대기 중 적용을 눌렀다면 PNG 추출 전에 정밀 그레인을 동기 적용한다
+      if (!grainAppliedRef.current && drawInputRef.current) {
+        if (!rendererRef.current) rendererRef.current = createCoverRenderer({ createCanvas })
+        rendererRef.current.render(canvas as unknown as CoverCanvasLike, {
+          ...drawInputRef.current,
+          grain: 'exact',
+        })
+        grainAppliedRef.current = true
+      }
       const png = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG를 만들지 못했어요.'))), 'image/png')
       )
@@ -413,7 +542,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
         collectionId,
         nameEn: titleEn,
         png,
-        params: buildCoverParams(state, collectionId, result, new Date().toISOString(), savedSource),
+        params: buildCoverParams(state, collectionId, colorResult, new Date().toISOString(), savedSource),
       })
       if (!out.ok) {
         setError(out.message)
@@ -426,7 +555,9 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
     } finally {
       setApplying(false)
     }
-  }, [applying, canvas, collectionId, savedSource, result, router, state, titleEn])
+  }, [applying, canvas, collectionId, savedSource, colorResult, router, state, titleEn])
+
+  const displayedError = error ?? (resolvedBg && !resolvedBg.ok ? resolvedBg.message : null)
 
   return (
     <>
@@ -438,11 +569,11 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
         badges={badges}
         badgeId={state.badgeId}
         onBadge={(id) => setState((s) => ({ ...s, badgeId: id }))}
-        result={titleEn === '' || !tribeNameEn ? null : result}
+        result={titleEn === '' || !tribeNameEn ? null : colorResult}
         textOverrides={state.textOverrides}
         bgFromSaved={state.bgManual == null && state.bgSaved != null}
         onReroll={() => setState((s) => ({ ...s, rerolls: s.rerolls + 1, bgManual: null, bgSaved: null }))}
-        onBgManual={(hex) => setState((s) => ({ ...s, bgManual: hex, bgSaved: null }))}
+        onBgManual={onBgManual}
         onTextColor={onTextColor}
         onReset={onReset}
         canvas={
@@ -454,7 +585,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
           />
         }
         applying={applying}
-        error={error}
+        error={displayedError}
         onApplyClick={() => setConfirmOpen(true)}
       />
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && !applying && setConfirmOpen(false)}>

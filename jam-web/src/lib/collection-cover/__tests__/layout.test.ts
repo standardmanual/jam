@@ -37,6 +37,13 @@ describe('layoutTitle', () => {
     expect(l.inkWidthRatio).toBeGreaterThanOrEqual(0.895);
     expect(l.inkWidthRatio).toBeLessThanOrEqual(0.905);
   });
+
+  it('단어가 많은 긴 제목도 3줄 상한 가지치기로 빠르게 계산한다', () => {
+    const words = Array.from({ length: 14 }, (_, i) => `W${i + 1}`).join(' ');
+    const l = layoutTitle(measure, words);
+    expect(l.lines.length).toBeLessThanOrEqual(3);
+    expect(l.lines.map((x) => x.text).join(' ')).toBe(words);
+  });
 });
 
 describe('layoutBottom·placeBadge', () => {

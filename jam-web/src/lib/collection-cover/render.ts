@@ -6,12 +6,12 @@
 import { alphaBounds, analyzeBadgePixels, dilateMask, DILATE_PAD, outlineInteriorMask } from './badge';
 import {
   defaultTextColors,
-  generateBackground,
   hexToRgb,
-  coverSeed,
+  resolveCoverBackground,
   type TextColors,
 } from './color';
 import {
+  badgeDisplaySize,
   COVER_SIZE,
   JOIN_TEXT,
   layoutBottom,
@@ -53,6 +53,7 @@ export interface CoverContextLike {
     dw: number,
     dh: number
   ): void;
+  clearRect(x: number, y: number, w: number, h: number): void;
   fillRect(x: number, y: number, w: number, h: number): void;
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CoverGradient;
   createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CoverGradient;
@@ -80,7 +81,7 @@ export interface CoverContextLike {
 }
 
 export interface CoverCanvasLike extends CoverImageSource {
-  getContext(kind: '2d'): CoverContextLike;
+  getContext(kind: '2d', options?: { willReadFrequently?: boolean }): CoverContextLike;
 }
 
 export type CoverCanvasFactory = (width: number, height: number) => CoverCanvasLike;
@@ -117,69 +118,97 @@ export interface CollectionCoverResult {
   relaxStep: number | null;
 }
 
+export interface PreparedCoverBadge {
+  analysis: { okHue: number | null; lineArt: boolean };
+  bounds: { x: number; y: number; w: number; h: number };
+  badgeWidth: number;
+  badgeHeight: number;
+  badgeCanvas: CoverCanvasLike;
+  haloMaskCanvas: CoverCanvasLike;
+  haloPad: number;
+}
+
+export interface PreparedCoverDrawInput {
+  titleEn: string;
+  tribeEn: string;
+  preparedBadge: PreparedCoverBadge;
+  bgHex: string;
+  bgSource: 'generated' | 'override';
+  relaxStep: number | null;
+  textColors: TextColors;
+  /** 'skip': 드래그 중 빠른 GPU 합성, 'exact': 정착·저장용 정밀 그레인 포함(기본값) */
+  grain?: 'skip' | 'exact';
+}
+
+export interface CoverRenderer {
+  render(canvas: CoverCanvasLike, input: PreparedCoverDrawInput): CollectionCoverResult;
+}
+
 const W = COVER_SIZE;
 const H = COVER_SIZE;
 const ANALYZE_MAX = 128;
 
-export function renderCollectionCover(
-  canvas: CoverCanvasLike,
-  input: CollectionCoverInput,
-  deps: CoverDeps
-): CollectionCoverResult {
-  const { createCanvas, fontFamily = 'Sour Gummy' } = deps;
-  if (canvas.width !== W || canvas.height !== H) throw new Error(`표지 캔버스는 ${W}×${H}여야 해요`);
-  const x = canvas.getContext('2d');
-  const img = input.badgeImage;
-
-  // 배지 분석(128px 안으로 줄여서)과 투명 여백 계산
-  const ak = Math.min(1, ANALYZE_MAX / Math.max(img.width, img.height));
-  const aw = Math.max(1, Math.round(img.width * ak));
-  const ah = Math.max(1, Math.round(img.height * ak));
+/**
+ * 배지 이미지당 1회만 수행하는 무거운 분석·여백·외곽 마스크 준비 단계(티켓 20261124_2159).
+ * 색이나 제목이 바뀌어도 배지 이미지가 같으면 그대로 재사용한다.
+ */
+export function prepareCoverBadge(
+  badgeImage: CoverImageSource,
+  createCanvas: CoverCanvasFactory
+): PreparedCoverBadge {
+  const ak = Math.min(1, ANALYZE_MAX / Math.max(badgeImage.width, badgeImage.height));
+  const aw = Math.max(1, Math.round(badgeImage.width * ak));
+  const ah = Math.max(1, Math.round(badgeImage.height * ak));
   const ac = createCanvas(aw, ah);
-  ac.getContext('2d').drawImage(img, 0, 0, aw, ah);
-  const analysis = analyzeBadgePixels(ac.getContext('2d').getImageData(0, 0, aw, ah).data);
+  const ax = ac.getContext('2d', { willReadFrequently: true });
+  ax.drawImage(badgeImage, 0, 0, aw, ah);
+  const analysis = analyzeBadgePixels(ax.getImageData(0, 0, aw, ah).data);
 
-  const fc = createCanvas(img.width, img.height);
-  fc.getContext('2d').drawImage(img, 0, 0);
-  const bounds = alphaBounds(fc.getContext('2d').getImageData(0, 0, img.width, img.height).data, img.width, img.height);
+  const fc = createCanvas(badgeImage.width, badgeImage.height);
+  const fx = fc.getContext('2d', { willReadFrequently: true });
+  fx.drawImage(badgeImage, 0, 0);
+  const bounds = alphaBounds(fx.getImageData(0, 0, badgeImage.width, badgeImage.height).data, badgeImage.width, badgeImage.height);
   if (!bounds) throw new Error('대표 배지에 보이는 픽셀이 없어요');
 
-  // 배경색과 글자색
-  let bgHex: string;
-  let bgSource: 'generated' | 'override';
-  let relaxStep: number | null = null;
-  if (input.bgOverride) {
-    bgHex = input.bgOverride.toLowerCase();
-    bgSource = 'override';
-  } else {
-    const bg = generateBackground({
-      seed: coverSeed(input.seed, input.rerolls),
-      badge: analysis,
-      usedColors: input.usedColors,
-    });
-    bgHex = bg.hex;
-    bgSource = 'generated';
-    relaxStep = bg.relaxStep;
+  const { width: badgeWidth, height: badgeHeight } = badgeDisplaySize(bounds.w, bounds.h);
+  const badgeCanvas = createCanvas(badgeWidth, badgeHeight);
+  const bx = badgeCanvas.getContext('2d', { willReadFrequently: true });
+  bx.drawImage(badgeImage, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, badgeWidth, badgeHeight);
+  const bd = bx.getImageData(0, 0, badgeWidth, badgeHeight).data;
+  const interior = outlineInteriorMask(bd, badgeWidth, badgeHeight);
+
+  const haloPad = DILATE_PAD;
+  const pw = badgeWidth + haloPad * 2;
+  const ph = badgeHeight + haloPad * 2;
+  const padded = new Uint8Array(pw * ph);
+  for (let yy = 0; yy < badgeHeight; yy++) {
+    const dst = (yy + haloPad) * pw + haloPad;
+    const src = yy * badgeWidth;
+    for (let xx = 0; xx < badgeWidth; xx++) padded[dst + xx] = interior[src + xx];
   }
-  const textColors: TextColors = { ...defaultTextColors(hexToRgb(bgHex)), ...input.textColorOverrides };
+  const grown = dilateMask(padded, pw, ph);
+  const haloMaskCanvas = createCanvas(pw, ph);
+  const hx = haloMaskCanvas.getContext('2d');
+  const hd = hx.createImageData(pw, ph);
+  for (let i = 0; i < grown.length; i++) {
+    const o = i * 4;
+    hd.data[o] = hd.data[o + 1] = hd.data[o + 2] = 255;
+    hd.data[o + 3] = grown[i] ? 255 : 0;
+  }
+  hx.putImageData(hd, 0, 0);
 
-  // 1) 바탕색 + 그라데이션
-  x.fillStyle = bgHex;
-  x.fillRect(0, 0, W, H);
-  let g = x.createRadialGradient(W * 0.28, H * 0.18, 0, W * 0.28, H * 0.18, W * 1.05);
-  g.addColorStop(0, 'rgba(255,250,240,0.12)');
-  g.addColorStop(0.55, 'rgba(255,250,240,0.03)');
-  g.addColorStop(1, 'rgba(255,250,240,0)');
-  x.fillStyle = g;
-  x.fillRect(0, 0, W, H);
-  g = x.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(0.6, 'rgba(0,0,0,0.01)');
-  g.addColorStop(1, 'rgba(20,10,0,0.07)');
-  x.fillStyle = g;
-  x.fillRect(0, 0, W, H);
+  return {
+    analysis,
+    bounds,
+    badgeWidth,
+    badgeHeight,
+    badgeCanvas,
+    haloMaskCanvas,
+    haloPad,
+  };
+}
 
-  // 2) 종이 얼룩
+function createMottleCanvas(createCanvas: CoverCanvasFactory): CoverCanvasLike {
   const mc = createCanvas(40, 40);
   const mx = mc.getContext('2d');
   const md = mx.createImageData(40, 40);
@@ -189,96 +218,199 @@ export function renderCollectionCover(
     md.data[i + 3] = 255;
   }
   mx.putImageData(md, 0, 0);
+  return mc;
+}
+
+function createGrainDeltas(): Int8Array {
+  const deltas = new Int8Array(W * H);
+  for (let i = 0; i < deltas.length; i++) {
+    deltas[i] = Math.round((Math.random() + Math.random() + Math.random() - 1.5) * 11);
+  }
+  return deltas;
+}
+
+function createShadeCanvas(createCanvas: CoverCanvasFactory): CoverCanvasLike {
+  const sc = createCanvas(W, H);
+  const sx = sc.getContext('2d');
+  let g = sx.createRadialGradient(W * 0.28, H * 0.18, 0, W * 0.28, H * 0.18, W * 1.05);
+  g.addColorStop(0, 'rgba(255,250,240,0.12)');
+  g.addColorStop(0.55, 'rgba(255,250,240,0.03)');
+  g.addColorStop(1, 'rgba(255,250,240,0)');
+  sx.fillStyle = g;
+  sx.fillRect(0, 0, W, H);
+  g = sx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(0.6, 'rgba(0,0,0,0.01)');
+  g.addColorStop(1, 'rgba(20,10,0,0.07)');
+  sx.fillStyle = g;
+  sx.fillRect(0, 0, W, H);
+  return sc;
+}
+
+function paintBackground(
+  x: CoverContextLike,
+  bgHex: string,
+  shadeCanvas: CoverCanvasLike,
+  mottleCanvas: CoverCanvasLike
+): void {
+  x.fillStyle = bgHex;
+  x.fillRect(0, 0, W, H);
+  x.drawImage(shadeCanvas, 0, 0);
+
   x.save();
   x.globalCompositeOperation = 'soft-light';
   x.globalAlpha = 0.3;
   x.imageSmoothingEnabled = true;
   x.imageSmoothingQuality = 'high';
-  x.drawImage(mc, 0, 0, W, H);
+  x.drawImage(mottleCanvas, 0, 0, W, H);
   x.restore();
+}
 
-  const bgSnap = createCanvas(W, H);
-  bgSnap.getContext('2d').drawImage(canvas, 0, 0);
-
-  // 글자 측정(잉크 경계, textAlign left)
-  const measure = (text: string, px: number): InkMetrics => {
-    x.font = `${px}px "${fontFamily}"`;
-    x.textAlign = 'left';
-    const m = x.measureText(text);
-    return {
-      left: m.actualBoundingBoxLeft,
-      right: m.actualBoundingBoxRight,
-      ascent: m.actualBoundingBoxAscent,
-      descent: m.actualBoundingBoxDescent,
-    };
-  };
-
-  // 3) 제목
-  const title = layoutTitle(measure, input.titleEn);
-  x.fillStyle = textColors.title;
-  x.textAlign = 'left';
-  x.textBaseline = 'alphabetic';
-  x.font = `${title.fontPx}px "${fontFamily}"`;
-  for (const line of title.lines) x.fillText(line.text, line.x, line.y);
-
-  // 4) 하단(트라이브 이름 + JOIN AND MOVE)
-  const bottom = layoutBottom(measure, input.tribeEn);
-  x.textAlign = 'center';
-  x.fillStyle = textColors.tribe;
-  x.font = `${bottom.tribePx}px "${fontFamily}"`;
-  x.fillText(input.tribeEn, W / 2, bottom.tribeY);
-  x.fillStyle = textColors.join;
-  x.font = `${bottom.joinPx}px "${fontFamily}"`;
-  x.fillText(JOIN_TEXT, W / 2, bottom.joinY);
-
-  // 5) 대표 배지: 여백을 잘라 긴 변 450px, 외곽선 안쪽을 바탕 사본으로 먼저 덮는다
-  const place = placeBadge(bounds.w, bounds.h, title.bottom, bottom.top);
-  const bc = createCanvas(place.width, place.height);
-  const bx = bc.getContext('2d');
-  bx.drawImage(img, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, place.width, place.height);
-  const bd = bx.getImageData(0, 0, place.width, place.height).data;
-  const interior = outlineInteriorMask(bd, place.width, place.height);
-
-  const pad = DILATE_PAD;
-  const pw = place.width + pad * 2;
-  const ph = place.height + pad * 2;
-  const padded = new Uint8Array(pw * ph);
-  for (let yy = 0; yy < place.height; yy++) {
-    for (let xx = 0; xx < place.width; xx++) padded[(yy + pad) * pw + xx + pad] = interior[yy * place.width + xx];
-  }
-  const grown = dilateMask(padded, pw, ph);
-  const hc = createCanvas(pw, ph);
-  const hx = hc.getContext('2d');
-  const hd = hx.createImageData(pw, ph);
-  for (let i = 0; i < grown.length; i++) {
-    hd.data[i * 4] = hd.data[i * 4 + 1] = hd.data[i * 4 + 2] = 255;
-    hd.data[i * 4 + 3] = grown[i] ? 255 : 0;
-  }
-  hx.putImageData(hd, 0, 0);
-  // 마스크 모양 그대로 바탕 사본을 잘라 붙인다
-  hx.globalCompositeOperation = 'source-in';
-  hx.drawImage(bgSnap, place.x - pad, place.y - pad, pw, ph, 0, 0, pw, ph);
-  x.drawImage(hc, place.x - pad, place.y - pad);
-  x.drawImage(bc, place.x, place.y);
-
-  // 6) 고운 그레인
-  const id = x.getImageData(0, 0, W, H);
-  const d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() + Math.random() + Math.random() - 1.5) * 11;
-    d[i] += n;
-    d[i + 1] += n;
-    d[i + 2] += n;
-  }
-  x.putImageData(id, 0, 0);
+/**
+ * 반복 미리보기용 캐시 렌더러(티켓 20261124_2159).
+ * 종이 얼룩·빛/그늘 레이어·바탕 사본·마스크 합성 버퍼·그레인 작업 버퍼·레이아웃을 재사용해 색 조정 시 GPU 합성만 수행한다.
+ */
+export function createCoverRenderer(deps: CoverDeps): CoverRenderer {
+  const { createCanvas, fontFamily = 'Sour Gummy' } = deps;
+  let mottleCanvas: CoverCanvasLike | null = null;
+  let shadeCanvas: CoverCanvasLike | null = null;
+  let bgSnap: CoverCanvasLike | null = null;
+  let bgSnapHex: string | null = null;
+  let haloScratch: CoverCanvasLike | null = null;
+  let grainWorkCanvas: CoverCanvasLike | null = null;
+  let grainDeltas: Int8Array | null = null;
+  let layoutCache: {
+    key: string;
+    title: TitleLayout;
+    bottom: BottomLayout;
+    badge: BadgePlacement;
+  } | null = null;
 
   return {
-    bgHex,
-    bgSource,
-    textColors,
-    layout: { title, bottom, badge: place },
-    badgeOkHue: analysis.okHue,
-    lineArt: analysis.lineArt,
-    relaxStep,
+    render(canvas: CoverCanvasLike, input: PreparedCoverDrawInput): CollectionCoverResult {
+      if (canvas.width !== W || canvas.height !== H) throw new Error(`표지 캔버스는 ${W}×${H}여야 해요`);
+      const grain = input.grain ?? 'exact';
+      const displayCtx = canvas.getContext('2d');
+
+      // 정밀 그레인은 willReadFrequently 오프스크린 버퍼에서 처리해 화면 캔버스의 GPU readback을 피한다
+      let targetCtx = displayCtx;
+      if (grain === 'exact') {
+        if (!grainWorkCanvas) grainWorkCanvas = createCanvas(W, H);
+        targetCtx = grainWorkCanvas.getContext('2d', { willReadFrequently: true });
+      }
+
+      if (!mottleCanvas) mottleCanvas = createMottleCanvas(createCanvas);
+      if (!shadeCanvas) shadeCanvas = createShadeCanvas(createCanvas);
+      if (!bgSnap) bgSnap = createCanvas(W, H);
+      if (bgSnapHex !== input.bgHex) {
+        paintBackground(bgSnap.getContext('2d'), input.bgHex, shadeCanvas, mottleCanvas);
+        bgSnapHex = input.bgHex;
+      }
+      targetCtx.drawImage(bgSnap, 0, 0);
+
+      const { bounds, badgeCanvas, haloMaskCanvas, haloPad } = input.preparedBadge;
+      const layoutKey = `${input.titleEn}\0${input.tribeEn}\0${bounds.w}\0${bounds.h}`;
+      if (!layoutCache || layoutCache.key !== layoutKey) {
+        const measure = (text: string, px: number): InkMetrics => {
+          targetCtx.font = `${px}px "${fontFamily}"`;
+          targetCtx.textAlign = 'left';
+          const m = targetCtx.measureText(text);
+          return {
+            left: m.actualBoundingBoxLeft,
+            right: m.actualBoundingBoxRight,
+            ascent: m.actualBoundingBoxAscent,
+            descent: m.actualBoundingBoxDescent,
+          };
+        };
+        const title = layoutTitle(measure, input.titleEn);
+        const bottom = layoutBottom(measure, input.tribeEn);
+        const badge = placeBadge(bounds.w, bounds.h, title.bottom, bottom.top);
+        layoutCache = { key: layoutKey, title, bottom, badge };
+      }
+      const { title, bottom, badge: place } = layoutCache;
+
+      // 제목
+      targetCtx.fillStyle = input.textColors.title;
+      targetCtx.textAlign = 'left';
+      targetCtx.textBaseline = 'alphabetic';
+      targetCtx.font = `${title.fontPx}px "${fontFamily}"`;
+      for (const line of title.lines) targetCtx.fillText(line.text, line.x, line.y);
+
+      // 하단(트라이브 이름 + JOIN AND MOVE)
+      targetCtx.textAlign = 'center';
+      targetCtx.fillStyle = input.textColors.tribe;
+      targetCtx.font = `${bottom.tribePx}px "${fontFamily}"`;
+      targetCtx.fillText(input.tribeEn, W / 2, bottom.tribeY);
+      targetCtx.fillStyle = input.textColors.join;
+      targetCtx.font = `${bottom.joinPx}px "${fontFamily}"`;
+      targetCtx.fillText(JOIN_TEXT, W / 2, bottom.joinY);
+
+      // 대표 배지: 캐시된 외곽 마스크로 바탕 사본을 잘라 덮은 뒤 배지를 올린다
+      const pw = haloMaskCanvas.width;
+      const ph = haloMaskCanvas.height;
+      if (!haloScratch || haloScratch.width !== pw || haloScratch.height !== ph) {
+        haloScratch = createCanvas(pw, ph);
+      }
+      const hx = haloScratch.getContext('2d');
+      hx.globalCompositeOperation = 'source-over';
+      hx.clearRect(0, 0, pw, ph);
+      hx.drawImage(haloMaskCanvas, 0, 0);
+      hx.globalCompositeOperation = 'source-in';
+      hx.drawImage(bgSnap, place.x - haloPad, place.y - haloPad, pw, ph, 0, 0, pw, ph);
+      targetCtx.drawImage(haloScratch, place.x - haloPad, place.y - haloPad);
+      targetCtx.drawImage(badgeCanvas, place.x, place.y);
+
+      // 고운 그레인(정착·저장 시)
+      if (grain === 'exact' && grainWorkCanvas) {
+        if (!grainDeltas) grainDeltas = createGrainDeltas();
+        const id = targetCtx.getImageData(0, 0, W, H);
+        const d = id.data;
+        for (let p = 0; p < grainDeltas.length; p++) {
+          const n = grainDeltas[p];
+          const o = p * 4;
+          d[o] += n;
+          d[o + 1] += n;
+          d[o + 2] += n;
+        }
+        targetCtx.putImageData(id, 0, 0);
+        displayCtx.drawImage(grainWorkCanvas, 0, 0);
+      }
+
+      return {
+        bgHex: input.bgHex,
+        bgSource: input.bgSource,
+        textColors: input.textColors,
+        layout: { title, bottom, badge: place },
+        badgeOkHue: input.preparedBadge.analysis.okHue,
+        lineArt: input.preparedBadge.analysis.lineArt,
+        relaxStep: input.relaxStep,
+      };
+    },
   };
+}
+
+export function renderCollectionCover(
+  canvas: CoverCanvasLike,
+  input: CollectionCoverInput,
+  deps: CoverDeps
+): CollectionCoverResult {
+  const preparedBadge = prepareCoverBadge(input.badgeImage, deps.createCanvas);
+  const bg = resolveCoverBackground({
+    seed: input.seed,
+    rerolls: input.rerolls,
+    badge: preparedBadge.analysis,
+    usedColors: input.usedColors,
+    bgOverride: input.bgOverride,
+  });
+  const textColors: TextColors = { ...defaultTextColors(hexToRgb(bg.bgHex)), ...input.textColorOverrides };
+  return createCoverRenderer(deps).render(canvas, {
+    titleEn: input.titleEn,
+    tribeEn: input.tribeEn,
+    preparedBadge,
+    bgHex: bg.bgHex,
+    bgSource: bg.bgSource,
+    relaxStep: bg.relaxStep,
+    textColors,
+    grain: 'exact',
+  });
 }

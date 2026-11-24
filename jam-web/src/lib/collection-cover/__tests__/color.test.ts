@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   C_MIN,
   INK_HEX,
+  colorsToOklab,
   contrastRatio,
   coverSeed,
   defaultTextColors,
@@ -9,6 +10,7 @@ import {
   hexToRgb,
   hueDist,
   peakChroma,
+  resolveCoverBackground,
   srgbToOklab,
   maxChroma,
 } from '../color';
@@ -82,6 +84,32 @@ describe('generateBackground', () => {
   it('피할 색이 있어도 같은 시드는 같은 색', () => {
     const args = { seed: 'y#3', badge, usedColors: used14 };
     expect(generateBackground(args).hex).toBe(generateBackground(args).hex);
+  });
+
+  it('미리 변환한 usedLabs를 넘겨도 usedColors만 넘겼을 때와 정확히 같은 결과를 낸다', () => {
+    const usedLabs = colorsToOklab(used14);
+    for (let i = 0; i < 10; i++) {
+      const a = generateBackground({ seed: coverSeed('lab-parity', i), badge: { okHue: 60, lineArt: false }, usedColors: used14 });
+      const b = generateBackground({ seed: coverSeed('lab-parity', i), badge: { okHue: 60, lineArt: false }, usedColors: used14, usedLabs });
+      expect(b).toEqual(a);
+    }
+  });
+});
+
+describe('resolveCoverBackground', () => {
+  it('bgOverride가 있으면 소문자로 그대로 돌려주고, 없으면 generateBackground 결과를 쓴다', () => {
+    const manual = resolveCoverBackground({
+      seed: 'c1',
+      rerolls: 0,
+      badge,
+      usedColors: [],
+      bgOverride: '#AABBCC',
+    });
+    expect(manual).toEqual({ bgHex: '#aabbcc', bgSource: 'override', relaxStep: null });
+
+    const auto = resolveCoverBackground({ seed: 'c1', rerolls: 0, badge, usedColors: [] });
+    const direct = generateBackground({ seed: coverSeed('c1', 0), badge, usedColors: [] });
+    expect(auto).toEqual({ bgHex: direct.hex, bgSource: 'generated', relaxStep: direct.relaxStep });
   });
 });
 

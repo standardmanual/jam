@@ -4,6 +4,7 @@
  */
 
 export type Rgb = [number, number, number];
+export type Oklab = [number, number, number];
 
 /** 표지 기본 잉크색(제목 기본색, 흰색이 대비 3 미만일 때 하단 글씨 색) */
 export const INK_HEX = '#161412';
@@ -49,8 +50,10 @@ export const hueDist = (a: number, b: number): number => {
   return d > 180 ? 360 - d : d;
 };
 
+const DEG_TO_RAD = Math.PI / 180;
+
 /** sRGB(0~255) → OKLab [L, a, b] */
-export function srgbToOklab([R, G, B]: readonly number[]): [number, number, number] {
+export function srgbToOklab([R, G, B]: readonly number[]): Oklab {
   const r = lin(R);
   const g = lin(G);
   const b = lin(B);
@@ -64,9 +67,14 @@ export function srgbToOklab([R, G, B]: readonly number[]): [number, number, numb
   ];
 }
 
-function oklchToLinear(L: number, C: number, h: number): [number, number, number] {
-  const a = C * Math.cos((h * Math.PI) / 180);
-  const b = C * Math.sin((h * Math.PI) / 180);
+/** #rrggbb 목록을 OKLab 배열로 미리 바꾼다(반복 탐색 때 중복 변환 방지) */
+export function colorsToOklab(colors: readonly string[]): Oklab[] {
+  return colors.map((c) => srgbToOklab(hexToRgb(c)));
+}
+
+function oklchToLinearCS(L: number, C: number, cosH: number, sinH: number): [number, number, number] {
+  const a = C * cosH;
+  const b = C * sinH;
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
   const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
@@ -77,25 +85,51 @@ function oklchToLinear(L: number, C: number, h: number): [number, number, number
   ];
 }
 
-const encode = (v: number): number => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
-const inGamut = (c: readonly number[]): boolean => c.every((v) => v >= -0.0005 && v <= 1.0005);
+function inGamutOk(L: number, C: number, cosH: number, sinH: number): boolean {
+  const a = C * cosH;
+  const b = C * sinH;
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  if (r < -0.0005 || r > 1.0005) return false;
+  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  if (g < -0.0005 || g > 1.0005) return false;
+  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+  return bl >= -0.0005 && bl <= 1.0005;
+}
 
-/** 그 밝기·색상각에서 sRGB 안에 드는 최대 채도 */
-export function maxChroma(L: number, h: number): number {
+const encode = (v: number): number => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
+
+function maxChromaCS(L: number, cosH: number, sinH: number): number {
   let lo = 0;
   let hi = 0.4;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    if (inGamut(oklchToLinear(L, mid, h))) lo = mid;
+    if (inGamutOk(L, mid, cosH, sinH)) lo = mid;
     else hi = mid;
   }
   return lo;
 }
 
+/** 그 밝기·색상각에서 sRGB 안에 드는 최대 채도 */
+export function maxChroma(L: number, h: number): number {
+  const rad = h * DEG_TO_RAD;
+  return maxChromaCS(L, Math.cos(rad), Math.sin(rad));
+}
+
+function oklchToRgbCS(L: number, C: number, cosH: number, sinH: number): Rgb {
+  const [r, g, b] = oklchToLinearCS(L, C, cosH, sinH);
+  return [
+    Math.round(Math.max(0, Math.min(255, encode(Math.max(0, Math.min(1, r)))))),
+    Math.round(Math.max(0, Math.min(255, encode(Math.max(0, Math.min(1, g)))))),
+    Math.round(Math.max(0, Math.min(255, encode(Math.max(0, Math.min(1, b)))))),
+  ];
+}
+
 export function oklchToRgb(L: number, C: number, h: number): Rgb {
-  return oklchToLinear(L, C, h).map((v) =>
-    Math.round(Math.max(0, Math.min(255, encode(Math.max(0, Math.min(1, v))))))
-  ) as Rgb;
+  const rad = h * DEG_TO_RAD;
+  return oklchToRgbCS(L, C, Math.cos(rad), Math.sin(rad));
 }
 
 /** 시드 문자열: 컬렉션 id + 다시 뽑기 횟수 */
@@ -131,15 +165,27 @@ const RELAX_STEPS: ReadonlyArray<readonly [number, number]> = [
   [30, 0],
 ];
 
-/** 그 색상각에서 L 0.30~0.95(0.01 간격) 중 가장 높은 최대 채도 */
-export function peakChroma(h: number): number {
+function peakChromaCS(cosH: number, sinH: number): number {
   let peak = 0;
-  for (let i = 30; i <= 95; i++) peak = Math.max(peak, maxChroma(i / 100, h));
+  for (let i = 30; i <= 95; i++) {
+    const c = maxChromaCS(i / 100, cosH, sinH);
+    if (c > peak) peak = c;
+  }
   return peak;
 }
 
-const oklabDist = (a: readonly number[], b: readonly number[]): number =>
-  Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+/** 그 색상각에서 L 0.30~0.95(0.01 간격) 중 가장 높은 최대 채도 */
+export function peakChroma(h: number): number {
+  const rad = h * DEG_TO_RAD;
+  return peakChromaCS(Math.cos(rad), Math.sin(rad));
+}
+
+const oklabDistSq = (a: readonly number[], b: readonly number[]): number => {
+  const dl = a[0] - b[0];
+  const da = a[1] - b[1];
+  const db = a[2] - b[2];
+  return dl * dl + da * da + db * db;
+};
 
 /**
  * 배경색 생성(OKLCH, 티켓 20261124_2102). 색상 h를 먼저 정하고(배지 간격 미만이면 다음 색상),
@@ -152,27 +198,39 @@ export function generateBackground(args: {
   seed: string;
   badge: { okHue: number | null; lineArt: boolean };
   usedColors: readonly string[];
+  usedLabs?: readonly Oklab[];
 }): GeneratedBackground {
   const { seed, badge, usedColors } = args;
   const r = rng(seed);
   const ink = hexToRgb(INK_HEX);
   const white: Rgb = [255, 255, 255];
-  const usedLabs = usedColors.map((c) => srgbToOklab(hexToRgb(c)));
+  const usedLabs = args.usedLabs ?? colorsToOklab(usedColors);
   for (let step = 0; step < RELAX_STEPS.length; step++) {
     const [badgeGap, minDist] = RELAX_STEPS[step];
+    const minDistSq = minDist * minDist;
     for (let i = 0; i < 300; i++) {
       const h = r() * 360;
       if (badge.okHue != null && hueDist(h, badge.okHue) < badgeGap) continue;
-      const cMin = Math.min(C_MIN, 0.85 * peakChroma(h));
+      const rad = h * DEG_TO_RAD;
+      const cosH = Math.cos(rad);
+      const sinH = Math.sin(rad);
+      const cMin = Math.min(C_MIN, 0.85 * peakChromaCS(cosH, sinH));
       for (let j = 0; j < 40; j++) {
         const L = 0.3 + r() * 0.62;
         const k = 0.6 + r() * 0.36;
-        const C = maxChroma(L, h) * k;
+        const C = maxChromaCS(L, cosH, sinH) * k;
         if (C < cMin) continue;
-        const rgb = oklchToRgb(L, C, h);
-        if (minDist > 0) {
+        const rgb = oklchToRgbCS(L, C, cosH, sinH);
+        if (minDist > 0 && usedLabs.length > 0) {
           const lab = srgbToOklab(rgb);
-          if (usedLabs.some((u) => oklabDist(lab, u) < minDist)) continue;
+          let tooClose = false;
+          for (let u = 0; u < usedLabs.length; u++) {
+            if (oklabDistSq(lab, usedLabs[u]) < minDistSq) {
+              tooClose = true;
+              break;
+            }
+          }
+          if (tooClose) continue;
         }
         const onInk = contrastRatio(rgb, ink);
         if (badge.lineArt ? onInk < 4.5 : onInk < 4 && contrastRatio(rgb, white) < 4) continue;
@@ -181,6 +239,33 @@ export function generateBackground(args: {
     }
   }
   throw new Error('배경색 후보를 찾지 못했어요');
+}
+
+export interface ResolvedBackground {
+  bgHex: string;
+  bgSource: 'generated' | 'override';
+  relaxStep: number | null;
+}
+
+/** 배경색 지정이 있으면 그대로 쓰고, 없으면 시드·배지·다른 표지 목록으로 생성한다 */
+export function resolveCoverBackground(args: {
+  seed: string;
+  rerolls: number;
+  badge: { okHue: number | null; lineArt: boolean };
+  usedColors: readonly string[];
+  usedLabs?: readonly Oklab[];
+  bgOverride?: string;
+}): ResolvedBackground {
+  if (args.bgOverride) {
+    return { bgHex: args.bgOverride.toLowerCase(), bgSource: 'override', relaxStep: null };
+  }
+  const bg = generateBackground({
+    seed: coverSeed(args.seed, args.rerolls),
+    badge: args.badge,
+    usedColors: args.usedColors,
+    usedLabs: args.usedLabs,
+  });
+  return { bgHex: bg.hex, bgSource: 'generated', relaxStep: bg.relaxStep };
 }
 
 export interface TextColors {
