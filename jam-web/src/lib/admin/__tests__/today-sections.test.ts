@@ -14,7 +14,6 @@ import {
   type TodayCardFormValues,
 } from '../today-sections'
 import { resolveArticleCtaTarget } from '../../today/targetHref'
-import { showsDescription } from '../../today/shape'
 import type { TodayCardTemplateType, TodayCardRow } from '@/types/database'
 import { buildFeedCardColumns, EMPTY_FEED_CARD_FORM_VALUES, FEED_CARD_COLUMN_KEYS } from '../feedCardFields'
 
@@ -74,7 +73,7 @@ describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_ale
 
 describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 TodayCardList.tsx의 fieldsFor와 동일)', () => {
   it('badge_spotlight는 배지·이동경로만 쓴다', () => {
-    expect(todayTemplateFields('badge_spotlight')).toEqual({ description: true, badges: true, targetHref: true })
+    expect(todayTemplateFields('badge_spotlight')).toEqual({ badges: true, targetHref: true })
   })
   it('progress_nudge는 배지·미션·이동경로를 쓴다', () => {
     expect(todayTemplateFields('progress_nudge')).toEqual({ badges: true, mission: true, targetHref: true })
@@ -101,7 +100,7 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
     expect(todayTemplateFields('recipe_reveal')).toEqual({ recipe: true, targetHref: true })
   })
   it('content_intro는 설명문·이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없다(티켓 20261101_2054)', () => {
-    expect(todayTemplateFields('content_intro')).toEqual({ description: true, targetHref: true })
+    expect(todayTemplateFields('content_intro')).toEqual({ targetHref: true })
   })
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {
     const unknown = 'future_template' as TodayCardTemplateType
@@ -136,11 +135,10 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
     })
     expect(payload).toMatchObject({ badge_ids: [], mission_id: null, region_label: null, description: '설명문', target_href: null })
   })
-  it('설명문 칸은 홈이 설명 문단을 그리는 템플릿(showsDescription)에만 열린다(티켓 20261109_1519)', () => {
+  it('템플릿 표는 설명문 칸을 정하지 않는다(카드 유형이 정한다, 티켓 20261124_1119)', () => {
     for (const t of ALL_TEMPLATES) {
-      expect(Boolean(todayTemplateFields(t).description), t).toBe(showsDescription(t))
+      expect('description' in todayTemplateFields(t), t).toBe(false)
     }
-    expect(ALL_TEMPLATES.filter((t) => todayTemplateFields(t).description)).toEqual(['badge_spotlight', 'content_intro'])
   })
   it('9개 템플릿 모두 매핑이 존재한다', () => {
     expect(Object.keys(TODAY_FIELDS_FOR).sort()).toEqual([...ALL_TEMPLATES].sort())

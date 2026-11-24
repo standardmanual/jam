@@ -11,6 +11,8 @@ import { hashSeed } from '../boxShape'
 import { FEED_CHIP_SLOT_SPECS } from '../feedChipSlots'
 import { FEED_COLOR_KEYS, FEED_FULL_IMAGE_ENABLED, FEED_TILTS } from '../feedConstants'
 import {
+  DESCRIPTION_DEFAULT,
+  feedTypeShowsDescription,
   FEED_RENDERED_TYPES,
   isRenderedFeedType,
   resolveFeedLook,
@@ -319,5 +321,15 @@ describe('지원 유형 목록', () => {
     expect(FEED_FULL_IMAGE_ENABLED).toBe(false)
     expect(isRenderedFeedType('full_image')).toBe(FEED_FULL_IMAGE_ENABLED)
     for (const value of ['hero_box', 'text_box', 'badge_intro', 'badge_only']) expect(isRenderedFeedType(value)).toBe(true)
+  })
+})
+
+describe('feedTypeShowsDescription — 설명문 칸을 여는 판정(티켓 20261124_1119)', () => {
+  it('여덟 유형에서 DESCRIPTION_DEFAULT와 같다', () => {
+    for (const t of FEED_RENDERED_TYPES) expect(feedTypeShowsDescription(t), t).toBe(DESCRIPTION_DEFAULT[t])
+  })
+
+  it('유형이 비었거나 모르는 값이면 거짓이다', () => {
+    for (const value of ['', null, undefined, 'nope', 3]) expect(feedTypeShowsDescription(value)).toBe(false)
   })
 })

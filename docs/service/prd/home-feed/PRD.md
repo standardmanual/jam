@@ -212,7 +212,7 @@ code:
 <!-- BEGIN generated: templates -->
 | 값 | 라벨 | 입력 필드 |
 |---|---|---|
-| `badge_spotlight` | 배지 소개 (badge_spotlight) | 설명문·배지·이동경로(target_href) |
+| `badge_spotlight` | 배지 소개 (badge_spotlight) | 배지·이동경로(target_href) |
 | `progress_nudge` | 진행 알림 (progress_nudge) | 배지·미션·이동경로(target_href) |
 | `mission_spotlight` | 미션 소개 (mission_spotlight) | 미션·이동경로(target_href) |
 | `itembook_milestone` | 컬렉션 소식 (itembook_milestone) | 컬렉션·이동경로(target_href) |
@@ -221,7 +221,7 @@ code:
 | `editorial_article` | 에디토리얼 기사 (editorial_article) | 본문·미션·컬렉션·이동경로(target_href) |
 | `ranking_board` | 랭킹보드 (ranking_board) | 랭킹모드·이동경로(target_href) |
 | `recipe_reveal` | 레시피 공개 (recipe_reveal) | 레시피·이동경로(target_href) |
-| `content_intro` | 컨텐츠 소개 (content_intro) | 설명문·이동경로(target_href) |
+| `content_intro` | 컨텐츠 소개 (content_intro) | 이동경로(target_href) |
 <!-- END generated: templates -->
 
 컨텐츠 유형 카탈로그(`TODAY_CONTENT_TYPE_OPTIONS`, PRD `content-automation/PRD.md` §6과 같은 값):
@@ -276,7 +276,7 @@ code:
 
 ### 표시 데이터와 조회
 
-- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음(`FeedCardView`) 하나로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 자원은 템플릿에서 정한다(`resourceOfTemplate`, 자원은 미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동 8개이고 템플릿을 모르면 `undefined`다). 계측 정보(카드 ID·유형 ID·템플릿·그려진 유형)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 설명문(`description`)은 배지 소개·컨텐츠 소개 템플릿일 때만 싣는다(`showsDescription`). 날짜는 KST 기준이다.
+- **표시 데이터(`toCardView`)**: 카드 행(서버 조회 결과)을 화면용 값 묶음(`FeedCardView`) 하나로 바꾼다. 카드 ID·활성 여부·노출 기간·정렬 순서·유저별 보유 여부 없이도 만들 수 있어서 홈 그리기와 어드민 미리보기가 같은 값으로 같은 카드를 그린다. 자원은 템플릿에서 정한다(`resourceOfTemplate`, 자원은 미션·드랍·레시피·배지·기사·랭킹·컬렉션·자동 8개이고 템플릿을 모르면 `undefined`다). 계측 정보(카드 ID·유형 ID·템플릿·그려진 유형)는 `tracking` 하나에 묶고, 이 값이 없으면 그리는 쪽이 트래커와 링크를 그리지 않는다. 설명문은 그려지는 유형이 설명을 보이는 유형이고 `show_description`이 거짓이 아닐 때만 싣는다(`feedLook.ts`의 `DESCRIPTION_DEFAULT`, 티켓 20261122_1101). 날짜는 KST 기준이다.
 - **이미지에 제목 있음(`resolveTitleInImage`)**: 저장된 `title_in_image`가 `true`/`false`면 그 값이다. NULL(옛 카드)이면 항상 `false`다 — 제목을 글자로 그린다(티켓 20261121_1726). 함수는 카드 행의 `title_in_image`만 받는다.
 - **조회**(8회차-1부터 `getTodayCards`는 랭킹 순위와 레시피를 해석하지 않는다 — `resolved_ranking`은 null, `resolved_recipe`는 싣지 않는다): `getTodayCards`가 표시 데이터에 필요한 값을 카드에 함께 싣는다 — `resolved_mission`(미션 소개 카드와 미션을 가리키는 자동 카드의 기간·보상·이미지), `resolved_collection`(컬렉션 소식 카드의 이름·아이템 수). 미션 행은 노출 판정과 같은 읽기를 쓰고 컬렉션은 카드 수와 상관없이 한 번에 읽는다. 미션의 보상 배지 개수(`reward_badge_count`)에는 숨김 배지(`badges.is_hidden`)를 넣지 않는다 — 숨김 배지는 받기 전에 존재와 개수를 알리지 않는다(운영 로직 10.3절, 티켓 20261019_1313 2회). 보상 배지가 있는 미션이 있을 때만 배지를 한 번 더 읽고, 숨김 여부를 읽지 못하면 개수를 싣지 않는다. 컬렉션은 공개된 것(활성이고 공개 시각이 비었거나 지금 이전)만 싣는다 — 컬렉션 화면·목록 API와 같은 판정(`applyLaunchedItemBookFilter`)이라, 비활성이거나 공개 전인 컬렉션은 카드는 남고 `resolved_collection`이 NULL이라 이름·아이템 수가 보이지 않는다(종료 시각은 보지 않는다). 기존 반환 필드는 그대로다. 어드민 날짜 미리보기 조회(`getAdminTodayPreviewCards`)도 같은 판정 함수로 두 값을 싣는다(노출 개인화와 미션 참가 필터는 하지 않는다). 컬렉션 공개 판정과 「N일 남음」 계산의 기준 시각(`previewBaseTime`)은 선택한 날짜가 오늘(KST)이면 지금, 아니면 그 날짜의 00:00(KST)이다.
 - **컨텐츠 소개 카드(`content_intro`, 티켓 20261101_2054)**: 미션·배지·컬렉션에 연결하지 않고 서비스 컨텐츠(이야기·안내·기능 소개)를 알린다. 이동 경로(`target_href`)가 필수이고(등록 검사가 비어 있으면 막는다. 코드의 기본값 `/`는 안전망일 뿐이다) 입력 칸은 설명문과 이동 경로뿐이다. 자원은 `auto`로 두고 필수 정보 줄은 없다. 옛 코드가 이 값을 만나면 `resourceOfTemplate` 안전망으로 아이콘·자원 줄·칩 라벨 없이 그린다(마이그레이션 310 머리 주석).
@@ -331,7 +331,7 @@ code:
 
 **구현 위치**(4회차-4, 티켓 20261121_0155): 개발용 미리보기 페이지 `jam-web/src/app/(main)/dev-sample/home-feed-cards/new/page.tsx`(주소 `/dev-sample/home-feed-cards/new`, `noindex`, 옛 7모양 샘플 `/dev-sample/home-feed-cards`는 8회차-1에서 지웠다)와 가짜 데이터·요약 계산 순수 함수 `jam-web/src/lib/today/feedPreviewData.ts`. 페이지는 서비스 데이터·세션·계측 없이 가짜 데이터를 실제 해석 함수와 카드 컴포넌트에 넣어 유형 8개·박스 5종·칩·도장·설명 숨김·폭 320·자동 배정 120장(규칙 위반·제외 조합 겹침·되돌림 수 요약, 그 아래 칩 배치 한 줄 요약)·컬렉션 모션을 한 열로 보인다. 자동 배정 120장은 `toCardViews`와 같은 마지막 단계(`cardView.ts`의 `attachChipPlans`)로 120장을 한 배열로 훑어 `view.look.chipPlan`을 싣고, 칩 배치 요약(스티커·알약 수, 물러서기 단계별 카드 수, `planFeedChipsDetailed`가 돌려주는 규칙 위반 수)은 그 결과를 센 값이다(티켓 20261122_2228 R7). 유형별 샘플 구간은 샘플마다 «앞 카드 없음»이라 계획을 싣지 않고 그리는 쪽이 즉석 계산한다. 값 칩의 미션 조건 값(`resolved_mission.condition_json`)과 배지 달성 기준·레벨(`resolved_badges[].condition_json`·`level`)은 `jam-web/src/lib/today/cards.ts`가 기존 미션·배지 조회에서 선택 칸으로 싣고(새 조회 없음, 값이 없으면 칸이 없다), `cardView.ts`가 새 카드 갈래의 값 칩 입력에 연결한다. 저장된 값 칩은 `mission.condition`·`activity_badge.criteria`·`activity_badge.level` 출처도 읽는다. 해석 함수 `resolveFeedLook`의 선택 입력 `excludedColorPairs`는 미리보기가 검수표 제외 조합 예시를 넣는 자리이고 서비스 홈은 주지 않는다.
 
-**구현 위치**(5회차-2, 티켓 20261121_1316): 어드민 카드 작성·수정 화면의 새 섹션 「카드 모양」은 `jam-web/src/app/admin/today/FeedCardSection.tsx`다(섹션 id `feed`는 `jam-web/src/lib/admin/today-sections.ts`, 폼 상태는 `TodayCardForm.tsx`가 5-1의 `FeedCardFormValues`로 들고 저장 때 `buildFeedCardColumns`의 결과를 보낸다). 유형·박스 모양·박스 용도·배경/칩/박스 색·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 칸마다 «자동»을 기본으로 고른다. **유형을 «옛 모양 그대로»로 비우면 옛 7모양 카드다**: 폼 안의 새 칸 값은 남아 있어 유형을 다시 고르면 살아나지만 저장할 때는 새 칸을 모두 NULL로 보낸다. 규칙에 걸리는 색 조합은 경고만 보이고 저장을 막지 않으며, 제목에 그대로 들어 있지 않은 제목 속 칩 낱말은 저장을 막는다.
+**구현 위치**(5회차-2, 티켓 20261121_1316): 어드민 카드 작성·수정 화면의 새 섹션 「카드 모양」은 `jam-web/src/app/admin/today/FeedCardSection.tsx`다(섹션 id `feed`는 `jam-web/src/lib/admin/today-sections.ts`, 폼 상태는 `TodayCardForm.tsx`가 5-1의 `FeedCardFormValues`로 들고 저장 때 `buildFeedCardColumns`의 결과를 보낸다). 유형·박스 모양·박스 용도·배경/칩/박스 색·설명 문장 노출·도장과 자리·제목 속 칩 낱말을 칸마다 «자동»을 기본으로 고른다. **유형을 «옛 모양 그대로»로 비우면 옛 7모양 카드다**: 폼 안의 새 칸 값은 남아 있어 유형을 다시 고르면 살아나지만 저장할 때는 새 칸을 모두 NULL로 보낸다. 규칙에 걸리는 색 조합은 경고만 보이고 저장을 막지 않으며, 제목에 그대로 들어 있지 않은 제목 속 칩 낱말은 저장을 막는다. 「기본 정보」의 설명문 칸과 조회 화면의 설명문 행은 「설명 문장 노출」 칸과 같은 판정(`feedTypeShowsDescription`)으로 열린다. 칸이 닫혀도 적은 값은 저장할 때 지우지 않는다(티켓 20261124_1119).
 
 **구현 위치**(5회차-3, 티켓 20261121_1317): 「카드 모양」 섹션 아래의 칩·목록 항목·컬렉션 모션 입력 칸이다. 칩 `jam-web/src/app/admin/today/FeedChipsEditor.tsx`(모드 «자동»·«칩 없음»·«직접», 칩 종류 문구·값·구분, 자리, 기울기, 칩이 2개면 두 번째 자리는 첫 칩의 대각선 짝으로 고정, 문구 12자 경고, 값 칩 출처는 카드 템플릿에 맞는 것만이고 선택지는 «분류 문구(영어) · 값 이름(한국어)» 모양이다. 자리·기울기를 비워 두면 카드마다 자동으로 정해지고, 직접 정한 값은 존중하되 앞 카드와 겹치면 자리 이동을 뺀 방식으로 물러선다(티켓 20261122_2228 R7)), 목록 항목 `FeedListItemsEditor.tsx`(목록형 전용, 항목 1~3개의 이름·링크·이미지 주소와 대표 페이지 주소, 이름 20자 경고), 컬렉션 모션 `FeedBurstEditor.tsx`(컬렉션 소개 전용, «자동»·«직접», 배지 4개의 위치·크기·기울기·지연 숫자 칸과 «자동 값 불러오기»)다. 섹션 `FeedCardSection.tsx`가 유형에 맞는 편집기만 그린다(칩은 칩을 둘 수 있는 유형, 목록은 목록형, 모션은 컬렉션 소개). 칸마다 5-1의 `validateFeedCardColumns`를 칸만 넣어 호출해 저장이 막는 값을 같은 문구로 먼저 보인다. 유형을 바꾸면 새 유형이 못 쓰는 칩 자리는 «자동»으로 되돌리고 한도를 넘는 칩·그 유형만 쓰는 목록 항목·모션 값은 비운다. 모든 칸이 «자동»이면 저장 칸은 NULL이다.
 

@@ -1,7 +1,7 @@
 /**
- * 투데이 카드 폼 — 설명문 칸은 홈이 설명 문단을 그리는 유형에만 열린다 (티켓 20261109_1519)
+ * 투데이 카드 폼 — 설명문 칸은 카드 유형(feed_type)이 설명을 보일 때만 열린다 (티켓 20261109_1519, 20261124_1119)
  *
- * 확인하는 것: 배지 소개·컨텐츠 소개는 설명문 칸이 있고, 그 밖의 유형(미션·드랍·기사 등)은 칸이 없다.
+ * 확인하는 것: 템플릿과 무관하게 `DESCRIPTION_DEFAULT`가 참인 카드 유형은 설명문 칸이 있고, 거짓인 유형은 칸이 없다.
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 그려진 모양만 본다.
  *
  * 실행: cd jam-web && npx vitest run src/app/admin/today/__tests__/TodayCardForm.description.test.tsx
@@ -17,14 +17,15 @@ vi.mock('next/navigation', () => ({
 }))
 
 import TodayCardForm from '../TodayCardForm'
-import { DESCRIPTION_TEMPLATES } from '@/lib/today/shape'
-import { TODAY_TEMPLATE_OPTIONS } from '@/lib/admin/today-sections'
+import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
 import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 
-function cardOf(template: TodayCardTemplateType): TodayCardRow {
+function cardOf(template: TodayCardTemplateType, feedType: string): TodayCardRow {
   return {
     id: 'card-1',
     template_type: template,
+    feed_type: feedType,
     layout_type: 'large_thumbnail',
     title: '시험 카드',
     description: '저장돼 있던 설명',
@@ -45,22 +46,34 @@ const BASE_PROPS: ComponentProps<typeof TodayCardForm> = {
   returnDate: '2026-10-27',
 }
 
-const render = (template: TodayCardTemplateType): string => renderToStaticMarkup(<TodayCardForm {...BASE_PROPS} card={cardOf(template)} />)
+const render = (template: TodayCardTemplateType, feedType: string): string =>
+  renderToStaticMarkup(<TodayCardForm {...BASE_PROPS} card={cardOf(template, feedType)} />)
 
 describe('TodayCardForm — 설명문 칸', () => {
-  it('설명 문단을 그리는 유형(배지 소개·컨텐츠 소개)은 설명문 칸이 있다', () => {
-    for (const template of DESCRIPTION_TEMPLATES) {
-      const html = render(template)
-      expect(html, template).toContain('id="today-card-description"')
-      expect(html, template).toContain('저장돼 있던 설명')
+  it('카드 유형마다 DESCRIPTION_DEFAULT가 참이면 칸과 저장된 설명이 있고, 거짓이면 칸이 없다', () => {
+    for (const feedType of FEED_TYPES) {
+      const html = render('mission_spotlight', feedType)
+      if (DESCRIPTION_DEFAULT[feedType]) {
+        expect(html, feedType).toContain('id="today-card-description"')
+        expect(html, feedType).toContain('저장돼 있던 설명')
+      } else {
+        expect(html, feedType).not.toContain('id="today-card-description"')
+      }
     }
   })
 
-  it('그 밖의 유형은 설명문 칸이 없다', () => {
-    const hidden = TODAY_TEMPLATE_OPTIONS.map((o) => o.value).filter((t) => !(DESCRIPTION_TEMPLATES as readonly string[]).includes(t))
-    expect(hidden.length).toBeGreaterThan(0)
-    for (const template of hidden) {
-      expect(render(template), template).not.toContain('id="today-card-description"')
-    }
+  it('템플릿과 무관하다: badge_spotlight + text_box는 칸이 없고 mission_spotlight + hero_box는 칸이 있다', () => {
+    expect(render('badge_spotlight', 'text_box')).not.toContain('id="today-card-description"')
+    expect(render('mission_spotlight', 'hero_box')).toContain('id="today-card-description"')
+  })
+
+  it('새 카드(기본 유형 텍스트)는 칸이 없다', () => {
+    const html = renderToStaticMarkup(<TodayCardForm {...BASE_PROPS} />)
+    expect(html).not.toContain('id="today-card-description"')
+  })
+
+  it('도움말이 숨김 유형 이름을 담는다', () => {
+    const html = render('mission_spotlight', 'hero_box')
+    expect(html).toContain('전체 배경 이미지·배지만·텍스트')
   })
 })

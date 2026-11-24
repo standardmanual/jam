@@ -9,7 +9,7 @@
  *
  * 값(`FeedCardFormValues`)과 변경 함수만 props로 받는다. 폼 상태·저장은 `TodayCardForm.tsx`가 맡는다.
  * 유형별로 어떤 칸이 보이는지는 새 표를 만들지 않고 기존 상수에서 읽는다:
- * 칩 자리 명세(`feedChipSlots.ts`)·칩 자리 이름→모서리(`feedChipLayout.ts`)·설명 기본 노출(`feedLook.ts`의 `DESCRIPTION_DEFAULT`).
+ * 칩 자리 명세(`feedChipSlots.ts`)·칩 자리 이름→모서리(`feedChipLayout.ts`)·설명 기본 노출(`feedLook.ts`의 `feedTypeShowsDescription`).
  * 박스 칸이 있는 유형은 `feedChipSlots.ts`의 `BOX_FEED_TYPES`·`BOX_KIND_FEED_TYPES`다(홈 컴포넌트와의 일치는 시험이 지킨다, 티켓 20261121_2113).
  * 공용 조각(`ChoiceField`·`ChoiceOption`·`stampSlotLabel`)은 `FeedFieldParts.tsx`에 있고 아래에서 다시 내보낸다(`FeedChipsEditor.tsx`와의 순환을 끊으려고 옮겼다).
  */
@@ -39,7 +39,7 @@ import {
 import { violatesImageColorRule } from '@/lib/today/feedColorRules'
 import { imageColorsForCard, type FeedImageColorInput } from '@/lib/today/feedImageColors'
 import { FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
-import { DESCRIPTION_DEFAULT } from '@/lib/today/feedLook'
+import { feedTypeShowsDescription } from '@/lib/today/feedLook'
 import { BOX_SHAPES } from '@/lib/today/boxShape'
 import type { ExcludedColorPair } from '@/lib/today/feedAssign'
 import { MAX_TITLE_CHIPS } from '@/lib/today/titleChips'
@@ -99,7 +99,7 @@ export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
     boxKind: BOX_KIND_FEED_TYPES.includes(feedType),
     chipColor: chipLimitOf(feedType) > 0,
     boxColor: BOX_FEED_TYPES.includes(feedType),
-    description: DESCRIPTION_DEFAULT[feedType],
+    description: feedTypeShowsDescription(feedType),
     stampSlots: FEED_CHIP_SLOT_SPECS[feedType].slots.filter((slot) => cornerOfSlot(slot) !== null),
   }
 }
