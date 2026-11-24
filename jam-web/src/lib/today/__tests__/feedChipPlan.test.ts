@@ -382,7 +382,7 @@ describe('물러서기 도달(히어로, 위쪽 빈 높이를 좁힌 시험)', (
 
   it('2단계: 스티커를 80%로 줄이면 들어가는 자리', () => {
     const seed = findSeed([label('ITEM', 'lg', { tilt: 12 })], pebble)
-    const plan = planCardChips(bandInput(seed, [label('ITEM', 'lg', { tilt: 12 })], 70))
+    const plan = planCardChips(bandInput(seed, [label('ITEM', 'lg', { tilt: 12 })], 78))
     expect(plan.fit).toBe(true)
     expect(plan.backoff).toBe(2)
     expect(plan.chips[0].presentation).toBe('sticker')

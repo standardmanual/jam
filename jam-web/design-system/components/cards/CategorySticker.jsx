@@ -3,19 +3,21 @@ import React, { useId } from 'react';
 /**
  * CategorySticker — 홈피드 «분류 스티커». 티켓 20261122_2227(상위 20261122_2217 확정 결정 §4).
  *
- * 문구·시드·색 짝만 받는 정적 장식 SVG다. 조약돌(116×84)과 물결 덩어리(112×92) 두 모양이고,
+ * 문구·시드·색 짝만 받는 정적 장식 SVG다. 조약돌(96×92)과 물결 덩어리(112×92) 두 모양이고,
  * 윤곽은 시드로 정해져 같은 (shape, seed)는 늘 같은 path 문자열이 나온다(Math.random·Date 미사용,
  * 좌표는 소수 둘째 자리 반올림). 계산은 순수 함수 `pebbleShape`·`waveShape`·`fitRingText`로 분리했고
  * 컴포넌트는 그 결과를 그리기만 한다.
  *
- * 기하 수치(116×84 · 112×92 · 글자 선 17px·15px · 혹 4~8.5px · 테두리 2px · 로고 외곽선 1.6px)는
+ * 기하 수치(96×92 · 112×92 · 글자 선 15px·15px · 혹 4~8.5px · 테두리 2px · 로고 외곽선 1.6px)는
  * 장식 도형의 기하라 간격 토큰 대상이 아니고 아래 상수로 둔다.
  */
 
 /* ───────── 확정 사양 상수 ───────── */
-export const PEBBLE_SIZE = { width: 116, height: 84 };
+export const PEBBLE_SIZE = { width: 96, height: 92 };
 export const WAVE_SIZE = { width: 112, height: 92 };
-const PEBBLE_RING_INSET = 17;
+const PEBBLE_RING_INSET = 15;
+/** 조약돌 글자 선의 반지름을 이동평균하는 이웃 수(앞뒤 각각). 점 120개 기준 */
+const PEBBLE_RING_SMOOTH = 9;
 const WAVE_RING_INSET = 15;
 const PEBBLE_FONT_SIZE = 11;
 const WAVE_FONT_SIZE = 10;
@@ -23,7 +25,7 @@ const WAVE_FONT_SIZE = 10;
 export const MIN_FONT_SIZE = 7;
 const BORDER_WIDTH = 2;
 const GLYPH_OUTLINE = 1.6;
-const PEBBLE_GLYPH_HEIGHT = 30;
+const PEBBLE_GLYPH_HEIGHT = 28;
 const WAVE_GLYPH_HEIGHT = 26;
 export const WAVE_HUMP_COUNT = [7, 9];
 export const WAVE_HUMP_HEIGHT = [4, 8.5];
@@ -188,30 +190,29 @@ function startAtTop(pts, cx, cy) {
 }
 
 /* ───────── 모양 ───────── */
-const PEBBLE_POINTS = 72;
+const PEBBLE_POINTS = 120;
 const WAVE_SAMPLES = 180;
 
 /**
- * 조약돌 — 지수가 시드마다 다른 초타원(굽기)에 낮은 주파수 일그러짐과 살짝 기울임을 더하고,
- * 상자(1px 안쪽)에 꽉 차게 맞춘다. 글자 선은 가장자리에서 17px 안쪽.
+ * 조약돌 — 거의 정원(96×92)에 낮은 차수(2·3차) 굴곡과 살짝 기울임을 더한 «둥근 불규칙 원».
+ * 각도마다 반지름이 조금씩 달라 호의 굽기가 시드마다 다르다. 상자(1px 안쪽)에 꽉 차게 맞춘다.
+ * 글자 선은 윤곽을 중심으로 줄이되 반지름을 이동평균해 매끈하게 만든 선이다(가장자리에서 15px 안쪽 안팎).
+ * 티켓 20261124_2214(사용자 시안 «안 A» 확정).
  */
 export function pebbleShape(seed) {
   const { width, height } = PEBBLE_SIZE;
   const rnd = stickerRandom(`pebble:${seed}`);
-  const expX = 2.4 + rnd() * 1.1; // 좌우 호의 굽기
-  const expY = 2.4 + rnd() * 1.1; // 위아래 호의 굽기
-  const tilt = ((rnd() - 0.5) * 2 * 4 * Math.PI) / 180;
-  const wob = [1, 2, 3].map((k) => ({ a: (0.06 / k) * (0.4 + rnd() * 0.6), p: rnd() * Math.PI * 2, k }));
+  const exp = 2.1 + rnd() * 0.4; // 1.0이면 마름모, 2면 정타원, 클수록 네모에 가깝다
+  const tilt = ((rnd() - 0.5) * 2 * 3 * Math.PI) / 180;
+  const wob = [2, 3].map((k) => ({ a: 0.025 + rnd() * 0.025, p: rnd() * Math.PI * 2, k }));
   const raw = [];
   for (let i = 0; i < PEBBLE_POINTS; i++) {
     const t = (i / PEBBLE_POINTS) * Math.PI * 2 - Math.PI / 2; // 위에서 시작, 시계 방향
     const c = Math.cos(t);
     const s = Math.sin(t);
     const k = 1 + wob.reduce((acc, w) => acc + w.a * Math.cos(w.k * t + w.p), 0);
-    let x = Math.sign(c) * Math.pow(Math.abs(c), 2 / expX) * k;
-    let y = Math.sign(s) * Math.pow(Math.abs(s), 2 / expY) * k;
-    x *= width / 2;
-    y *= height / 2;
+    const x = Math.sign(c) * Math.pow(Math.abs(c), 2 / exp) * k * (width / 2);
+    const y = Math.sign(s) * Math.pow(Math.abs(s), 2 / exp) * k * (height / 2);
     raw.push([x * Math.cos(tilt) - y * Math.sin(tilt), x * Math.sin(tilt) + y * Math.cos(tilt)]);
   }
   const b = bounds(raw);
@@ -219,8 +220,23 @@ export function pebbleShape(seed) {
   const sx = (width - BORDER_WIDTH) / (b.x1 - b.x0);
   const sy = (height - BORDER_WIDTH) / (b.y1 - b.y0);
   const pts = raw.map(([x, y]) => [r2(half + (x - b.x0) * sx), r2(half + (y - b.y0) * sy)]);
-  const ringPts = startAtTop(insetPoints(pts, PEBBLE_RING_INSET), width / 2, height / 2);
-  return finishShape('pebble', width, height, pts, smoothClosedPath(pts), ringPts, PEBBLE_GLYPH_HEIGHT, null);
+  const cx = width / 2;
+  const cy = height / 2;
+  // 법선 방향으로 들이면 굴곡 안쪽에서 선이 겹치므로, 중심 기준으로 줄이고 반지름을 이동평균한다
+  const radii = pts.map(([x, y]) => Math.hypot(x - cx, y - cy));
+  const n = pts.length;
+  const smoothR = radii.map((_, i) => {
+    let sum = 0;
+    for (let j = -PEBBLE_RING_SMOOTH; j <= PEBBLE_RING_SMOOTH; j++) sum += radii[(i + j + n) % n];
+    return sum / (2 * PEBBLE_RING_SMOOTH + 1);
+  });
+  const ringAll = pts.map(([x, y], i) => {
+    const ang = Math.atan2(y - cy, x - cx);
+    const r = Math.max(8, smoothR[i] - PEBBLE_RING_INSET);
+    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+  });
+  const ringPts = startAtTop(ringAll, cx, cy);
+  return finishShape('pebble', width, height, pts, smoothClosedPath(pts), ringPts, PEBBLE_GLYPH_HEIGHT, null, 4);
 }
 
 /**
@@ -265,9 +281,10 @@ export function waveShape(seed) {
   return finishShape('wave', width, height, pts, polylinePath(pts), ringPts, WAVE_GLYPH_HEIGHT, humps);
 }
 
-function finishShape(shape, width, height, points, outlineD, ringPts, glyphHeight, humps) {
+function finishShape(shape, width, height, points, outlineD, ringPts, glyphHeight, humps, ringStep) {
   const ringPoints = ringPts.map(([x, y]) => [r2(x), r2(y)]);
-  const sparse = ringPoints.filter((_, i) => i % (ringPoints.length > 100 ? 5 : 3) === 0);
+  const step = ringStep ?? (ringPoints.length > 100 ? 5 : 3);
+  const sparse = ringPoints.filter((_, i) => i % step === 0);
   return {
     shape,
     width,

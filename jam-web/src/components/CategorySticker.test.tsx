@@ -37,15 +37,15 @@ describe('시드 결정성', () => {
 })
 
 describe('조약돌', () => {
-  it('116×84 상자 안에 있고 윤곽·글자 선이 자기 교차하지 않는다', () => {
+  it('96×92 상자 안에 있고 윤곽·글자 선이 자기 교차하지 않는다', () => {
     for (const s of SEEDS) {
       const g = pebbleShape(s)
-      expect([g.width, g.height]).toEqual([116, 84])
+      expect([g.width, g.height]).toEqual([96, 92])
       for (const [x, y] of g.points) {
         expect(x).toBeGreaterThanOrEqual(0.99)
-        expect(x).toBeLessThanOrEqual(115.01)
+        expect(x).toBeLessThanOrEqual(95.01)
         expect(y).toBeGreaterThanOrEqual(0.99)
-        expect(y).toBeLessThanOrEqual(83.01)
+        expect(y).toBeLessThanOrEqual(91.01)
       }
       expect(isSelfIntersecting(g.points)).toBe(false)
       expect(isSelfIntersecting(g.ringPoints)).toBe(false)

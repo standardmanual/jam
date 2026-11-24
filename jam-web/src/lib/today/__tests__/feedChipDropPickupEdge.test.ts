@@ -148,10 +148,11 @@ describe('«제목 옆 가장자리» 칩의 자리', () => {
 
 describe('다른 카드 유형은 달라지지 않는다', () => {
   // 변경 전 코드(`HEAD~`의 feedChipPlan.ts)에서 같은 입력으로 뽑은 서명과 물러서기 단계(`서명#단계`)다.
+  // 예외: text_box 다섯 번째 시드(4)는 조약돌이 116×84에서 96×92로 바뀌어(티켓 20261124_2214) 새 크기로 다시 뽑았다.
   const GOLDEN: Record<string, string[]> = {
     hero_box: ['Lp:top-right:+c|Lp:top-left~:-b#0', 'Lp:top-right~:+b|Lp:top-left:-c#0', 'Lsp:top-right~:-c|Lp:top-left:+a#0', 'Lp:top-right:+c|Lsw:top-left~:-c#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0', 'Lp:top-left:+c|Lsw:top-right~:-a#0', 'Lsw:top-left~:-c|Lp:top-right:+b#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0'],
     badge_intro: ['Lp:top-right:+c|Lp:top-left~:-b#0', 'Lp:top-right~:+b|Lp:top-left:-c#0', 'Lsp:top-right~:-c|Lp:top-left:+a#0', 'Lp:top-right:+c|Lsw:top-left~:-c#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0', 'Lp:top-left:+c|Lsw:top-right~:-a#0', 'Lsw:top-left~:-c|Lp:top-right:+b#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0'],
-    text_box: ['Lp:bottom-right:+c|Lp:top-left:-b#0', 'Lp:bottom-left:+b|Lp:top-right:-c#0', 'Lsp:top-left:-a|Lp:bottom-right:+c#0', 'Lp:bottom-left:-c|Lsw:top-right:+a#0', 'Lsp:top-left:-c|Lp:bottom-right:+c#0', 'Lp:top-right:+c|Lsw:bottom-left:-a#0', 'Lsw:bottom-right:-a|Lp:top-left:+c#0', 'Lsp:bottom-right:-a|Lp:top-left:+c#0'],
+    text_box: ['Lp:bottom-right:+c|Lp:top-left:-b#0', 'Lp:bottom-left:+b|Lp:top-right:-c#0', 'Lsp:top-left:-a|Lp:bottom-right:+c#0', 'Lp:bottom-left:-c|Lsw:top-right:+a#0', 'Lsp:bottom-right:-a|Lp:top-left:+b#0', 'Lp:top-right:+c|Lsw:bottom-left:-a#0', 'Lsw:bottom-right:-a|Lp:top-left:+c#0', 'Lsp:bottom-right:-a|Lp:top-left:+c#0'],
     collection_intro: ['Lp:top-right:+c|Lp:top-left~:-b#0', 'Lp:top-right~:+b|Lp:top-left:-c#0', 'Lsp:top-right~:-c|Lp:top-left:+a#0', 'Lp:top-right:+c|Lsw:top-left~:-c#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0', 'Lp:top-left:+c|Lsw:top-right~:-a#0', 'Lsw:top-left~:-c|Lp:top-right:+b#0', 'Lsp:top-left~:-c|Lp:top-right:+c#0'],
     badge_only: ['Lp:bottom-right:+c|Lp:bottom-left~:-b#0', 'Lp:bottom-right~:+b|Lp:bottom-left:-c#0', 'Lsp:bottom-right~:-c|Lp:bottom-left:+a#0', 'Lp:bottom-right:+c|Lsw:bottom-left~:-c#0', 'Lsp:bottom-left~:-c|Lp:bottom-right:+c#0', 'Lp:bottom-left:+c|Lsw:bottom-right~:-a#0', 'Lsw:bottom-left~:-c|Lp:bottom-right:+b#0', 'Lsp:bottom-left~:-c|Lp:bottom-right:+c#0'],
   }

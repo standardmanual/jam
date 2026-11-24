@@ -12,7 +12,7 @@ export type CategoryStickerPair =
   | 'yellow-blue';
 
 export interface CategoryStickerProps extends Omit<SVGAttributes<SVGSVGElement>, 'children'> {
-  /** 모양. `pebble`(조약돌 116×84) · `wave`(물결 덩어리 112×92). 크기는 모양별로 고정이라 `size` prop이 없다 */
+  /** 모양. `pebble`(조약돌 96×92) · `wave`(물결 덩어리 112×92). 크기는 모양별로 고정이라 `size` prop이 없다 */
   shape?: 'pebble' | 'wave';
   /** 윤곽을 정하는 시드(카드 id 등). 같은 (shape, seed)는 늘 같은 모양이다 */
   seed?: string | number;
