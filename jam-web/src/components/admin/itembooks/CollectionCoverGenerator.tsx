@@ -100,10 +100,18 @@ function ColorField({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className={`${LABEL} w-44 text-sm`}>{label}</span>
-      <span
-        aria-hidden
-        className="inline-block h-8 w-8 shrink-0 rounded border"
-        style={{ backgroundColor: normalizeHex(shown) ?? value }}
+      {/* 견본을 누르면 컬러 피커가 열린다(다른 어드민 화면과 같은 Input type="color", 티켓 20261124_1956) */}
+      <Input
+        type="color"
+        aria-label={`${label} 고르기`}
+        className="h-9 w-12 shrink-0 cursor-pointer p-1"
+        value={normalizeHex(shown) ?? value}
+        onChange={(e) => {
+          const hex = normalizeHex(e.target.value)
+          if (!hex) return
+          setDraft(null)
+          onCommit(hex)
+        }}
       />
       <Input
         aria-label={label}
