@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { pickTicketColor } from '@/lib/badgeTicket/ticketColor'
+import { deriveCoverTicketColor, pickTicketColor } from '@/lib/badgeTicket/ticketColor'
 import BadgeTicket from '../BadgeTicket'
 
 const color = pickTicketColor([], () => 0.3)
@@ -22,6 +22,22 @@ describe('BadgeTicket', () => {
     expect(html).toContain('2026.11.22')
     expect(html.indexOf('사진')).toBeLessThan(html.indexOf('일련번호'))
     expect(html.indexOf('일련번호')).toBeLessThan(html.indexOf('카드'))
+  })
+
+  it('팔레트 색은 글자색·카드 비율 변수를 넣지 않는다(배지 상세 HTML은 그대로)', () => {
+    const html = render('2026.11.22')
+    expect(html).not.toContain('--ticket-text')
+    expect(html).not.toContain('--card-mix')
+  })
+
+  it('표지에서 파생한 색은 hex와 글자색·카드 비율을 인라인으로 담고 data-ticket-color가 cover다', () => {
+    const derived = deriveCoverTicketColor('#7d1b98')
+    const html = renderToStaticMarkup(<BadgeTicket color={derived} kindLabel="COLLECTION" dateText={null} photo={<p>사진</p>} body={<p>카드</p>} />)
+    expect(html).toContain(`--ticket:${derived.hex}`)
+    expect(html).toContain('--ticket-text:#ffffff')
+    expect(html).toContain(`--card-mix:${derived.cardMix}%`)
+    expect(html).toContain('data-ticket-color="cover"')
+    expect(html).toContain('COLLECTION')
   })
 
   it('미획득이면 날짜 줄을 그리지 않는다', () => {

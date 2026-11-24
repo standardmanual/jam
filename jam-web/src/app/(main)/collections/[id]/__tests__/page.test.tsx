@@ -18,6 +18,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 type Row = Record<string, unknown>
@@ -81,7 +82,9 @@ vi.mock('@/components/ui/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }
 
 import ItemBookDetailPage from '../page'
 import SlotGrid from '../SlotGrid'
-import ItemBookHeroSection from '../ItemBookHeroSection'
+import ProgressCountBar from '@/components/ui/ProgressCountBar'
+import { deriveCoverTicketHex } from '@/lib/badgeTicket/ticketColor'
+import { d } from '@/lib/i18n'
 
 function callPage(searchParams: Record<string, string> = {}) {
   return ItemBookDetailPage({ params: Promise.resolve({ id: 'book-1' }), searchParams: Promise.resolve(searchParams) })
@@ -123,7 +126,10 @@ describe('컬렉션 상세 페이지 — 공개 전 컬렉션', () => {
 
 // ── 4등급 컬렉션 칸 (티켓 20261028_1408) ─────────────────────────────────────────────────
 
-/** 페이지가 돌려준 요소 트리에서 조건에 맞는 요소를 모두 모은다(컴포넌트는 펼치지 않는다) */
+/**
+ * 페이지가 돌려준 요소 트리에서 조건에 맞는 요소를 모두 모은다(컴포넌트는 펼치지 않는다).
+ * 티켓 틀(`BadgeTicket`)은 `photo`·`afterPhoto`·`body` 프롭으로 내용을 받으므로 children만이 아니라 요소를 담은 모든 프롭을 따라간다.
+ */
 function findElements(node: ReactNode, match: (el: ReactElement) => boolean, out: ReactElement[] = []): ReactElement[] {
   if (Array.isArray(node)) {
     node.forEach((child) => findElements(child, match, out))
@@ -131,7 +137,9 @@ function findElements(node: ReactNode, match: (el: ReactElement) => boolean, out
   }
   if (!isValidElement(node)) return out
   if (match(node)) out.push(node)
-  findElements((node.props as { children?: ReactNode }).children, match, out)
+  for (const value of Object.values(node.props as Record<string, unknown>)) {
+    if (Array.isArray(value) || isValidElement(value)) findElements(value as ReactNode, match, out)
+  }
   return out
 }
 
@@ -183,10 +191,11 @@ function setBook(tierMode: boolean) {
 async function renderGrid(searchParams: Record<string, string> = {}) {
   const tree = await callPage(searchParams)
   const grid = findElements(tree, (el) => el.type === SlotGrid)[0]
-  const hero = findElements(tree, (el) => el.type === ItemBookHeroSection)[0]
+  const bar = findElements(tree, (el) => el.type === ProgressCountBar)[0]
   const gridProps = grid?.props as React.ComponentProps<typeof SlotGrid> | undefined
-  const heroProps = hero.props as React.ComponentProps<typeof ItemBookHeroSection>
-  return { tree, gridProps, heroProps }
+  // 모으는 중에만 진행 바를 그린다(완성이면 초록 완성 알림이 대신한다) — 분모·분자는 바의 프롭이다
+  const progress = bar ? (bar.props as React.ComponentProps<typeof ProgressCountBar>) : undefined
+  return { tree, gridProps, progress }
 }
 
 describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
@@ -209,7 +218,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     state.tables.user_item_book_slots = [slotRow('이름1-rare')]
     state.tables.inventory_items = [itemRow('이름2-rare', 1), itemRow('이름3-epic', 2)]
 
-    const { gridProps, heroProps } = await renderGrid()
+    const { gridProps, progress } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
     expect(gridProps?.badgeSlots.every((s) => s.badge.rarity === 'rare')).toBe(true)
@@ -218,8 +227,8 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     // Epic만 가진 이름3은 Rare 칸에 후보가 없어 미발견 칸이 된다
     expect(gridProps?.badgeSlots[1].candidates).toHaveLength(1)
     expect(gridProps?.badgeSlots[2].candidates).toHaveLength(0)
-    expect(heroProps.totalBadgeCount).toBe(9)
-    expect(heroProps.slottedCount).toBe(1)
+    expect(progress?.total).toBe(9)
+    expect(progress?.current).toBe(1)
     expect(gridProps?.tierFixed).toBe(true)
   })
 
@@ -238,10 +247,10 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     state.tables.user_item_book_slots = []
     state.tables.inventory_items = [itemRow('이름1-epic', 1), itemRow('이름1-rare', 2)]
 
-    const { gridProps, heroProps } = await renderGrid()
+    const { gridProps, progress } = await renderGrid()
 
     expect(gridProps?.badgeSlots).toHaveLength(9)
-    expect(gridProps?.badgeSlots).toHaveLength(heroProps.totalBadgeCount)
+    expect(gridProps?.badgeSlots).toHaveLength(progress?.total ?? -1)
     expect(gridProps?.tierUndecided).toBe(true)
     expect(gridProps?.tierFixed).toBe(false)
     // 가진 이름은 낮은 등급 순 후보와 대표 그림, 못 가진 이름은 후보 없는 칸이다
@@ -302,7 +311,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     state.tables.user_item_book_slots = [slotRow(deleted.id as string)]
     state.tables.inventory_items = [itemRow('이름1-rare', 1), itemRow('이름2-epic', 2)]
 
-    const { gridProps, heroProps } = await renderGrid()
+    const { gridProps, progress } = await renderGrid()
 
     expect(gridProps?.tierUndecided).toBe(false)
     expect(gridProps?.badgeSlots).toHaveLength(9)
@@ -311,8 +320,8 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     // 장착한 칸이 없는 칸이라 Epic을 가진 이름2는 후보가 없다
     expect(gridProps?.badgeSlots[1].candidates).toEqual([])
     // 분모·분자는 삭제 배지를 계속 뺀다
-    expect(heroProps.totalBadgeCount).toBe(9)
-    expect(heroProps.slottedCount).toBe(0)
+    expect(progress?.total).toBe(9)
+    expect(progress?.current).toBe(0)
     expect(gridProps?.tierFixed).toBe(true)
   })
 
@@ -395,9 +404,10 @@ describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', 
     const { gridProps } = await renderGrid()
 
     expect(gridProps?.completed).toBe(true)
-    // 완성 알림 카드는 하단이 아니라 Hero 안(대표 카드와 진행도 바 사이)에 그린다
-    const hero = findElements(await callPage(), (el) => el.type === ItemBookHeroSection)[0]
-    expect((hero.props as { children?: ReactNode }).children).toBeTruthy()
+    // 완성하면 진행 바 자리에 초록 완성 알림이 온다(글자 상자 아래, 티켓 20261124_2253)
+    const tree = await callPage()
+    expect(findElements(tree, (el) => el.type === ProgressCountBar)).toHaveLength(0)
+    expect(renderToStaticMarkup(tree)).toContain(d.itembooks.completedTitle)
   })
 
   it('tier_mode가 꺼진 컬렉션은 개수만 있고 tierFixed는 꺼져 있다', async () => {
@@ -424,6 +434,121 @@ describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', 
 
 // ── 꺼진 컬렉션의 열람 (티켓 20261106_1228) ─────────────────────────────────────────────
 
+// ── 티켓 틀과 표지색 파생 티켓색 (티켓 20261124_2253) ───────────────────────────────────
+
+describe('컬렉션 상세 페이지 — 티켓 틀', () => {
+  let errorSpy: MockInstance
+  const BG = '#99fff3'
+
+  function setTicketBook(extra: Row = {}) {
+    state.tables.item_books = [
+      {
+        id: 'book-1', name: '유리 칸 닦는 아침', description: '창을 닦아요. 오늘도 맑아요.', image_url: 'https://example.com/cover.png',
+        story_text: '이야기 한 줄', is_active: true, valid_from: null, valid_until: null, tier_mode: false, tribe: null,
+        cover_params: { bgHex: BG }, ...extra,
+      },
+    ]
+    state.tables.inventory = [{ id: 'inventory-1' }]
+    state.tables.badges = [
+      badgeRow('이름1', 'common', { image_url: null }),
+      badgeRow('체크인1', 'common', { id: 'checkin-1', type: 'checkin' }),
+    ]
+    state.tables.user_item_book_slots = []
+  }
+
+  beforeEach(() => {
+    state.tables = {}
+    state.calls = []
+    state.notFoundCalls = 0
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setTicketBook()
+  })
+
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('첫 HTML에 data-ticket-color="cover"와 표지색에서 파생한 --ticket이 들어 있다', async () => {
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(html).toContain('data-ticket-color="cover"')
+    expect(html).toContain(`--ticket:${deriveCoverTicketHex(BG)}`)
+    expect(html).toContain('--ticket-text:')
+    expect(html).toContain('--card-mix:')
+  })
+
+  it('cover_params가 없거나 형식이 틀려도 통합 팔레트 색으로 그린다', async () => {
+    for (const cover of [null, {}, { bgHex: 'red' }, { bgHex: 12 }]) {
+      setTicketBook({ cover_params: cover })
+      const html = renderToStaticMarkup(await callPage())
+      expect(html).toContain('data-ticket-color="cover"')
+      expect(html).toMatch(/--ticket:#[0-9a-f]{6}/)
+    }
+  })
+
+  it('머리는 로고와 COLLECTION이고 날짜 줄이 없다', async () => {
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(html).toContain('COLLECTION')
+    expect(html).not.toMatch(/\d{4}\.\d{2}\.\d{2}/)
+  })
+
+  it('머리 → 표지 → 글자 상자 → 진행 바 → 이야기 글 → 슬롯 칸 → 체크인 배지 순서로 그린다', async () => {
+    const html = renderToStaticMarkup(await callPage())
+    const order = ['COLLECTION', 'alt="유리 칸 닦는 아침"', 'text-3xl font-bold', '0/2', '이야기 한 줄', '이름1', d.itembooks.checkinSectionTitle].map((needle) => html.indexOf(needle))
+
+    expect(order.every((index) => index >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+
+  it('글자 상자는 이름 h1 한 개와 설명이고 칩이 없다', async () => {
+    const html = renderToStaticMarkup(await callPage())
+
+    // 상단 내비게이션의 제목과 별개로, 글자 상자의 h1(text-3xl)은 한 개다
+    expect(html.match(/<h1 class="[^"]*text-3xl/g)).toHaveLength(1)
+    expect(html).toContain('창을 닦아요.')
+    expect(html).toContain('오늘도 맑아요.')
+  })
+
+  it('설명이 없으면 아래 칸을 그리지 않고, 이야기 글이 없으면 그 줄이 없다', async () => {
+    setTicketBook({ description: null, story_text: null })
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(html).not.toContain('titleDesc')
+    expect(html).not.toContain('이야기 한 줄')
+  })
+
+  it('표지가 없으면 MagicBookIcon을 둔 1:1 칸을 그린다', async () => {
+    setTicketBook({ image_url: null })
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(html).not.toContain('alt="유리 칸 닦는 아침"')
+    expect(html).toContain('aspect-square')
+    expect(html).toContain('bg-card-bg')
+  })
+
+  it('옛 전체 화면 배경 레이어·블롭 영상 타일·히어로 카드를 쓰지 않는다', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf-8')
+
+    for (const gone of ['backgroundLayer', 'themedBackground', 'BadgeBackgroundVideoTiles', 'getBadgeThemedTextStyle', 'bookCardAnimation', 'ItemBookHeroSection']) {
+      expect(page).not.toContain(gone)
+    }
+    expect(page).not.toContain('useEffect')
+  })
+
+  it('타인 보기·장착 모드도 같은 티켓 틀 안이다', async () => {
+    state.tables.users = [{ id: 'user-2', username: 'other' }]
+    state.tables.user_item_book_slots = [slotRow('이름1-common')]
+    const other = renderToStaticMarkup(await callPage({ u: 'other' }))
+    const slot = renderToStaticMarkup(await callPage({ slot: '1' }))
+
+    for (const html of [other, slot]) {
+      expect(html).toContain('data-ticket-color="cover"')
+      expect(html).toContain('COLLECTION')
+    }
+  })
+})
+
 describe('컬렉션 상세 페이지 — 꺼진 컬렉션', () => {
   let errorSpy: MockInstance
 
@@ -448,11 +573,11 @@ describe('컬렉션 상세 페이지 — 꺼진 컬렉션', () => {
     state.tables.item_books = offBook()
     state.tables.issued_item_books = [{ item_book_id: 'book-1', first_issued_at: '2026-11-01T00:00:00Z' }]
 
-    const { gridProps, heroProps } = await renderGrid()
+    const { gridProps, progress } = await renderGrid()
 
     expect(state.notFoundCalls).toBe(0)
     expect(gridProps?.badgeSlots).toHaveLength(NAMES.length)
-    expect(heroProps.totalBadgeCount).toBe(NAMES.length)
+    expect(progress?.total).toBe(NAMES.length)
     expect(state.calls.filter((c) => c.table === 'issued_item_books' && c.method === 'maybeSingle')).toHaveLength(1)
   })
 

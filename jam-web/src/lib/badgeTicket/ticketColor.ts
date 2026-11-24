@@ -65,7 +65,6 @@ function buildTicketColor(key: TicketColorKey): TicketColor {
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/
 const DEG = 180 / Math.PI
-const RAD = Math.PI / 180
 
 /** 컬렉션 표지 배경색보다 티켓을 어둡게 하는 OKLCH 명도 차(사용자 확정 0.10) */
 export const COVER_TICKET_L_DELTA = 0.1

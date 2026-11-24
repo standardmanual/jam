@@ -1386,6 +1386,8 @@ export const ko = {
     emptyTitle: '아직 발견한 컬렉션이 없어요.',
     emptyBody: '아이템 배지를 모아봐요!',
     completed: '완성',
+    /** 컬렉션 상세 티켓 머리의 종류 글자(티켓 20261124_2253) */
+    ticketKind: 'COLLECTION',
     backToDetail: '배지 상세',
     noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
     noBadgesBody: '관리자가 배지를 등록하면 여기에 표시돼요',

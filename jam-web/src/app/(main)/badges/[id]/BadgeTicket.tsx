@@ -32,7 +32,7 @@ export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPh
   preload('/jam-logo-white.png', { as: 'image' })
 
   // 팔레트 색은 `--jam-*` 변수를 가리키고, 파생색은 hex를 그대로 쓴다. 파생색만 글자색·카드 바탕 비율을 더 넣는다(배지 상세 HTML은 그대로)
-  const vars = (
+  const vars: Record<string, string> =
     'cssVar' in color
       ? { '--ticket': `var(${color.cssVar})`, '--ticket-end': color.endColor, '--ticket-silhouette': color.silhouette }
       : {
@@ -43,10 +43,9 @@ export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPh
           '--card-mix': `${color.cardMix}%`,
           '--card-mix-2': `${color.cardMixSecondary}%`,
         }
-  ) as CSSProperties
 
   return (
-    <div className={styles.ticket} style={vars} data-ticket-color={color.key}>
+    <div className={styles.ticket} style={vars as CSSProperties} data-ticket-color={color.key}>
       <div className={styles.head}>
         <div className={`jam-logo-mark ${styles.logo}`} role="img" aria-label="JAM!" />
         <div className={styles.meta}>
