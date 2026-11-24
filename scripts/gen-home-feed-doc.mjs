@@ -89,7 +89,6 @@ const FIELD_LABELS = {
   itemBook: '컬렉션',
   region: '지역',
   body: '본문',
-  description: '설명문',
   rankingMode: '랭킹모드',
   recipe: '레시피',
   targetHref: '이동경로(target_href)',

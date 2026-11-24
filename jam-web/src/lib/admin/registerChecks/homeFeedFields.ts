@@ -19,7 +19,7 @@
  * 상수에 `as const`를 쓰지 않는다 — 스크립트 테스트가 상수에 타입 단언을 해서 읽기 전용 튜플이면 컴파일이 깨진다.
  */
 import { isTribeTag } from '@/lib/today/exposureTribe'
-import { DESCRIPTION_TEMPLATES } from '@/lib/today/shape'
+import { DESCRIPTION_TEMPLATES, showsDescription } from '@/lib/today/shape'
 import { resolveTargetHref } from '@/lib/today/targetHref'
 import { collectCopyErrors } from './copyRules'
 import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
@@ -83,7 +83,6 @@ export const TEMPLATE_FIELD_KEY = {
   item_book_id: 'itemBook',
   region_label: 'region',
   body_markdown: 'body',
-  description: 'description',
   ranking_mode_id: 'rankingMode',
   recipe_id: 'recipe',
   target_href: 'targetHref',
@@ -218,7 +217,7 @@ export function validateCard(errors: string[], input: unknown, options: Validate
   checkOneLine(errors, 'card.title', card.title)
   checkOneLine(errors, 'card.subtitle', card.subtitle)
   // 게재용 설명문(티켓 20260929_1335) — 한 줄, 공백 포함 TODAY_DESCRIPTION_MAX_LENGTH자 이하(폼 maxLength와 같은 상수).
-  // 설명 문단을 그리지 않는 템플릿(`showsDescription`이 아닌 것)이 쓰면 아래 템플릿 규칙(TEMPLATE_FIELD_KEY)이 거절한다.
+  // 홈은 카드 유형으로 설명을 그린다. 운영 묶음(유형 필수)은 아래 설명문 템플릿 검사를 건너뛰고, 유형 칸이 없는 CLI 묶음만 옛 템플릿 규칙(`showsDescription`)으로 거절한다.
   checkOneLine(errors, 'card.description', card.description)
   if (isNonEmptyString(card.description) && !hasControlOrLineBreak(card.description) && visibleLength(card.description.trim()) > TODAY_DESCRIPTION_MAX_LENGTH) {
     errors.push(`card.description: 공백 포함 ${TODAY_DESCRIPTION_MAX_LENGTH}자 이하여야 해요(받은 값: ${visibleLength(card.description.trim())}자).`)
@@ -280,12 +279,15 @@ export function validateCard(errors: string[], input: unknown, options: Validate
   if (templateType !== null) {
     const fields = TODAY_FIELDS_FOR[templateType]
     for (const [key, fieldKey] of Object.entries(TEMPLATE_FIELD_KEY)) {
-      if (key === 'description' && options.feedTypeDecidesDescription) continue
       if (isFilled(card[key]) && !fields[fieldKey]) {
-        // 설명문은 폼이 비우지 않고 칸만 숨긴다(티켓 20261109_1519) — 홈이 설명 문단을 그리는 템플릿 목록(`DESCRIPTION_TEMPLATES`)을 알려 준다.
-        const reason = key === 'description' ? `홈은 ${DESCRIPTION_TEMPLATES.join('·')}에서만 설명 문단을 그려요` : '어드민 폼도 저장할 때 비워요'
-        errors.push(`card.${key}: ${templateType} 템플릿은 이 필드를 쓰지 않아요(${reason}). 묶음에서 빼 주세요.`)
+        errors.push(`card.${key}: ${templateType} 템플릿은 이 필드를 쓰지 않아요(어드민 폼도 저장할 때 비워요). 묶음에서 빼 주세요.`)
       }
+    }
+    // 설명문은 폼이 비우지 않고 칸만 닫는다(티켓 20261109_1519). 카드 유형이 없는 CLI 묶음만 옛 템플릿 규칙으로 거절한다(티켓 20261124_1119).
+    if (!options.feedTypeDecidesDescription && isFilled(card.description) && !showsDescription(templateType)) {
+      errors.push(
+        `card.description: ${templateType} 템플릿은 이 필드를 쓰지 않아요(홈은 ${DESCRIPTION_TEMPLATES.join('·')}에서만 설명 문단을 그려요). 묶음에서 빼 주세요.`
+      )
     }
     const required = REQUIRED_REFERENCE_FIELDS[templateType]
     if (required.length > 0 && !required.some((key) => isFilled(card[key]))) {

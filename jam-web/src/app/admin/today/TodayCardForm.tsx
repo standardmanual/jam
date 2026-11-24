@@ -63,6 +63,9 @@ import { orphanTribeTags, tribeTagOptions, type TribeTagSource } from '@/lib/adm
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import { toCardViews } from '@/lib/today/cardView'
+import { feedTypeShowsDescription } from '@/lib/today/feedLook'
+import { FEED_TYPES } from '@/lib/today/feedChipSlots'
+import { FEED_TYPE_LABELS } from '@/lib/admin/feedTypeLabels'
 import { FEED_PREVIEW_SEED } from '@/lib/today/feedPreviewSeed'
 import TodayCardPreview from './TodayCardPreview'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/admin/ui/accordion'
@@ -77,6 +80,11 @@ import {
 } from '@/lib/admin/feedCardFields'
 import type { TodayCardRow, TodayCardTemplateType } from '@/types/database'
 import { cn } from '@/lib/utils'
+
+/** 설명문 칸이 닫히는 유형 이름. 홈의 기준 표(`DESCRIPTION_DEFAULT`)에서 만든다(티켓 20261124_1119). */
+const DESCRIPTION_HIDDEN_TYPE_NAMES = FEED_TYPES.filter((t) => !feedTypeShowsDescription(t))
+  .map((t) => FEED_TYPE_LABELS[t])
+  .join('·')
 
 interface MissionOption {
   id: string
@@ -248,6 +256,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
 
   const fields = todayTemplateFields(templateType)
+  const descriptionOpen = feedTypeShowsDescription(feedValues.feedType)
   const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode || fields.recipe)
   const selectedBadgeChips = badgeIds.map((id) => badgeLabelCache.get(id)).filter((b): b is BadgeSearchResult => !!b)
 
@@ -538,8 +547,8 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
         <Input id="today-card-subtitle" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} autoComplete="off" />
       </div>
 
-      {/* 게재용 설명문(티켓 20260929_1335) — 홈이 설명 문단을 그리는 템플릿(`showsDescription`)에서만 칸을 연다. 그 밖의 템플릿은 칸을 숨기고, 적어 둔 값은 저장할 때 지우지 않는다(티켓 20261109_1519). */}
-      {fields.description && (
+      {/* 게재용 설명문(티켓 20260929_1335) — 홈이 이 카드 유형에서 설명 문단을 그릴 때만 칸을 연다. 적어 둔 값은 저장할 때 지우지 않는다(티켓 20261109_1519, 20261124_1119). */}
+      {descriptionOpen && (
         <div className="flex flex-col gap-1.5">
           <FieldLabel htmlFor="today-card-description">설명문</FieldLabel>
           <Input
@@ -553,7 +562,9 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           <FieldMessage id="today-card-description-help">
             {description.length}/{TODAY_DESCRIPTION_MAX_LENGTH}
           </FieldMessage>
-          <FieldMessage>배지 소개·컨텐츠 소개 카드에서만 홈에 보여요. 다른 유형으로 바꾸면 이 칸이 숨겨지고 적은 문구는 지우지 않아요.</FieldMessage>
+          <FieldMessage>
+            홈에 보일지는 카드 모양이 정해요. {DESCRIPTION_HIDDEN_TYPE_NAMES} 유형으로 바꾸면 이 칸이 숨겨지고 적은 문구는 지우지 않아요. 「설명 문장 노출」이 「숨김」이거나 카드가 텍스트 박스로 보이면 홈에 나오지 않아요.
+          </FieldMessage>
         </div>
       )}
 

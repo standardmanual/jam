@@ -90,7 +90,7 @@ export function isRenderedFeedType(value: unknown): value is RenderedFeedType {
   return (FEED_RENDERED_TYPES as readonly string[]).includes(value)
 }
 
-/** 유형의 설명 문장 기본 노출(PRD «카드 유형 8가지» 표). 숨기는 유형은 `show_description`과 무관하게 숨긴다. 어드민 「카드 모양」 칸이 읽는다(티켓 20261121_1316). */
+/** 유형의 설명 문장 기본 노출(PRD «카드 유형 8가지» 표). 숨기는 유형은 `show_description`과 무관하게 숨긴다. 어드민은 `feedTypeShowsDescription`으로 읽는다(티켓 20261121_1316). */
 export const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = {
   hero_box: true,
   text_box: false,
@@ -100,6 +100,11 @@ export const DESCRIPTION_DEFAULT: Readonly<Record<RenderedFeedType, boolean>> = 
   collection_intro: true,
   drop_pickup: true,
   gallery_list: true,
+}
+
+/** 이 유형의 카드가 설명 문단을 그릴 수 있는지(`DESCRIPTION_DEFAULT`). 유형이 비었거나 모르는 값이면 홈은 텍스트 박스로 그려 설명을 숨기므로 거짓이다. 어드민 폼·조회 화면이 설명문 칸을 여는 판정이다(티켓 20261124_1119). */
+export function feedTypeShowsDescription(feedType: unknown): boolean {
+  return isFeedType(feedType) && DESCRIPTION_DEFAULT[feedType]
 }
 
 // ── 해석 결과 ────────────────────────────────────────────────

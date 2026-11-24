@@ -45,6 +45,7 @@ import { feedTypeDisplayName } from '@/app/admin/today/FeedCardSection'
 // 순수 함수라 서버 전용 의존이 없는 targetHref.ts에서 가져온다(TodayCardForm.tsx와 동일 이유
 // — `@/lib/today/cards`를 값으로 import하면 next/headers까지 클라이언트 번들에 딸려 들어간다).
 import { resolveTargetHref } from '@/lib/today/targetHref'
+import { feedTypeShowsDescription } from '@/lib/today/feedLook'
 import { formatKstYmdHm } from '@/lib/admin/kst-format'
 import { exposureTagDisplay, type TribeTagSource } from '@/lib/admin/todayTribeTags'
 import type { TodayCardRow } from '@/types/database'
@@ -175,8 +176,8 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
         <ReadOnlyItem label="부제" span={3}>
           {card.subtitle || <Empty />}
         </ReadOnlyItem>
-        {/* 게재용 설명문(티켓 20260929_1335) — 기사 템플릿은 쓰지 않아 행 자체를 숨긴다 */}
-        {fields.description && (
+        {/* 게재용 설명문(티켓 20260929_1335) — 홈이 이 카드 유형에서 설명 문단을 그릴 때만 행을 보인다(폼과 같은 판정, 티켓 20261124_1119) */}
+        {feedTypeShowsDescription(card.feed_type) && (
           <ReadOnlyItem label="설명문" span={3}>
             {card.description || <Empty />}
           </ReadOnlyItem>

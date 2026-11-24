@@ -19,7 +19,7 @@ export interface TodayCardFormValues {
   templateType: TodayCardTemplateType
   title: string
   subtitle: string
-  /** 게재용 설명문(티켓 20260929_1335) — editorial_article은 쓰지 않는다 */
+  /** 게재용 설명문(티켓 20260929_1335) — 칸은 카드 유형이 설명을 보일 때만 열린다(`feedLook.ts`의 `feedTypeShowsDescription`, 티켓 20261124_1119) */
   description: string
   coverImageUrl: string
   badgeIds: string[]
@@ -103,7 +103,7 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
 /**
  * 게재용 설명문(`today_cards.description`) 길이 상한 — 공백 포함 60자, 줄바꿈 불가(티켓 20260929_1335, 60자 상향은 티켓 20261101_1945).
  * 어드민 폼(`maxLength`·글자 수 표시)과 등록 묶음(`registerHomeFeedBundle.mjs` 검증)이 이 상수 한 곳을 쓴다.
- * 화면은 14px로 3줄까지 보여 준다(`components/today/`의 `hero`·`square`·`list`·`brief`·`ticket`·돔 기본형. `poster`와 돔 포스터형은 설명문을 그리지 않는다).
+ * 화면은 설명을 보이는 카드 유형에서 14px로 그린다(`components/today/feed/FeedCardParts.tsx`의 `FeedDescription`).
  */
 export const TODAY_DESCRIPTION_MAX_LENGTH = 60
 
@@ -113,8 +113,6 @@ export interface TodayTemplateFields {
   itemBook?: boolean
   region?: boolean
   body?: boolean
-  /** 게재용 설명문 입력 — 설명 문단을 그리는 템플릿(`showsDescription`)만 쓴다(티켓 20260929_1335, 20261109_1519) */
-  description?: boolean
   /** ranking_board 전용 — 연결할 랭킹모드 선택 입력(티켓 20260911_1440) */
   rankingMode?: boolean
   /** recipe_reveal 전용 — 연결할 레시피 선택 입력(티켓 20261006_1218) */
@@ -124,12 +122,11 @@ export interface TodayTemplateFields {
 
 /**
  * 템플릿별 노출 필드 매트릭스 (Phase15_02_DATA_MODEL §2).
- * 설명문(`description`) 칸은 홈이 설명 문단을 그리는 템플릿(`lib/today/shape.ts`의 `DESCRIPTION_TEMPLATES`·`showsDescription`)에만 연다
- * — 그리지 않는 템플릿에 설명을 적어도 홈에 보이지 않아서다(티켓 20261109_1519). 이 파일은 `scripts/gen-home-feed-doc.mjs`가 노드로 직접 읽어
- * `import type`만 쓸 수 있어 목록을 값으로 가져오지 못한다. 대신 `today-sections.test.ts`가 이 표의 설명문 칸이 `showsDescription`과 같은지 대조한다.
+ * 설명문(`description`) 칸은 이 표가 아니라 카드 유형이 연다(`lib/today/feedLook.ts`의 `feedTypeShowsDescription`, 티켓 20261124_1119).
+ * 이 파일은 `scripts/gen-home-feed-doc.mjs`가 노드로 직접 읽어 `import type`만 쓸 수 있다.
  */
 export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields> = {
-  badge_spotlight: { description: true, badges: true, targetHref: true },
+  badge_spotlight: { badges: true, targetHref: true },
   progress_nudge: { badges: true, mission: true, targetHref: true },
   mission_spotlight: { mission: true, targetHref: true },
   itembook_milestone: { itemBook: true, targetHref: true },
@@ -142,8 +139,8 @@ export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields
   ranking_board: { rankingMode: true, targetHref: true },
   // 카드 자신의 이동 경로는 기본 /combine이다(`resolveTargetHref`, 운영자가 지정한 주소가 있으면 그쪽, 티켓 20261006_1218).
   recipe_reveal: { recipe: true, targetHref: true },
-  // 연결 칸(배지·미션·컬렉션·지역·랭킹·레시피) 없이 설명문과 이동 주소만 받는다(티켓 20261101_2054)
-  content_intro: { description: true, targetHref: true },
+  // 연결 칸(배지·미션·컬렉션·지역·랭킹·레시피) 없이 이동 주소만 받는다. 설명문 칸은 카드 유형이 연다(티켓 20261101_2054, 20261124_1119)
+  content_intro: { targetHref: true },
 }
 
 /** 모르는 템플릿이 받는 칸 — 어떤 칸도 받지 않는다(빈 목록) */
