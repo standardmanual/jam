@@ -81,7 +81,7 @@ related:
 | 항목 | `world_review`(필수) | 객체 `{ world_related, winter_reviewed, reason }`. 셋 다 필수, 앞의 둘은 불리언, `reason`은 한 줄 문자열, `world_related`가 참이면 `winter_reviewed`도 참이어야 한다. 규칙은 홈피드 등록 묶음의 `world_review`와 같다(`registerHomeFeedBundle.mjs`, 테스트가 같은 입력으로 대조) |
 | 항목 | `resource.feed_type`·`exposure_tags`·`tribe_id`·`color_pending`, 묶음 `excluded_items` | 아래 「카드 칸과 뺀 항목」 표가 정한다 |
 | 항목 | `resource.pattern`(`kind`가 `pattern_proposal`일 때만) | 아래 「패턴 제안 내용 칸」 표가 정한다. 다른 종류의 `resource`는 보지 않는다 |
-| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. `values`의 이미지 레이어 번호(`img01` 등) 값이 이 프로젝트 저장소(`NEXT_PUBLIC_SUPABASE_URL` 호스트의 https)가 아닌 외부 주소(`http(s)://`, `//host`, 값 안에 탭·개행을 끼운 `/<탭>/host`도 브라우저가 탭·개행을 지우고 읽으므로 걷어낸 뒤 판정)이면 그 칸도 경고하고, 브라우저 렌더(`imageSpecToRenderArgs`)는 그 값을 건너뛰어 관리자 브라우저가 외부 주소를 불러오지 않는다(`/`로 시작하는 같은 출처 경로와 텍스트 레이어 값은 그대로, 티켓 20261007_1620). **`home_feed_card`·`mission` 항목의 `values`는 카드·미션 이미지에 글자·로고를 넣지 않아서 쓰지 않는다**(홈피드 개편 7회차, 티켓 20261121_1722·20261121_1726): 비어 있지 않으면 「카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요」(미션은 「미션 이미지에는 …」) 경고를 낸다(막지 않는다. `jam_badge`·`collection_launch`의 `values`는 그대로다). 제작은 `image_spec.values`를 그대로 넘기되 프리셋이 홈피드 프리셋(`target_type = home_feed`) 또는 미션 프리셋(`target_type = mission`)이면 프리셋에 없는 레이어 번호를 무시한다(글자·로고 층이 없는 프리셋도 실패하지 않고, 층이 있는 프리셋이면 이전처럼 값을 적용한다). 배지·컬렉션 프리셋은 이전처럼 없는 번호면 제작이 실패한다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 주간 기획(윤진)은 미션 전부와 이미지가 보이는 카드 유형(히어로·컬렉션 소개·이미지 마스크 텍스트 박스, 판정 `feedTypeUsesCoverImage`)에 `image_spec`을 내야 한다. 그 밖의 유형(`badge_intro`·`badge_only`·`drop_pickup`·`gallery_list`와 이미지 마스크 없는 `text_box`)은 홈 화면이 커버 이미지를 그리지 않아 만들지 않는다(티켓 20261118_1715, 프리셋 대응은 윤진 정의 모드 ⑨). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
+| 항목 | `image_spec`(선택) | 이미지 지시 칸. 객체이고 `preset_id`·`bg`·`end`는 비어 있지 않은 문자열, `values`는 문자열 값을 가진 객체이며 넷 모두 선택이다. 이미지 칸이 있는 종류(`home_feed_card`·`mission`·`jam_badge`·`collection_launch`)에서 비어 있거나 `preset_id`가 없으면, `preset_id`는 있는데 `bg`·`end`가 없으면(렌더가 실패한다), 또는 값이 있는데 모양이 틀리면 **경고만** 낸다. **단 색을 시스템이 배정하는 항목(`home_feed_card`·`mission` 가운데 `preset_id`가 있고 `tribe_id`가 없고 미션 소개 카드가 아닌 것, §8.9)은 `bg`·`end`를 비워 보내는 것이 정상이다**: 없어도 경고하지 않고, 보냈으면 「이미지 색은 시스템이 묶음 안에서 쏠리지 않게 정해서, 보낸 값은 쓰지 않아요」 한 줄만 경고한다(티켓 20261124_1052). `values`의 이미지 레이어 번호(`img01` 등) 값이 이 프로젝트 저장소(`NEXT_PUBLIC_SUPABASE_URL` 호스트의 https)가 아닌 외부 주소(`http(s)://`, `//host`, 값 안에 탭·개행을 끼운 `/<탭>/host`도 브라우저가 탭·개행을 지우고 읽으므로 걷어낸 뒤 판정)이면 그 칸도 경고하고, 브라우저 렌더(`imageSpecToRenderArgs`)는 그 값을 건너뛰어 관리자 브라우저가 외부 주소를 불러오지 않는다(`/`로 시작하는 같은 출처 경로와 텍스트 레이어 값은 그대로, 티켓 20261007_1620). **`home_feed_card`·`mission` 항목의 `values`는 카드·미션 이미지에 글자·로고를 넣지 않아서 쓰지 않는다**(홈피드 개편 7회차, 티켓 20261121_1722·20261121_1726): 비어 있지 않으면 「카드 이미지에는 글자와 로고를 넣지 않아서 values는 쓰지 않아요」(미션은 「미션 이미지에는 …」) 경고를 낸다(막지 않는다. `jam_badge`·`collection_launch`의 `values`는 그대로다). 제작은 `image_spec.values`를 그대로 넘기되 프리셋이 홈피드 프리셋(`target_type = home_feed`) 또는 미션 프리셋(`target_type = mission`)이면 프리셋에 없는 레이어 번호를 무시한다(글자·로고 층이 없는 프리셋도 실패하지 않고, 층이 있는 프리셋이면 이전처럼 값을 적용한다). 배지·컬렉션 프리셋은 이전처럼 없는 번호면 제작이 실패한다. 오류로 만들지 않고 제출은 그대로 받으며, 경고는 제출 응답의 `warnings`에만 싣고 DB에는 저장하지 않는다(`image_spec`은 항목 원본에 그대로 저장한다). 주간 기획(윤진)은 미션 전부와 이미지가 보이는 카드 유형(히어로·컬렉션 소개·이미지 마스크 텍스트 박스, 판정 `feedTypeUsesCoverImage`)에 `image_spec`을 내되 `preset_id`만 내고 `bg`·`end`는 비운다(색은 §8.9가 배정한다). 그 밖의 유형(`badge_intro`·`badge_only`·`drop_pickup`·`gallery_list`와 이미지 마스크 없는 `text_box`)은 홈 화면이 커버 이미지를 그리지 않아 만들지 않는다(티켓 20261118_1715, 프리셋 대응은 윤진 정의 모드 ⑨). 규칙은 `lib/admin/opsInbox/imageSpec.ts` |
 | 항목 | `knobs.place_category`(선택) | `knobs`가 객체이고 이 키에 값이 있으면 `poi_categories.slug`의 문자열 배열이어야 한다(빈 배열은 허용). 없는 slug는 모아서 형식 오류 한 줄로 남기고 저장·승인은 막지 않는다. 카테고리 목록 조회가 실패하면 저장하지 않고 500이다. `knobs`가 없거나 객체가 아니거나 이 키가 없으면 검사하지 않는다 |
 | 항목 | `knobs`의 나머지·`segment`·`balance_check`·`copy`·`colors`·`resource`(`pattern_proposal`의 `resource.pattern`은 위 행이 따로 본다) | 검사하지 않고 항목 원본(`original`)에 그대로 저장한다. 종류별 세부 검증은 예약 등록 때 등록 전 검증(§8.4)이 한다. `segment`는 옛 칸이라 신호가 읽지 않는다(대상은 `exposure_tags`) |
 
@@ -1414,7 +1414,7 @@ stateDiagram-v2
   실제 캔버스 렌더(글꼴·이미지·`toBlob`)는 머지 뒤 로컬 브라우저에서 확인한다.
 - **기획을 열면 자동 제작(저장)(티켓 20261120_1416).** 이미지는 승인 뒤가 아니라 기획 단계에서 만들어져 있어야 하므로(사용자 결정 2026-11-20, 방식 A), 기획 상세(`OpsDecisionWorkspace`)가 열려 항목이 바뀔 때마다 대상 항목의 이미지를 화면이 만들어 저장한다(`useItemImageProduction.startMany` → 이미지 저장 API. 서버·DB는 그대로다. 서버는 반려·취소·실패·종료 외 모든 상태를 받는다).
   - **미션 소개 카드는 대상이 아니다(티켓 20261120_1825).** 종류가 `home_feed_card`이고 `resource.template_type`이 `mission_spotlight`인 항목은 `usesMissionImage`(`imageSpec.ts`)가 «별도 이미지를 만들지 않는 항목»으로 가린다. 홈 화면이 연결된 미션의 대표 이미지를 커버로 그리므로 카드 이미지를 만들면 오히려 미션 이미지를 가린다. 아래 자동 제작·승인 직후·예약 뒤 자동 제작·[이미지 만들기]가 모두 같은 함수로 이 항목을 건너뛴다(에이전트가 옛 정의로 `image_spec`을 내도 만들지 않는다). 미리보기는 같은 묶음에서 `links`로 연결한 미션 항목의 `resource.image_url`을 커버로 보이고, 연결 미션이나 이미지가 없으면 「미션 대표 이미지를 써요」만 보인다.
-  - **대상(`pickAutoImageItemIds`, `lib/admin/opsInbox/autoImage.ts`).** 시험 묶음이 아니고, 상태가 도착·검토중이며, 이미지 칸이 있는 종류(`imageKeyOfKind`)이고, 자원에 이미지가 없고(`hasResourceImage`), `image_spec`에서 제작 인자(`preset_id`)가 나오고 `bg`·`end`가 모두 비어 있지 않고, `color_pending`이 아닌 항목이다. 색이 없는 항목은 만들지 않는다(승인 전 미리보기가 임시 색으로 그리는 동작은 그대로다). 색이 나중에 채워지면(`fill_color` 뒤 새로 읽기) 그때 대상이 된다.
+  - **대상(`pickAutoImageItemIds`, `lib/admin/opsInbox/autoImage.ts`).** 시험 묶음이 아니고, 상태가 도착·검토중이며, 이미지 칸이 있는 종류(`imageKeyOfKind`)이고, 자원에 이미지가 없고(`hasResourceImage`), `image_spec`에서 제작 인자(`preset_id`)가 나오고 `bg`·`end`가 모두 비어 있지 않고, `color_pending`이 아닌 항목이다. `color_pending`이거나 트라이브 카드처럼 색이 비어 있는 항목은 만들지 않는다(승인 전 미리보기가 임시 색으로 그리는 동작은 그대로다). 색이 나중에 채워지면(`fill_color` 뒤 새로 읽기) 그때 대상이 된다. 색을 시스템이 배정하는 항목(§8.9)은 제출 때 색이 채워지므로 비어 있는 일이 없다.
   - **한 번만 시도.** 같은 화면 세션에서 한 항목은 한 번만 시도한다(`claimAutoImageItemIds`가 시도한 ID를 기억한다. 실패해도 새로 고침 전까지 다시 하지 않는다). 이미 만드는 중인 항목은 `startMany`가 건너뛰고, 이미 저장된 이미지는 다시 만들지 않는다. 시드는 항목 ID의 고정 시드라 승인 전 미리보기와 같은 무늬다.
   - **실패.** 서버가 막은 상태(409)이거나 렌더가 실패하면 조용히 넘기고 경고 토스트를 한 번 띄운다(「이미지를 만들지 못했어요. 승인한 뒤 [이미지 만들기]로 다시 만들 수 있어요.」). 승인·예약 뒤의 자동 제작과 [이미지 다시 만들기]의 동작과 문구는 그대로다.
   - **안내 문구.** 만드는 동안 미리보기에 「이미지를 만드는 중이에요」, 색이 없어 건너뛴 항목은 「이미지는 색이 정해지면 만들어요」, 저장된 이미지가 있으면 문구가 없다.
@@ -1425,11 +1425,39 @@ stateDiagram-v2
   - **안내 문구.** 그리는 동안 「이미지를 그리는 중이에요」, 다 그린 승인 전 이미지는 「승인하면 이 이미지로 만들어요」, 임시 색이면 「색이 정해지지 않아 임시 색으로 보여요」. `image_spec`이 없거나 `preset_id`가 없으면 지금 문구를 유지한다.
 - **[이미지 만들기]·다시 만들기(티켓 20261007_1032).** 서랍과 기획 상세의 카드 미리보기 바로 아래(`OpsImageProduction`)에 승인됨·준비중·예약됨 항목의 버튼이 있다. 이미지가 없으면 [이미지 만들기], 있으면 [이미지 다시 만들기]이고
   눌러서 같은 훅(`useItemImageProduction`)이 만든다. 이미지가 없을 때의 [이미지 만들기]는 항목 ID의 고정 시드, [이미지 다시 만들기]는 새 무작위 시드다. 만드는 중에는 버튼이 잠기고 미리보기의 「이미지 제작 필요」 자리가 「이미지를 만드는 중이에요」로 바뀐다.
-  시험 묶음·게재중·예약됨·검토중 항목과 `image_spec.preset_id`가 없는 항목에는 버튼과 표시를 그리지 않는다. `bg`·`end`가 없으면 호출부가 기본 색을 정하지 않고 제출 경고(`imageSpecWarnings`)로 알린다.
+  시험 묶음·게재중·예약됨·검토중 항목과 `image_spec.preset_id`가 없는 항목에는 버튼과 표시를 그리지 않는다. `bg`·`end`가 없으면 호출부가 기본 색을 정하지 않고 제출 경고(`imageSpecWarnings`)로 알린다(색을 시스템이 배정하는 항목은 제출 때 색이 채워진다, §8.9).
 - **시험 믹스 안내(티켓 20261007_1401).** 레시피 항목의 미리보기 아래 안내는 §6.1·§6.4에 적었다. 보는 사람은 운영자 계정뿐이고 「시험 믹스」는 운영자 전용 표현이라 UX 용어표에 올리지 않는다.
 - **브라우저 렌더 모듈(티켓 20261007_0945).** 서랍이 부르는 `renderPresetToPngBlob({ presetId, bg, end, values, seed })`(`lib/admin/opsInbox/imageRender.client.ts`)가 프리셋을 읽어 PNG Blob 한 장을 만들고,
   `postItemImage(bundleId, itemId, blob)`(`components/admin/ops/imageClient.ts`)가 §11.12에 올린다(던지지 않고 `{ ok, url } | { ok: false, status, message }`). 입력은 서버 CLI(`renderCard.mjs`)와 1:1이고 조립은 `lib/asset-generator/renderPreset.ts`다(같은 순서·같은 값).
   시드는 호출부가 정한다. 글꼴·이미지 로드는 시간 제한이 있고 실패하면 던진다(폴백 글꼴로 그리지 않는다). 클라이언트 모듈은 서버 전용 코드(`opsInbox/image.ts`·`scripts/asset-generator/*`·`serverCanvas.ts`)를 가져오지 않는다.
+
+### 8.9 이미지 색 배정 (티켓 20261124_1052)
+
+49주차 묶음에서 에이전트가 고른 이미지 색이 초록·파랑 계열에 67%(색 칸 12개 중 8개) 몰렸다. 선택 기준이 정의에 없었고, 에이전트가 낸 `bg`·`end`는 어떤 표와도 대조되지 않았다. 그래서 **이미지 색 선택권을 에이전트에게서 거두고**, 제출을 받는 서버가 통합 팔레트 쌍 표에서 묶음 안에서 쏠리지 않게 배정한다(사용자 결정 2026-11-24, 「통합 팔레트 9색으로 쌍 표를 새로 짠다」).
+
+- **대상.** 종류가 `home_feed_card` 또는 `mission`이고, `image_spec.preset_id`가 있고, `tribe_id`가 없고, 미션 소개 카드(`resource.template_type = mission_spotlight`)가 아닌 항목(`isImageColorTarget`). 에이전트가 `bg`·`end`를 보내도 무시하고 덮어쓴다. `tribe_id`가 있는 항목(트라이브 승인 쌍과 `color_pending` 흐름이 따로 있다)과 `jam_badge`·`collection_launch`·`preset_id`가 없는 항목은 건드리지 않는다.
+- **저장 위치.** 배정 결과는 `POST /api/admin/ops-inbox`(§11.1)가 항목을 저장하기 직전에 항목 `original.image_spec.bg`·`end`에 쓴다. 시험 묶음도 같다. `ops_bundles.raw`에는 제출 원문이 그대로 남고 `raw_hash`도 그대로다.
+- **쌍 표.** 통합 팔레트(`FEED_COLORS`)의 시작색→끝색 11쌍이다. 흰색은 이미지 바탕으로 쓰지 않는다. 코드 상수 `IMAGE_COLOR_PAIRS`(`lib/admin/opsInbox/imageColorAssign.ts`)가 같은 쌍을 색 키로 갖는다(한쪽을 고치면 다른 쪽도 함께 고친다. 시험이 계열별 칸 수 차이가 1 이하인지 지킨다).
+
+  | 번호 | 시작색 | 끝색 |
+  |---|---|---|
+  | 1 | 노랑 `yellow` #F9FD69 | 분홍 `pink` #F372C1 |
+  | 2 | 노랑 `yellow` #F9FD69 | 하늘 `sky` #51CDF5 |
+  | 3 | 초록 `green` #59C02B | 노랑 `yellow` #F9FD69 |
+  | 4 | 짙은 초록 `green-deep` #3D851E | 하늘 `sky` #51CDF5 |
+  | 5 | 하늘 `sky` #51CDF5 | 보라 `purple` #BA8AF7 |
+  | 6 | 파랑 `blue` #0695EC | 초록 `green` #59C02B |
+  | 7 | 보라 `purple` #BA8AF7 | 짙은 초록 `green-deep` #3D851E |
+  | 8 | 빨강 `red` #FF1D1D | 보라 `purple` #BA8AF7 |
+  | 9 | 빨강 `red` #FF1D1D | 노랑 `yellow` #F9FD69 |
+  | 10 | 분홍 `pink` #F372C1 | 보라 `purple` #BA8AF7 |
+  | 11 | 빨강 `red` #FF1D1D | 분홍 `pink` #F372C1 |
+
+- **계열.** 노랑(노랑)·초록(초록·짙은 초록)·분홍(분홍)·파랑(하늘·파랑)·보라(보라)·빨강(빨강) 여섯이다. 쏠림은 계열별 색 칸(시작색 1칸, 끝색 1칸) 수로 센다. 표 전체의 계열별 칸 수는 노랑 4·초록 4·파랑 4·보라 4·분홍 3·빨강 3이다.
+- **균형 배정(`assignImageColors`).** 한 묶음의 대상 전체를 한 번에 받아 항목 ID(`item_key`, 없거나 묶음 안에서 겹치면 `#위치`) 순으로 하나씩 정한다. ① 지금까지 가장 적게 쓰인 쌍들 가운데(표의 쌍을 한 번씩 다 쓰기 전에는 같은 쌍을 다시 쓰지 않는다) ② 고른 뒤 계열별 칸 수의 최댓값이 가장 낮고 ③ 제곱합이 가장 낮은 쌍을 고르고, ④ 그래도 같으면 항목 ID의 고정 시드(`stableImageSeed`)로 정한다. 난수·시각을 쓰지 않아 같은 입력은 늘 같은 결과이고, 항목 순서를 바꿔도 항목마다 같은 쌍이 나온다.
+- **쏠림 한도.** 대상이 4개 이상인 묶음에서 한 계열이 색 칸의 25%(올림)를 넘지 않는다(`imageColorFamilyCap`). 49주차 입력(대상 6개, 색 칸 12개)이면 한 계열 3칸 이하다. 시험이 대상 4~24개 묶음에서 이 한도를 확인한다.
+- **경고.** §3.1의 `image_spec` 행을 따른다. 에이전트 정의(`.claude/agents/jam-marketer.md` 모드 ⑨)도 `preset_id`만 내고 색은 비우라고 적는다.
+- **이미 제출된 묶음.** 소급하지 않는다. 이미 만들어진 이미지를 새 색으로 다시 만들지는 사용자가 정한다.
 
 ## 9. 슬랙 이력 알림 (07 4.6)
 
