@@ -377,10 +377,44 @@ describe('POST /api/admin/ops-inbox', () => {
 
     it('모양이 맞는 image_spec은 경고 없이 받는다', async () => {
       // 카드 이미지에는 글자·로고를 넣지 않으므로(티켓 20261121_1722) 카드 항목의 «맞는» 지시에는 values가 없다
-      const ok = makeItem({ image_spec: { preset_id: 'p1', bg: '#111111', end: '#222222' } })
+      // 이미지 색은 시스템이 배정하므로(티켓 20261124_1052) 홈피드 카드·미션의 «맞는» 지시에는 bg·end도 없다
+      const ok = makeItem({ image_spec: { preset_id: 'p1' } })
       const res = await submit(makeBundle({ items: [ok] }))
       expect(res.status).toBe(201)
       expect((await res.json()).warnings).toEqual([])
+    })
+
+    it('에이전트가 낸 이미지 색은 시스템 색으로 덮어 저장하고, 원문(raw)과 해시는 제출 그대로다 (티켓 20261124_1052)', async () => {
+      const AGENT = { bg: '#00ff00', end: '#0000ff' }
+      const body = makeBundle({
+        items: [
+          makeItem({ item_key: 'card-1', image_spec: { preset_id: 'p1', ...AGENT } }),
+          makeItem({ item_key: 'card-2', image_spec: { preset_id: 'p1', ...AGENT } }),
+          makeItem({ item_key: 'mission-1', kind: 'mission', image_spec: { preset_id: 'p2', ...AGENT } }),
+          makeItem({ item_key: 'badge-1', kind: 'jam_badge', image_spec: { preset_id: 'p3', ...AGENT } }),
+          makeItem({ item_key: 'tribe-1', tribe_id: TRIBE_ID, image_spec: { preset_id: 'p1', ...AGENT } }),
+        ],
+      })
+      const res = await submit(body)
+      expect(res.status).toBe(201)
+      expect((await res.json()).warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining('items[0].image_spec.bg·end: 이미지 색은 시스템이')]),
+      )
+
+      const specOf = (key: string) =>
+        (h.state.tables.ops_bundle_items.find((i) => i.item_key === key)?.original as { image_spec: { bg: string; end: string } }).image_spec
+      const assigned = ['card-1', 'card-2', 'mission-1'].map((key) => specOf(key))
+      for (const spec of assigned) {
+        expect(spec.bg).toMatch(/^#[0-9a-f]{6}$/)
+        expect(spec.end).toMatch(/^#[0-9a-f]{6}$/)
+        expect({ bg: spec.bg, end: spec.end }).not.toEqual(AGENT)
+      }
+      expect(new Set(assigned.map((spec) => `${spec.bg}${spec.end}`)).size).toBe(3)
+      // 배지·트라이브 카드는 건드리지 않는다
+      expect(specOf('badge-1')).toMatchObject(AGENT)
+      expect(specOf('tribe-1')).toMatchObject(AGENT)
+      // 제출 원문과 해시는 그대로다
+      expect(h.state.tables.ops_bundles[0]).toMatchObject({ raw: body, raw_hash: computeRawHash(body) })
     })
 
     it('항목이 없는 묶음도 받는다(항목 저장 호출 없이 결정 기록만)', async () => {

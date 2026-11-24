@@ -176,6 +176,22 @@ describe('imageSpecWarnings', () => {
     expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111' }, PATH)).toEqual([expect.stringContaining('image_spec.end: 없어요')])
     expect(imageSpecWarnings({ preset_id: 'p', end: '#222222', bg: null }, PATH)).toEqual([expect.stringContaining('image_spec.bg: 없어요')])
   })
+
+  it('색을 시스템이 배정하는 항목은 bg·end가 없어도 경고하지 않는다 (티켓 20261124_1052)', () => {
+    expect(imageSpecWarnings({ preset_id: 'p' }, PATH, null, 'mission', true)).toEqual([])
+  })
+
+  it('색을 시스템이 배정하는 항목이 bg·end를 보내면 «쓰지 않아요» 한 줄만 낸다 (티켓 20261124_1052)', () => {
+    const expected = [expect.stringMatching(/^items\[0\]\.image_spec\.bg·end: 이미지 색은 시스템이 .*보낸 값은 쓰지 않아요/)]
+    expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111', end: '#222222' }, PATH, null, 'home_feed_card', true)).toEqual(expected)
+    expect(imageSpecWarnings({ preset_id: 'p', bg: '#111111' }, PATH, null, 'home_feed_card', true)).toEqual(expected)
+    // 모양이 틀린 값도 같은 한 줄이다(색 칸의 모양 경고를 따로 내지 않는다)
+    expect(imageSpecWarnings({ preset_id: 'p', bg: '', end: true }, PATH, null, 'mission', true)).toEqual(expected)
+  })
+
+  it('색 배정 대상이 아니면 이전 경고 그대로다 (배지·컬렉션)', () => {
+    expect(imageSpecWarnings({ preset_id: 'p' }, PATH, null, 'jam_badge')).toEqual([expect.stringContaining('image_spec.bg·end: 없어요')])
+  })
 })
 
 describe('stableImageSeed', () => {
