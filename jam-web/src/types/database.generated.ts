@@ -1838,6 +1838,7 @@ export type Database = {
           background_image_url: string | null
           background_shader_id: string | null
           background_video_url: string | null
+          cover_params: Json | null
           created_at: string
           description: string
           drop_condition_json: Json | null
@@ -1848,6 +1849,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean
           name: string
+          name_en: string | null
           required_activity_badge_id: string | null
           reward_badge_id: string | null
           reward_points: number
@@ -1863,6 +1865,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          cover_params?: Json | null
           created_at?: string
           description: string
           drop_condition_json?: Json | null
@@ -1873,6 +1876,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           name: string
+          name_en?: string | null
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
           reward_points?: number
@@ -1888,6 +1892,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          cover_params?: Json | null
           created_at?: string
           description?: string
           drop_condition_json?: Json | null
@@ -1898,6 +1903,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           name?: string
+          name_en?: string | null
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
           reward_points?: number
@@ -4172,6 +4178,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean
           name: string
+          name_en: string | null
           sort_order: number
           tagline: string | null
         }
@@ -4189,6 +4196,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           name: string
+          name_en?: string | null
           sort_order?: number
           tagline?: string | null
         }
@@ -4206,6 +4214,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           name?: string
+          name_en?: string | null
           sort_order?: number
           tagline?: string | null
         }

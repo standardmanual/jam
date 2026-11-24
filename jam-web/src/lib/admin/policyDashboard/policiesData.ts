@@ -1693,9 +1693,9 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '트라이브·컬렉션 영문 표기',
     type: 'ticket_decision',
     currentSpec:
-      '트라이브 영문 이름: 한입만 연구회 ONE BITE CLUB, 찰칵단 CLICK CREW, 비사이드 레코즈 B-SIDE RECORDS, 소나무 잡화점 PINE TREE GENERAL STORE, 혼자들 THE LONERS. 컬렉션 영문 이름은 표지를 만들 때 정해 기준 문서 표에 더함(2026-11-24 기준 5개). 대문자로 표기. 컬렉션 대표 이미지(표지)의 상단에 컬렉션 영문 이름, 하단에 트라이브 영문 이름을 씀. DB에는 영문 이름 칸이 없음',
+      '트라이브 영문 이름: 한입만 연구회 ONE BITE CLUB, 찰칵단 CLICK CREW, 비사이드 레코즈 B-SIDE RECORDS, 소나무 잡화점 PINE TREE GENERAL STORE, 혼자들 THE LONERS. 컬렉션 영문 이름 5개(골목길 필름 스냅 ALLEY FILM SNAPS 등)는 처음 정한 값으로 기준 문서 표에 기록함(2026-11-24). 대문자로 표기. 컬렉션 대표 이미지(표지)의 상단에 컬렉션 영문 이름, 하단에 트라이브 영문 이름을 씀. 영문 이름의 기준은 DB 칸(tribes.name_en, item_books.name_en)이며 변경은 DB에서만 함',
     userExperience: '아직 화면에는 보이지 않아요. 컬렉션 대표 이미지가 생기면 표지에 컬렉션과 트라이브의 영문 이름이 들어가요.',
     basisDoc: '트라이브 보이스 7절 (docs/plan/jam2/service-redesign/트라이브 보이스.md)',
-    ticketId: '20261124_1711',
+    ticketId: '20261124_1742',
   },
 ]

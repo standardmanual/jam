@@ -527,6 +527,10 @@ export interface CustodyEventRow {
 export interface ItemBookRow {
   id: string
   name: string
+  /** 영문 이름(마이그레이션 363, 티켓 20261124_1742). 기준은 DB 칸이며 NULL 허용 */
+  name_en?: string | null
+  /** 표지 생성 설정(마이그레이션 363). 모양은 생성기가 정하고 DB는 강제하지 않는다 */
+  cover_params?: Record<string, unknown> | null
   description: string
   /** 시선과 동작 원고 문구(마이그레이션 330). 어드민에서만 보인다 */
   gaze_motion?: string | null
@@ -1109,6 +1113,8 @@ export interface UserMissionCompletionRow {
 export interface TribeRow {
   id: string
   name: string
+  /** 영문 이름(마이그레이션 363, 티켓 20261124_1742). 기준은 DB 칸이며 NULL 허용 */
+  name_en?: string | null
   tagline: string | null
   description: string | null
   image_url: string | null
