@@ -2,7 +2,8 @@
  * 운영 묶음 이미지 색 시스템 배정 (티켓 20261124_1052)
  * - 쌍 표: 통합 팔레트 키만 쓰고 흰색 없음, 여섯 계열이 고르게 들어 있음
  * - 균형: 대상 4개 이상 묶음에서 한 계열이 색 칸의 25%(올림)를 넘지 않음, 49주차 입력 재현
- * - 고정: 같은 입력은 같은 결과, 순서를 섞어도 항목마다 같은 쌍, 한 바퀴 안에서는 같은 쌍을 다시 쓰지 않음
+ * - 이웃 (티켓 20261124_1517): 공개 순서로 이웃한 항목은 색 계열을 공유하지 않음, 쌍 표에 막다른 길 없음, 49주차 6건 재현
+ * - 고정: 같은 입력은 같은 결과, 공개 순서가 같으면 같은 결과
  * - 대상 판정과 묶음 적용: 트라이브·미션 소개 카드·preset_id 없음·다른 종류는 건드리지 않음
  */
 import { describe, it, expect } from 'vitest'
@@ -31,6 +32,20 @@ function familyCounts(colors: Array<{ bg: string; end: string }>): Record<ImageC
     counts[familyOfHex.get(c.end)!] += 1
   }
   return counts
+}
+
+function familiesOfColor(color: { bg: string; end: string }): Set<ImageColorFamily> {
+  return new Set([familyOfHex.get(color.bg)!, familyOfHex.get(color.end)!])
+}
+
+/** 이웃한 두 항목이 계열을 하나라도 공유하는 자리(0부터)를 모은다. */
+function neighborClashes(colors: Array<{ bg: string; end: string }>): number[] {
+  const clashes: number[] = []
+  for (let i = 1; i < colors.length; i += 1) {
+    const before = familiesOfColor(colors[i - 1])
+    if ([...familiesOfColor(colors[i])].some((f) => before.has(f))) clashes.push(i)
+  }
+  return clashes
 }
 
 const ids = (n: number, prefix = 'item') => Array.from({ length: n }, (_, i) => `${prefix}_${String(i + 1).padStart(2, '0')}`)
@@ -75,23 +90,43 @@ describe('assignImageColors', () => {
     }
   })
 
-  it('같은 입력은 같은 결과이고 순서를 섞어도 항목마다 같은 쌍이 나온다', () => {
+  it('같은 입력은 같은 결과다', () => {
     const list = ids(9)
-    const first = assignImageColors(list)
-    expect(assignImageColors(list)).toEqual(first)
-    const shuffled = [list[5], list[0], list[8], list[2], list[7], list[1], list[4], list[3], list[6]]
-    const second = assignImageColors(shuffled)
-    shuffled.forEach((id, i) => expect(second[i]).toEqual(first[list.indexOf(id)]))
+    expect(assignImageColors(list)).toEqual(assignImageColors([...list]))
   })
 
-  it('한 바퀴를 다 돌기 전에는 같은 쌍을 다시 쓰지 않는다', () => {
-    const n = IMAGE_COLOR_PAIRS.length
-    const used = assignImageColors(ids(n)).map((c) => c.pairIndex)
-    expect(new Set(used).size).toBe(n)
-    const twice = assignImageColors(ids(n * 2)).map((c) => c.pairIndex)
-    const tally = new Map<number, number>()
-    for (const p of twice) tally.set(p, (tally.get(p) ?? 0) + 1)
-    expect([...tally.values()].every((v) => v === 2)).toBe(true)
+  it('입력 순서를 그대로 따른다(내부에서 다시 정렬하지 않는다)', () => {
+    const list = ids(9)
+    const forward = assignImageColors(list)
+    const reversed = assignImageColors([...list].reverse())
+    expect(reversed).toHaveLength(list.length)
+    expect(reversed).not.toEqual([...forward].reverse())
+  })
+
+  it('이웃한 항목은 색 계열을 하나도 공유하지 않는다(1~24개, 여러 ID)', () => {
+    for (let n = 1; n <= 24; n += 1) {
+      for (const prefix of ['item', 'k', '49w']) {
+        expect(neighborClashes(assignImageColors(ids(n, prefix))), `n=${n} ${prefix}`).toEqual([])
+      }
+    }
+  })
+
+  it('쌍 표 11개 모두에, 그 쌍과 계열이 겹치지 않는 쌍이 하나 이상 있다(막다른 길 없음)', () => {
+    for (const pair of IMAGE_COLOR_PAIRS) {
+      const families = new Set([COLOR_FAMILY_OF[pair.bg], COLOR_FAMILY_OF[pair.end]])
+      const free = IMAGE_COLOR_PAIRS.filter((other) => !families.has(COLOR_FAMILY_OF[other.bg]) && !families.has(COLOR_FAMILY_OF[other.end]))
+      expect(free.length, `${pair.bg}>${pair.end}`).toBeGreaterThan(0)
+    }
+  })
+
+  it('이웃 규칙이 앞서도 쌍 쓰임이 고르다: 1~24개 묶음에서 가장 많이 쓴 쌍과 가장 적게 쓴 쌍의 차가 2 이하다', () => {
+    for (let n = 1; n <= 24; n += 1) {
+      for (const prefix of ['item', 'k', '49w']) {
+        const uses = IMAGE_COLOR_PAIRS.map(() => 0)
+        for (const c of assignImageColors(ids(n, prefix))) uses[c.pairIndex] += 1
+        expect(Math.max(...uses) - Math.min(...uses), `n=${n} ${prefix}`).toBeLessThanOrEqual(2)
+      }
+    }
   })
 
   it('색은 소문자 #rrggbb이고 비어 있으면 빈 배열이다', () => {
@@ -128,8 +163,15 @@ describe('isImageColorTarget', () => {
 })
 
 describe('applyImageColors', () => {
-  const mk = (position: number, item_key: string | null, kind: string | null, original: Record<string, unknown>) => ({
+  const mk = (
+    position: number,
+    item_key: string | null,
+    kind: string | null,
+    original: Record<string, unknown>,
+    starts_at: string | null = '2026-11-30T00:00:00+09:00',
+  ) => ({
     position,
+    starts_at,
     item_key,
     kind,
     original: original as Json,
@@ -170,5 +212,72 @@ describe('applyImageColors', () => {
     const out = applyImageColors(items)
     const pairs = out.map((o) => JSON.stringify((o.original as { image_spec: unknown }).image_spec))
     expect(new Set(pairs).size).toBe(4)
+  })
+  describe('공개 순서와 이웃 규칙', () => {
+    const colorOf = (o: { original: Json }) => {
+      const spec = (o.original as { image_spec: { bg: string; end: string } }).image_spec
+      return { bg: spec.bg, end: spec.end }
+    }
+    const withPreset = { image_spec: { preset_id: 'p1' } }
+
+    it('49주차 6건을 공개 순서로 배정하면 이웃이 계열을 공유하지 않고 한 계열이 3칸을 넘지 않는다', () => {
+      const items = [
+        mk(0, 'c-drops-near', 'home_feed_card', withPreset, '2026-11-30T00:00:00+09:00'),
+        mk(1, 'm-walk-45', 'mission', withPreset, '2026-11-30T00:00:00+09:00'),
+        mk(2, 'm-act-3', 'mission', withPreset, '2026-11-30T00:00:00+09:00'),
+        mk(3, 'm-hike-300', 'mission', withPreset, '2026-11-30T00:00:00+09:00'),
+        mk(4, 'c-pickup-walk', 'home_feed_card', withPreset, '2026-12-02T00:00:00+09:00'),
+        mk(5, 'c-lock-open', 'home_feed_card', withPreset, '2026-12-03T00:00:00+09:00'),
+      ]
+      const colors = applyImageColors(items).map(colorOf)
+      expect(neighborClashes(colors)).toEqual([])
+      expect(Math.max(...Object.values(familyCounts(colors)))).toBeLessThanOrEqual(3)
+    })
+
+    it('입력 배열 순서가 달라도 공개 순서가 같으면 같은 결과다', () => {
+      const items = [
+        mk(0, 'a', 'mission', withPreset, '2026-11-30T00:00:00+09:00'),
+        mk(1, 'b', 'mission', withPreset, '2026-12-01T00:00:00+09:00'),
+        mk(2, 'c', 'mission', withPreset, '2026-12-02T00:00:00+09:00'),
+        mk(3, 'd', 'mission', withPreset, '2026-12-03T00:00:00+09:00'),
+        mk(4, 'e', 'mission', withPreset, '2026-12-04T00:00:00+09:00'),
+      ]
+      const forward = applyImageColors(items)
+      const shuffled = [items[3], items[0], items[4], items[2], items[1]]
+      const second = applyImageColors(shuffled)
+      expect(applyImageColors(items)).toEqual(forward)
+      shuffled.forEach((it2, i) => expect(colorOf(second[i])).toEqual(colorOf(forward[items.indexOf(it2)])))
+    })
+
+    it('이웃은 배열 순서가 아니라 공개 순서로 정해진다(뒤섞인 입력에서도 겹치지 않는다)', () => {
+      const items = Array.from({ length: 12 }, (_, i) =>
+        mk(i, `k${i}`, 'mission', withPreset, `2026-12-${String(1 + ((i * 5) % 12)).padStart(2, '0')}T00:00:00+09:00`),
+      )
+      const out = applyImageColors(items)
+      const ordered = items
+        .map((it2, i) => ({ at: it2.starts_at ?? '', color: colorOf(out[i]) }))
+        .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+        .map((x) => x.color)
+      expect(neighborClashes(ordered)).toEqual([])
+    })
+
+    it('starts_at이 같은 항목은 position 순, starts_at이 없거나 날짜가 아닌 항목은 맨 뒤다', () => {
+      const same = '2026-11-30T00:00:00+09:00'
+      const items = [
+        mk(5, 'late', 'mission', withPreset, null),
+        mk(2, 'p2', 'mission', withPreset, same),
+        mk(0, 'p0', 'mission', withPreset, same),
+        mk(9, 'bad', 'mission', withPreset, '날짜 아님'),
+        mk(1, 'p1', 'mission', withPreset, same),
+      ]
+      const out = applyImageColors(items)
+      // 기대 순서: p0, p1, p2, (late·bad는 position 5, 9 순)
+      const expectedSequence = ['p0', 'p1', 'p2', 'late', 'bad']
+      const expected = assignImageColors(expectedSequence)
+      expectedSequence.forEach((key, i) => {
+        const at = items.findIndex((it2) => it2.item_key === key)
+        expect(colorOf(out[at])).toEqual({ bg: expected[i].bg, end: expected[i].end })
+      })
+    })
   })
 })
