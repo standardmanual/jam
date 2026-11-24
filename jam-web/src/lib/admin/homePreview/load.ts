@@ -20,7 +20,7 @@ import type { TodayCardRow } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 import { fetchMissionsById, type TodayCardWithHref } from '@/lib/today/cards'
 import { isMissionExposed, type MissionExposureInput } from '@/lib/missions/visibility'
-import { cardIsLiveDuring, cardMatchesTags, sortHomeCards } from '@/lib/today/cardSelection'
+import { cardIsLiveDuring, cardMatchesTags, homeCardBgKey, sortHomeCards, spreadAdjacentBg } from '@/lib/today/cardSelection'
 import { isClosedToViewerTribe, virtualExposureTags, type VirtualViewer } from '@/lib/today/virtualViewer'
 import { resolveFeedType, usableListItems } from '@/lib/today/feedType'
 import { specialDayTags, type SpecialDayTag } from '@/lib/inputs/special-days-config'
@@ -285,11 +285,15 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
         (card) => cardIsLiveDuring(card, startIso, endIso) && cardMatchesTags(card.exposure_tags, tags) && !isTribeClosed(card, gates, viewer),
       )
       // 홈과 같은 정렬 규칙. 가상 유저에는 id가 없어 고정 문자열을 씨앗에 쓴다 — 날짜마다 순서가 달라진다(티켓 20261102_1720).
-      const live = sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime), { seed: `preview:${date}`, now: baseTime })
+      // 섞은 뒤 이웃 바탕색 보정까지 홈과 같은 함수를 쓴다(티켓 20261124_2040).
+      const live = spreadAdjacentBg(
+        sortHomeCards(filterExposedSpotlights(candidates, missionsById, baseTime), { seed: `preview:${date}`, now: baseTime }),
+        homeCardBgKey,
+      )
       const resolved = await resolvePreviewCards(supabase, live, baseTime)
 
       // 승인 전 카드도 홈과 같은 정렬 규칙·같은 씨앗으로 순서를 정한다. 승인하면 이 카드들이 그대로 홈에 오르기 때문이다.
-      const pendingToday = sortHomeCards(
+      const pendingSorted = sortHomeCards(
         pending
           .filter(
             (item) =>
@@ -298,7 +302,8 @@ export async function loadHomePreview(params: LoadHomePreviewParams): Promise<{ 
           )
           .map((item) => ({ id: item.entry.id, sort_order: item.sortOrder, starts_at: item.startsAt, entry: item.entry })),
         { seed: `preview:${date}`, now: baseTime },
-      ).map(({ entry }) => entry)
+      )
+      const pendingToday = spreadAdjacentBg(pendingSorted, ({ entry }) => homeCardBgKey(entry.card)).map(({ entry }) => entry)
 
       const entries: PreviewEntry[] = [
         ...resolved.map((card): PreviewEntry => ({ source: 'live', id: card.id, card, rationale: [] })),

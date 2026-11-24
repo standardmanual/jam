@@ -5,7 +5,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/cardSelection.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { cardIsLiveDuring, cardMatchesTags, sortHomeCards } from '../cardSelection'
+import { cardIsLiveDuring, cardMatchesTags, homeCardBgKey, sortHomeCards, spreadAdjacentBg } from '../cardSelection'
 
 const DAY_START = '2026-10-05T00:00:00.000Z'
 const DAY_END = '2026-10-05T23:59:59.999Z'
@@ -146,5 +146,77 @@ describe('sortHomeCards — 홈 정렬 (신규 우선 + 하루 단위 섞기)', 
     ]
     sortHomeCards(input, { seed: 's', now: NOW })
     expect(ids(input)).toEqual(['a', 'b'])
+  })
+})
+
+describe('spreadAdjacentBg — 섞은 뒤 이웃 바탕색 보정 (티켓 20261124_2040)', () => {
+  const bg = (id: string, key: string | null) => ({ id, bg_color_key: key })
+  const keyOf = (c: { bg_color_key: string | null }) => c.bg_color_key
+  const ids = (cards: Array<{ id: string }>) => cards.map((c) => c.id)
+
+  it('노랑·노랑·파랑은 노랑·파랑·노랑으로 보정된다', () => {
+    const out = spreadAdjacentBg([bg('y1', 'yellow'), bg('y2', 'yellow'), bg('b1', 'blue')], keyOf)
+    expect(ids(out)).toEqual(['y1', 'b1', 'y2'])
+  })
+
+  it('겹침이 없으면 순서를 바꾸지 않는다', () => {
+    const input = [bg('a', 'yellow'), bg('b', 'blue'), bg('c', 'pink'), bg('d', 'yellow')]
+    expect(ids(spreadAdjacentBg(input, keyOf))).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('바탕이 모두 같으면 순서가 그대로다', () => {
+    const input = [bg('a', 'yellow'), bg('b', 'yellow'), bg('c', 'yellow')]
+    expect(ids(spreadAdjacentBg(input, keyOf))).toEqual(['a', 'b', 'c'])
+  })
+
+  it('바탕이 다른 카드가 둘 이상이면 이웃이 같은 쌍이 생기지 않는다', () => {
+    const input = [bg('a', 'yellow'), bg('b', 'yellow'), bg('c', 'blue'), bg('d', 'blue'), bg('e', 'pink')]
+    const out = spreadAdjacentBg(input, keyOf)
+    expect(ids(out)).toEqual(['a', 'c', 'b', 'd', 'e'])
+    for (let i = 1; i < out.length; i++) expect(out[i].bg_color_key).not.toBe(out[i - 1].bg_color_key)
+  })
+
+  it('남은 카드가 모두 같은 바탕이면 앞선 순서대로 둔다(겹침이 남는 예외)', () => {
+    const input = [bg('a', 'yellow'), bg('b', 'blue'), bg('c', 'blue'), bg('d', 'blue')]
+    expect(ids(spreadAdjacentBg(input, keyOf))).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('바탕을 모르는 카드(NULL)는 겹침으로 보지 않는다', () => {
+    const input = [bg('a', null), bg('b', null), bg('c', 'yellow'), bg('d', 'yellow')]
+    expect(ids(spreadAdjacentBg(input, keyOf))).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('같은 입력은 같은 결과를 내고 입력 배열을 바꾸지 않는다', () => {
+    const input = [bg('y1', 'yellow'), bg('y2', 'yellow'), bg('b1', 'blue'), bg('y3', 'yellow')]
+    const snapshot = ids(input)
+    const first = ids(spreadAdjacentBg(input, keyOf))
+    expect(ids(spreadAdjacentBg(input, keyOf))).toEqual(first)
+    expect(ids(input)).toEqual(snapshot)
+  })
+
+  it('새 카드 묶음이 앞에 오는 정렬 위에서 겹치지 않으면 새 카드가 그대로 앞에 있다', () => {
+    const NOW = new Date('2026-11-02T03:00:00Z')
+    const cards = [
+      { id: 'old-a', sort_order: 0, starts_at: '2026-10-01T00:00:00Z', bg_color_key: 'blue' },
+      { id: 'new-a', sort_order: 1, starts_at: '2026-11-02T01:00:00Z', bg_color_key: 'yellow' },
+      { id: 'new-b', sort_order: 2, starts_at: '2026-11-02T02:00:00Z', bg_color_key: 'pink' },
+    ]
+    const sorted = sortHomeCards(cards, { seed: 's', now: NOW })
+    expect(ids(spreadAdjacentBg(sorted, homeCardBgKey)).slice(0, 2)).toEqual(['new-b', 'new-a'])
+  })
+})
+
+describe('homeCardBgKey — 겹침 판정에 쓰는 바탕색 키', () => {
+  it('팔레트 9키는 그대로 돌려준다', () => {
+    expect(homeCardBgKey({ feed_type: 'text_box', bg_color_key: 'yellow' })).toBe('yellow')
+  })
+
+  it('NULL이거나 모르는 키는 null이다', () => {
+    expect(homeCardBgKey({ bg_color_key: null })).toBeNull()
+    expect(homeCardBgKey({ bg_color_key: 'mint' })).toBeNull()
+  })
+
+  it('바탕이 이미지에 가려지는 full_image는 null이다', () => {
+    expect(homeCardBgKey({ feed_type: 'full_image', bg_color_key: 'yellow' })).toBeNull()
   })
 })

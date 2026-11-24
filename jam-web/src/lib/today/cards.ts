@@ -22,7 +22,7 @@ import { rewardBadgeCountOf, representativeRewardBadges, resolveGradeMode } from
 import type { BundleBadgeInput } from '@/lib/admin/recipe-grade-bundles'
 import { resourceOfTemplate } from './cardView'
 import type { MissionConditionValues } from './feedValueChips'
-import { sortHomeCards } from './cardSelection'
+import { homeCardBgKey, sortHomeCards, spreadAdjacentBg } from './cardSelection'
 import { COLLECTION_BURST_BADGE_LIMIT, pickCollectionItemBadges, type CollectionItemBadgeRow } from './collectionBurstBadges'
 import { kstDateString } from '@/lib/notifications/kst'
 /**
@@ -201,7 +201,8 @@ export async function getTodayCards(
   // 티켓 20261019_1400: 트라이브 제한 미션의 랭킹 보드 카드는 대상이 아닌 트라이브 유저에게 내리지 않는다(5-1 규칙과 같다).
   const filteredCards = await filterRankingBoardCardsByTribe(userId, spotlightFiltered, rankingModes)
   // 티켓 20261102_1720: 새 카드(24시간 이내)를 앞에 두고 나머지는 유저·KST 날짜 씨앗으로 하루 단위로 섞는다.
-  const cards = sortHomeCards(filteredCards, { seed: `${userId}:${kstDateString(now)}`, now })
+  // 티켓 20261124_2040: 섞은 뒤 이웃 바탕색이 겹치면 겹치지 않는 가장 가까운 카드를 당겨 온다. 어드민 홈 미리보기도 같은 함수를 쓴다.
+  const cards = spreadAdjacentBg(sortHomeCards(filteredCards, { seed: `${userId}:${kstDateString(now)}`, now }), homeCardBgKey)
   // 랭킹 보드·레시피 공개 카드는 홈이 더 내지 않는다(티켓 20261122_1101, 상위 20261122_1100) — 순위·레시피 해석은 하지 않는다.
   // 랭킹 모드는 위 트라이브 거름이 읽을 뿐이고, 어드민 미리보기(`lib/admin/todayPreview.ts`)는 아래 export 함수로 따로 읽는다.
   const [badgesById, collectionsById] = await Promise.all([

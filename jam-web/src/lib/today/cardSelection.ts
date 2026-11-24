@@ -8,6 +8,8 @@
  * 서버 전용 모듈을 가져오지 않는다(Supabase 의존 없음).
  */
 
+import { FEED_COLOR_KEYS } from './feedConstants'
+
 /** 기간 판정에 쓰는 카드 칸 */
 export interface LiveWindowCard {
   is_active: boolean
@@ -88,4 +90,44 @@ export function sortHomeCards<T extends SortableHomeCard>(cards: readonly T[], o
   fresh.sort((a, b) => Date.parse(b.card.starts_at) - Date.parse(a.card.starts_at) || a.key - b.key || tiebreak(a.card, b.card))
   rest.sort((a, b) => a.key - b.key || tiebreak(a.card, b.card))
   return [...fresh, ...rest].map(({ card }) => card)
+}
+
+/** 바탕색 판정에 쓰는 카드 칸 */
+export interface BgKeyedHomeCard {
+  feed_type?: string | null
+  bg_color_key?: string | null
+}
+
+/**
+ * 이웃 겹침 판정에 쓰는 바탕색 키 (티켓 20261124_2040).
+ * 바탕을 알 수 없으면 null이다 — `bg_color_key`가 NULL이거나 통합 팔레트 9키에 없는 값, 또는 바탕이 이미지에 가려지는 유형(`full_image`).
+ */
+export function homeCardBgKey(card: BgKeyedHomeCard): string | null {
+  if (card.feed_type === 'full_image') return null
+  const key = card.bg_color_key
+  return key && (FEED_COLOR_KEYS as readonly string[]).includes(key) ? key : null
+}
+
+/**
+ * 섞은 순서에서 이웃 바탕색이 겹치지 않게 보정한다 (티켓 20261124_2040).
+ * 앞에서부터 한 장씩 채운다: 지금 자리에는 «아직 안 놓은 카드 중 앞선 순서이면서 바로 앞 카드와 바탕이 다른 카드»를 놓는다.
+ * 그런 카드가 없으면(남은 카드가 모두 같은 바탕) 가장 앞선 카드를 그대로 놓는다. 바탕을 모르는(null) 카드는 어느 색과도 겹치지 않는다.
+ * 겹치지 않으면 순서를 바꾸지 않으므로 새 카드 묶음이 앞에 오는 규칙도 겹침이 없는 한 유지된다.
+ * 같은 입력은 같은 결과를 내고 입력을 바꾸지 않는다.
+ */
+export function spreadAdjacentBg<T>(cards: readonly T[], bgKeyOf: (card: T) => string | null): T[] {
+  const remaining = [...cards]
+  const placed: T[] = []
+  let previousKey: string | null = null
+  while (remaining.length > 0) {
+    let index = remaining.findIndex((card) => {
+      const key = bgKeyOf(card)
+      return key === null || previousKey === null || key !== previousKey
+    })
+    if (index < 0) index = 0
+    const [next] = remaining.splice(index, 1)
+    placed.push(next)
+    previousKey = bgKeyOf(next)
+  }
+  return placed
 }
