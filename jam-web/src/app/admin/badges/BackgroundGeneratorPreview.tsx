@@ -7,11 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/
 import BlobAnimationFields from './BlobAnimationFields'
 import { DEFAULT_BLOB_ANIMATION, type BlobAnimationParams } from '@/lib/blobAnimation'
 
-/** 라이브 미리보기 상태 — 호출부가 실제 화면 맥락(배지 상세/컬렉션/트라이브)에 맞는 프레임을 그릴 때 쓴다.
- *  제너레이터(패턴/애니메이션/Paper 필터) 제거(티켓 20260901_1929) 이후에도 3개 호출부
- *  (BadgeForm/ItemBookForm/TribeForm)가 동일한 프리뷰 프레임 위임 패턴(`renderPreview`)을
- *  공유하므로, 프레임 컴포넌트(`BadgeDetailPreviewFrame`/`ItemBookDetailPreviewFrame`)의 기존
- *  prop shape는 그대로 두고 이 컴포넌트만 얇게 줄였다. `backgroundLayerRef`는 이제 굽기(bake)
+/** 라이브 미리보기 상태 — 호출부가 실제 화면 맥락(배지 상세 등)에 맞는 프레임을 그릴 때 쓴다.
+ *  제너레이터(패턴/애니메이션/Paper 필터) 제거(티켓 20260901_1929) 이후 프레임 컴포넌트
+ *  (`BadgeDetailPreviewFrame`)의 기존 prop shape는 그대로 두고 이 컴포넌트만 얇게 줄였다.
+ *  컬렉션 상세 프레임(`ItemBookDetailPreviewFrame`)은 티켓 20261124_2254에서 삭제됐다. `backgroundLayerRef`는 이제 굽기(bake)
  *  대상이 아니라 프레임 컴포넌트가 요구하는 DOM ref 자리표시자일 뿐이고, `liveNode`는 항상
  *  null이다(제너레이터 라이브 합성 결과가 더 이상 없음). */
 export interface BackgroundGeneratorLivePreviewState {

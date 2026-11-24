@@ -27,12 +27,12 @@ code:
 |---|---|
 | **JAM! 서비스 본체** (유저가 쓰는 실제 앱) | MODULAR (`jam-web/design-system/`) — 그대로 유지, 이번 개정과 무관 |
 | **JAM! 어드민** (`src/app/admin/`, `src/components/admin/`) | **shadcn/ui** — 이번 개정 대상 |
-| **어드민 내 서비스 미리보기** (배지 상세·컬렉션 상세 미리보기 프레임) | **MODULAR 예외 유지** — 실제 유저 화면을 그대로 재현해야 미리보기로서 의미가 있으므로 |
+| **어드민 내 서비스 미리보기** (배지 상세 미리보기 프레임) | **MODULAR 예외 유지** — 실제 유저 화면을 그대로 재현해야 미리보기로서 의미가 있으므로 |
 
 미리보기 예외 대상(이미 올바르게 구현돼 있음, 손대지 않음):
 - `src/app/admin/badges/BadgeDetailPreviewFrame.tsx`
-- `src/app/admin/itembooks/ItemBookDetailPreviewFrame.tsx`
-- 위 두 컴포넌트가 쓰는 `src/components/ui/TopNav.tsx`, `Footer.tsx` 등 — `@ds/components/*`를
+- (컬렉션 상세 미리보기 프레임 `ItemBookDetailPreviewFrame.tsx`는 티켓 20261124_2254에서 삭제됐다)
+- 위 컴포넌트가 쓰는 `src/components/ui/TopNav.tsx`, `Footer.tsx` 등 — `@ds/components/*`를
   감싼 서비스 전용 래퍼. 이 파일들은 이름은 `components/ui/`에 있지만 **MODULAR 소속**이다.
 
 **원칙**: 어드민 화면에 하드코딩된 색상 값(`text-[#111111]`, `border-[#e5e7eb]` 등)이 하나도
@@ -214,7 +214,7 @@ shadcn 공식 Data Table 패턴(`@tanstack/react-table` + `Table` + `Checkbox` +
 ## 6. 안 하는 것 / 범위 밖
 
 - 서비스 본체(MODULAR)의 색상·컴포넌트 변경 — 이번 개정과 무관, 절대 건드리지 않음
-- 미리보기 프레임(`BadgeDetailPreviewFrame`, `ItemBookDetailPreviewFrame`)의 MODULAR 사용 변경
+- 미리보기 프레임(`BadgeDetailPreviewFrame`)의 MODULAR 사용 변경
 - 어드민 기능(CRUD 로직, 시뮬레이터, 정책 로직) 자체 변경 — 이번 개정은 순수 UI 프레임워크
   전환이며, 기존 어드민 기능은 전량 유지
 - 2026-08-05판 부록 A/B/C(구 shadcn/ui init 명령어, Slate 색상표, 구 컴포넌트 예시)는

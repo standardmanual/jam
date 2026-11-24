@@ -8,8 +8,8 @@ import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import BadgeAuraBackground from '@/components/BadgeAuraBackground'
 import { AURA_GLOW_BASE_COLOR, resolveAuraColors } from '@/lib/badgeAura'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
-// [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 컬렉션 상세
-// (`ItemBookHeroSection`)도 동일 로직을 쓴다(코드 중복 방지).
+// [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 같은 문장 나누기를 쓰는 다른 화면과
+// 로직을 공유한다(코드 중복 방지). 컬렉션 상세의 옛 히어로(`ItemBookHeroSection`)는 티켓 20261124_2254에서 삭제됐다.
 import { splitDescriptionSentences } from '@/lib/splitDescriptionSentences'
 
 /**

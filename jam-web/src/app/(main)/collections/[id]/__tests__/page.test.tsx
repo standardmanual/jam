@@ -530,7 +530,7 @@ describe('컬렉션 상세 페이지 — 티켓 틀', () => {
   it('옛 전체 화면 배경 레이어·블롭 영상 타일·히어로 카드를 쓰지 않는다', () => {
     const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf-8')
 
-    for (const gone of ['backgroundLayer', 'themedBackground', 'BadgeBackgroundVideoTiles', 'getBadgeThemedTextStyle', 'bookCardAnimation', 'ItemBookHeroSection']) {
+    for (const gone of ['backgroundLayer', 'themedBackground', 'BadgeBackgroundVideoTiles', 'getBadgeThemedTextStyle', 'bookCardAnimation']) {
       expect(page).not.toContain(gone)
     }
     expect(page).not.toContain('useEffect')

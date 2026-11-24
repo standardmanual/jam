@@ -20,7 +20,7 @@ const CASES: Record<string, Props> = {
   // 실제 호출(호출 시점의 prop 그대로, 값은 대표값)
   'TodayStatusStrip(64)': { current: 3, total: 10 },
   'collections/page(250)': { percent: 40, height: 6 },
-  'ItemBookHeroSection(136)': { percent: 30 },
+  'collections/[id]/page': { percent: 30 },
   'inventory/page(96)': { percent: Math.min(100, (7 / 10) * 100), height: 6, labelType: 'none' },
   'MissionDetailClient 진행 중(632)': { percent: 45 },
   'MissionDetailClient 완료(632)': { percent: 100 },
@@ -76,7 +76,7 @@ const EXPECTED: Record<string, string> = {
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:30%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'collections/page(250)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:40%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'ItemBookHeroSection(136)':
+  'collections/[id]/page':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:30%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'inventory/page(96)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:70%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',

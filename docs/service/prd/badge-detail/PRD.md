@@ -77,7 +77,7 @@ related:
 
 ## 9. 컬렉션 상세 (티켓 20261124_2252·2253)
 
-> 상위 티켓 [20261124_2252](../../../tickets/p2-normal/20261124_2252_UI_컬렉션-상세-화면을-배지-상세와-같은-티켓-디자인으로-리뉴얼한다-상위.md). 1회차 20261124_2253이 서비스 화면 `/collections/[id]`를, 2회차 20261124_2254가 어드민 미리보기 프레임을 맞춘다.
+> 상위 티켓 [20261124_2252](../../../tickets/p2-normal/20261124_2252_UI_컬렉션-상세-화면을-배지-상세와-같은-티켓-디자인으로-리뉴얼한다-상위.md). 1회차 20261124_2253이 서비스 화면 `/collections/[id]`를, 2회차 20261124_2254가 어드민의 컬렉션 상세 미리보기 프레임과 트라이브 폼의 «배경 테마» 카드를 걷는다.
 
 - **범위**: `/collections/[id]` 본인·타인(`?u=`)·장착(`slot=1`) 보기 모두 같은 틀이다. 404·로그인 이동·슬롯 선택 시트·«모두 빼기» 시트(티켓 밖 오버레이)는 그대로다. 전체 화면 배경 테마 레이어와 대표 카드 블롭 애니메이션은 그리지 않는다.
 - **틀**: 배지 상세의 `BadgeTicket`을 그대로 쓴다(값은 위 §3~§5와 같다). 머리는 로고와 `COLLECTION`이고 날짜 줄이 없다. 순서는 머리 → 절취선 1 → [표지 1:1 → 글자 상자 → 진행 표시 → 절취선 2 → 이야기 글 → 슬롯 칸 → 체크인 배지]다.
@@ -88,4 +88,5 @@ related:
 - **글자 상자**: 위 칸 이름(h1, `text-3xl`), 아래 칸 설명(`text-base`, 마침표 기준 줄바꿈). 칩은 없고 설명이 없으면 아래 칸과 가운데 테두리를 그리지 않는다. 배지 상세의 `TicketTitleBoxes`와 같은 안쪽(`TicketTitleBoxesView`)을 쓴다.
 - **진행 표시**: 글자 상자 아래·절취선 2 위 티켓 면(좌우 16px). 모으는 중은 초록 캡슐 `ProgressCountBar`(«n/N»), 완성하면 초록 완성 알림 카드(칩·제목·본문)다. 지금 모양 그대로이고 «n/N» 글자색만 티켓 글자색을 따른다.
 - **보조 글자**: 이야기 글·체크인 힌트는 80% 투명 `--muted`로는 짙거나 채도 높은 티켓에서 대비 4.5를 못 넘는 표지가 많아 `--foreground`(= 티켓 글자색)를 쓴다.
+- **어드민 미리보기 없음**: 컬렉션 상세 미리보기 프레임(`ItemBookDetailPreviewFrame`)과 옛 히어로(`ItemBookHeroSection`)는 삭제했다(티켓 20261124_2254). 컬렉션 편집 폼(티켓 20261124_2326)과 트라이브 폼에는 컬렉션 상세 미리보기·배경 테마 입력이 없고, 트라이브 저장은 `background_color`·`background_animation`을 보내지 않는다(PUT은 기존 값 유지, POST는 null). DB 칸과 API는 그대로 둔다.
 - **구현 위치**: `collections/[id]/page.tsx`(조립), `collections/[id]/CollectionTicketPhoto.tsx`, `badges/[id]/BadgeTicket.tsx`(`TicketPaint`·`TicketTone`)·`BadgeTicket.module.css`(`--ticket-text`·`--card-mix`), `badges/[id]/TicketTitleBoxes.tsx`(`TicketTitleBoxesView`), `lib/badgeTicket/ticketColor.ts`(`deriveCoverTicketColor`·`pickTicketTextColor`·`pickCardMix`), 종류 글자 `lib/i18n/ko.ts`의 `itembooks.ticketKind`. MODULAR 승격(티켓 20261122_1351)은 하지 않고 서비스 전용을 유지한다.

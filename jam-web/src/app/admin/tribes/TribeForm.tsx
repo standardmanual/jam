@@ -4,12 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { TribeRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
-import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
-import BackgroundGeneratorPreview, {
-  type BackgroundGeneratorLivePreviewState,
-} from '../badges/BackgroundGeneratorPreview'
-import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
-import ItemBookDetailPreviewFrame from '../itembooks/ItemBookDetailPreviewFrame'
 
 interface TribeFormProps {
   tribe?: TribeRow
@@ -30,36 +24,15 @@ export default function TribeForm({ tribe }: TribeFormProps) {
   const [sortOrder, setSortOrder] = useState<string>(
     tribe?.sort_order?.toString() ?? '0'
   )
-  // 배경 테마 (20260818_004) — 트라이브 자체에는 렌더링되지 않는 저작 값이다.
-  // "하위에 일괄 적용" 버튼과 3단 캐스케이드는 티켓 20260925_1416에서 제거.
-  // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
-  const [backgroundColor, setBackgroundColor] = useState<string>(tribe?.background_color ?? '')
-  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
-  const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
-    () => parseBlobAnimation(tribe?.background_animation)
-  )
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const validate = (): string | null => {
-    // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
-    // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
-    const trimmedBackgroundColor = backgroundColor.trim()
-    if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
-      return '배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해 주세요'
-    }
-    return null
-  }
-
   /** PUT/POST로 현재 폼 값을 저장한다. 성공 시 저장된 row, 실패 시 에러를 던진다.
-   *  background_shader_id/background_image_url/background_video_url은 보내지 않는다
-   *  (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장 API는
-   *  누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, tribes PUT 참조). */
+   *  background_* 필드는 보내지 않는다(티켓 20261124_2254) — 배경 테마 카드를 걷어 새로 만들
+   *  방법이 없고, 저장 API는 누락된 필드를 PUT에서는 기존 DB 값 그대로 두고 POST에서는 null로
+   *  저장한다(tribes route 참조). */
   const persist = async (): Promise<TribeRow> => {
-    const trimmedBackgroundColor = backgroundColor.trim()
-
     const body = {
       name,
       tagline: tagline || null,
@@ -68,11 +41,6 @@ export default function TribeForm({ tribe }: TribeFormProps) {
       drop_weight: parseFloat(dropWeight),
       is_active: isActive,
       sort_order: parseInt(sortOrder, 10),
-      // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
-      // 정리한다. 배경색 모드는 위에서 이미 검증돼 동작이 달라지지 않는다.
-      background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
-      // 배경색과 배타 — 해제(null)도 명시적으로 보내야 PUT의 `!== undefined` 병합에서 저장된다.
-      background_animation: backgroundAnimation,
     }
 
     const res = await fetch(
@@ -91,12 +59,6 @@ export default function TribeForm({ tribe }: TribeFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
 
     setLoading(true)
     try {
@@ -210,44 +172,6 @@ export default function TribeForm({ tribe }: TribeFormProps) {
         />
         <span className="text-sm">활성화</span>
       </label>
-
-      {/* 배경 테마 (20260818_004) */}
-      <div className="border border-border rounded-2xl p-5 space-y-4">
-        <div>
-          <p className="text-sm font-semibold text-foreground">배경 테마</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            이 트라이브 자체에는 배경이 적용되지 않아요. 배경색이나 애니메이션을 지정하고 저장하면
-            이 값이 그대로 기록돼요.
-          </p>
-        </div>
-
-        <BackgroundGeneratorPreview
-          backgroundColor={backgroundColor}
-          onBackgroundColorChange={setBackgroundColor}
-          backgroundAnimation={backgroundAnimation}
-          onBackgroundAnimationChange={setBackgroundAnimation}
-          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
-            <>
-              <ItemBookDetailPreviewFrame
-                book={{
-                  name: name || '(트라이브 이름 미입력)',
-                  description: '지정한 배경을 미리 보여줘요.',
-                  image_url: imageUrl || null,
-                }}
-                themed={previewThemed}
-                backgroundLayerStyle={backgroundLayerStyle}
-                backgroundLayerRef={backgroundLayerRef}
-                liveNode={liveNode}
-                backgroundAnimation={previewAnimation}
-              />
-              <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                트라이브 자체 화면은 없어요. 컬렉션 상세화면과 같은 구조로 배경을 보여줘요.
-              </p>
-            </>
-          )}
-        />
-
-      </div>
 
       <div className="flex items-center gap-3 pt-2">
         <button
