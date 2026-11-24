@@ -207,3 +207,62 @@ describe('/api/admin/itembooks/[id] — DB 오류 원문 미노출(티켓 202609
     await expectFixed500(await del(), 'delete boom', '[itembooks DELETE')
   })
 })
+
+describe('/api/admin/itembooks/[id] PATCH — 영문 이름·표지 설정(티켓 20261124_1744)', () => {
+  const patch = (body: unknown) =>
+    PATCH(
+      new NextRequest('https://j-a-m.app/api/admin/itembooks/ib1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id: 'ib1' }) }
+    )
+  const params = {
+    version: 1,
+    seed: 'ib1',
+    rerolls: 2,
+    badgeId: 'b1',
+    bgHex: '#aabbcc',
+    bgSource: 'auto',
+    textColors: { title: '#161412', tribe: '#ffffff', join: '#ffffff' },
+    appliedAt: '2026-11-24T00:00:00.000Z',
+  }
+
+  beforeEach(() => {
+    state.updates = []
+    state.updateError = null
+  })
+
+  it('name_en은 공백을 지우고 대문자로 저장하고, 빈 값은 null이다', async () => {
+    expect((await patch({ name_en: '  alley film snaps ' })).status).toBe(200)
+    expect((await patch({ name_en: '   ' })).status).toBe(200)
+    expect(state.updates).toEqual([{ name_en: 'ALLEY FILM SNAPS' }, { name_en: null }])
+  })
+
+  it('name_en과 cover_params를 한 번에 저장한다', async () => {
+    expect((await patch({ name_en: 'A', cover_params: params })).status).toBe(200)
+    expect(state.updates).toEqual([{ name_en: 'A', cover_params: params }])
+  })
+
+  it('cover_params는 null로 비울 수 있다', async () => {
+    expect((await patch({ cover_params: null })).status).toBe(200)
+    expect(state.updates).toEqual([{ cover_params: null }])
+  })
+
+  it('모양이 틀린 값은 400이고 쓰지 않는다', async () => {
+    expect((await patch({ name_en: 'X'.repeat(61) })).status).toBe(400)
+    expect((await patch({ name_en: 3 })).status).toBe(400)
+    expect((await patch({ cover_params: { ...params, bgHex: 'red' } })).status).toBe(400)
+    expect((await patch({ cover_params: { ...params, bgSource: 'x' } })).status).toBe(400)
+    expect((await patch({ cover_params: { ...params, rerolls: -1 } })).status).toBe(400)
+    expect((await patch({ is_active: 'yes' })).status).toBe(400)
+    expect((await patch({})).status).toBe(400)
+    expect(state.updates).toEqual([])
+  })
+
+  it('is_active만 보내는 기존 호출은 그대로다', async () => {
+    expect((await patch({ is_active: false })).status).toBe(200)
+    expect(state.updates).toEqual([{ is_active: false }])
+  })
+})

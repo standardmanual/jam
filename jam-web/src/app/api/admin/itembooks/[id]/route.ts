@@ -4,6 +4,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import { imageSourceReset, imageUrlTypeError } from '@/lib/admin/imageSourceReset'
 import type { ItemBookRow } from '@/types/database'
+import type { Json } from '@/types/database.generated'
 
 // DB 오류 원문은 응답에 싣지 않고 로그에만 남긴다(티켓 20260926_1602). 현상 → 원인 → 해결책 순서.
 const SAVE_ERROR_MESSAGE = '컬렉션을 저장하지 못했어요. 서버에서 저장 중 오류가 났어요. 잠시 뒤 다시 시도해 주세요.'
@@ -75,8 +76,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 /**
- * 목록/상세 화면의 즉시 토글용 — 폼의 전체 저장 PUT과 별개(20260823_006).
- * body: { is_active: boolean }. is_active 컬럼만 갱신한다.
+ * 목록/상세 화면의 부분 갱신용 — 폼의 전체 저장 PUT과 별개(20260823_006).
+ * body: { is_active?, name_en?, cover_params? } 중 하나 이상. 보낸 칸만 갱신한다(name_en·cover_params는 티켓 20261124_1744).
  *
  * 티켓 20260914_1729: 소속 아이템배지 연쇄 소프트삭제/복구(`cascadeDeactivateItemBookBadges`/
  * `cascadeActivateItemBookBadges`)를 완전히 폐지했다 — 컬렉션의 활성/비활성(및 노출 기간)은
@@ -84,23 +85,62 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
  * 배정 관계는 그대로 유지되고, 배지 자체의 활성 여부는 배지 쪽 PATCH(`/api/admin/badges/[id]`)로만
  * 관리된다.
  */
+const HEX6 = /^#[0-9a-f]{6}$/
+/** 표지 생성기 설정 모양(version 1). DB는 모양을 강제하지 않으므로 여기서 거른다 */
+function isValidCoverParams(v: unknown): boolean {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false
+  const o = v as Record<string, unknown>
+  const tc = o.textColors as Record<string, unknown> | null
+  return (
+    o.version === 1 &&
+    typeof o.rerolls === 'number' && Number.isInteger(o.rerolls) && o.rerolls >= 0 &&
+    typeof o.bgHex === 'string' && HEX6.test(o.bgHex) &&
+    (o.bgSource === 'auto' || o.bgSource === 'manual') &&
+    !!tc && typeof tc === 'object' &&
+    ['title', 'tribe', 'join'].every((k) => typeof tc[k] === 'string' && HEX6.test(tc[k] as string))
+  )
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
   const body = await req.json()
-  const { is_active } = body as { is_active?: boolean }
+  const { is_active, name_en, cover_params } = body as { is_active?: unknown; name_en?: unknown; cover_params?: unknown }
+  const patch: { is_active?: boolean; name_en?: string | null; cover_params?: Json | null } = {}
 
-  if (typeof is_active !== 'boolean') {
-    return NextResponse.json({ error: 'is_active는 boolean이어야 합니다.' }, { status: 400 })
+  if (is_active !== undefined) {
+    if (typeof is_active !== 'boolean') {
+      return NextResponse.json({ error: 'is_active는 boolean이어야 합니다.' }, { status: 400 })
+    }
+    patch.is_active = is_active
+  }
+  if (name_en !== undefined) {
+    if (name_en !== null && typeof name_en !== 'string') {
+      return NextResponse.json({ error: 'name_en은 문자열이거나 null이어야 합니다.' }, { status: 400 })
+    }
+    const v = name_en === null ? '' : name_en.trim().toUpperCase()
+    if (v.length > 60) {
+      return NextResponse.json({ error: 'name_en은 60자 이하여야 합니다.' }, { status: 400 })
+    }
+    patch.name_en = v === '' ? null : v
+  }
+  if (cover_params !== undefined) {
+    if (cover_params !== null && !isValidCoverParams(cover_params)) {
+      return NextResponse.json({ error: 'cover_params 모양이 올바르지 않습니다.' }, { status: 400 })
+    }
+    patch.cover_params = cover_params as Json | null
+  }
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'is_active, name_en, cover_params 중 하나 이상이 필요합니다.' }, { status: 400 })
   }
 
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('item_books')
-    .update({ is_active })
+    .update(patch)
     .eq('id', id)
     .select()
     .single()
