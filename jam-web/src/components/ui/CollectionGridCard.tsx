@@ -61,7 +61,8 @@ export default function CollectionGridCard({
 
   const content = (
     <>
-      {/* 썸네일 — 투명 배경 정사각형.
+      {/* 썸네일 — 정사각형. 안쪽 여백 없이 칸을 채운다: 표지(생성기, 티켓 20261124_1741)는 꽉 찬 정사각형이라
+          여백이 있으면 테두리처럼 보인다(티켓 20261124_2003). object-contain이라 정사각형이 아닌 이미지는 잘리지 않는다.
           컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
           직접 넘기면 카드 한 장 때문에 그리드가 있는 화면 전체가 500이 된다 (20260824_005).
           폴백은 이미지가 없을 때와 같은 MagicBookIcon — 카드 골격과 진행도는 그대로 남는다. */}
@@ -69,7 +70,7 @@ export default function CollectionGridCard({
         <SafeImage
           src={imageUrl}
           alt={name}
-          className="object-contain p-1.5"
+          className="object-contain"
           sizes="50vw"
           fallback={<MagicBookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
         />
