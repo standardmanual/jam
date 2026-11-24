@@ -26,8 +26,6 @@ const base: BadgeSectionSnapshot = {
   patchAvailable: false,
   hasPeriod: false,
   imageUrl: 'https://example.com/a.png',
-  hasAnimation: false,
-  hasBackgroundColor: true,
 }
 
 describe('visibleBadgeSections — 타입 때문에 숨긴 섹션은 목차에서도 숨긴다', () => {
@@ -68,7 +66,7 @@ describe('computeBadgeSectionStatuses', () => {
     const s = computeBadgeSectionStatuses(base)
     expect(s.class).toEqual({ tone: 'ok', text: '완료' })
     expect(s.basic).toEqual({ tone: 'ok', text: '완료' })
-    expect(s.design).toEqual({ tone: 'ok', text: '완료 · 배경색' })
+    expect(s.design).toEqual({ tone: 'ok', text: '완료' })
   })
   it('빠진 필수 수와 이미지 누락을 알린다', () => {
     const s = computeBadgeSectionStatuses({ ...base, name: ' ', description: '', imageUrl: null, activityTypeCount: 0 })

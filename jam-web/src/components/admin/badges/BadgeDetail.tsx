@@ -48,7 +48,6 @@ import {
 } from '@/lib/badge-engine/conditionRegistry'
 import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import { BRANCH_LABEL, isBranchKey } from '@/lib/admin/badge-hidden-guard'
-import { parseBlobAnimation } from '@/lib/blobAnimation'
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
@@ -121,7 +120,6 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
   const jamActivity = badge.type === 'activity' && isJam
   const leveled = isLeveledBadge(badge)
   const missionReward = condition?.mission_reward === true
-  const animation = parseBlobAnimation(badge.background_animation)
   const sectionCtx = { type: badge.type, isJam }
   const sections = visibleBadgeSections(sectionCtx)
   const statuses = computeBadgeSectionStatuses({
@@ -138,8 +136,6 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
     patchAvailable: badge.patch_available,
     hasPeriod: Boolean(badge.valid_from || badge.valid_until),
     imageUrl: badge.image_url,
-    hasAnimation: animation !== null,
-    hasBackgroundColor: Boolean(badge.background_color),
   })
   const sectionHeader = (id: BadgeSectionId) => ({
     id,
@@ -303,7 +299,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
   const designSection = (
     <BadgeSectionCard {...sectionHeader('design')}>
       <ReadOnlyGrid>
-        <ReadOnlyItem label="배지 이미지">
+        <ReadOnlyItem label="배지 이미지" span={3}>
           <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
             {badge.image_url ? (
               <SafeImage src={badge.image_url} alt={badge.name} className="object-contain" />
@@ -311,24 +307,6 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
               <span className="text-xs text-muted-foreground">이미지 없음</span>
             )}
           </div>
-        </ReadOnlyItem>
-        {/* 배경 — 편집 화면이 아니므로 애니메이션 파라미터 전체를 나열하지 않고 방식만 요약한다
-            (티켓 20260906_1423) */}
-        <ReadOnlyItem label="배경" span={2}>
-          {animation ? (
-            '애니메이션'
-          ) : badge.background_color ? (
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="inline-block h-4 w-4 shrink-0 rounded border border-border"
-                style={{ backgroundColor: badge.background_color }}
-              />
-              <span className="font-mono text-[13px]">{badge.background_color}</span>
-            </span>
-          ) : (
-            <Empty>기본 배경</Empty>
-          )}
         </ReadOnlyItem>
       </ReadOnlyGrid>
     </BadgeSectionCard>
@@ -355,11 +333,11 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
             description: badge.description,
           }}
           background={{
-            background_color: badge.background_color,
-            background_shader_id: badge.background_shader_id,
-            background_image_url: badge.background_image_url,
-            background_video_url: badge.background_video_url,
-            background_animation: badge.background_animation,
+            background_color: null,
+            background_shader_id: null,
+            background_image_url: null,
+            background_video_url: null,
+            background_animation: null,
           }}
           conditionText={previewConditionText({
             type: badge.type,

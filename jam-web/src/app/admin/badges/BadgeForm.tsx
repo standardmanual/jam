@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { IconX } from '@tabler/icons-react'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, TribeRow, ItemBookRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
-import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
@@ -20,7 +19,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/admin/ui/alert-dialog'
-import BackgroundGeneratorPreview from './BackgroundGeneratorPreview'
 import BadgeRailPreview from './BadgeRailPreview'
 import BadgeConditionSection, { conditionControlDomId } from './BadgeConditionSection'
 import { FieldLabel, FieldMessage, SegmentedControl, SuffixInput } from './BadgeFormControls'
@@ -33,7 +31,6 @@ import {
   RailCard,
   fieldSpanClass,
 } from '@/components/admin/badges/BadgeEditorLayout'
-import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import { cn } from '@/lib/utils'
 import {
   buildConditionJsonFromFields,
@@ -186,12 +183,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
   // 칸에 보이는 글자 = 입력 글자. 읽는 곳(저장 전 검사·본문·섹션 상태)은 모두 이 값을 쓴다.
   const pointReward = pointOverride ?? String(pointDefault)
   const pointDefaultNotice = `${isLeveled ? '레벨형의' : '이 등급의'} 기본값은 ${pointDefault}포인트예요.`
-  // 배경 테마 — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러 자동 프리필).
-  const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
-  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
-  const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(() =>
-    parseBlobAnimation(badge?.background_animation)
-  )
 
   // condition_json builder state — **레지스트리에서 파생한다**(티켓 20260905_0032 A-2).
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -538,14 +529,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
       return
     }
 
-    // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
-    // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
-    const trimmedBackgroundColor = backgroundColor.trim()
-    if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
-      setError('배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.')
-      return
-    }
-
     setLoading(true)
 
     try {
@@ -582,12 +565,8 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         point_reward: Math.max(0, readIntegerInput(pointReward) ?? 0),
         is_hidden: isHidden,
         branch_key: isBranchKey(branchKey) ? branchKey : null,
-        // background_shader_id/background_image_url/background_video_url은 보내지 않는다
-        // (티켓 20260901_1929) — 저장 API는 누락된 필드를 기존 DB 값 그대로 둔다.
-        // [20260901_1944] 애니메이션 모드에서는 배경색 검증을 건너뛰므로 hex가 아닌 값은 null로 정리한다.
-        background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
-        // 배경색과 배타 — 애니메이션 모드가 아니면 명시적으로 null을 보내 해제가 저장되게 한다.
-        background_animation: backgroundAnimation,
+        // 배경 테마(background_color·background_animation 등)는 어드민 배지 폼에서 제거했다(티켓 20261124_2326).
+        // PUT은 생략된(undefined) 필드의 기존 DB 값을 유지하고, POST는 null로 저장한다.
       }
 
       const res = await fetch(isEdit ? `/api/admin/badges/${badge.id}` : '/api/admin/badges', {
@@ -663,8 +642,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
     patchAvailable,
     hasPeriod: Boolean(validFrom || validUntil),
     imageUrl: imageUrl || null,
-    hasAnimation: backgroundAnimation !== null,
-    hasBackgroundColor: Boolean(backgroundColor.trim()),
   })
   const sectionHeader = (id: BadgeSectionId) => ({
     id,
@@ -1348,9 +1325,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
         <ImageUploadField
           value={imageUrl}
           onChange={setImageUrl}
-          onAverageColor={(color) => {
-            if (color) setBackgroundColor(color)
-          }}
           folder="badges"
           required
           label="배지 이미지"
@@ -1363,14 +1337,6 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           </FieldMessage>
         )}
       </div>
-
-      {/* 배경 — 배경색 / 애니메이션 배타 선택(티켓 20260901_1944). 미리보기는 오른쪽 레일이 그린다 */}
-      <BackgroundGeneratorPreview
-        backgroundColor={backgroundColor}
-        onBackgroundColorChange={setBackgroundColor}
-        backgroundAnimation={backgroundAnimation}
-        onBackgroundAnimationChange={setBackgroundAnimation}
-      />
     </BadgeSectionCard>
   )
 
@@ -1395,10 +1361,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
             description,
           }}
           background={{
-            background_color: backgroundColor || null,
+            background_color: null,
             background_shader_id: null,
             background_image_url: null,
-            background_animation: backgroundAnimation,
+            background_animation: null,
           }}
           conditionText={conditionText}
         />
