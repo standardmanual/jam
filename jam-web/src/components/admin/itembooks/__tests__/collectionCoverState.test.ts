@@ -68,18 +68,20 @@ describe('pickDefaultBadge', () => {
 describe('initialCoverState', () => {
   const badges = [badge('b1', '가'), badge('b2', '나')]
   it('cover_params가 없으면 다시 뽑기 0회·자동 배경·첫 배지', () => {
-    expect(initialCoverState(null, badges)).toEqual({ rerolls: 0, badgeId: 'b1', bgManual: null, textOverrides: {} })
+    expect(initialCoverState(null, badges)).toEqual({ rerolls: 0, badgeId: 'b1', bgManual: null, bgSaved: null, textOverrides: {} })
   })
   it('저장 값이 있으면 그대로 열고, 기본 규칙과 같은 글자색은 자동으로 연다', () => {
     const s = initialCoverState({ ...saved, textColors: { ...saved.textColors, join: '#ff0000' } }, badges)
     expect(s.rerolls).toBe(3)
     expect(s.badgeId).toBe('b2')
     expect(s.bgManual).toBeNull()
+    expect(s.bgSaved).toBe('#336699')
     expect(s.textOverrides).toEqual({ join: '#ff0000' })
   })
   it('직접 지정한 배경은 manual로 열고, 사라진 배지는 첫 배지로 대신한다', () => {
     const s = initialCoverState({ ...saved, bgSource: 'manual', badgeId: 'gone' }, badges)
     expect(s.bgManual).toBe('#336699')
+    expect(s.bgSaved).toBeNull()
     expect(s.badgeId).toBe('b1')
   })
 })
@@ -87,12 +89,22 @@ describe('initialCoverState', () => {
 describe('buildCoverParams', () => {
   it('override는 manual로 옮겨 저장한다', () => {
     const p = buildCoverParams(
-      { rerolls: 1, badgeId: 'b1', bgManual: '#336699', textOverrides: {} },
+      { rerolls: 1, badgeId: 'b1', bgManual: '#336699', bgSaved: null, textOverrides: {} },
       'c1',
       { bgHex: '#336699', bgSource: 'override', textColors: saved.textColors },
       '2026-11-24T00:00:00.000Z'
     )
     expect(p).toMatchObject({ version: 1, seed: 'c1', rerolls: 1, badgeId: 'b1', bgSource: 'manual', appliedAt: '2026-11-24T00:00:00.000Z' })
+  })
+  it('저장된 색(bgSaved)으로 그렸으면 저장된 출처를 유지한다', () => {
+    const st = { rerolls: 3, badgeId: 'b2', bgManual: null, bgSaved: '#336699', textOverrides: {} }
+    const r = { bgHex: '#336699', bgSource: 'override' as const, textColors: saved.textColors }
+    expect(buildCoverParams(st, 'c1', r, 't', 'auto').bgSource).toBe('auto')
+    expect(buildCoverParams(st, 'c1', r, 't', 'manual').bgSource).toBe('manual')
+  })
+  it('저장 색도 직접 지정도 아니면 자동 결과는 auto', () => {
+    const st = { rerolls: 4, badgeId: 'b2', bgManual: null, bgSaved: null, textOverrides: {} }
+    expect(buildCoverParams(st, 'c1', { bgHex: '#336699', bgSource: 'generated', textColors: saved.textColors }, 't').bgSource).toBe('auto')
   })
 })
 

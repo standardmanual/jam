@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { renderCollectionCover, type CoverCanvasFactory, type CoverCanvasLike } from '../render';
+import { defaultTextColors, hexToRgb } from '../color';
 
 const FONT_PATH = path.resolve(process.cwd(), 'public/fonts/sour-gummy/SourGummy-ExtraBold.ttf');
 const factory = ((w: number, h: number) => createCanvas(w, h)) as unknown as CoverCanvasFactory;
@@ -42,7 +43,7 @@ describe('renderCollectionCover', () => {
     expect(r.bgSource).toBe('generated');
     expect(r.relaxStep).toBe(0);
     expect(r.lineArt).toBe(false);
-    expect(r.textColors.title).toBe('#161412');
+    expect(r.textColors.title).toBe(defaultTextColors(hexToRgb(r.bgHex)).title);
     expect(r.layout.title.lines.map((l) => l.text)).toEqual(['ALLEY FILM', 'SNAPS']);
     expect(Math.max(r.layout.badge.width, r.layout.badge.height)).toBe(450);
     expect(canvas.toBuffer('image/png').length).toBeGreaterThan(1000);

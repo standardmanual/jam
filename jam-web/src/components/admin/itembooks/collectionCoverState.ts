@@ -29,6 +29,8 @@ export interface CoverState {
   badgeId: string | null
   /** 직접 지정한 배경색(#rrggbb). null이면 자동 생성 */
   bgManual: string | null
+  /** 저장된 자동 배경색(#rrggbb). 다시 열 때 시드로 다시 계산하지 않고 이 색으로 그린다. null이면 새로 계산 */
+  bgSaved: string | null
   textOverrides: Partial<TextColors>
 }
 
@@ -80,7 +82,7 @@ export function pickDefaultBadge<T extends CoverBadge>(badges: readonly T[]): T 
 export function initialCoverState(params: CoverParams | null, badges: readonly CoverBadge[]): CoverState {
   const fallback = pickDefaultBadge(badges)
   if (!params) {
-    return { rerolls: 0, badgeId: fallback?.id ?? null, bgManual: null, textOverrides: {} }
+    return { rerolls: 0, badgeId: fallback?.id ?? null, bgManual: null, bgSaved: null, textOverrides: {} }
   }
   const saved = badges.find((b) => b.id === params.badgeId && !b.deleted_at && !!b.image_url)
   const defaults = defaultTextColors(hexToRgb(params.bgHex))
@@ -92,6 +94,7 @@ export function initialCoverState(params: CoverParams | null, badges: readonly C
     rerolls: params.rerolls,
     badgeId: (saved ?? fallback)?.id ?? null,
     bgManual: params.bgSource === 'manual' ? params.bgHex : null,
+    bgSaved: params.bgSource === 'manual' ? null : params.bgHex,
     textOverrides,
   }
 }
@@ -100,15 +103,23 @@ export function buildCoverParams(
   state: CoverState,
   seed: string,
   result: Pick<CollectionCoverResult, 'bgHex' | 'bgSource' | 'textColors'>,
-  appliedAt: string
+  appliedAt: string,
+  savedSource: 'auto' | 'manual' = 'auto'
 ): CoverParams {
+  // 저장된 색(bgSaved)으로 그렸으면 원래 저장된 출처를 유지한다
+  const bgSource =
+    state.bgManual == null && state.bgSaved != null
+      ? savedSource
+      : result.bgSource === 'override'
+        ? 'manual'
+        : 'auto'
   return {
     version: 1,
     seed,
     rerolls: state.rerolls,
     badgeId: state.badgeId ?? '',
     bgHex: result.bgHex,
-    bgSource: result.bgSource === 'override' ? 'manual' : 'auto',
+    bgSource,
     textColors: result.textColors,
     appliedAt,
   }

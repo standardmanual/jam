@@ -137,8 +137,9 @@ const RELAX_STEPS: ReadonlyArray<readonly [number, number]> = [
 ];
 
 /**
- * 배경색 생성(OKLCH). 밝기 L은 75% 0.56~0.68, 25% 0.80~0.90, 채도는 최대의 96%.
- * C 0.15 미만·배지/다른 표지와 색상각 근접·검정 제목 대비 미달(선화 4.5, 그 외 4)은 버린다.
+ * 배경색 생성(OKLCH, 티켓 20261124_2026). 난수 순서는 색상 h(0~360) → 밝기 L(0.30~0.90) → 채도 비율 k(0.60~0.96),
+ * C = 그 L·h의 최대 채도 × k. C 0.15 미만·배지/다른 표지와 색상각 근접은 버린다.
+ * 제목 대비: 선화 배지는 검정 제목 대비 4.5 이상만(어두운 배경 불가), 그 밖에는 검정 또는 흰 제목 대비 4 이상.
  */
 export function generateBackground(args: {
   seed: string;
@@ -148,19 +149,20 @@ export function generateBackground(args: {
   const { seed, badge, usedHues } = args;
   const r = rng(seed);
   const ink = hexToRgb(INK_HEX);
+  const white: Rgb = [255, 255, 255];
   for (let step = 0; step < RELAX_STEPS.length; step++) {
     const [badgeGap, usedGap] = RELAX_STEPS[step];
     for (let i = 0; i < 600; i++) {
       const h = r() * 360;
-      const bright = r() < 0.25;
-      const L = bright ? 0.8 + r() * 0.1 : 0.56 + r() * 0.12;
-      const cmax = maxChroma(L, h);
-      const C = cmax * 0.96;
+      const L = 0.3 + r() * 0.6;
+      const k = 0.6 + r() * 0.36;
+      const C = maxChroma(L, h) * k;
       if (C < C_MIN) continue;
       if (badge.okHue != null && hueDist(h, badge.okHue) < badgeGap) continue;
       if (usedHues.some((u) => hueDist(h, u) < usedGap)) continue;
       const rgb = oklchToRgb(L, C, h);
-      if (contrastRatio(rgb, ink) < (badge.lineArt ? 4.5 : 4)) continue;
+      const onInk = contrastRatio(rgb, ink);
+      if (badge.lineArt ? onInk < 4.5 : onInk < 4 && contrastRatio(rgb, white) < 4) continue;
       return { hex: rgbToHex(rgb), rgb, oklch: { L, C, h }, relaxStep: step };
     }
   }
@@ -173,8 +175,14 @@ export interface TextColors {
   join: string;
 }
 
-/** 제목은 항상 잉크색, 하단 글씨는 배경 대비 3 이상이면 흰색 아니면 잉크색 */
+/**
+ * 제목: 검정(잉크색) 대비 4 이상이면 검정, 아니면 흰색·검정 중 대비가 큰 쪽.
+ * 하단 글씨: 배경 대비 3 이상이면 흰색 아니면 잉크색.
+ */
 export function defaultTextColors(bgRgb: readonly number[]): TextColors {
-  const bottom = contrastRatio([255, 255, 255], bgRgb) >= 3 ? '#ffffff' : INK_HEX;
-  return { title: INK_HEX, tribe: bottom, join: bottom };
+  const onInk = contrastRatio(hexToRgb(INK_HEX), bgRgb);
+  const onWhite = contrastRatio([255, 255, 255], bgRgb);
+  const title = onInk >= 4 ? INK_HEX : onWhite > onInk ? '#ffffff' : INK_HEX;
+  const bottom = onWhite >= 3 ? '#ffffff' : INK_HEX;
+  return { title, tribe: bottom, join: bottom };
 }

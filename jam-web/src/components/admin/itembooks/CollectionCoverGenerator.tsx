@@ -72,6 +72,8 @@ export interface CoverViewProps {
   onBadge: (id: string) => void
   result: Pick<CollectionCoverResult, 'bgHex' | 'bgSource' | 'textColors'> | null
   textOverrides: Partial<TextColors>
+  /** 저장된 적용 색으로 그리는 중이면 true(라벨 «적용한 색») */
+  bgFromSaved?: boolean
   onReroll: () => void
   onBgManual: (hex: string) => void
   onTextColor: (key: keyof TextColors, hex: string | null) => void
@@ -214,7 +216,7 @@ export function CollectionCoverGeneratorView(p: CoverViewProps) {
           <div className="space-y-3">
             <p className={`${TEXT} text-sm font-medium`}>배경색</p>
             <ColorField
-              label={p.result?.bgSource === 'override' ? '배경색(직접 지정)' : '배경색(자동)'}
+              label={p.bgFromSaved ? '배경색(적용한 색)' : p.result?.bgSource === 'override' ? '배경색(직접 지정)' : '배경색(자동)'}
               value={p.result?.bgHex ?? '#ffffff'}
               onCommit={p.onBgManual}
               extra={
@@ -314,6 +316,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
   const { collectionId, initialNameEn, tribeNameEn, coverParams, badges, otherBgHexes } = props
   const router = useRouter()
   const params = useMemo(() => parseCoverParams(coverParams), [coverParams])
+  const savedSource = params?.bgSource
   const [state, setState] = useState<CoverState>(() => initialCoverState(params, badges))
   const [nameEn, setNameEn] = useState(initialNameEn ?? '')
   const [fontReady, setFontReady] = useState(false)
@@ -370,7 +373,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
           seed: collectionId,
           rerolls: state.rerolls,
           usedHues,
-          bgOverride: state.bgManual ?? undefined,
+          bgOverride: state.bgManual ?? state.bgSaved ?? undefined,
           textColorOverrides: state.textOverrides,
         },
         { createCanvas }
@@ -412,7 +415,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
         collectionId,
         nameEn: titleEn,
         png,
-        params: buildCoverParams(state, collectionId, result, new Date().toISOString()),
+        params: buildCoverParams(state, collectionId, result, new Date().toISOString(), savedSource),
       })
       if (!out.ok) {
         setError(out.message)
@@ -425,7 +428,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
     } finally {
       setApplying(false)
     }
-  }, [applying, canvas, collectionId, result, router, state, titleEn])
+  }, [applying, canvas, collectionId, savedSource, result, router, state, titleEn])
 
   return (
     <>
@@ -439,8 +442,9 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
         onBadge={(id) => setState((s) => ({ ...s, badgeId: id }))}
         result={titleEn === '' || !tribeNameEn ? null : result}
         textOverrides={state.textOverrides}
-        onReroll={() => setState((s) => ({ ...s, rerolls: s.rerolls + 1, bgManual: null }))}
-        onBgManual={(hex) => setState((s) => ({ ...s, bgManual: hex }))}
+        bgFromSaved={state.bgManual == null && state.bgSaved != null}
+        onReroll={() => setState((s) => ({ ...s, rerolls: s.rerolls + 1, bgManual: null, bgSaved: null }))}
+        onBgManual={(hex) => setState((s) => ({ ...s, bgManual: hex, bgSaved: null }))}
         onTextColor={onTextColor}
         onReset={onReset}
         canvas={

@@ -29,8 +29,27 @@ describe('generateBackground', () => {
       const lineArt = i % 5 === 0;
       const bg = generateBackground({ seed: coverSeed(`col-${i}`, i % 3), badge: { okHue: lineArt ? null : okHue, lineArt }, usedHues: [(i * 53) % 360] });
       expect(bg.oklch.C).toBeGreaterThanOrEqual(C_MIN);
-      expect(contrastRatio(bg.rgb, hexToRgb(INK_HEX))).toBeGreaterThanOrEqual(lineArt ? 4.5 : 4);
+      const title = hexToRgb(defaultTextColors(bg.rgb).title);
+      expect(contrastRatio(bg.rgb, title)).toBeGreaterThanOrEqual(lineArt ? 4.5 : 4);
       if (!lineArt && bg.relaxStep === 0) expect(hueDist(bg.oklch.h, okHue)).toBeGreaterThanOrEqual(70);
+    }
+  });
+
+  const sample = (lineArt: boolean) =>
+    Array.from({ length: 200 }, (_, i) => generateBackground({ seed: coverSeed(`s-${i}`, i % 4), badge: { okHue: lineArt ? null : (i * 29) % 360, lineArt }, usedHues: [] }));
+
+  it('표본 200개에 어두운 배경·흰 제목, 넓은 밝기·채도 범위가 나온다', () => {
+    const bgs = sample(false);
+    expect(bgs.some((b) => defaultTextColors(b.rgb).title === '#ffffff' && b.oklch.L < 0.5)).toBe(true);
+    expect(bgs.some((b) => b.oklch.L < 0.5)).toBe(true);
+    expect(bgs.some((b) => b.oklch.L > 0.8)).toBe(true);
+    expect(bgs.some((b) => b.oklch.C < maxChroma(b.oklch.L, b.oklch.h) * 0.9)).toBe(true);
+  });
+
+  it('선화 배지는 모두 검정 제목·대비 4.5 이상', () => {
+    for (const b of sample(true)) {
+      expect(defaultTextColors(b.rgb).title).toBe(INK_HEX);
+      expect(contrastRatio(b.rgb, hexToRgb(INK_HEX))).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -41,11 +60,15 @@ describe('generateBackground', () => {
 });
 
 describe('defaultTextColors', () => {
-  it('제목은 항상 잉크색, 하단 흰 글씨는 대비 3 이상일 때만', () => {
+  it('제목: 어두운 남색은 흰색, 밝은 노랑은 검정', () => {
+    expect(defaultTextColors(hexToRgb('#1a2a6c')).title).toBe('#ffffff');
+    expect(defaultTextColors(hexToRgb('#ffe36a')).title).toBe(INK_HEX);
+  });
+
+  it('하단 흰 글씨는 대비 3 이상일 때만', () => {
     for (const hex of ['#f0281e', '#2a62ff', '#ffc21a', '#f7f2e7', '#b9bbc6']) {
       const rgb = hexToRgb(hex);
       const t = defaultTextColors(rgb);
-      expect(t.title).toBe(INK_HEX);
       if (t.tribe === '#ffffff') expect(contrastRatio([255, 255, 255], rgb)).toBeGreaterThanOrEqual(3);
       else expect(contrastRatio([255, 255, 255], rgb)).toBeLessThan(3);
       expect(t.join).toBe(t.tribe);
