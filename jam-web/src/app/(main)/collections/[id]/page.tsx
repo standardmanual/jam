@@ -5,6 +5,7 @@ import { isItemBookLaunched, isItemBookViewable } from '@/lib/itembook/visibilit
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
+  BadgeRarity,
   BadgeRow,
   ItemBookRow,
   TribeRow,
@@ -19,6 +20,7 @@ import { ListRowChip } from '@/components/ui/ListRow'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import CollectionTicketPhoto from './CollectionTicketPhoto'
 import BadgeTicket, { TicketTone } from '../../badges/[id]/BadgeTicket'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { TicketTitleBoxesView } from '../../badges/[id]/TicketTitleBoxes'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import { deriveCoverTicketColor } from '@/lib/badgeTicket/ticketColor'
@@ -281,7 +283,13 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         photo={<CollectionTicketPhoto name={book.name} imageUrl={book.image_url} />}
         afterPhoto={
           <>
-            <TicketTitleBoxesView name={book.name} description={book.description} />
+            {/* 컬렉션 이름 위의 등급 칩 — 지금 장착한 배지의 등급(컬렉션 등급)이다. Common은 `RarityBadge`가 그리지 않고,
+                등급이 아직 정해지지 않았거나 4등급 컬렉션이 아니면 `collectionTier`가 null이라 칩이 없다(2026-11-25 사용자 지시). */}
+            <TicketTitleBoxesView
+              chip={collectionTier ? <RarityBadge rarity={collectionTier as BadgeRarity} size="md" /> : undefined}
+              name={book.name}
+              description={book.description}
+            />
             {/* 진행 표시 — 글자 상자 아래, 지금 모양 그대로(티켓 20261124_2253). 완성이면 진행 바 대신 초록 완성 알림(티켓 20261114_1643).
                 알림 카드는 밝은 초록 면이라 짙은 티켓에서도 글자는 #171717이다(ink). 진행 바의 «n/N»은 티켓 글자색을 따른다. */}
             <div className="relative z-10 px-4 pb-6">

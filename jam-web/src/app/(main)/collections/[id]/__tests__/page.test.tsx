@@ -242,6 +242,38 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.tierFixed).toBe(true)
   })
 
+  // 컬렉션 이름 위의 등급 칩(2026-11-25 사용자 지시): 지금 장착한 배지의 등급, Common은 그리지 않는다
+  function titleChipHtml(html: string) {
+    return html.match(/titleTop[^"]*">(.*?)<h1/)?.[1] ?? ''
+  }
+
+  it('Rare를 장착했으면 이름 위에 Rare 칩을 그린다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-rare')]
+
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(titleChipHtml(html)).toContain('Rare')
+  })
+
+  it('Common을 장착했으면 이름 위에 칩을 그리지 않는다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = [slotRow('이름1-common')]
+
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(titleChipHtml(html)).toBe('')
+  })
+
+  it('아무것도 장착하지 않았으면 등급이 없어 이름 위에 칩이 없다', async () => {
+    state.tables.badges = fullBookRows()
+    state.tables.user_item_book_slots = []
+
+    const html = renderToStaticMarkup(await callPage())
+
+    expect(titleChipHtml(html)).toBe('')
+  })
+
   it('아무것도 장착하지 않았으면 칸이 36개가 아니라 진행도 분모(9)와 같고 등급 고정 표시가 없다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = []
