@@ -7,7 +7,6 @@ import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
-import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Switch } from '@/components/admin/ui/switch'
 import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -19,14 +18,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/admin/ui/alert-dialog'
-import BackgroundGeneratorPreview, {
-  type BackgroundGeneratorLivePreviewState,
-} from '../badges/BackgroundGeneratorPreview'
 import { FieldLabel, FieldMessage, SuffixInput } from '../badges/BadgeFormControls'
 import { contentImageSourceLabel } from '@/lib/admin/contentImageSource'
 import { resolvePeriodInputIso, toKstLocalInputValue } from '@/lib/admin/kst-format'
-import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
-import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
 import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveToggleButton'
 
 interface ItemBookFormProps {
@@ -84,13 +78,6 @@ export default function ItemBookForm({
   const toPeriodInput = (iso: string | null | undefined) => (iso ? toKstLocalInputValue(iso) : '')
   const [validFrom, setValidFrom] = useState<string>(toPeriodInput(book?.valid_from))
   const [validUntil, setValidUntil] = useState<string>(toPeriodInput(book?.valid_until))
-  // 배경 테마 (20260818_004). "하위 배지에 일괄 적용" 버튼은 티켓 20260925_1416에서 제거.
-  // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
-  const [backgroundColor, setBackgroundColor] = useState<string>(book?.background_color ?? '')
-  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
-  const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
-    () => parseBlobAnimation(book?.background_animation)
-  )
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -104,23 +91,11 @@ export default function ItemBookForm({
   // 조회(badgeCount/holderUserCount)를 제거하고 정적 확인 문구로 바꿨다.
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
 
-  const validate = (): string | null => {
-    // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
-    // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
-    const trimmedBackgroundColor = backgroundColor.trim()
-    if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
-      return '배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해 주세요'
-    }
-    return null
-  }
-
   /** PUT/POST로 현재 폼 값을 저장한다. 성공 시 저장된 row, 실패 시 에러를 던진다.
-   *  background_shader_id/background_image_url/background_video_url은 보내지 않는다
-   *  (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장 API는
-   *  누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, item_books PUT 참조). */
+   *  배경 테마 필드(background_color·background_animation·background_shader_id·
+   *  background_image_url·background_video_url)는 어드민 폼에서 제거해 보내지 않는다
+   *  (티켓 20261124_2326) — PUT은 누락된 필드를 기존 DB 값 그대로 유지하고, POST는 null로 저장한다. */
   const persist = async (): Promise<ItemBookRow> => {
-    const trimmedBackgroundColor = backgroundColor.trim()
-
     const body = {
       name,
       description,
@@ -133,11 +108,6 @@ export default function ItemBookForm({
       is_active: isActive,
       valid_from: resolvePeriodInputIso(book?.valid_from, validFrom),
       valid_until: resolvePeriodInputIso(book?.valid_until, validUntil),
-      // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
-      // 정리한다. 배경색 모드는 위에서 이미 검증돼 동작이 달라지지 않는다.
-      background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
-      // 배경색과 배타 — 해제(null)도 명시적으로 보내야 PUT의 `!== undefined` 병합에서 저장된다.
-      background_animation: backgroundAnimation,
     }
 
     const res = await fetch(
@@ -156,12 +126,6 @@ export default function ItemBookForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
 
     setLoading(true)
     try {
@@ -413,43 +377,6 @@ export default function ItemBookForm({
       <FieldMessage className="break-keep wrap-break-word text-balance">
         새 아이템 배지의 발급을 멈추고 둘러보기 목록에서 내려요. 이미 받은 사람에게는 계속 보여요.
       </FieldMessage>
-
-      {/* 배경 테마 — 컬렉션 상세화면 렌더링 (20260818_004) */}
-      <div className="border border-border rounded-2xl p-5 space-y-4">
-        <div>
-          <p className="text-sm font-semibold text-foreground">배경 테마</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            이 설정은 이 컬렉션 상세화면에 적용돼요.
-          </p>
-        </div>
-
-        <BackgroundGeneratorPreview
-          backgroundColor={backgroundColor}
-          onBackgroundColorChange={setBackgroundColor}
-          backgroundAnimation={backgroundAnimation}
-          onBackgroundAnimationChange={setBackgroundAnimation}
-          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
-            <>
-              <ItemBookDetailPreviewFrame
-                book={{
-                  name: name || '(컬렉션 이름 미입력)',
-                  description,
-                  image_url: imageUrl || null,
-                }}
-                themed={previewThemed}
-                backgroundLayerStyle={backgroundLayerStyle}
-                backgroundLayerRef={backgroundLayerRef}
-                liveNode={liveNode}
-                backgroundAnimation={previewAnimation}
-              />
-              <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                실제 컬렉션 상세화면과 같은 구조로 보여줘요. 진행도는 예시라 실제 값과 달라요.
-              </p>
-            </>
-          )}
-        />
-
-      </div>
 
       {/* 배지 슬롯 관리 (편집 모드만) */}
       {isEdit && (

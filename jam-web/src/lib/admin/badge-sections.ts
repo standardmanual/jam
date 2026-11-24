@@ -112,7 +112,7 @@ export function badgeSectionDescription(id: BadgeSectionId, ctx: BadgeSectionCon
     case 'reward':
       return '획득할 때 함께 받는 보상과 이 배지가 살아 있는 기간이에요.'
     case 'design':
-      return '배지 이미지와 상세 화면 배경이에요. 결과는 미리보기에 바로 반영돼요.'
+      return '배지 이미지예요. 결과는 미리보기에 바로 반영돼요.'
   }
 }
 
@@ -143,8 +143,6 @@ export interface BadgeSectionSnapshot extends BadgeSectionContext {
   patchAvailable: boolean
   hasPeriod: boolean
   imageUrl: string | null
-  hasAnimation: boolean
-  hasBackgroundColor: boolean
 }
 
 /** 분류 필수 검증 — 액티비티이고 JAM!이 아니면 종목을 1개 이상 골라야 한다(티켓 20260910_2314 해소) */
@@ -167,11 +165,7 @@ export function computeBadgeSectionStatuses(s: BadgeSectionSnapshot): Record<Bad
   if (s.type === 'checkin') link = s.poiCount > 0 ? { tone: 'set', text: `장소 ${s.poiCount}곳` } : { tone: 'idle', text: '장소 없음' }
   else link = linkCount > 0 ? { tone: 'set', text: `${linkCount}개 연결` } : { tone: 'idle', text: '선택' }
 
-  let design: BadgeSectionStatus
-  if (!s.imageUrl) design = { tone: 'bad', text: '이미지 필요' }
-  else if (s.hasAnimation) design = { tone: 'ok', text: '완료 · 애니메이션' }
-  else if (s.hasBackgroundColor) design = { tone: 'ok', text: '완료 · 배경색' }
-  else design = { tone: 'ok', text: '완료' }
+  const design: BadgeSectionStatus = !s.imageUrl ? { tone: 'bad', text: '이미지 필요' } : { tone: 'ok', text: '완료' }
 
   return {
     class: isActivityTypeRequiredMissing(s) ? { tone: 'bad', text: '분류 필요' } : { tone: 'ok', text: '완료' },
