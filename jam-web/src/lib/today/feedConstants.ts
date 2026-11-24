@@ -230,17 +230,20 @@ export const FEED_FULL_IMAGE_ENABLED = false;
 export const FEED_FULL_IMAGE_SCRIM = { opacity: 0, heightPercent: 60 } as const;
 
 /**
- * 카드 유형별 최소 높이 px(샘플 치수, 2026-11-20 사용자 확정, 폭 390 화면의 카드 폭 358 기준). 높이는 `min-height`로 두고 내용이 길면 늘어난다.
+ * 카드 유형별 최소 높이 px(폭 390 화면의 카드 폭 358 기준). 높이는 `min-height`로 두고 내용이 길면 늘어난다.
+ * 2026-11-24 사용자 지시로 그림과 글자 사이가 벌어지지 않게 낮췄다(티켓 20261124_2227): 처음 샘플 치수(2026-11-20 확정)는 그림 영역 + 제목 한 줄 + 설명 두 줄 내용보다 30~40px 커서
+ * 가운데 정렬(`justify-between`)이 남는 높이를 그림과 글자 사이에 몰아 넣었다. 지금 값은 그 «제목 한 줄 + 설명 두 줄» 내용 높이(안쪽 여백 16×2 + 그림 영역 + 간격 16 + 글자 묶음 36+8+40)다.
+ * 카드 높이가 정사각이거나 샘플과 같을 필요는 없다.
  * `full_image`는 정사각이라 높이 대신 비율(1:1)로 둔다(358은 참고 값). `text_box`도 티켓 20261122_2228 R2부터 정사각(`aspect-square`)이라 최소 높이가 없다(키를 지웠다).
  */
 export const FEED_CARD_MIN_HEIGHT = {
-  hero_box: 360,
-  badge_intro: 384,
-  badge_only: 332,
+  hero_box: 316,
+  badge_intro: 348,
+  badge_only: 300,
   full_image: 358,
   // 4회차-3(티켓 20261121_0115): 컬렉션 소개 416, 드랍·픽업 360(티켓 20261122_2229에서 400: 시안 높이), 목록형은 «260 이상»이라 항목 이름 줄이 늘면 늘어난다
-  collection_intro: 416,
-  drop_pickup: 400,
+  collection_intro: 372,
+  drop_pickup: 380,
   gallery_list: 260,
 } as const;
 

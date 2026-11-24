@@ -289,9 +289,9 @@ describe('피할 영역', () => {
     }
   })
 
-  it('드랍·픽업 카드 높이는 최소 400이고 배지 영역 높이는 폭에 비례한다(도장 앵커도 같은 영역)', () => {
+  it('드랍·픽업 카드 높이는 최소 380이고 배지 영역 높이는 폭에 비례한다(도장 앵커도 같은 영역)', () => {
     for (const width of [320, 358, 430]) {
-      expect(cardHeightOf(inputOf('drop_pickup', width))).toBeGreaterThanOrEqual(400)
+      expect(cardHeightOf(inputOf('drop_pickup', width))).toBeGreaterThanOrEqual(380)
       const stamped = cardGeometryOf(inputOf('drop_pickup', width, { imageCount: 0, stampCorner: 'bottom-right' }))
       const stampZone = stamped.avoid[stamped.avoid.length - 1]
       expect(stampZone.b).toBeLessThanOrEqual(16 + dropPickupAreaHeightOf(width) + 16)

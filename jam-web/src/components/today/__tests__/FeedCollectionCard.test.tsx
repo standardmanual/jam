@@ -4,7 +4,7 @@
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) `renderToStaticMarkup`으로 서버가 내보내는 기본 HTML을 단언한다 — 모션 래퍼의 스크립트 동작은
  * `FeedCollectionBurst.test.tsx`가 맡는다. 여기서는 «기본 HTML이 퍼진 모습인가»를 본다.
  *
- * 확인하는 것: 구성(최소 높이 416·영역 높이 240·대표 그림 168·`alt`는 컬렉션 이름), 기본 HTML은 퍼진 모습(불투명도 1·전환 없음·배지 `aria-hidden`·`alt=""`),
+ * 확인하는 것: 구성(최소 높이 372·영역 높이 240·대표 그림 168·`alt`는 컬렉션 이름), 기본 HTML은 퍼진 모습(불투명도 1·전환 없음·배지 `aria-hidden`·`alt=""`),
  * 배지 0~4개(0개면 모션 래퍼 없이 대표 그림만), 칩을 계획 층이 카드 모서리에 그림(퍼진 배지 자리를 피함), 설명 숨김, hex 없음.
  *
  * 실행: cd jam-web && npx vitest run src/components/today/__tests__/FeedCollectionCard.test.tsx
@@ -82,14 +82,14 @@ describe('컬렉션 소개 — 구성', () => {
       const html = render(collectionView({ badgeCount }))
       expect(count(html, 'data-feed-card-root')).toBe(1)
       // 표식은 카드 면(배경색·최소 높이) 요소에 있다
-      expect(html).toMatch(/<div class="relative flex flex-col rounded-2xl p-4[^"]*" style="[^"]*min-height:416px[^"]*" data-feed-card-root="">/)
+      expect(html).toMatch(/<div class="relative flex flex-col rounded-2xl p-4[^"]*" style="[^"]*min-height:372px[^"]*" data-feed-card-root="">/)
     }
   })
 
-  it('최소 높이 416, 영역 높이 240, 대표 그림 168×168(object-contain)이고 alt는 컬렉션 이름이다', () => {
+  it('최소 높이 372, 영역 높이 240, 대표 그림 168×168(object-contain)이고 alt는 컬렉션 이름이다', () => {
     const html = render(collectionView({ description: '활판 골목 끝 현상소.' }))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.collection_intro}px`)
-    expect(FEED_CARD_MIN_HEIGHT.collection_intro).toBe(416)
+    expect(FEED_CARD_MIN_HEIGHT.collection_intro).toBe(372)
     expect(html).toContain('height:240px')
     expect(html).toContain('width:168px;height:168px')
     expect(html).toContain('alt="골목길 필름 스냅"')

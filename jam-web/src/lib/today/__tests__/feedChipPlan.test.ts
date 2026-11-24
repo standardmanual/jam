@@ -6,7 +6,7 @@
  * 칩 없는 카드 빈 계획, 목록형 흐름 줄, 후보 목록·서명 안정성, 7개 유형에서 글자·안전 구역을 가리지 않음.
  *
  * 물러서기 시험은 «전체 폭 추가 금지 띠»(`extraAvoid`)로 위쪽 빈 높이를 정확히 좁혀 단계마다 필요한 높이를 만든다.
- * 히어로(그림 없음)의 카드 높이는 폭 288·343·358 모두 360이라 띠의 높이가 같다.
+ * 히어로(그림 없음)의 카드 높이는 폭 288·343·358 모두 316이라 띠의 높이가 같다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/feedChipPlan.test.ts
  */
@@ -33,9 +33,9 @@ function inputOf(feedType: ChipPlanInput['feedType'], seed: number | string, chi
   return { feedType, seed, chips, titleLines: [8], descriptionLength: 30, descriptionVisible: true, hasImage: true, ...extra }
 }
 
-/** 히어로(그림 없음): 위쪽 `top`px 아래부터 카드 80% 높이까지 전체 폭 금지 띠. 카드 높이는 두 폭 모두 360이다. */
+/** 히어로(그림 없음): 위쪽 `top`px 아래부터 카드 80% 높이까지 전체 폭 금지 띠. 카드 높이는 두 폭 모두 316이다(`FEED_CARD_MIN_HEIGHT.hero_box`). */
 function bandInput(seed: number | string, chips: ChipPlanDraft[], top: number): ChipPlanInput {
-  return inputOf('hero_box', seed, chips, { hasImage: false, extraAvoid: [{ l: 0, t: top / 360, r: 1, b: 0.8 }] })
+  return inputOf('hero_box', seed, chips, { hasImage: false, extraAvoid: [{ l: 0, t: top / 316, r: 1, b: 0.8 }] })
 }
 
 const signOf = (n: number) => (n < 0 ? -1 : 1)
@@ -188,7 +188,7 @@ describe('두 칩의 규칙', () => {
         expect(chip.inset.x * 343 / 100).toBeGreaterThanOrEqual(-6)
         if (!chip.lowered) {
           expect(chip.inset.y).toBeLessThanOrEqual(5)
-          expect(chip.inset.y * 360 / 100).toBeGreaterThanOrEqual(-6)
+          expect(chip.inset.y * 316 / 100).toBeGreaterThanOrEqual(-6)
         }
       }
     }

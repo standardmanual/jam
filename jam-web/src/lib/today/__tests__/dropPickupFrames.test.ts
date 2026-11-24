@@ -89,8 +89,8 @@ describe('배지 영역 높이', () => {
     expect(dropPickupAreaHeightOf(430)).toBeGreaterThan(dropPickupAreaHeightOf(358))
   })
 
-  it('최소 높이 400은 16 + 영역 248 + 16 + 글자 블록 약 100 + 16과 맞는다', () => {
-    expect(FEED_CARD_MIN_HEIGHT.drop_pickup).toBe(400)
-    expect(PAD + dropPickupAreaHeightOf(358) + PAD + 100 + PAD).toBeLessThanOrEqual(FEED_CARD_MIN_HEIGHT.drop_pickup)
+  it('최소 높이 380은 16 + 영역 248 + 16 + 글자 블록 84(제목 한 줄 + 설명 두 줄) + 16과 맞는다', () => {
+    expect(FEED_CARD_MIN_HEIGHT.drop_pickup).toBe(380)
+    expect(PAD + dropPickupAreaHeightOf(358) + PAD + 84 + PAD).toBeLessThanOrEqual(FEED_CARD_MIN_HEIGHT.drop_pickup)
   })
 })

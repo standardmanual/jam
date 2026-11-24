@@ -111,7 +111,7 @@ describe('FeedCard — 공통', () => {
 })
 
 describe('히어로(hero_box)', () => {
-  it('최소 높이 360, 이미지 박스 높이 184, 제목과 설명(보임)', () => {
+  it('최소 높이 316, 이미지 박스 높이 184, 제목과 설명(보임)', () => {
     const html = render(feedView('hero_box', { description: '먼저 참가해 봐요.', box_shape: 'round' }))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.hero_box}px`)
     expect(html).toContain('height:184px')
@@ -322,7 +322,7 @@ describe('텍스트(text_box)', () => {
 describe('배지 소개(badge_intro)', () => {
   const base = { badgeImageUrl: 'https://cdn.example/badge.png', badgeName: '높은 곳 배지', description: '700m를 넘기면 받아요.' }
 
-  it('최소 높이 384, 배지 그림 208×208(영역 높이 216), 설명 보임', () => {
+  it('최소 높이 348, 배지 그림 208×208(영역 높이 216), 설명 보임', () => {
     const html = render(feedView('badge_intro', base))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.badge_intro}px`)
     expect(html).toContain('height:216px')
@@ -353,7 +353,7 @@ describe('배지 소개(badge_intro)', () => {
 describe('배지만(badge_only)', () => {
   const base = { title: '해가 짧아진 저녁의\n한 바퀴', badgeImageUrl: 'https://cdn.example/badge.png', badgeName: '파장의 골목 배지' }
 
-  it('최소 높이 332, 제목이 위·배지가 아래, 설명은 숨김', () => {
+  it('최소 높이 300, 제목이 위·배지가 아래, 설명은 숨김', () => {
     const html = render(feedView('badge_only', { ...base, description: '그려지지 않는 설명', show_description: true }))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.badge_only}px`)
     expect(html.indexOf('<h3')).toBeLessThan(html.indexOf('badge.png'))

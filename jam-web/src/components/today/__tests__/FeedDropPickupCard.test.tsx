@@ -3,7 +3,7 @@
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) `renderToStaticMarkup`으로 마크업 문자열을 단언한다.
  *
- * 확인하는 것: 구성(최소 높이 400·배지 영역 기준 326×248 비율), 배지 수별 배치 스타일(중심 %·한 변 %·기울기·앞뒤 순서)과 박스 없음, 배지 1~5개·6개 이상은 앞 5개만, 이미지 없는 배지는 이름 글자,
+ * 확인하는 것: 구성(최소 높이 380·배지 영역 기준 326×248 비율), 배지 수별 배치 스타일(중심 %·한 변 %·기울기·앞뒤 순서)과 박스 없음, 배지 1~5개·6개 이상은 앞 5개만, 이미지 없는 배지는 이름 글자,
  * 칩 «DROP»·«PICKUP» 두 개를 칩 계획 층이 카드 모서리에 그림, 카드 전체 링크 하나, 설명 숨김, hex 없음.
  *
  * 실행: cd jam-web && npx vitest run src/components/today/__tests__/FeedDropPickupCard.test.tsx
@@ -79,10 +79,10 @@ const MANY: FeedCardViewBadge[] = [
 const badgeStyles = (html: string) => [...html.matchAll(/<div data-drop-badge="" class="[^"]*" style="([^"]*)"/g)].map((match) => match[1])
 
 describe('드랍·픽업 — 구성', () => {
-  it('최소 높이 400, 배지 영역은 326×248 비율이고 제목·설명이 아래에 있다', () => {
+  it('최소 높이 380, 배지 영역은 326×248 비율이고 제목·설명이 아래에 있다', () => {
     const html = render(dropView({ description: '남는 배지는 드랍해 봐요.' }))
     expect(html).toContain(`min-height:${FEED_CARD_MIN_HEIGHT.drop_pickup}px`)
-    expect(FEED_CARD_MIN_HEIGHT.drop_pickup).toBe(400)
+    expect(FEED_CARD_MIN_HEIGHT.drop_pickup).toBe(380)
     expect(html).toContain('aspect-ratio:326 / 248')
     expect(html).toContain('남는 배지는 드랍해 봐요.')
     expect(html.indexOf('data-drop-badge')).toBeLessThan(html.indexOf('<h3'))

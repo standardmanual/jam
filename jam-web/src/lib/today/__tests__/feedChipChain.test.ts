@@ -121,9 +121,10 @@ describe('이웃 규칙(120장 연쇄)', () => {
 
   /**
    * 후보로 풀 수 없는 위반: 드랍·픽업처럼 폭 343에서 칩 둘이 함께 못 들어가 «분류 칩 빼기»(물러서기 5단계)까지 간 카드는 맞는 후보가 알약 하나뿐이라
-   * 알약이 이어져도 깰 방법이 없다(가리지 않기가 우선). 이 경우만 허용하고 나머지 위반은 0이어야 한다.
+   * 알약이 이어져도 깰 방법이 없다(가리지 않기가 우선). 스티커가 들어갈 자리가 없어 «검정 알약 분류 칩으로 바꾸기»(3단계)에서 멈춘 카드도 같다.
+   * 드랍·픽업 최소 높이를 400에서 380으로 낮추며(티켓 20261124_2227) 표본의 110번째 카드가 이 경우가 됐다. 이 경우만 허용하고 나머지 위반은 0이어야 한다.
    */
-  const forced = (index: number) => detailed[index].plan.backoff >= 5 && !detailed[index].plan.chips.some((chip) => chip.presentation === 'sticker')
+  const forced = (index: number) => detailed[index].plan.backoff >= 3 && !detailed[index].plan.chips.some((chip) => chip.presentation === 'sticker')
   const detailedIndexOfRow = detailed.flatMap((step, index) => (featuresOf(step.plan) ? [index] : []))
 
   for (const key of ['pos', 'dir', 'shape'] as const) {
