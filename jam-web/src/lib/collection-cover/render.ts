@@ -99,8 +99,8 @@ export interface CollectionCoverInput {
   /** 컬렉션 id. 배경색 시드는 `${seed}#${rerolls}` */
   seed: string;
   rerolls: number;
-  /** 다른 컬렉션 표지 배경의 OKLCH 색상각 */
-  usedHues: readonly number[];
+  /** 다른 컬렉션 표지 배경색(#rrggbb) 목록 */
+  usedColors: readonly string[];
   /** 지정하면 생성 대신 이 색(#rrggbb)을 쓴다 */
   bgOverride?: string;
   textColorOverrides?: Partial<TextColors>;
@@ -155,7 +155,7 @@ export function renderCollectionCover(
     const bg = generateBackground({
       seed: coverSeed(input.seed, input.rerolls),
       badge: analysis,
-      usedHues: input.usedHues,
+      usedColors: input.usedColors,
     });
     bgHex = bg.hex;
     bgSource = 'generated';

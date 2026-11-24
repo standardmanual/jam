@@ -98,12 +98,6 @@ export function oklchToRgb(L: number, C: number, h: number): Rgb {
   ) as Rgb;
 }
 
-/** 색의 OKLCH 색상각(0~360). 다른 컬렉션 `cover_params.bgHex`로 usedHues를 만들 때 쓴다 */
-export function hueOfHex(hex: string): number {
-  const [, a, b] = srgbToOklab(hexToRgb(hex));
-  return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
-}
-
 /** 시드 문자열: 컬렉션 id + 다시 뽑기 횟수 */
 export const coverSeed = (collectionId: string, rerolls: number): string => `${collectionId}#${rerolls}`;
 
@@ -126,44 +120,64 @@ export interface GeneratedBackground {
   hex: string;
   rgb: Rgb;
   oklch: { L: number; C: number; h: number };
-  /** 0이면 배지 70°·다른 표지 30° 조건 그대로 찾은 것, 1·2면 50°/20°, 30°/0°로 완화한 것 */
+  /** 0이면 배지 70°·색 거리 0.08 조건 그대로 찾은 것, 1·2면 50°/0.05, 30°/0으로 완화한 것 */
   relaxStep: number;
 }
 
+/** 완화 단계 [배지 색상각 간격, 다른 표지와의 OKLab 색 거리 하한] */
 const RELAX_STEPS: ReadonlyArray<readonly [number, number]> = [
-  [70, 30],
-  [50, 20],
+  [70, 0.08],
+  [50, 0.05],
   [30, 0],
 ];
 
+/** 그 색상각에서 L 0.30~0.95(0.01 간격) 중 가장 높은 최대 채도 */
+export function peakChroma(h: number): number {
+  let peak = 0;
+  for (let i = 30; i <= 95; i++) peak = Math.max(peak, maxChroma(i / 100, h));
+  return peak;
+}
+
+const oklabDist = (a: readonly number[], b: readonly number[]): number =>
+  Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
 /**
- * 배경색 생성(OKLCH, 티켓 20261124_2026). 난수 순서는 색상 h(0~360) → 밝기 L(0.30~0.90) → 채도 비율 k(0.60~0.96),
- * C = 그 L·h의 최대 채도 × k. C 0.15 미만·배지/다른 표지와 색상각 근접은 버린다.
+ * 배경색 생성(OKLCH, 티켓 20261124_2102). 색상 h를 먼저 정하고(배지 간격 미만이면 다음 색상),
+ * 그 색상 안에서 최대 40번 L(0.30~0.92)·채도 비율 k(0.60~0.96)를 뽑는다. 난수 순서는 h, (L, k) 쌍 순.
+ * C = 그 L·h의 최대 채도 × k. 채도 하한 = min(0.15, 0.85 × 그 색상 최고 채도).
+ * 다른 표지 배경(usedColors)과 OKLab 거리가 하한 미만이면 버린다.
  * 제목 대비: 선화 배지는 검정 제목 대비 4.5 이상만(어두운 배경 불가), 그 밖에는 검정 또는 흰 제목 대비 4 이상.
  */
 export function generateBackground(args: {
   seed: string;
   badge: { okHue: number | null; lineArt: boolean };
-  usedHues: readonly number[];
+  usedColors: readonly string[];
 }): GeneratedBackground {
-  const { seed, badge, usedHues } = args;
+  const { seed, badge, usedColors } = args;
   const r = rng(seed);
   const ink = hexToRgb(INK_HEX);
   const white: Rgb = [255, 255, 255];
+  const usedLabs = usedColors.map((c) => srgbToOklab(hexToRgb(c)));
   for (let step = 0; step < RELAX_STEPS.length; step++) {
-    const [badgeGap, usedGap] = RELAX_STEPS[step];
-    for (let i = 0; i < 600; i++) {
+    const [badgeGap, minDist] = RELAX_STEPS[step];
+    for (let i = 0; i < 300; i++) {
       const h = r() * 360;
-      const L = 0.3 + r() * 0.6;
-      const k = 0.6 + r() * 0.36;
-      const C = maxChroma(L, h) * k;
-      if (C < C_MIN) continue;
       if (badge.okHue != null && hueDist(h, badge.okHue) < badgeGap) continue;
-      if (usedHues.some((u) => hueDist(h, u) < usedGap)) continue;
-      const rgb = oklchToRgb(L, C, h);
-      const onInk = contrastRatio(rgb, ink);
-      if (badge.lineArt ? onInk < 4.5 : onInk < 4 && contrastRatio(rgb, white) < 4) continue;
-      return { hex: rgbToHex(rgb), rgb, oklch: { L, C, h }, relaxStep: step };
+      const cMin = Math.min(C_MIN, 0.85 * peakChroma(h));
+      for (let j = 0; j < 40; j++) {
+        const L = 0.3 + r() * 0.62;
+        const k = 0.6 + r() * 0.36;
+        const C = maxChroma(L, h) * k;
+        if (C < cMin) continue;
+        const rgb = oklchToRgb(L, C, h);
+        if (minDist > 0) {
+          const lab = srgbToOklab(rgb);
+          if (usedLabs.some((u) => oklabDist(lab, u) < minDist)) continue;
+        }
+        const onInk = contrastRatio(rgb, ink);
+        if (badge.lineArt ? onInk < 4.5 : onInk < 4 && contrastRatio(rgb, white) < 4) continue;
+        return { hex: rgbToHex(rgb), rgb, oklch: { L, C, h }, relaxStep: step };
+      }
     }
   }
   throw new Error('배경색 후보를 찾지 못했어요');

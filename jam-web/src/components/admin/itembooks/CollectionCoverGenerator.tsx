@@ -17,7 +17,6 @@ import {
 } from '@/components/admin/ui/alert-dialog'
 import {
   COVER_SIZE,
-  hueOfHex,
   renderCollectionCover,
   type CoverCanvasLike,
   type CollectionCoverResult,
@@ -330,7 +329,6 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
 
-  const usedHues = useMemo(() => otherBgHexes.map((h) => hueOfHex(h)), [otherBgHexes])
   const titleEn = nameEn.trim().toUpperCase()
   const badge = badges.find((b) => b.id === state.badgeId) ?? null
   const blocked = !badge || !tribeNameEn
@@ -372,7 +370,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
           badgeImage: image,
           seed: collectionId,
           rerolls: state.rerolls,
-          usedHues,
+          usedColors: otherBgHexes,
           bgOverride: state.bgManual ?? state.bgSaved ?? undefined,
           textColorOverrides: state.textOverrides,
         },
@@ -383,7 +381,7 @@ export function CollectionCoverGenerator(props: CollectionCoverGeneratorProps) {
     } catch (e) {
       setError(`[현상] 미리보기를 그리지 못했어요.\n[원인] ${e instanceof Error ? e.message : '알 수 없는 오류'}\n[해결책] 다른 대표 배지를 골라 보세요.`)
     }
-  }, [canvas, canRender, image, tribeNameEn, titleEn, collectionId, state, usedHues])
+  }, [canvas, canRender, image, tribeNameEn, titleEn, collectionId, state, otherBgHexes])
 
   const loading = !blocked && (!fontReady || !image)
 

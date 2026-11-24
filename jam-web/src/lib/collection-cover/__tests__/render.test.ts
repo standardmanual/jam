@@ -35,7 +35,7 @@ describe('renderCollectionCover', () => {
         badgeImage: makeBadge() as unknown as CoverCanvasLike,
         seed: 'col-1',
         rerolls: 0,
-        usedHues: [],
+        usedColors: [],
       },
       { createCanvas: factory }
     );
@@ -58,7 +58,7 @@ describe('renderCollectionCover', () => {
         badgeImage: makeBadge() as unknown as CoverCanvasLike,
         seed: 'col-2',
         rerolls: 3,
-        usedHues: [],
+        usedColors: [],
         bgOverride: '#112233',
         textColorOverrides: { title: '#ffffff' },
       },
