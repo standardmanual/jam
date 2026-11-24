@@ -99,7 +99,7 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('recipe_reveal은 레시피·이동경로를 받는다(이동경로를 비우면 기본 /combine, 티켓 20261006_1218)', () => {
     expect(todayTemplateFields('recipe_reveal')).toEqual({ recipe: true, targetHref: true })
   })
-  it('content_intro는 설명문·이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없다(티켓 20261101_2054)', () => {
+  it('content_intro는 이동 주소 칸만 열린다 — 배지·미션·컬렉션·지역·랭킹·레시피 칸이 없고, 설명문 칸은 카드 유형이 연다(티켓 20261101_2054, 20261124_1119)', () => {
     expect(todayTemplateFields('content_intro')).toEqual({ targetHref: true })
   })
   it('처음 보는 템플릿 값은 던지지 않고 빈 칸 목록을 돌려준다(어드민 상세·폼이 그 카드 하나 때문에 오류 화면이 되지 않는다)', () => {

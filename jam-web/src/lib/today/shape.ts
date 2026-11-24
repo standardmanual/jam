@@ -9,14 +9,14 @@
 import type { TodayCardTemplateType } from '@/types/database'
 
 /**
- * 설명 문단을 그리는 템플릿(티켓 20261109_1458). 배지 소개와 컨텐츠 소개만 설명 문단을 그리고, 그 밖의 템플릿은 `description` 값이 있어도 그리지 않는다.
- * DB 칸과 운영 입력 칸은 그대로다.
+ * 옛 기준의 설명 문단 템플릿 목록(티켓 20261109_1458). 홈이 템플릿으로 설명을 그리던 때는 배지 소개와 컨텐츠 소개만 설명 문단을 그렸다.
+ * 지금 홈은 카드 유형으로 그린다. DB 칸과 운영 입력 칸은 그대로다.
  * 홈과 어드민 폼·조회 화면은 이 목록을 읽지 않는다(홈은 `feedLook.ts`의 `DESCRIPTION_DEFAULT`, 티켓 20261122_1101. 어드민은 `feedTypeShowsDescription`, 티켓 20261124_1119).
  * 남은 사용처는 카드 유형 칸이 없는 CLI 등록 묶음의 옛 거절 규칙(`registerChecks/homeFeedFields.ts`의 `validateCard`)과 그 시험이다.
  */
 export const DESCRIPTION_TEMPLATES = ['badge_spotlight', 'content_intro'] as const satisfies readonly TodayCardTemplateType[]
 
-/** 이 템플릿의 카드가 설명 문단을 그리는지. */
+/** 옛 템플릿 규칙에서 이 템플릿이 설명문을 받는지. 카드 유형 칸이 없는 CLI 등록 묶음의 검사만 쓴다(티켓 20261124_1119). */
 export function showsDescription(template: TodayCardTemplateType): boolean {
   return (DESCRIPTION_TEMPLATES as readonly string[]).includes(template)
 }

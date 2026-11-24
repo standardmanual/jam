@@ -61,7 +61,7 @@ describe('resolveTitleInImage — 이미지에 제목 있음 (1453 결정 6·12,
   })
 })
 
-describe('showsDescription — 설명 문단을 그리는 템플릿 (티켓 20261109_1458)', () => {
+describe('showsDescription — 옛 설명문 템플릿 규칙, CLI 등록 묶음 전용 (티켓 20261109_1458, 20261124_1119)', () => {
   it('배지 소개와 컨텐츠 소개만 그린다', () => {
     expect([...DESCRIPTION_TEMPLATES]).toEqual(['badge_spotlight', 'content_intro'])
     expect(showsDescription('badge_spotlight')).toBe(true)
