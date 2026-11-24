@@ -662,10 +662,11 @@ function copyFieldsOf(diff: readonly OpsEditDiffEntry[]): Record<string, string>
 
 /**
  * 고친 문안이 카피 규칙(`copyRules.ts`)·한 줄·글자 수 검사를 넘는지 본다. `revalidateOpsItem`(제출 형식 검사)은 이 규칙을 돌리지 않고, 예약 등록 변환
- * (`toTodayCardRegisterInput`·`toMissionRegisterInput`)이 `validateCard`·`validateMission`으로 돌린다. 같은 변환을 고친 항목에 돌려 **고친 문안 칸의 오류만** 모은다
- * (다른 칸의 오류는 예약 때 이미 통과했거나 이 경로에서 고치지 않는 칸이다). 문장은 칸 이름 접두(`card.title:`)를 떼고 사유만 싣는다.
+ * (`toTodayCardRegisterInput`·`toMissionRegisterInput`)이 `validateCard`·`validateMission`으로 돌린다. 같은 변환을 고친 항목에 돌려 **고친 문안 칸(`copy.<키>`)의 오류만** 모은다
+ * (다른 칸의 오류는 예약 때 이미 통과했거나, 검토중이면 예약 등록 때 따로 걸러진다). 문장은 칸 이름 접두(`card.title:`)를 떼고 사유만 싣는다.
+ * 예약됨 문안 수정과 검토중 수정이 함께 쓴다 — 검토중에 고친 문안이 예약 등록 때 처음 걸려 항목이 실패하지 않게 한다(티켓 20261124_1050).
  */
-function scheduledCopyRuleErrors(item: ItemRow, newEdited: Json | null, diff: readonly OpsEditDiffEntry[]): Record<string, string> {
+function copyRuleErrors(item: ItemRow, newEdited: Json | null, diff: readonly OpsEditDiffEntry[]): Record<string, string> {
   const registerItem: OpsRegisterItem = {
     original: item.original,
     edited: newEdited,
@@ -676,7 +677,7 @@ function scheduledCopyRuleErrors(item: ItemRow, newEdited: Json | null, diff: re
   }
   const result =
     item.kind === 'mission' ? toMissionRegisterInput(registerItem, { id: item.id }) : toTodayCardRegisterInput(registerItem, { id: item.id, actorId: '' })
-  const touched = new Set(diff.map((entry) => entry.path))
+  const touched = new Set(diff.filter((entry) => splitEditPath(entry.path)?.root === 'copy').map((entry) => entry.path))
   const fieldErrors: Record<string, string> = {}
   for (const issue of result.errors) {
     if (touched.has(issue.path) && !(issue.path in fieldErrors)) fieldErrors[issue.path] = splitFormatError(issue.message).reason
@@ -837,8 +838,8 @@ export async function editItem(
     return fail(400, '고친 내용을 저장하지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors })
   }
 
-  if (scheduled) {
-    const ruleErrors = scheduledCopyRuleErrors(item, newEdited, diff)
+  if (hasScheduledCopyEdit(item.kind)) {
+    const ruleErrors = copyRuleErrors(item, newEdited, diff)
     if (Object.keys(ruleErrors).length > 0) {
       return fail(400, '고친 내용을 저장하지 못했어요. 표시된 칸을 확인해 주세요.', { fieldErrors: ruleErrors })
     }

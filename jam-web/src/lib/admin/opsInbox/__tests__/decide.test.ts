@@ -722,6 +722,26 @@ describe('직접 수정', () => {
     expect(update?.filters).toContainEqual(['updated_at', T0])
   })
 
+  it('검토중 항목도 고친 문안이 카피 규칙을 어기면 400이고 저장하지 않는다(티켓 20261124_1050, 49주차 c-lock-open)', async () => {
+    // 검토중에 「~하세요」로 고친 제목이 저장됐다가 예약 등록 때 처음 걸려 항목이 실패했다.
+    const before = JSON.stringify(item(I1))
+    const out = failure(await edit({ 'copy.title': '잠긴 배지를 열어보세요' }))
+    expect(out.status).toBe(400)
+    expect(out.extra).toMatchObject({ fieldErrors: { 'copy.title': expect.stringContaining('해 봐요') } })
+    expect(JSON.stringify(item(I1))).toBe(before)
+    expect(decisions()).toHaveLength(0)
+    // 같은 뜻을 규칙대로 쓰면 통과한다
+    expect(success(await edit({ 'copy.title': '잠긴 배지를 열어 봐요' })).ok).toBe(true)
+  })
+
+  it('검토중 항목의 카피 규칙 검사는 고친 문안 칸만 본다', async () => {
+    // 고치지 않은 문안의 위반(제출 원본)이나 문안이 아닌 칸 수정은 이 검사로 막지 않는다 — 예약 등록 때 따로 걸러진다.
+    seed([makeItem(I1, 0, { original: makeOriginal({ copy: { title: '지금 운동하세요', body: '오늘은 비가 와요' } }) })])
+    expect(success(await edit({ user_experience: '새 문장' })).ok).toBe(true)
+    const out = failure(await edit({ 'copy.title': '체크인 3곳' }))
+    expect(Object.keys((out.extra as { fieldErrors: Record<string, string> }).fieldErrors)).toEqual(['copy.title'])
+  })
+
   it('검토중이 아닌 항목은 고칠 수 없다(409)', async () => {
     const out = failure(await editItem(service, { bundleId: B, itemId: I3, actor: 'a', values: { 'copy.title': 'x' }, expectedUpdatedAt: T0 }))
     expect(out.status).toBe(409)

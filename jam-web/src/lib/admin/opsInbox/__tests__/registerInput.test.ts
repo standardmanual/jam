@@ -585,12 +585,23 @@ describe('toTodayCardRegisterInput · 검사 문장의 경로 매핑(결정 7)',
     expect(badge.payload).toMatchObject({ template_type: 'badge_spotlight', description: '한 줄 설명' })
   })
 
-  it('설명 문단을 그리지 않는 템플릿에 설명문을 적으면 copy.description 오류다(티켓 20261109_1519)', () => {
-    const result = toCard(cardItem({ copy: { title: '제목', description: '보이지 않는 설명' }, resource: { template_type: 'drop_alert' } }))
+  it('설명 문단은 카드 유형이 정해서, 옛 템플릿 목록 밖의 템플릿도 설명문을 받는다(티켓 20261124_1050, 49주차 미션 카드 실패)', () => {
+    // 49주차 c-mission-*: 히어로 유형 미션 소개 카드에 설명을 적어 예약 등록 때 실패했다. 홈은 히어로 유형의 설명을 그린다.
+    const mission = toCard(
+      cardItem({ copy: { title: '오후의 걸음', description: '찬 공기 속을 한 번 길게 걸어요.' }, resource: { template_type: 'mission_spotlight', show_description: true } }),
+      { mission_id: UUID_A }
+    )
+    expect(mission.errors).toEqual([])
+    expect(mission.payload).toMatchObject({ template_type: 'mission_spotlight', description: '찬 공기 속을 한 번 길게 걸어요.', show_description: true })
+    const drop = toCard(cardItem({ copy: { title: '제목', description: '한 줄 설명' }, resource: { template_type: 'drop_alert' } }))
+    expect(drop.errors).toEqual([])
+    expect(drop.payload).toMatchObject({ template_type: 'drop_alert', description: '한 줄 설명' })
+  })
+
+  it('설명문이 아닌 칸의 템플릿 규칙은 그대로다', () => {
+    const result = toCard(cardItem({ resource: { template_type: 'drop_alert', recipe_id: UUID_A } }))
     expect(result.payload).toBeNull()
-    expect(paths(result.errors)).toEqual(['copy.description'])
     expect(result.errors[0].message).toContain('drop_alert 템플릿은 이 필드를 쓰지 않아요')
-    expect(result.errors[0].message).toContain('badge_spotlight·content_intro')
   })
 
   it('resource 칸·copy 칸 오류가 각자의 경로로 나온다', () => {

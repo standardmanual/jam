@@ -172,10 +172,19 @@ export function checkUuidField(errors: string[], key: string, value: unknown): v
   }
 }
 
+export interface ValidateCardOptions {
+  /**
+   * 카드 유형(`resource.feed_type`)이 설명 문단을 정하는 경로인지. 홈은 설명 문단을 템플릿이 아니라 카드 유형·`show_description`으로
+   * 그린다(티켓 20261122_1101). 운영 묶음 등록 변환은 유형이 필수라 참을 넘기고, 이때는 템플릿 규칙으로 설명문을 거절하지 않는다.
+   * 유형이 없는 CLI 묶음은 넘기지 않아 옛 템플릿 규칙 그대로다(티켓 20261124_1050).
+   */
+  feedTypeDecidesDescription?: boolean
+}
+
 /**
  * 카드 한 건을 검사해 오류 문장을 `errors`에 쌓는다(첫 오류에서 멈추지 않는다). 카드가 객체가 아니면 한 줄만 쌓고 끝낸다.
  */
-export function validateCard(errors: string[], input: unknown): void {
+export function validateCard(errors: string[], input: unknown, options: ValidateCardOptions = {}): void {
   const prefix = 'card.'
   if (!isPlainObject(input)) {
     errors.push('card: 객체여야 해요.')
@@ -271,6 +280,7 @@ export function validateCard(errors: string[], input: unknown): void {
   if (templateType !== null) {
     const fields = TODAY_FIELDS_FOR[templateType]
     for (const [key, fieldKey] of Object.entries(TEMPLATE_FIELD_KEY)) {
+      if (key === 'description' && options.feedTypeDecidesDescription) continue
       if (isFilled(card[key]) && !fields[fieldKey]) {
         // 설명문은 폼이 비우지 않고 칸만 숨긴다(티켓 20261109_1519) — 홈이 설명 문단을 그리는 템플릿 목록(`DESCRIPTION_TEMPLATES`)을 알려 준다.
         const reason = key === 'description' ? `홈은 ${DESCRIPTION_TEMPLATES.join('·')}에서만 설명 문단을 그려요` : '어드민 폼도 저장할 때 비워요'

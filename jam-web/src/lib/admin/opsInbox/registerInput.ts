@@ -430,7 +430,8 @@ export function toTodayCardRegisterInput(
   // 지금 등록 스크립트와 같은 검사. `card.<칸>:` 문장을 운영 항목 경로로 옮긴다.
   const pathOf = (field: string): string => paths[field] ?? (CARD_COMMON_KEYS.includes(field) ? field : `resource.${field}`)
   const checkErrors: string[] = []
-  validateCard(checkErrors, card)
+  // 설명 문단은 카드 유형이 정한다(위에서 유형을 필수로 본다) — 템플릿 규칙으로 설명문을 거절하지 않는다(티켓 20261124_1050).
+  validateCard(checkErrors, card, { feedTypeDecidesDescription: true })
   for (const sentence of checkErrors) {
     // 시작 시각을 읽지 못해 종료 시각을 채울 수 없을 때, 종료 시각의 「필수」 문장은 시작 시각 오류와 겹친다.
     if (card.ends_at === undefined && sentence === 'card.ends_at: 필수 항목이 없어요.') continue

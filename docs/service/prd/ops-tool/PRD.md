@@ -641,6 +641,7 @@ stateDiagram-v2
 - 바뀐 칸이 없으면 [저장하기]가 비활성이고, 서버도 400 「바뀐 내용이 없어요.」다. 수정 전후 차이는 「문안 · body: 전 → 후」 한 줄씩 보인다.
 - **저장 때 형식을 다시 검사한다.** 고친 칸에 걸린 오류(공개·종료 시각은 한 묶음으로 본다)는 저장을 막고 400 `fieldErrors`로 칸별 문장을 돌려준다. 그 밖의 오류는 항목 형식 오류를
   새 결과로 바꾸고, 묶음 형식 오류 목록에서 그 항목의 줄(`items[n].`로 시작)을 새 결과로 바꾼다. 그래서 이미 있던 오류를 고치면 형식 오류 표시가 사라진다.
+- **고친 문안에 카피 규칙을 건다(티켓 20261124_1050).** 홈피드 카드·미션은 아래 «예약됨 문안 수정»과 같은 검사(예약 등록 변환을 고친 항목에 다시 돌려 **고친 `copy.<키>` 칸의 오류만** 400 `fieldErrors`)를 검토중 수정에도 건다. 검토중에 「~하세요」로 고친 제목이 저장됐다가 예약 등록 때 처음 걸려 항목이 실패한 일(49주차 `c-lock-open`) 때문이다. 고치지 않은 문안과 문안이 아닌 칸은 이 검사로 막지 않는다.
 - **동시 수정.** 항목 update는 `updated_at`이 화면이 본 값(`expectedUpdatedAt`)일 때만 한다. 어긋나면 409다. 초안을 연 뒤 항목이 바뀌었으면 화면이 저장을 막고 다시 열도록 안내한다.
 
 **색 채우기(티켓 20261007_1146, 상위 20261006_1804).** 검토중이고 「색 대기」(`color_pending: true`)인 항목에만, 카드 미리보기 바로 아래(기획 상세와 일정표 서랍, `OpsColorPairPicker`)에 「색을 골라 주세요」 상자가 나온다. 승인 전에 채우도록 안내한다.
@@ -1087,7 +1088,7 @@ stateDiagram-v2
 - **레시피 공개 카드의 칸(⑫-b, 티켓 20261006_1218).** `recipe_id`는 `recipe_reveal` 카드만 받는다(다른 템플릿에 적으면 형식 오류, 어드민 폼이 저장할 때 비우는 칸이라 «적은 대로 등록된다»를 지킨다). `target_href`도 받는다
   (운영자가 지정한 주소가 레시피 공개 카드의 기본 `/combine`보다 앞선다). 레시피 칸은 비어도 카드가 그려진다(레시피 줄 없이). 등록 전 검사는 `recipe_id`가 있으면 `combination_recipes`에 그 레시피가 있는지 본다
   (공개 전 레시피도 가리킬 수 있다). 연결로 채운 `recipe_id`는 같은 실행에서 만들 레시피라 존재 확인에서 뺀다. 사유는 「연결한 레시피를 찾을 수 없어요」다.
-- **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`의 `validateCard`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 60자)이고
+- **종류별 검사.** 카드는 홈피드 등록 묶음의 카드 검사(`jam-web/src/lib/admin/registerChecks/homeFeedFields.ts`의 `validateCard`: 템플릿별로 쓰지 않는 칸과 필수 참조, 노출 태그, 설명문 60자)이고, 운영 묶음 경로는 설명문을 템플릿으로 거절하지 않는다(설명 문단은 카드 유형 `feed_type`·`show_description`이 정한다. 옵션 `feedTypeDecidesDescription`, 티켓 20261124_1050)
   이미지는 보지 않는다(§8.8). 미션은 미션 등록 묶음 검사(`registerChecks/missionFields.ts`의 `validateMission`)다. 두 검사가 쓰는 정규식·보조 함수는 `registerChecks/bundleRules.ts`에 있고,
   등록 스크립트(`registerHomeFeedBundle.mjs`·`registerMissionBundle.mjs`)는 같은 함수를 부른다(티켓 20261002_1027). JAM! 배지는 어드민 배지 검증(`jam-web/src/lib/admin/badge-validation.ts`의 조건 저장 규칙)과 발급 조건 유무, 레시피는
   `normalizeRecipePayload`와 슬롯 후보 배지 존재 확인, 드랍 일정은 `parseAmbientDropScheduleInput`(§3.1)이다. 컬렉션 틀은 트라이브와 보상 배지의 존재를 본다.
