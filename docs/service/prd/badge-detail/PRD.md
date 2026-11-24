@@ -1,12 +1,14 @@
 ---
 type: prd
 status: draft
-description: "배지 상세 화면 3종(아이템·체크인·액티비티)의 티켓 디자인 규격이다. 기본 바탕 위 티켓 머리, 절취선, 그라데이션 아래 블록, 티켓 범위 토큰, 티켓색 결정(홈 카드 이어받기·무작위), 사진 자리와 미획득 실루엣, Strava 버튼을 정한다."
+description: "배지 상세 화면 3종(아이템·체크인·액티비티)과 컬렉션 상세의 티켓 디자인 규격이다. 기본 바탕 위 티켓 머리, 절취선, 그라데이션 아래 블록, 티켓 범위 토큰, 티켓색 결정(홈 카드 이어받기·무작위), 사진 자리와 미획득 실루엣, Strava 버튼을 정한다."
 related:
   - "20261122_1221"
   - "20261122_1222"
   - "20261122_1223"
   - "20261122_2226"
+  - "20261124_2252"
+  - "20261124_2253"
 ---
 
 # 배지 상세 티켓 PRD
@@ -72,3 +74,18 @@ related:
 | Strava 버튼 | `jam-web/src/components/StravaLink.tsx` |
 | 세 변형 조립 | `jam-web/src/app/(main)/badges/[id]/page.tsx` |
 | 종류 글자 | `jam-web/src/lib/i18n/ko.ts`의 `badges.ticketKind*` |
+
+## 9. 컬렉션 상세 (티켓 20261124_2252·2253)
+
+> 상위 티켓 [20261124_2252](../../../tickets/p2-normal/20261124_2252_UI_컬렉션-상세-화면을-배지-상세와-같은-티켓-디자인으로-리뉴얼한다-상위.md). 1회차 20261124_2253이 서비스 화면 `/collections/[id]`를, 2회차 20261124_2254가 어드민 미리보기 프레임을 맞춘다.
+
+- **범위**: `/collections/[id]` 본인·타인(`?u=`)·장착(`slot=1`) 보기 모두 같은 틀이다. 404·로그인 이동·슬롯 선택 시트·«모두 빼기» 시트(티켓 밖 오버레이)는 그대로다. 전체 화면 배경 테마 레이어와 대표 카드 블롭 애니메이션은 그리지 않는다.
+- **틀**: 배지 상세의 `BadgeTicket`을 그대로 쓴다(값은 위 §3~§5와 같다). 머리는 로고와 `COLLECTION`이고 날짜 줄이 없다. 순서는 머리 → 절취선 1 → [표지 1:1 → 글자 상자 → 진행 표시 → 절취선 2 → 이야기 글 → 슬롯 칸 → 체크인 배지]다.
+- **티켓색**: `item_books.cover_params.bgHex`를 OKLCH로 읽어 명도를 `max(0.2, L - 0.10)`으로 낮추고 채도·색상은 유지한다(색역 밖이면 채도만 줄인다). 끝색은 배지 상세와 같은 `ticketEndColor`다. 값이 없거나 `#rrggbb`가 아니면 통합 팔레트 일곱 색 중 하나로 대신한다. 서버가 정해 첫 HTML에 `data-ticket-color="cover"`와 인라인 `--ticket`(hex)으로 담는다. 홈 카드 색 이어받기(`tc`·`tb`)는 쓰지 않는다.
+- **글자색 두 겹**: 티켓 면 위 글자(머리·로고·글자 상자·진행 «n/N»·이야기 글·체크인 제목·힌트)는 `--ticket-text`다. `#171717`·`#fff` 중 «티켓색»과 «티켓색·끝색 중간색» 둘 다 대비 4.5 이상인 쪽을 `#171717` → `#fff` 순서로 먼저 통과한 것으로 쓰고, 둘 다 안 되면 순수 `#000`을 쓴다. 그것도 안 되면 두 곳 대비 중 작은 쪽이 가장 큰 후보를 쓴다. `--muted`(80%)·`--border`(12%)·`--link`가 이 값에서 나온다. 카드 안 글자(슬롯 칸·체크인 타일·표지 자리·배지 없음 안내·초록 완성 알림)는 항상 `#171717`이다(`.cards`·`.ink`가 토큰을 잉크색으로 되돌린다). 면 위 글자 구간에는 `TicketTone tone="face"`를 쓴다.
+- **카드 바탕**: `--card-bg`·`--surface`는 티켓색 `--card-mix`(기본 70%) + 흰색, `--background-secondary`는 `--card-mix-2`(기본 45%) + 흰색이다. 카드 안 `#171717` 대비가 4.5 미만이면(짙은 표지) `--card-mix`를 5%씩 낮추고 `--card-mix-2`는 같은 비율로 따라 낮춘다. 연한 표지는 70%/45%다.
+- **사진 자리**: 표지를 좌우 16px·모서리 16px·1:1·아래 20px로 그대로 채운다(`CollectionTicketPhoto.tsx`). 오라·블롭·그림자 없음. 표지가 없거나 불러오지 못하면 `--card-bg` 1:1 칸에 `MagicBookIcon`이다.
+- **글자 상자**: 위 칸 이름(h1, `text-3xl`), 아래 칸 설명(`text-base`, 마침표 기준 줄바꿈). 칩은 없고 설명이 없으면 아래 칸과 가운데 테두리를 그리지 않는다. 배지 상세의 `TicketTitleBoxes`와 같은 안쪽(`TicketTitleBoxesView`)을 쓴다.
+- **진행 표시**: 글자 상자 아래·절취선 2 위 티켓 면(좌우 16px). 모으는 중은 초록 캡슐 `ProgressCountBar`(«n/N»), 완성하면 초록 완성 알림 카드(칩·제목·본문)다. 지금 모양 그대로이고 «n/N» 글자색만 티켓 글자색을 따른다.
+- **보조 글자**: 이야기 글·체크인 힌트는 80% 투명 `--muted`로는 짙거나 채도 높은 티켓에서 대비 4.5를 못 넘는 표지가 많아 `--foreground`(= 티켓 글자색)를 쓴다.
+- **구현 위치**: `collections/[id]/page.tsx`(조립), `collections/[id]/CollectionTicketPhoto.tsx`, `badges/[id]/BadgeTicket.tsx`(`TicketPaint`·`TicketTone`)·`BadgeTicket.module.css`(`--ticket-text`·`--card-mix`), `badges/[id]/TicketTitleBoxes.tsx`(`TicketTitleBoxesView`), `lib/badgeTicket/ticketColor.ts`(`deriveCoverTicketColor`·`pickTicketTextColor`·`pickCardMix`), 종류 글자 `lib/i18n/ko.ts`의 `itembooks.ticketKind`. MODULAR 승격(티켓 20261122_1351)은 하지 않고 서비스 전용을 유지한다.

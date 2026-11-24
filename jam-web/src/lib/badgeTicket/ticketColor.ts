@@ -1,5 +1,6 @@
 import { FEED_COLOR_KEYS, FEED_COLORS, type FeedColorKey } from '@/lib/today/feedConstants'
 import { hexToHsl, violatesImageColorRule } from '@/lib/today/feedColorRules'
+import { contrastRatio, hexToRgb, maxChroma, oklchToRgb, rgbToHex, srgbToOklab } from '@/lib/collection-cover/color'
 
 /**
  * 배지 상세 티켓의 색 규칙 (티켓 20261122_1222 → 통합 팔레트 4, 20261122_2226).
@@ -58,6 +59,124 @@ export function ticketEndColor(hex: string): string {
 function buildTicketColor(key: TicketColorKey): TicketColor {
   const { cssVar, hex } = FEED_COLORS[key]
   return { key, cssVar, hex, endColor: ticketEndColor(hex), silhouette: ticketSilhouetteColor(key) }
+}
+
+// ── 컬렉션 상세: 표지색에서 파생하는 티켓색 (티켓 20261124_2253, 상위 20261124_2252) ──
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+const DEG = 180 / Math.PI
+
+/** 컬렉션 표지 배경색보다 티켓을 어둡게 하는 OKLCH 명도 차(사용자 확정 0.10) */
+export const COVER_TICKET_L_DELTA = 0.1
+/** 티켓색 명도 하한 — 아주 어두운 표지도 검정 덩어리가 되지 않게 한다 */
+const COVER_TICKET_L_MIN = 0.2
+/** 카드 바탕에 섞는 티켓색 기본 비율(%)과 보조 바탕 비율. 배지 상세와 같은 값이다 */
+const CARD_MIX_DEFAULT = 70
+const CARD_MIX_SECONDARY_DEFAULT = 45
+/** 글자색 후보 순서 — 짙은 회색, 흰색, 안 되면 순수 검정 */
+const TEXT_CANDIDATES = ['#171717', '#ffffff', '#000000'] as const
+const CARD_INK = '#171717'
+const MIN_CONTRAST = 4.5
+
+/** 표지색에서 파생한(또는 팔레트로 대신한) 티켓색. `BadgeTicket`이 팔레트 키 없이 받는다 */
+export interface DerivedTicketColor {
+  key: 'cover'
+  /** 티켓색 `#rrggbb` */
+  hex: string
+  /** 아래 블록 그라데이션의 끝색(CSS 문자열, 배지 상세와 같은 식) */
+  endColor: string
+  /** 컬렉션 상세는 미획득 실루엣을 쓰지 않는다 — 글자색과 같은 값을 넣어 둔다 */
+  silhouette: string
+  /** 티켓 면 위 글자색(머리·글자 상자·진행 글자·이야기 글) */
+  text: string
+  /** 카드 바탕에 섞는 티켓색 비율(%) — `--card-bg`·`--surface` */
+  cardMix: number
+  /** 보조 카드 바탕 비율(%) — `--background-secondary` */
+  cardMixSecondary: number
+}
+
+export type TicketPaint = TicketColor | DerivedTicketColor
+
+function hexToOklch(hex: string): { L: number; C: number; h: number } {
+  const [L, a, b] = srgbToOklab(hexToRgb(hex))
+  const h = Math.atan2(b, a) * DEG
+  return { L, C: Math.hypot(a, b), h: h < 0 ? h + 360 : h }
+}
+
+/** 명도·채도·색상각으로 hex를 만든다. 색역 밖이면 채도만 줄인다 */
+function oklchToHex(L: number, C: number, h: number): string {
+  return rgbToHex(oklchToRgb(L, Math.min(C, maxChroma(L, h)), h))
+}
+
+/** 표지 배경색 → 티켓색: OKLCH 명도를 `max(0.2, L - delta)`로 낮추고 채도·색상은 유지한다(색역 밖이면 채도만 줄임) */
+export function deriveCoverTicketHex(bgHex: string, delta: number = COVER_TICKET_L_DELTA): string {
+  const { L, C, h } = hexToOklch(bgHex)
+  return oklchToHex(Math.max(COVER_TICKET_L_MIN, L - delta), C, h)
+}
+
+/** `ticketEndColor`의 CSS 상대색과 같은 식을 JS로 계산한 끝색 hex(대비 판정용). 브라우저 계산과 한두 단계 어긋날 수 있다 */
+export function ticketEndHex(hex: string): string {
+  const { L, C, h } = hexToOklch(hex)
+  return isYellowHue(hex) ? oklchToHex(L - 0.03, C * 1.15, h - 20) : oklchToHex(L - 0.08, C * 1.2, h)
+}
+
+const mixRgb = (a: readonly number[], b: readonly number[], ratioA: number): number[] =>
+  a.map((v, i) => v * ratioA + b[i] * (1 - ratioA))
+
+/**
+ * 티켓 면 위 글자색. `#171717`·`#fff` 중 «티켓색»과 «티켓색·끝색 중간색» 둘 다에서 대비 4.5 이상인 쪽을 쓴다(먼저 통과한 쪽).
+ * 둘 다 안 되면 순수 `#000`을 허용하고, 그것도 안 되면 두 곳 대비의 작은 쪽이 가장 큰 후보를 쓴다.
+ */
+export function pickTicketTextColor(ticketHex: string): string {
+  const ticket = hexToRgb(ticketHex)
+  const mid = mixRgb(ticket, hexToRgb(ticketEndHex(ticketHex)), 0.5)
+  let best: string = TEXT_CANDIDATES[0]
+  let bestScore = -1
+  for (const candidate of TEXT_CANDIDATES) {
+    const ink = hexToRgb(candidate)
+    const score = Math.min(contrastRatio(ink, ticket), contrastRatio(ink, mid))
+    if (score >= MIN_CONTRAST) return candidate
+    if (score > bestScore) {
+      best = candidate
+      bestScore = score
+    }
+  }
+  return best
+}
+
+/** `color-mix(in srgb, 티켓색 mix%, #fff)`를 JS로 계산한 카드 바탕 rgb */
+export function cardBackgroundRgb(ticketHex: string, mix: number): number[] {
+  return mixRgb(hexToRgb(ticketHex), [255, 255, 255], mix / 100)
+}
+
+/**
+ * 카드 바탕에 섞는 티켓색 비율(%). 70%에서 시작해 카드 안 `#171717` 글자 대비가 4.5 이상이 될 때까지 5%씩 낮춘다.
+ * 연한 표지는 70% 그대로라 배지 상세와 같다. 보조 바탕은 같은 비율(45/70)로 따라 낮춘다.
+ */
+export function pickCardMix(ticketHex: string): { cardMix: number; cardMixSecondary: number } {
+  const ink = hexToRgb(CARD_INK)
+  let mix = CARD_MIX_DEFAULT
+  while (mix > 0 && contrastRatio(ink, cardBackgroundRgb(ticketHex, mix)) < MIN_CONTRAST) mix -= 5
+  const secondary = mix === CARD_MIX_DEFAULT ? CARD_MIX_SECONDARY_DEFAULT : Math.round((mix * CARD_MIX_SECONDARY_DEFAULT) / CARD_MIX_DEFAULT)
+  return { cardMix: mix, cardMixSecondary: secondary }
+}
+
+function paintFromHex(hex: string): DerivedTicketColor {
+  const text = pickTicketTextColor(hex)
+  return { key: 'cover', hex, endColor: ticketEndColor(hex), silhouette: text, text, ...pickCardMix(hex) }
+}
+
+/**
+ * 컬렉션 표지 배경색(`item_books.cover_params.bgHex`)에서 티켓색을 정한다(서버에서 한 번 — 클라이언트 훅으로 칠하지 않는다).
+ * 값이 없거나 `#rrggbb`가 아니면 `pickTicketColor(null)`로 통합 팔레트 일곱 색 중 하나로 대신하고, 글자색·카드 바탕도 그 색으로 정한다.
+ */
+export function deriveCoverTicketColor(
+  bgHex: unknown,
+  delta: number = COVER_TICKET_L_DELTA,
+  rand: () => number = Math.random,
+): DerivedTicketColor {
+  if (typeof bgHex === 'string' && HEX_RE.test(bgHex)) return paintFromHex(deriveCoverTicketHex(bgHex.toLowerCase(), delta))
+  return paintFromHex(pickTicketColor(null, rand).hex.toLowerCase())
 }
 
 /** 홈 카드에서 넘어온 색 두 개. 모르는 값은 없는 것과 같다(막지 않는다). */

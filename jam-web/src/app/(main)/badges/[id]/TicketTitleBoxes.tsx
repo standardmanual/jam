@@ -17,23 +17,18 @@ interface TicketTitleBoxesProps {
   chipExtra?: ReactNode
 }
 
-export default function TicketTitleBoxes({ badge, chipExtra }: TicketTitleBoxesProps) {
-  const chip =
-    badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />
-  const lines = badge.description ? splitDescriptionSentences(badge.description) : []
+/**
+ * 글자 상자의 안쪽 — {칩(선택), 이름, 설명}만 받는다(티켓 20261124_2253). 배지 상세는 아래 `TicketTitleBoxes`가 칩을 만들어 넘기고,
+ * 컬렉션 상세는 칩 없이 이름·설명만 넘긴다. 같은 CSS 모듈·마침표 줄바꿈을 쓴다. h1은 여기 한 곳에만 둔다.
+ */
+export function TicketTitleBoxesView({ chip, name, description }: { chip?: ReactNode; name: string; description?: string | null }) {
+  const lines = description ? splitDescriptionSentences(description) : []
 
   return (
     <div className={styles.titleBox}>
       <div className={styles.titleTop}>
-        {chipExtra ? (
-          <div className="flex items-center justify-center gap-2">
-            {chip}
-            {chipExtra}
-          </div>
-        ) : (
-          chip
-        )}
-        <h1 className="min-w-0 max-w-full text-3xl font-bold text-foreground break-keep wrap-break-word text-balance">{badge.name}</h1>
+        {chip}
+        <h1 className="min-w-0 max-w-full text-3xl font-bold text-foreground break-keep wrap-break-word text-balance">{name}</h1>
       </div>
       {lines.length > 0 && (
         <div className={styles.titleDesc}>
@@ -48,5 +43,27 @@ export default function TicketTitleBoxes({ badge, chipExtra }: TicketTitleBoxesP
         </div>
       )}
     </div>
+  )
+}
+
+export default function TicketTitleBoxes({ badge, chipExtra }: TicketTitleBoxesProps) {
+  const chip =
+    badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />
+
+  return (
+    <TicketTitleBoxesView
+      name={badge.name}
+      description={badge.description}
+      chip={
+        chipExtra ? (
+          <div className="flex items-center justify-center gap-2">
+            {chip}
+            {chipExtra}
+          </div>
+        ) : (
+          chip
+        )
+      }
+    />
   )
 }

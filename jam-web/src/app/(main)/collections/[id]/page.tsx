@@ -17,10 +17,12 @@ import { PinIcon, MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { ListRowChip } from '@/components/ui/ListRow'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
-import ItemBookHeroSection from './ItemBookHeroSection'
+import CollectionTicketPhoto from './CollectionTicketPhoto'
+import BadgeTicket, { TicketTone } from '../../badges/[id]/BadgeTicket'
+import { TicketTitleBoxesView } from '../../badges/[id]/TicketTitleBoxes'
+import ProgressCountBar from '@/components/ui/ProgressCountBar'
+import { deriveCoverTicketColor } from '@/lib/badgeTicket/ticketColor'
 import { d } from '@/lib/i18n'
-import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
-import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 /**
@@ -40,11 +42,6 @@ interface Props {
 }
 
 type ItemBookWithTribe = ItemBookRow & { tribe: TribeRow | null }
-
-// 티켓 20260917_2105: 페이지 배경은 (main)/layout.tsx의 그라데이션이 담당한다 — 여기서
-// 불투명 배경을 깔면 그 위를 덮어 가려버린다. 테마가 없을 때도 undefined로 둬 상위
-// 그라데이션이 그대로 비치게 한다(테마가 있을 때의 'transparent'와 결과적으로 동일).
-const PAGE_BG = undefined
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
@@ -269,140 +266,111 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   })
   const collectionTier = tierMode ? (bookCompletion?.tier ?? null) : null
 
-  // [20260819_014] 배지 상세화면(20260819_011)과 동일한 원칙 — 배경은 이 고정 레이어 한 곳에서만
-  // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게
-  // 하고, 없으면 기존 PAGE_BG를 그대로 유지한다(회귀 방지).
-  const themedBackground = hasBadgeBackgroundTheme(book)
-  // [20260901_1944] 대표 이미지 카드 "안"에서 실행하는 블롭 애니메이션 — 위 고정 배경 레이어와는
-  // 별개의 렌더링 지점이다(우선순위 판단은 badgeBackgroundTheme.ts 한 곳).
-  const bookCardAnimation = getBadgeBackgroundAnimation(book)
-  const pageBg = themedBackground ? 'transparent' : PAGE_BG
-  const topNavStyle: React.CSSProperties = { background: pageBg, color: 'var(--foreground)' }
-  const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
-  const backgroundVideoUrl = getBadgeBackgroundVideoUrl(book)
-  const backgroundLayer = (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'fixed',
-        top: 0,
-        bottom: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: '430px',
-        zIndex: 0,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-        ...getBadgeBackgroundStyle(book),
-      }}
-    >
-      {backgroundVideoUrl && (
-        <BadgeBackgroundVideoTiles
-          src={backgroundVideoUrl}
-          poster={book.background_image_url}
-        />
-      )}
-    </div>
-  )
+  // 티켓색은 표지 배경색(`cover_params.bgHex`)에서 서버가 정한다(티켓 20261124_2253). 없거나 형식이 틀리면 통합 팔레트 일곱 색 중 하나로 대신한다.
+  const ticketColor = deriveCoverTicketColor(book.cover_params?.bgHex)
+  const progressPercent = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: pageBg, color: 'var(--foreground)', ...themedTextStyle }}>
-      {backgroundLayer}
-      <TopNav
-        title={book.name}
-        backHref={backHref ?? '/badges#collection'}
-        headerStyle={topNavStyle}
-      />
+    <div className="min-h-dvh text-foreground bg-background pb-6">
+      <TopNav title={book.name} backHref={backHref ?? '/badges#collection'} />
 
-      {/* 스크롤 컨테이너 — 외부: padding 16 / 블록 사이 gap 20 */}
-      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-6 gap-5">
-
-        <ItemBookHeroSection
-          book={{ name: book.name, description: book.description, image_url: book.image_url }}
-          slottedCount={slottedCount}
-          totalBadgeCount={totalBadgeCount}
-          backgroundAnimation={bookCardAnimation}
-        >
-          {/* 완성 알림 — 대표 카드 아래, 진행 바 자리(완성이면 진행 바는 그리지 않는다, 티켓 20261114_1643).
-              면은 컬렉션 카드(CollectionGridCard)의 완성 면과 같은 --jam-green이고 외곽선·그림자는 없다. 전부 가로 중앙 정렬이다. */}
-          {isCompleted && (
-            <div className="mx-2 flex flex-col items-center gap-1.5 rounded-2xl bg-jam-green p-5 text-center">
-              <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                {d.itembooks.completed}
-              </ListRowChip>
-              <p
-                className="font-bold break-keep wrap-break-word text-balance"
-                style={{ color: 'var(--foreground)', fontSize: '22px' }}
-              >
-                {d.itembooks.completedTitle}
-              </p>
-              <p
-                className="break-keep wrap-break-word"
-                style={{ color: 'var(--foreground)', opacity: 0.7, fontSize: '14px' }}
-              >
-                {d.itembooks.completedBody}
-              </p>
+      <BadgeTicket
+        color={ticketColor}
+        kindLabel={d.itembooks.ticketKind}
+        dateText={null}
+        photo={<CollectionTicketPhoto name={book.name} imageUrl={book.image_url} />}
+        afterPhoto={
+          <>
+            <TicketTitleBoxesView name={book.name} description={book.description} />
+            {/* 진행 표시 — 글자 상자 아래, 지금 모양 그대로(티켓 20261124_2253). 완성이면 진행 바 대신 초록 완성 알림(티켓 20261114_1643).
+                알림 카드는 밝은 초록 면이라 짙은 티켓에서도 글자는 #171717이다(ink). 진행 바의 «n/N»은 티켓 글자색을 따른다. */}
+            <div className="relative z-10 px-4 pb-6">
+              {isCompleted ? (
+                <TicketTone tone="ink">
+                  <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-jam-green p-5 text-center">
+                    <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+                      {d.itembooks.completed}
+                    </ListRowChip>
+                    <p
+                      className="font-bold break-keep wrap-break-word text-balance"
+                      style={{ color: 'var(--foreground)', fontSize: '22px' }}
+                    >
+                      {d.itembooks.completedTitle}
+                    </p>
+                    <p
+                      className="break-keep wrap-break-word"
+                      style={{ color: 'var(--foreground)', opacity: 0.7, fontSize: '14px' }}
+                    >
+                      {d.itembooks.completedBody}
+                    </p>
+                  </div>
+                </TicketTone>
+              ) : (
+                <ProgressCountBar percent={progressPercent} current={slottedCount} total={totalBadgeCount} />
+              )}
             </div>
-          )}
-        </ItemBookHeroSection>
+          </>
+        }
+        body={
+          <div className="relative z-10 flex flex-col gap-5 px-4 pb-6">
+            {/* 스토리 텍스트 — 티켓 면 위 글자. 12px 보조 글자는 80% 투명이면 짙은·채도 높은 티켓에서 대비 4.5를 못 넘는 표지가 많아 본문 글자색을 쓴다 */}
+            {book.story_text && (
+              <TicketTone tone="face">
+                <p
+                  style={{
+                    color: 'var(--foreground)',
+                    fontSize: '12px',
+                    lineHeight: '1.6',
+                    fontStyle: 'italic',
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {book.story_text}
+                </p>
+              </TicketTone>
+            )}
 
-        {/* 스토리 텍스트 */}
-        {book.story_text && (
-          <p
-            style={{
-              color: 'var(--muted)',
-              fontSize: '12px',
-              lineHeight: '1.6',
-              fontStyle: 'italic',
-              whiteSpace: 'pre-line',
-            }}
-          >
-            {book.story_text}
-          </p>
-        )}
+            {/* 배지 없음 상태 — 카드 면 위에 둔다(카드 안 글자는 항상 #171717) */}
+            {totalBadgeCount === 0 && (
+              <EmptyState
+                className="rounded-2xl bg-card-bg"
+                icon={<MagicBookIcon className="w-8 h-8" />}
+                title={d.itembooks.noBadgesTitle}
+                description={d.itembooks.noBadgesBody}
+              />
+            )}
 
-        {/* 배지 없음 상태 */}
-        {totalBadgeCount === 0 && (
-          <EmptyState
-            icon={<MagicBookIcon className="w-8 h-8" />}
-            title={d.itembooks.noBadgesTitle}
-            description={d.itembooks.noBadgesBody}
-          />
-        )}
+            {/* 아이템배지 슬롯 섹션 — 칸은 카드(#171717), 격자 아래 등급 고정 안내는 티켓 면 위 글자다 */}
+            {badges.length > 0 && (
+              <TicketTone tone="face" keepCards className="flex flex-col gap-3">
+                <SlotGrid
+                  itemBookId={id}
+                  badgeSlots={badgeSlots}
+                  readOnly={!isOwnBook}
+                  badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
+                  slotMode={slotMode}
+                  tierUndecided={tierMode && !collectionTier}
+                  // «모두 빼기»용 값(티켓 20261028_1420). 개수는 `badgeSlots`가 아니라 `slots` 전체로 센다 — 소프트 삭제된 배지에 꽂힌
+                  // 장착은 칸이 없어 `badgeSlots`에서는 빠지는데, 칸별 «빼기»로 풀 수 없는 그 장착이 이 버튼의 존재 이유다.
+                  slotCount={slots.length}
+                  tierFixed={Boolean(collectionTier)}
+                  completed={isCompleted}
+                />
+              </TicketTone>
+            )}
 
-        {/* 아이템배지 슬롯 섹션 */}
-        {badges.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <SlotGrid
-              itemBookId={id}
-              badgeSlots={badgeSlots}
-              readOnly={!isOwnBook}
-              badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
-              slotMode={slotMode}
-              tierUndecided={tierMode && !collectionTier}
-              // «모두 빼기»용 값(티켓 20261028_1420). 개수는 `badgeSlots`가 아니라 `slots` 전체로 센다 — 소프트 삭제된 배지에 꽂힌
-              // 장착은 칸이 없어 `badgeSlots`에서는 빠지는데, 칸별 «빼기»로 풀 수 없는 그 장착이 이 버튼의 존재 이유다.
-              slotCount={slots.length}
-              tierFixed={Boolean(collectionTier)}
-              completed={isCompleted}
-            />
-          </div>
-        )}
-
-        {/* 체크인 배지 섹션 */}
-        {checkinBadges.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <p
-              className="font-bold"
-              style={{ color: 'var(--foreground)', fontSize: '16px', lineHeight: '1.2' }}
-            >
-              {d.itembooks.checkinSectionTitle}
-            </p>
-            <p style={{ color: 'var(--muted)', fontSize: '12px', textAlign: 'center' }}>
-              {d.itembooks.checkinHint}
-            </p>
-            <div className="grid grid-cols-3 gap-2">
+            {/* 체크인 배지 섹션 — 제목·힌트는 티켓 면 위 글자, 3열 타일은 카드 */}
+            {checkinBadges.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <TicketTone tone="face" className="flex flex-col gap-3">
+                  <p className="font-bold" style={{ color: 'var(--foreground)', fontSize: '16px', lineHeight: '1.2' }}>
+                    {d.itembooks.checkinSectionTitle}
+                  </p>
+                  <p style={{ color: 'var(--foreground)', fontSize: '12px', textAlign: 'center' }}>
+                    {d.itembooks.checkinHint}
+                  </p>
+                </TicketTone>
+                <div className="grid grid-cols-3 gap-2">
               {checkinBadges.map((checkinBadge) => {
                 const earned = earnedCheckinBadgeIds.has(checkinBadge.id)
                 return (
@@ -445,10 +413,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                   </div>
                 )
               })}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        }
+      />
     </div>
   )
 }
