@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CSSProperties } from 'react';
-import { LockIcon } from '@ds/components/icons/IconCatalog';
+import { LockIcon } from './icons';
 
 export interface LockedTileProps {
   /** 한 변(px). 기본 90. 부모가 더 좁으면 정사각형을 유지한 채 줄어든다 */

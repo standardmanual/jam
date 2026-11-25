@@ -28,7 +28,7 @@ function listJsx(dir: string): string[] {
 }
 
 /**
- * 티켓 20261126_0002·20261126_0110: 카드류 8개와 피드백·폼·패턴 11개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
+ * 티켓 20261126_0002·0110·0217: 카드류 8개, 피드백·폼·패턴 11개, 내비·아이콘 버튼 4개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
  * (`design-system/components` 기준 상대 경로로 `../../src/components/ui/<이름>.tsx`가 된다).
  */
 const MOVED_TO_SERVICE_UI = [
@@ -51,6 +51,10 @@ const MOVED_TO_SERVICE_UI = [
   'ItemSerialCode',
   'MixerSlot',
   'PointText',
+  'IconButton',
+  'Accordion',
+  'Carousel',
+  'TopNavBar',
 ].map((name) => path.resolve(COMPONENTS_DIR, '../../src/components/ui', `${name}.tsx`))
 
 const FILES = [...listJsx(COMPONENTS_DIR), ...MOVED_TO_SERVICE_UI]

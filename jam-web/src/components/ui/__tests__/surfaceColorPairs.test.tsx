@@ -15,7 +15,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 
 import ServiceButton from '../Button'
 import { Button as DsButton } from '@ds/components/buttons/Button'
-import { IconButton } from '@ds/components/buttons/IconButton'
+import { IconButton } from '@/components/ui/IconButton'
 
 describe('서비스 Button — sub 면의 글자색 쌍', () => {
   it('primary는 accent 면 위에 accent-foreground 글자다(흰 글자 아님)', () => {

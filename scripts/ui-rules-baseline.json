@@ -161,6 +161,9 @@
     "arbitrary": 1,
     "color-literal": 4
   },
+  "jam-web/src/components/ui/Accordion.tsx": {
+    "inline-visual": 2
+  },
   "jam-web/src/components/ui/BadgeGridCard.tsx": {
     "arbitrary": 13
   },
@@ -187,6 +190,9 @@
   },
   "jam-web/src/components/ui/FooterLogo.tsx": {
     "arbitrary": 1
+  },
+  "jam-web/src/components/ui/IconButton.tsx": {
+    "inline-visual": 2
   },
   "jam-web/src/components/ui/Input.tsx": {
     "inline-visual": 2
@@ -230,6 +236,9 @@
   },
   "jam-web/src/components/ui/TopNav.tsx": {
     "arbitrary": 1
+  },
+  "jam-web/src/components/ui/TopNavBar.tsx": {
+    "inline-visual": 6
   },
   "jam-web/src/components/ui/sheetClasses.ts": {
     "arbitrary": 1

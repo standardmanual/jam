@@ -1,8 +1,8 @@
 /**
  * ListRow 서비스 사본 (티켓 20261106_2252, 상위 20261106_1750 4단계 1배치)
  *
- * 저장소에 jsdom이 없어 서버 렌더 마크업으로 고정한다. 원본(`design-system/components/patterns/ListRow.jsx`)과 기하가 같은지는
- * `npm run ds:check`(PAIR_GEOMETRY)가 대조하고, 여기서는 사본이 지켜야 할 동작만 고정한다.
+ * 저장소에 jsdom이 없어 서버 렌더 마크업으로 고정한다. MODULAR 사본은 정본 단일화로 없앴으므로
+ * 여기서는 ListRow가 지켜야 할 동작만 고정한다.
  *
  * 실행: cd jam-web && npx vitest run src/components/ui/ListRow.test.tsx
  */

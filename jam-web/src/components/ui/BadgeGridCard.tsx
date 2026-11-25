@@ -81,7 +81,6 @@ export interface BadgeGridCardProps {
    * 잠긴 아이템 배지(열기 전, 티켓 20261018_0054 2회). 썸네일 자리에 `LockedTile`, 이름 줄은 `d.lockedItem.card.name`이고
    * 등급 칩 아래에는 아무것도 붙지 않는다(티켓 20261028_1741 2회 — 여는 비용이 채운 잼에서 포인트로 바뀌어 게이지를 걷어냈다).
    * `imageUrl`·`name`이 넘어와도 그리지 않는다 — 호출부 실수로 가림이 뚫리지 않게 컴포넌트가 막는다.
-   * 디자인 시스템 사본(`design-system/components/patterns/BadgeGridCard`)에는 게이지가 남아 있다(후속 동기화 몫).
    */
   locked?: boolean
   /**

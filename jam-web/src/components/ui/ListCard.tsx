@@ -5,10 +5,9 @@ import { useState } from 'react'
 import type { CSSProperties, HTMLAttributes, MouseEventHandler, ReactNode } from 'react'
 
 /**
- * ListCard — 큰 이미지 위에 제목을 얹는 세로 목록 카드의 서비스 사본 (티켓 20261114_1543).
+ * ListCard — 큰 이미지 위에 제목을 얹는 세로 목록 카드의 정본 (티켓 20261114_1543).
  *
- * 원본은 `design-system/components/patterns/ListCard.jsx`다. 인라인 스타일 값은 원본과 문자 단위로 같게 둔다 —
- * `scripts/ds-sync-check.mjs`가 매니페스트의 ListCard 쌍으로 기하를 대조한다. 값을 바꾸려면 원본을 먼저 고친다.
+ * MODULAR 사본은 정본 단일화(티켓 20261125_1923)로 없앴다. 이 파일이 유일한 구현이다.
  * 슬롯·prop 설명은 `ListCard.d.ts`·`ListCard.prompt.md` 참고.
  *
  * 서비스 쪽 차이(값은 같다): 링크는 `<a>` 대신 `next/link`의 `Link`다. 훅(이미지 깨짐 상태)을 쓰므로 클라이언트 컴포넌트다.

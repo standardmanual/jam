@@ -3,10 +3,9 @@ import type { CSSProperties, HTMLAttributes, MouseEventHandler, ReactNode } from
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from './icons'
 
 /**
- * ListRow — 목록 행 한 골격의 서비스 사본 (티켓 20261106_2252, 4단계 1배치).
+ * ListRow — 목록 행 한 골격의 정본 (티켓 20261106_2252, 4단계 1배치).
  *
- * 원본은 `design-system/components/patterns/ListRow.jsx`다. 인라인 스타일 값은 원본과 문자 단위로 같게 둔다 —
- * `scripts/ds-sync-check.mjs`가 매니페스트의 ListRow 쌍으로 기하를 대조한다. 값을 바꾸려면 원본을 먼저 고친다.
+ * MODULAR 사본은 정본 단일화(티켓 20261125_1923)로 없앴다. 이 파일이 유일한 구현이다.
  * 슬롯·prop 설명은 `ListRow.d.ts`·`ListRow.prompt.md` 참고.
  *
  * 서비스 쪽 차이(값은 같다):

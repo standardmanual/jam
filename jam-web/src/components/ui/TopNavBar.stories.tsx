@@ -1,21 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
-import { TopNav } from './TopNav';
-import { IconButton } from '../buttons/IconButton';
-import { Button } from '../buttons/Button';
-import { BellIcon } from '../icons/IconCatalog';
+import { TopNavBar } from './TopNavBar';
+import { IconButton } from './IconButton';
+import { Button } from '@ds/components/buttons/Button';
+import { BellIcon } from './icons';
 
 // 20260901_1926: props API를 서비스 `src/components/ui/TopNav.tsx` 기준으로 재정렬
 // (logoSlot→logo, style→headerStyle, avatarSlot 제거·rightSlot 합성, 타이포 오버라이드
 // prop 4종 제거 — 서비스가 항상 넘기던 고정값을 기본값으로 흡수).
-const meta: Meta<typeof TopNav> = {
+const meta: Meta<typeof TopNavBar> = {
   title: 'MODULAR/Navigation/TopNav',
-  component: TopNav,
+  component: TopNavBar,
   parameters: { layout: 'fullscreen' },
 };
 
 export default meta;
-type Story = StoryObj<typeof TopNav>;
+type Story = StoryObj<typeof TopNavBar>;
 
 export const Default: Story = {
   args: { title: '페이지 제목', showBack: true },
