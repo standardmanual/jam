@@ -31,8 +31,6 @@ export interface BadgeSlotsBadge {
   name: string
   image_url: string | null
   rarity: string | null
-  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 조회가 `*`면 따라온다 */
-  bg_colors?: string[] | null
 }
 
 export type BadgeSlotCandidate = BadgeSlot['candidates'][number]
@@ -71,7 +69,6 @@ export function buildBadgeSlots({
     name: badge.name,
     image_url: badge.image_url,
     rarity: badge.rarity,
-    bg_colors: badge.bg_colors,
   })
 
   if (!tierMode) {

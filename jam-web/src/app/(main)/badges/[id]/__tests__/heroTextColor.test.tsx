@@ -42,13 +42,13 @@ function descriptionClass(html: string): string {
 }
 
 describe('BadgeHeroSection 글자색', () => {
-  it('배경이 없으면 흰 면 위라 제목 foreground, 설명 muted다', () => {
+  it('배경이 없으면 회색 면(bg-background-secondary) 위라 제목 foreground, 설명 muted다', () => {
     const html = renderToStaticMarkup(<BadgeHeroSection badge={BADGE} hasEarned />)
     expect(titleClass(html)).toContain('text-foreground')
     expect(titleClass(html)).not.toContain('text-snow')
     expect(descriptionClass(html)).toContain('text-muted')
     expect(descriptionClass(html)).not.toContain('text-snow')
-    expect(html).toContain('bg-card-bg')
+    expect(html).toContain('bg-background-secondary')
   })
 
   it('테마 배경이 깔리면 제목·설명이 모두 snow다', () => {

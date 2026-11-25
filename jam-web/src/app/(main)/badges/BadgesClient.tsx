@@ -290,7 +290,6 @@ export default function BadgesClient({
                       href={`/badges/${badge.id}`}
                       name={badge.name}
                       imageUrl={badge.image_url}
-                      bgColors={badge.bg_colors}
                       rarity={badge.rarity}
                       eager={index < FIRST_SCREEN_GRID_COUNT}
                       // 무한레벨형 배지(등급 없음)는 등급 칩 자리에 Lv.N 칩을 그린다(2026-11-09 사용자 지시)
@@ -346,7 +345,6 @@ export default function BadgesClient({
                       href={`/badges/${badge.id}`}
                       name={badge.name}
                       imageUrl={badge.image_url}
-                      bgColors={badge.bg_colors}
                       rarity={badge.rarity}
                       eager={index < FIRST_SCREEN_GRID_COUNT}
                       // 이름 아래에 «×방문 횟수» 칩(2026-11-09 사용자 지시)

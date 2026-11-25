@@ -150,14 +150,13 @@ describe('BadgeDetailSheet 흰 카드 구조 (티켓 20261112_1629)', () => {
     expect(html).toContain('data-panel-tone="background"')
   })
 
-  it('이미지·등급 칩·이름·설명이 흰 카드(bg-card-bg) 한 장 안에 있고 회색 이미지 상자가 없다', () => {
-    const cardStart = html.indexOf('bg-card-bg')
+  it('이미지·등급 칩·이름·설명이 회색 카드(bg-background-secondary) 한 장 안에 있다', () => {
+    const cardStart = html.indexOf('bg-background-secondary')
     expect(cardStart).toBeGreaterThan(-1)
     const cardHtml = html.slice(cardStart)
     for (const part of ['open.png', 'Epic', '열린 배지 이름', '손바닥보다 큰 뻥튀기 한 장입니다.']) {
       expect(cardHtml.indexOf(part), part).toBeGreaterThan(-1)
     }
-    expect(html).not.toContain('bg-background-secondary')
     // 카드 안쪽 여백 24 16, 이미지 176
     expect(html).toContain('py-6 px-4')
     expect(html).toContain('w-44 h-44')
@@ -178,7 +177,7 @@ describe('BadgeDetailSheet 흰 카드 구조 (티켓 20261112_1629)', () => {
 
   it('잠긴 개체도 같은 카드 구조다 — 등급 칩과 «잠김» 칩이 나란히, 잠금 타일, 시리얼 자리는 비어 있다', () => {
     const lockedHtml = render(locked)
-    expect(lockedHtml).toContain('bg-card-bg')
+    expect(lockedHtml).toContain('bg-background-secondary')
     expect(lockedHtml).toContain('py-6 px-4')
     expect(lockedHtml.indexOf('Epic')).toBeLessThan(lockedHtml.indexOf(d.lockedItem.detail.chip))
     expect(lockedHtml.indexOf(d.lockedItem.detail.chip)).toBeLessThan(lockedHtml.indexOf(`>${d.lockedItem.card.name}</h1>`))
@@ -195,24 +194,17 @@ describe('BadgeDetailSheet 흰 카드 구조 (티켓 20261112_1629)', () => {
   })
 })
 
-describe('BadgeDetailSheet Aura 제거 (티켓 20261125_1649)', () => {
-  const colors = ['#e0e8ff', '#7090e0', '#203a8a']
-
-  it('열린 개체에 대표색이 있어도 Aura 없이 회색 단색 카드다', () => {
-    const html = render({ ...base, badge_bg_colors: colors })
+describe('BadgeDetailSheet Aura 제거 (티켓 20261125_1649/1650)', () => {
+  it('열린 개체는 Aura 없이 회색 단색 카드(bg-background-secondary)다', () => {
+    const html = render(base)
     expect(html).not.toContain('badge-aura-background')
-    expect(html).toContain('var(--background-secondary)')
+    expect(html).toContain('bg-background-secondary')
   })
 
-  it('대표색이 없거나 NULL이면 Aura 없는 흰 카드다', () => {
-    expect(render(base)).not.toContain('badge-aura-background')
-    expect(render({ ...base, badge_bg_colors: null })).not.toContain('badge-aura-background')
-  })
-
-  it('잠긴 개체는 대표색이 값으로 남아 있어도 흰 카드다', () => {
-    const html = render({ ...locked, badge_bg_colors: colors })
+  it('잠긴 개체도 Aura 없이 회색 단색 카드(bg-background-secondary)다', () => {
+    const html = render(locked)
     expect(html).not.toContain('badge-aura-background')
-    expect(html).toContain('bg-card-bg')
+    expect(html).toContain('bg-background-secondary')
   })
 })
 

@@ -5,7 +5,6 @@ import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { Input } from '@ds/components/forms/Input'
-import { Skeleton } from '@ds/components/feedback/Skeleton'
 import { ListRow } from '@/components/ui/ListRow'
 import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING, SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { useSkeletonReveal } from '@/components/transitions-pages'
@@ -121,8 +120,8 @@ function RemovedSection({ summary }: { summary: WithdrawSummaryState }) {
               key={row}
               tone="flat"
               titleVariant="label"
-              title={<Skeleton width={96} height={24} borderRadius="var(--radius-lg)" />}
-              value={<Skeleton width={64} height={24} borderRadius="var(--radius-lg)" />}
+              title={<span className="block h-6 w-24 rounded-lg bg-foreground/15" />}
+              value={<span className="block h-6 w-16 rounded-lg bg-foreground/15" />}
             />
           ))}
         </div>

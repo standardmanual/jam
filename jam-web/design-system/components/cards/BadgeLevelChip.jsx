@@ -30,9 +30,10 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
 };
 
-export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '', style = {} }) {
+export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default', className = '', style = {} }) {
   if (level == null) return null;
   const s = SIZES[size] ?? SIZES.sm;
+  const isCommon = tone === 'common';
   return (
     <span
       className={className}
@@ -41,7 +42,8 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '',
         width, padding: s.padding, borderRadius: 'var(--radius-full)',
         fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
-        color: 'var(--foreground)', background: 'var(--default-soft)',
+        color: isCommon ? 'var(--rarity-common-foreground)' : 'var(--foreground)',
+        background: isCommon ? 'var(--rarity-common)' : 'var(--default-soft)',
         ...style,
       }}
     >

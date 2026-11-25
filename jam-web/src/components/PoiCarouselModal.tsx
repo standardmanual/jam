@@ -38,8 +38,6 @@ export interface InventoryItem {
   badge_name: string
   badge_rarity: string
   badge_image_url: string | null
-  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 잠긴 개체에는 없다 */
-  badge_bg_colors?: string[] | null
   // 20260908_0040: 드랍 시트가 같은 배지의 여러 개체를 구분할 수 있게 API가 함께 내려준다.
   serial_prefix: string | null
   serial_number: number
@@ -59,8 +57,6 @@ interface DropGroup {
   badgeName: string
   badgeRarity: string
   badgeImageUrl: string | null
-  /** 썸네일 면 Aura 색 — 잠긴 묶음은 null (티켓 20261119_1654) */
-  badgeBgColors: string[] | null
   /** 잠긴 개체 묶음인가 — 행이 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그린다 */
   locked: boolean
   items: InventoryItem[]
@@ -104,8 +100,6 @@ interface PickupGroup {
   badgeName: string
   badgeRarity: string
   badgeImageUrl: string | null
-  /** 썸네일 면 Aura 색 — 잠긴 묶음은 null (티켓 20261119_1654) */
-  badgeBgColors: string[] | null
   /** 잠긴 개체 묶음인가 — 행이 `LockedTile`·«잠긴 아이템 배지»·등급 칩만 그리고 만료 칩은 없다 */
   locked: boolean
   items: PickupDrop[]
@@ -131,7 +125,6 @@ function groupPickupDrops(drops: PickupDrop[]): PickupGroup[] {
       badgeName: locked ? d.lockedItem.card.name : drop.badge_name,
       badgeRarity: drop.badge_rarity,
       badgeImageUrl: locked ? null : drop.badge_image_url,
-      badgeBgColors: locked ? null : (drop.badge_bg_colors ?? null),
       locked,
       items: [drop],
     }
@@ -556,7 +549,6 @@ export default function PoiCarouselModal({
       badgeName: locked ? d.lockedItem.card.name : it.badge_name,
       badgeRarity: it.badge_rarity,
       badgeImageUrl: locked ? null : it.badge_image_url,
-      badgeBgColors: locked ? null : (it.badge_bg_colors ?? null),
       locked,
       items: [it],
     }
@@ -571,7 +563,6 @@ export default function PoiCarouselModal({
     id: group.badgeId,
     badgeName: group.badgeName,
     badgeImageUrl: group.badgeImageUrl,
-    badgeBgColors: group.badgeBgColors,
     badgeRarity: group.badgeRarity,
     count: group.items.length,
     countAriaText: t(d.drops.dropOwnedCountAria, { count: String(group.items.length) }),
@@ -674,7 +665,6 @@ export default function PoiCarouselModal({
             : 'common'
         }
         badgeImageUrl={dropCandidateGroup?.badgeImageUrl}
-        badgeBgColors={dropCandidateGroup?.badgeBgColors}
         candidates={(dropCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const item = dropCandidateGroup?.items.find((it) => it.id === candidate.id)
@@ -696,7 +686,6 @@ export default function PoiCarouselModal({
             : 'common'
         }
         badgeImageUrl={pickupCandidateGroup?.badgeImageUrl}
-        badgeBgColors={pickupCandidateGroup?.badgeBgColors}
         candidates={(pickupCandidateGroup?.items ?? []).map(toCandidate)}
         onSelect={(candidate) => {
           const drop = pickupCandidateGroup?.items.find((d) => d.id === candidate.id)
@@ -820,7 +809,6 @@ export function PoiCard({
               id: item.id,
               name: item.badgeName,
               imageUrl: item.badgeImageUrl,
-              bgColors: item.badgeBgColors,
               rarity: item.badgeRarity,
               count: item.count,
               countAriaText: item.countAriaText,
@@ -843,7 +831,6 @@ export function PoiCard({
               id: group.badgeId,
               name: group.badgeName,
               imageUrl: group.badgeImageUrl,
-              bgColors: group.badgeBgColors,
               rarity: group.badgeRarity,
               count: group.items.length,
               countAriaText: t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) }),
@@ -917,8 +904,6 @@ interface PoiBadgeCell {
   id: string
   name: string
   imageUrl: string | null
-  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 잠긴 칸은 null */
-  bgColors?: string[] | null
   /** 미지 등급 값은 'common'으로 폴백한다(기존 관례 유지) */
   rarity: string | null
   /** 2 이상일 때만 ×N 필을 그린다 */
@@ -946,7 +931,6 @@ function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
           compact
           name={cell.name}
           imageUrl={cell.imageUrl}
-          bgColors={cell.bgColors}
           rarity={KNOWN_RARITIES.includes(cell.rarity as BadgeRarity) ? (cell.rarity as BadgeRarity) : 'common'}
           count={cell.count}
           countAriaText={cell.countAriaText}

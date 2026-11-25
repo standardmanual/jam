@@ -42,7 +42,7 @@ describe('CapsuleBlockedCard — 막힘 카드', () => {
 
   it('두 줄은 각각 별도 블록이라 문장 사이에서 끊긴다', () => {
     expect(html).toMatch(/<span class="block">인벤토리가 가득 찼어요\.<\/span>/)
-    expect(html).toMatch(/<span class="block text-snow\/80">아이템 배지 2개를 받으려면 인벤토리를 비워주세요\.<\/span>/)
+    expect(html).toMatch(/<span class="block text-muted-on-inverse">아이템 배지 2개를 받으려면 인벤토리를 비워주세요\.<\/span>/)
   })
 
   it('게이지는 카드 안에 없고 버튼은 «인벤토리 가기» 하나뿐이다', () => {
@@ -77,7 +77,7 @@ describe('CapsuleBlockedCard — 막힘 카드', () => {
 
   it('버튼은 소형 secondary(--btn-secondary 면)이고 줄바꿈 없이 오른쪽에 놓이며 전체 폭이 아니다', () => {
     const button = html.match(/<button[^>]*>/)?.[0] ?? ''
-    expect(button).toContain('var(--btn-secondary)')
+    expect(button).toContain('bg-btn-secondary')
     expect(button).toContain('min-height:calc(44px * var(--scale-compact))')
     expect(button).toContain('whitespace-nowrap')
     expect(button).toContain('shrink-0')

@@ -14,6 +14,8 @@ export interface RarityBadgeProps {
    * `size`를 넘기지 않는 서비스 호출부는 변화가 없다. `md`·`row` = 12px 라벨 · 줄높이 16px · 2/8 패딩(높이 20px) — 모든 칩의 기준인 ListRowChip과 같다(티켓 20261106_2322, 20261112_0010). `md`는 예전에 5/10 패딩(22px)이었다.
    */
   size?: 'sm' | 'md' | 'row';
+  /** `common` 칩 면 톤 — 기본 `'default'`(`--default-soft`), 회색 카드 면 위는 `'common'`(`--rarity-common` + `--rarity-common-foreground`). */
+  tone?: 'default' | 'common';
   className?: string;
   /**
    * true이면 `common`도 칩(`Common`)으로 그린다. 기본 false — Common은 기본 등급이라 칩을 그리지 않는다(노이즈 축소, 티켓 20260827_024).

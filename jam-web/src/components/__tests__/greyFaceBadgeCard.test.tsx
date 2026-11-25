@@ -16,13 +16,12 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import BadgeHeroSection from '@/components/BadgeHeroSection'
 import VisitCountChip from '@/components/ui/VisitCountChip'
 
-const COLORS = ['#e0e8ff', '#7090e0', '#203a8a']
 const COMMON_BG = 'background:var(--rarity-common)'
 
 describe('BadgeGridCard 회색 면', () => {
   it.each([false, true])('compact=%s: Aura 없이 카드 면·이미지 면이 회색이다', (compact) => {
     const html = renderToStaticMarkup(
-      <BadgeGridCard name="한강" rarity="epic" imageUrl="https://example.com/b.png" compact={compact} bgColors={COLORS} />,
+      <BadgeGridCard name="한강" rarity="epic" imageUrl="https://example.com/b.png" compact={compact} />,
     )
     expect(html).not.toContain('badge-aura-background')
     expect(html).not.toContain('bg-card-bg')
@@ -35,10 +34,10 @@ describe('BadgeGridCard 회색 면', () => {
     expect(html.split(COMMON_BG).length - 1).toBe(2)
   })
 
-  it('Common 등급 칩도 회색 면 위에서 Common 색 클래스로 덮이고, 다른 등급 칩은 원래 색이다', () => {
+  it('Common 등급 칩도 회색 면 위에서 DS tone="common"으로 Common 색이고, 다른 등급 칩은 원래 색이다', () => {
     const common = renderToStaticMarkup(<BadgeGridCard name="새벽의 러너" rarity="common" showCommonChip imageUrl="https://example.com/b.png" />)
-    expect(common).toContain('bg-[var(--rarity-common)]!')
-    expect(common).toContain('text-[color:var(--rarity-common-foreground)]!')
+    expect(common).toContain('background:var(--rarity-common)')
+    expect(common).toContain('color:var(--rarity-common-foreground)')
     const rare = renderToStaticMarkup(<BadgeGridCard name="버티컬" rarity="rare" imageUrl="https://example.com/b.png" />)
     expect(rare).not.toContain('--rarity-common')
     expect(rare).toContain('var(--rarity-rare)')
@@ -62,7 +61,6 @@ const BADGE = {
   background_image_url: null,
   background_animation: null,
   level: 2,
-  bg_colors: COLORS,
 }
 type HeroProps = Parameters<typeof BadgeHeroSection>[0]
 

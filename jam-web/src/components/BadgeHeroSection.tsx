@@ -5,7 +5,6 @@ import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { getBadgeBackgroundAnimation, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
-import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import VisitCountChip from '@/components/ui/VisitCountChip'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 // [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 같은 문장 나누기를 쓰는 다른 화면과
@@ -51,10 +50,6 @@ interface BadgeHeroSectionProps {
      * 실제 배지 레코드가 아닌 호출부가 있어 필수로 만들면 그쪽이 막힌다.
      */
     level?: number | null
-    /**
-     * @deprecated Aura 그라데이션을 걷어 쓰지 않는다(티켓 20261125_1649). 호출부 정리는 후속 티켓 20261125_1650
-     */
-    bg_colors?: string[] | null
   }
   hasEarned: boolean
   /**
@@ -135,31 +130,24 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
     )
 
-  // DS 히어로는 Lv 칩 색을 받지 않으므로(DS 원본은 건드리지 않는다) 회색 면에서는 Lv 칩을 chipExtra 쪽에서 직접 그린다
-  const levelOnGrey = greyFace && badge.level != null
   const extra = greyFace && isValidElement<{ tone?: string }>(chipExtra) && chipExtra.type === VisitCountChip ? cloneElement(chipExtra, { tone: 'common' }) : chipExtra
-  const resolvedChipExtra = levelOnGrey ? (
-    <>
-      <BadgeLevelChip level={badge.level} size="md" style={{ background: 'var(--rarity-common)', color: 'var(--rarity-common-foreground)' }} />
-      {extra}
-    </>
-  ) : extra
 
   return (
     <BadgeHeroCard
       size={size}
       name={badge.name}
       rarity={badge.rarity}
-      level={levelOnGrey ? undefined : badge.level}
+      level={badge.level}
+      tone={greyFace ? 'grey' : 'default'}
       // [20260917_1211] 설명을 마침표(문장 종결) 기준으로 나눠 각 문장을 별도 줄로 그린다. 나누기는 서비스 유틸 몫이라 여기서 한다.
       descriptionLines={badge.description ? splitDescriptionSentences(badge.description) : undefined}
       descriptionNode={descriptionNode}
       titleNode={titleNode}
-      chipExtra={resolvedChipExtra}
+      chipExtra={extra}
       imageSlot={resolvedImage}
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
       backgroundSlot={backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : undefined}
-      backgroundColor={backgroundAnimation?.bgColor ?? (greyFace ? 'var(--background-secondary)' : undefined)}
+      backgroundColor={backgroundAnimation?.bgColor}
       onMedia={onMedia}
       textStyle={cardTextStyle}
     />

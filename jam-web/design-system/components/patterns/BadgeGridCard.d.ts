@@ -39,18 +39,12 @@ export interface BadgeGridCardProps {
   /** 컬렉션 슬롯 장착 모드에서 "지금 넣을 수 있는 칸"을 짚어주는 강조 링. */
   highlighted?: boolean;
   /**
-   * 잠긴 아이템 배지(열기 전). 썸네일 자리에 `LockedTile`, 이름 줄은 «잠긴 아이템 배지», 등급 칩 아래에 `ProgressBar outlined`(높이 6).
+   * 잠긴 아이템 배지(열기 전). 썸네일 자리에 `LockedTile`, 이름 줄은 «잠긴 아이템 배지».
    * `imageUrl`·`name`이 넘어와도 그리지 않는다. 기본 false.
    */
   locked?: boolean;
-  /** `locked`일 때 게이지의 채운 비율(0~100). 서버가 준 값을 그대로 그린다. 숫자는 화면에 쓰지 않는다. */
-  fillPercent?: number;
-  /**
-   * 썸네일 뒤에 깔 배경 면(티켓 20261120_0323). 서비스의 `bgColors` 글로우 배경에 해당하지만 그 계산이 서비스 코드에 있어,
-   * 이 DS는 호출부가 `absolute inset-0` 요소를 넘기면 썸네일 뒤에 깔고 이미지를 그 위로 올리기만 한다.
-   * `locked`·`undiscovered` 칸에서는 그리지 않는다. 미획득의 무채색 처리는 슬롯 쪽에서 한다.
-   */
-  thumbBackground?: ReactNode;
+  /** true이면 Common 등급 배지도 Common 칩을 그린다. 기본 false. */
+  showCommonChip?: boolean;
   className?: string;
   style?: CSSProperties;
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */

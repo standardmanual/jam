@@ -18,17 +18,13 @@ const LOCKED_NAME = '잠긴 아이템 배지';
  *   - `count` — 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 붙인다.
  *     서비스 피드 카드의 카운터 필과 같은 시각 문법이다(새 표현을 만들지 않는다).
  *
- * 면 (티켓 20261107_2246): --card-bg + 반경 --radius-2xl, 외곽선·그림자 없음. 서비스 `src/components/ui/BadgeGridCard.tsx`와 같은 값이다.
+ * 면 (티켓 20261125_1649/1650): --background-secondary 회색 단색 + 반경 --radius-2xl, 외곽선·그림자 없음. 서비스 `src/components/ui/BadgeGridCard.tsx`와 같은 값이다.
  *
  * 상태:
  *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
  *   undiscovered   → 이미지 없이 이미지 윤곽의 점선(`SlotOutline`)만, 이름은 그대로 (아이템북 후보 없는 칸, 티켓 20261112_1627)
  *   outlined       → 이미지(grayscale + 반투명) 위에 같은 점선을 불투명하게 겹친다 (지금 넣을 수 있는 칸, 티켓 20261112_1627)
- *   selected       → 블랙 2px 링(box-shadow, 레이아웃을 밀지 않음). 면은 그대로 --card-bg (선택 모드)
- *
- * 썸네일 배경 슬롯 (`thumbBackground`, 티켓 20261120_0323) — 서비스는 `bgColors`(배지 대표색)로 글로우 배경을 깔지만,
- *   그 계산이 서비스 코드(`badgeAura.ts`)에 있어 이 DS 파일은 가져오지 않는다. 대신 호출부가 `absolute inset-0` 면을 슬롯으로 넘기면
- *   썸네일 뒤에 깔고 이미지를 그 위로 올린다(상세 히어로 `BadgeHeroSection`의 `backgroundSlot`과 같은 방식). 잠금·미발견 칸에서는 그리지 않는다.
+ *   selected       → 블랙 2px 링(box-shadow, 레이아웃을 밀지 않음). 면은 그대로 --background-secondary (선택 모드)
  *
  * 미획득 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
  * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
@@ -78,7 +74,7 @@ export function BadgeGridCard({
   selected = false,
   highlighted = false,
   locked = false,
-  thumbBackground,
+  showCommonChip = false,
   className = '',
   style = {},
   children,
@@ -92,7 +88,7 @@ export function BadgeGridCard({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: 'var(--card-bg)',
+    background: 'var(--background-secondary)',
     boxSizing: 'border-box',
     borderRadius: 'var(--radius-2xl)',
     padding: 'var(--spacing-12)',
@@ -116,14 +112,10 @@ export function BadgeGridCard({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'transparent',
+    background: 'var(--background-secondary)',
     color: 'var(--foreground)',
     flexShrink: 0,
-    // 배경 슬롯이 있으면 썸네일이 슬롯의 기준 면이 된다(슬롯은 absolute inset-0)
-    position: thumbBackground ? 'relative' : undefined,
   };
-  // 슬롯은 z-index 0 면이라, 슬롯이 있을 때만 이미지·대체 아이콘을 그 위로 올린다
-  const aboveBackground = thumbBackground ? { position: 'relative', zIndex: 1 } : null;
 
   const showCount = !locked && !undiscovered && typeof count === 'number' && count > 1;
 
@@ -138,7 +130,6 @@ export function BadgeGridCard({
         ) : (
         <>
         <div style={thumbnailStyle}>
-          {thumbBackground}
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -147,11 +138,10 @@ export function BadgeGridCard({
                 width: '100%', height: '100%', objectFit: 'contain', padding: '4.4%',
                 filter: thumbFilter,
                 opacity: thumbOpacity,
-                ...aboveBackground,
               }}
             />
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--muted)', ...aboveBackground }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--muted)' }}>
               <circle cx="12" cy="8" r="5" />
               <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
             </svg>
@@ -189,8 +179,8 @@ export function BadgeGridCard({
         }}>
           {locked ? LOCKED_NAME : name}
         </p>
-        {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity} size="md" />)}
-        {/* 방문 횟수 칩(체크인 배지 목록, 2026-11-09) — 2회 이상일 때만, 등급 칩과 같은 크기(md). 면은 레벨 칩과 같은 --default-soft다. 서비스 `BadgeGridCard`와 같은 값이다 */}
+        {!undiscovered && (level != null ? <BadgeLevelChip level={level} size="md" tone="common" /> : <RarityBadge rarity={rarity} size="md" tone="common" showCommon={showCommonChip} />)}
+        {/* 방문 횟수 칩(체크인 배지 목록, 2026-11-09) — 회색 면 위에서 묻히지 않도록 Common 색(--rarity-common + --rarity-common-foreground)을 쓴다(티켓 20261125_1649) */}
         {!undiscovered && typeof visitCount === 'number' && visitCount > 1 && (
           <span
             role="img"
@@ -199,7 +189,7 @@ export function BadgeGridCard({
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               padding: 'var(--chip-padding)', borderRadius: 'var(--radius-full)',
               fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-              color: 'var(--foreground)', background: 'var(--default-soft)',
+              color: 'var(--rarity-common-foreground)', background: 'var(--rarity-common)',
             }}
           >
             ×{visitCount}

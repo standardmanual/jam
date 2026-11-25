@@ -50,21 +50,26 @@ export function BadgeHeroSection({
   textStyle,
   /** 설명 글자를 `text-muted` 대신 `text-foreground`로 한 단계 진하게 한다. 중간색 면 위에서 대비가 모자랄 때 호출부가 켠다. `onMedia`면 무시. 기본 false */
   strongText = false,
+  /** 카드 면 톤. `'default'` = 흰 면(`--card-bg`), `'grey'` = 회색 단색 면(`--background-secondary`) + 내부 칩 `common` 톤 */
+  tone = 'default',
   /** 'page'(기본) | 'sheet' */
   size = 'page',
 }) {
   const sizeStyle = SIZE_STYLE[size] ?? SIZE_STYLE.page;
+  const isGrey = !onMedia && tone === 'grey';
+  const chipTone = isGrey ? 'common' : 'default';
   const descriptionTone = onMedia ? 'text-snow' : strongText ? 'text-foreground' : 'text-muted';
-  const chip = level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={rarity ?? undefined} size="md" />;
+  const chip = level != null ? <BadgeLevelChip level={level} size="md" tone={chipTone} /> : <RarityBadge rarity={rarity ?? undefined} size="md" tone={chipTone} />;
+  const resolvedBackgroundColor = backgroundColor ?? (isGrey ? 'var(--background-secondary)' : undefined);
 
   return (
     <div className={sizeStyle.wrapper}>
       <div
         className={[
           `relative overflow-hidden w-full rounded-2xl flex flex-col items-center gap-4 ${sizeStyle.card}`,
-          onMedia ? 'bg-transparent' : 'bg-card-bg',
+          onMedia ? 'bg-transparent' : isGrey ? 'bg-background-secondary' : 'bg-card-bg',
         ].join(' ')}
-        style={backgroundColor ? { backgroundColor } : undefined}
+        style={resolvedBackgroundColor ? { backgroundColor: resolvedBackgroundColor } : undefined}
       >
         {backgroundSlot}
         <div className="relative z-10 flex-shrink-0 flex items-center justify-center">{imageSlot}</div>

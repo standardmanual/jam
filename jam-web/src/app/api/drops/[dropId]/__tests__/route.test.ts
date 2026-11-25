@@ -83,9 +83,9 @@ describe('GET /api/drops/[dropId]', () => {
     expect(body).toMatchObject({
       badge_name: SECRET_NAME,
       badge_image_url: SECRET_IMAGE,
-      badge_bg_colors: SECRET_BG_COLORS,
       serial: `${SECRET_PREFIX}424242`,
     })
+    expect(body).not.toHaveProperty('badge_bg_colors')
     expect(body).not.toHaveProperty('locked')
   })
 

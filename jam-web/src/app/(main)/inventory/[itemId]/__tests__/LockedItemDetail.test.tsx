@@ -392,8 +392,8 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
     const html = withoutStyle(render())
     const card = html.slice(html.indexOf('rounded-2xl'), html.indexOf('</h1>'))
 
-    // 일반 상세 카드의 면과 구조: 흰 카드 면, 세로 고정(aspect-square) 없음
-    expect(html).toContain('bg-card-bg')
+    // 일반 상세 카드의 면과 구조: 회색 카드 면(티켓 20261125_1649/1650), 세로 고정(aspect-square) 없음
+    expect(html).toContain('bg-background-secondary')
     expect(html).not.toContain('aspect-square')
     // 카드 안에 타일(svg), 등급 칩, «잠김» 칩, 이름이 이 순서로 있다
     expect(card).toContain('<svg')

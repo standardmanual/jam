@@ -68,8 +68,7 @@ export type TierUpResponse = TierUpSuccessResponse | TierUpFailureResponse
 /** 재료 후보로 쓰는 인벤토리 개체의 최소 모양 — `InventoryItemWithBadge`가 그대로 들어맞는다 */
 export interface TierUpMaterial {
   id: string
-  /** `bg_colors`는 재료 칸의 썸네일 면 Aura 색이다(티켓 20261119_1654) */
-  badge: { name: string; image_url: string | null; rarity: string | null; bg_colors?: string[] | null }
+  badge: { name: string; image_url: string | null; rarity: string | null }
 }
 
 export interface TierUpGroup<T extends TierUpMaterial = TierUpMaterial> {

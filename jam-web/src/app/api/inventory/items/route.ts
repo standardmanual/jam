@@ -28,7 +28,7 @@ export async function GET() {
       expires_at,
       locked,
       unlock_points_required,
-      badges ( name, rarity, image_url, bg_colors, deleted_at )
+      badges ( name, rarity, image_url, deleted_at )
     `)
     .eq('inventory_id', inventoryId)
     .is('dropped_at', null)
@@ -51,7 +51,7 @@ export async function GET() {
     expires_at: string | null
     locked: boolean | null
     unlock_points_required: number | null
-    badges: { name: string; rarity: string; image_url: string | null; bg_colors: string[] | null; deleted_at: string | null } | null
+    badges: { name: string; rarity: string; image_url: string | null; deleted_at: string | null } | null
   }
 
   const items = ((data ?? []) as unknown as InventoryItemRow[])
@@ -81,8 +81,6 @@ export async function GET() {
         badge_name: row.badges?.name,
         badge_rarity: row.badges?.rarity,
         badge_image_url: row.badges?.image_url,
-        // 썸네일 면 Aura 색(티켓 20261119_1654). 잠긴 개체에는 싣지 않는다(위 분기)
-        badge_bg_colors: row.badges?.bg_colors ?? null,
         serial_prefix: row.serial_prefix,
         serial_number: row.serial_number,
         expires_at: row.expires_at,

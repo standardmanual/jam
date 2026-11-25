@@ -241,7 +241,6 @@ describe('listPendingResults', () => {
       badgeId: 'badge-b',
       name: '열린 배지',
       imageUrl: 'https://img/b.png',
-      bgColors: ['#e0e8ff', '#7090e0'],
       rarity: 'rare',
       locked: false,
       createdAt: '2026-10-18T01:00:00.000Z',
@@ -249,8 +248,9 @@ describe('listPendingResults', () => {
     expect(JSON.stringify(payload.items[0])).not.toContain('비밀 이름')
     // 여는 비용은 포인트라서 옛 «필요한 잼» 값(DB 열에는 30이 남아 있다)을 화면 경로로 내리지 않는다
     expect(payload.items[0]).not.toHaveProperty('unlockRequired')
-    // 잠긴 결과에는 대표색도 싣지 않는다(티켓 20261119_1654)
+    // 대표색(Aura)은 티켓 20261125_1649/1650으로 제거돼 어느 항목에도 싣지 않는다
     expect(payload.items[0]).not.toHaveProperty('bgColors')
+    expect(payload.items[1]).not.toHaveProperty('bgColors')
   })
 
   it('조회가 실패하면 던진다', async () => {

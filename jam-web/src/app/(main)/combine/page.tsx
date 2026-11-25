@@ -85,13 +85,13 @@ export default async function CombinePage() {
   const { data: allowedBadgesRaw, error: allowedBadgesError } = await selectInChunks(allowedBadgeIds, (chunk) =>
     service
       .from('badges')
-      .select('id, name, image_url, rarity, description, bg_colors')
+      .select('id, name, image_url, rarity, description')
       .in('id', chunk)
       .is('deleted_at', null),
   )
   if (allowedBadgesError) console.error('[combine/page] 슬롯 후보·보상 배지 상세 조회 실패', allowedBadgesError)
   const badgeDetailMap = new Map(
-    ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description' | 'bg_colors'>[]).map((b) => [
+    ((allowedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'description'>[]).map((b) => [
       b.id,
       b,
     ])
@@ -169,7 +169,7 @@ export default async function CombinePage() {
     rewardBadges: rewardBadgesOf(r),
   }))
 
-  let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'bg_colors'> }> = []
+  let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []
 
   const inv = invRaw as { id: string } | null
 
@@ -195,14 +195,14 @@ export default async function CombinePage() {
       const { data: badgesRaw, error: badgesError } = await selectInChunks(badgeIds, (chunk) =>
         service
           .from('badges')
-          .select('id, name, image_url, rarity, bg_colors')
+          .select('id, name, image_url, rarity')
           .in('id', chunk)
           .is('deleted_at', null),
       )
       if (badgesError) console.error('[combine/page] badges(조합 재료 상세) 조회 실패', badgesError)
 
       const badgeMap = new Map(
-        ((badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'bg_colors'>[])
+        ((badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[])
           .map((b) => [b.id, b])
       )
 

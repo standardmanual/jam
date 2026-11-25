@@ -106,10 +106,10 @@ describe('TicketPhoto·StravaLink', () => {
     expect(photo).toContain('--ticket-silhouette')
   })
 
-  it('Strava 버튼은 검정 바탕·흰 굵은 글씨다', () => {
-    expect(strava).toContain("background: 'var(--foreground)'")
-    expect(strava).toContain("color: 'var(--snow)'")
-    expect(strava).toContain('font-bold')
+  it('Strava 버튼은 공용 Button primary(검정 바탕·흰 글씨) 풀폭 링크다', () => {
+    expect(strava).toContain("import Button from '@/components/ui/Button'")
+    expect(strava).toContain('variant="primary"')
+    expect(strava).toContain('fullWidth')
     expect(strava).not.toContain('#FC4C02')
   })
 })

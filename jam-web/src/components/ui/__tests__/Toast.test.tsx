@@ -53,7 +53,7 @@ describe('ToastRow — 문구 칸', () => {
 describe('ToastRow — 아이콘 칸', () => {
   it('아이콘 span이 글자 한 줄과 같은 24px 줄 상자(h-6)이고 shrink-0이다', () => {
     const html = render('success', '문구')
-    expect(html).toContain('<span class="flex h-6 shrink-0 items-center text-snow/60"><svg data-icon="success"></svg></span>')
+    expect(html).toContain('<span class="flex h-6 shrink-0 items-center text-muted-on-inverse"><svg data-icon="success"></svg></span>')
   })
 })
 
