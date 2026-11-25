@@ -116,9 +116,6 @@ function TypographyPage() {
       </p>
 
       <Section title="Headings">
-        <TypeRow step="5xl" weight={600} sample="섹션 제목" />
-        <TypeRow step="4xl" weight={null} sample="큰 제목" />
-        <TypeRow step="3xl" weight={500} sample="카드 제목" />
         <TypeRow step="2xl" weight={500} sample="서브 카드 제목" />
       </Section>
 
@@ -128,14 +125,6 @@ function TypographyPage() {
         <TypeRow step="base" sample="기본 본문 텍스트. 최소 읽기 편한 크기." />
         <TypeRow step="sm" sample="보조 설명, 메타 정보" />
         <TypeRow step="xs" sample="캡션, 타임스탬프, 힌트" />
-      </Section>
-
-      <Section title="Bold (큰 숫자·콜아웃)">
-        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 20px' }}>
-          히어로 숫자와 큰 콜아웃 용도.
-        </p>
-        <TypeRow step="5xl" weight={700} sample="128" />
-        <TypeRow step="3xl" weight={700} sample="배지 획득" />
       </Section>
 
       <Section title="Leading (긴 글 행간)">
