@@ -98,7 +98,7 @@ export function SlidingTabs({
               border: 'none',
               background: isActive ? palette.pillBg : 'transparent',
               color: isActive ? palette.textActive : palette.textMuted,
-              fontSize: 'var(--text-sm)',
+              fontSize: 'var(--text-base)',
               fontWeight: isActive ? 700 : 500,
               fontFamily: 'var(--font-family-base)',
               cursor: 'pointer',

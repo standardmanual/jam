@@ -212,12 +212,13 @@ describe('SlidingTabs 팔레트 — 크림 바탕·흰 카드 위에서 라벨�
   })
 })
 
-describe('UserSearchBar — 흰 면 + 1px field 테두리, 글자 --foreground, 안내 글자 --muted', () => {
+describe('UserSearchBar — DS Input(흰 면 + 1px field 테두리 + 캡슐), 글자 --foreground, 안내 글자 --muted', () => {
   it('어두운 반전 면·옅은 흰 글자가 없고 focus-within 표시가 있다', () => {
     const html = renderToStaticMarkup(<UserSearchBar />)
-    expect(html).toContain('bg-surface')
-    expect(html).toContain('border-field-border')
-    expect(html).toContain('text-foreground')
+    expect(html).toContain('background:var(--surface)')
+    expect(html).toContain('border:1px solid var(--field-border)')
+    expect(html).toContain('border-radius:var(--field-radius)')
+    expect(html).toContain('color:var(--foreground)')
     expect(html).toContain('placeholder:text-muted')
     expect(html).toContain('text-muted')
     expect(html).toContain('focus-within:border-link')

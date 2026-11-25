@@ -239,7 +239,7 @@ export default function SlidingTabs<K extends string = string>({
       aria-label={ariaLabel}
     >
       <span className="t-tabs-pill" aria-hidden="true" ref={pillRef} />
-      {items.map((item) => (
+      {items.map((item, i) => (
         <button
           key={item.key}
           type="button"
@@ -247,6 +247,19 @@ export default function SlidingTabs<K extends string = string>({
           aria-selected={value === item.key}
           aria-label={item.ariaLabel}
           onClick={() => onChange(item.key)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              e.preventDefault()
+              const next = e.key === 'ArrowRight'
+                ? (i + 1) % items.length
+                : (i - 1 + items.length) % items.length
+              const nextItem = items[next]
+              if (nextItem) {
+                tabRefs.current.get(nextItem.key)?.focus()
+                onChange(nextItem.key)
+              }
+            }
+          }}
           ref={(el) => {
             if (el) tabRefs.current.set(item.key, el)
             else tabRefs.current.delete(item.key)

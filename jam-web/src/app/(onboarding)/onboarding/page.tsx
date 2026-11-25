@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { UserIcon, PencilIcon } from '@/components/ui/icons'
+import { PencilIcon } from '@/components/ui/icons'
+import Avatar from '@/components/ui/Avatar'
+import { Input } from '@ds/components/forms/Input'
+import { Checkbox } from '@ds/components/forms/Checkbox'
 import Button from '@/components/ui/Button'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -12,7 +14,6 @@ import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 import TribeStep, { type TribesState } from './TribeStep'
 import { resolveOnboardingEntry, type OnboardingUserRow } from './onboarding-entry'
-import { CheckIcon } from '@/components/ui/icons'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 type Step = 'account' | 'tribe'
@@ -325,11 +326,8 @@ function OnboardingContent() {
     router.push('/login')
   }
 
-  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
+  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — DS Input의 state('error'|'success'|'default')와 메시지 텍스트로 구분
   const hasError = status === 'invalid' || status === 'taken'
-  const inputBorderClass = hasError
-    ? 'shadow-[inset_0_0_0_2px_var(--separator)]'
-    : 'shadow-[inset_0_0_0_1px_var(--separator)]'
 
   // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
   const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(message)
@@ -361,13 +359,14 @@ function OnboardingContent() {
               disabled={uploading}
               aria-label={d.profileEdit.changePhotoAlt}
             >
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
-              ) : (
-                <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
-                  <UserIcon className="w-10 h-10 text-muted" />
-                </div>
-              )}
+              <Avatar
+                src={avatarUrl}
+                alt={d.onboarding.avatarAlt}
+                size={96}
+                shape="rounded"
+                iconClassName="w-10 h-10 text-muted"
+                className={avatarUrl ? '' : 'bg-surface'}
+              />
               {uploading && (
                 <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
                   <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
@@ -394,26 +393,26 @@ function OnboardingContent() {
 
           {/* 아이디 입력 — 가로 70%로 축소 */}
           <div className={`t-input-wrap w-[70%] flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
-            <div
-              ref={inputShakeRef}
-              className={`t-input flex items-center w-full min-h-11 rounded-full px-4 bg-surface transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
-            >
-              <span className="text-muted mr-1">@</span>
-              <input
-                type="text"
-                value={input}
-                onChange={handleChange}
-                placeholder={d.onboarding.usernamePlaceholder}
-                maxLength={30}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-              />
-              {status === 'checking' && (
-                <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
-              )}
-            </div>
+            <Input
+              type="text"
+              value={input}
+              onChange={handleChange}
+              placeholder={d.onboarding.usernamePlaceholder}
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              state={hasError ? 'error' : status === 'available' ? 'success' : 'default'}
+              containerRef={inputShakeRef}
+              containerClassName={`t-input${hasError ? ' is-error' : ''}`}
+              className="placeholder:text-muted"
+              leading={<span className="text-muted">@</span>}
+              trailing={
+                status === 'checking' ? (
+                  <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin mr-3 shrink-0" />
+                ) : undefined
+              }
+            />
             <p
               ref={messageRef}
               aria-live="polite"
@@ -425,16 +424,14 @@ function OnboardingContent() {
 
           {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값. 가로 70%로 축소 */}
           <div className="w-[70%] flex flex-col gap-2">
-            <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 bg-surface shadow-[inset_0_0_0_1px_var(--separator)]">
-              <input
-                type="text"
-                value={nameInput}
-                onChange={handleNameChange}
-                placeholder={d.profileEdit.namePlaceholder}
-                maxLength={30}
-                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-              />
-            </div>
+            <Input
+              type="text"
+              value={nameInput}
+              onChange={handleNameChange}
+              placeholder={d.profileEdit.namePlaceholder}
+              maxLength={30}
+              className="placeholder:text-muted"
+            />
             <p className="text-right text-xs px-1 text-muted">
               {t(d.onboarding.nameCounter, { count: nameInput.length })}
             </p>
@@ -442,38 +439,24 @@ function OnboardingContent() {
 
           {/* 만 14세 이상 자기확인 — 이미 아이디가 있던 유저(1단계 재진입 아님)는 생략 */}
           {currentUsername === null && (
-            <label className="w-[70%] flex items-center gap-3 min-h-11 cursor-pointer">
-              <span
-                className={`relative shrink-0 w-5 h-5 rounded-sm flex items-center justify-center transition-shadow ${
-                  ageConfirmed
-                    ? 'shadow-[inset_0_0_0_2px_var(--separator)]'
-                    : 'shadow-[inset_0_0_0_1px_var(--separator)]'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={ageConfirmed}
-                  onChange={(e) => setAgeConfirmed(e.target.checked)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  aria-label={d.onboarding.ageConfirmLabel}
-                />
-                {ageConfirmed && (
-                  <CheckIcon className="w-3 h-3 pointer-events-none text-foreground" />
-                )}
-              </span>
-              <span className="text-base text-foreground">
-                {d.onboarding.ageConfirmLabel}
-              </span>
-            </label>
+            <Checkbox
+              checked={ageConfirmed}
+              onChange={(e) => setAgeConfirmed(e.target.checked)}
+              label={d.onboarding.ageConfirmLabel}
+              aria-label={d.onboarding.ageConfirmLabel}
+              style={{ width: '70%' }}
+            />
           )}
 
-          <button
-            onClick={handleStep1Next}
+          <Button
+            variant="primary"
+            loading={submittingStep1}
             disabled={!canProceedStep1}
-            className="w-[70%] min-h-11 bg-background-inverse text-snow py-[14px] rounded-full active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-base"
+            onClick={handleStep1Next}
+            className="w-[70%]"
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
-          </button>
+          </Button>
 
           {/* 로그아웃 길 — 티켓 20261021_1247. 1단계에는 «뒤로»도 없어 잘못된 구글 계정으로 들어온 유저가 빠져나갈 길이 없다.
               2단계(TribeStep)와 같은 ghost 버튼이다. 제출 중에는 비활성이고, 로그아웃 중에는 스피너를 보인다(글자는 그대로). */}

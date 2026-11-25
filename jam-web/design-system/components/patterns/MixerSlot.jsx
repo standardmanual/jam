@@ -1,15 +1,14 @@
 import React from 'react';
 
 /**
- * ActionCircle — 믹서 칸의 «+»·«−» 원. «+»는 24px 검은 원(--background-inverse) 안에 흰(--snow) 14px 아이콘, 굵은 선(strokeWidth 4.5, round cap).
- * «−»(빼기)는 레드 원(--jam-red)이고 크기가 «+»의 80%다(19.2px 원, 11.2px 아이콘 — 사용자 지시 2026-11-14, 티켓 20261114_1722).
+ * ActionCircle — 믹서·컬렉션 칸의 «+»·«−» 원.
+ * «+»는 검은 원(--background-inverse), «−»는 레드 원(--jam-red)이며 둘 다 20px 원 안에 12px 흰(--snow) 아이콘(strokeWidth 4.5, round cap)으로 통일한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
  * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 44px 박스, empty는 슬롯 전체).
- * 이 파일 안의 도우미라 export하지 않는다.
  */
-function ActionCircle({ kind }) {
+export function ActionCircle({ kind }) {
   const minus = kind !== 'plus';
-  const circle = minus ? 19.2 : 24;
-  const icon = minus ? 11.2 : 14;
+  const circle = 20;
+  const icon = 12;
   return (
     <span
       aria-hidden="true"

@@ -6,7 +6,6 @@
  * (Framer Motion)을 쓰지만, 문제 컴포넌트는 JAM! 자체 shadcn 프리미티브(어드민 전역
  * 공유)라 코드 무수정으로 끝나는 이 CSS 유틸리티 플러그인을 대신 채택했다(사용자 승인). */
 @import "tw-animate-css";
-@import "../components/dotmatrix-loader.css";
 @import "../components/transitions.css";
 
 /*
@@ -47,6 +46,8 @@
   --color-muted: var(--muted);
   --color-link: var(--link);
   --color-snow: var(--snow);
+  --color-muted-on-inverse: var(--muted-on-inverse);
+  --color-surface-on-inverse: var(--surface-on-inverse);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
@@ -71,6 +72,10 @@
   --color-jam-green: var(--jam-green);
   --color-jam-purple: var(--jam-purple);
   --color-jam-blue: var(--jam-blue);
+  --color-jam-pink: var(--jam-pink);
+  --color-jam-sky: var(--jam-sky);
+  --color-jam-green-deep: var(--jam-green-deep);
+  --color-jam-chip-white: var(--jam-chip-white);
 
   /* shadcn 이름 — 어드민 전용. 값은 [data-admin-theme] 안에서만 정의된다 */
   --color-sidebar-ring: var(--sidebar-ring);

@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import LocalDate from '@/components/LocalDate'
 import SafeImage from '@/components/SafeImage'
+import Button, { getButtonClassName } from '@/components/ui/Button'
 import { isVideoUrl } from '@/lib/today/cardMedia'
 import { d } from '@/lib/i18n'
 import type { ArticleView as ArticleViewData } from '@/lib/today/articleView'
@@ -18,14 +18,6 @@ import type { ArticleView as ArticleViewData } from '@/lib/today/articleView'
  * - CTA 알약은 어두운 반전 면(`--background-inverse`) 위 `text-snow`다 — 면이 어두운 곳이라 글자가 `--snow`인 것이 맞는 짝이다(티켓 20261015_2133).
  * - CTA는 `cta.href`가 있으면 링크, 없으면 같은 모양의 정적 필(링크·눌림·transition 없음)이다. `cta` 자체가 없으면 블록이 없다 — 둘은 다른 상태다.
  */
-
-// Button.tsx variant="primary" surface="main" 레시피를 그대로 복사 — <a> 안에 <button>을 중첩할 수 없어 Button 컴포넌트 대신 className을 재사용한다(티켓 20260924_0107).
-// 정적 필(링크 없음)은 같은 모양에서 눌림(`transition-transform duration-100 active:scale-95`)만 뺀다.
-const CTA_HEAD = 'inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal'
-const CTA_PRESS = 'transition-transform duration-100 active:scale-95'
-const CTA_TAIL =
-  'rounded-full px-8 py-[14px] text-base text-snow'
-const CTA_STYLE = { backgroundColor: 'var(--background-inverse)' }
 
 export default function ArticleView({ view }: { view: ArticleViewData }) {
   const { cta } = view
@@ -90,11 +82,11 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
         {cta && (
           <div className="mt-6">
             {cta.href ? (
-              <Link href={cta.href} className={`${CTA_HEAD} ${CTA_PRESS} ${CTA_TAIL}`} style={CTA_STYLE}>
+              <Button href={cta.href} variant="primary" surface="main" fullWidth>
                 {cta.label}
-              </Link>
+              </Button>
             ) : (
-              <div className={`${CTA_HEAD} ${CTA_TAIL}`} style={CTA_STYLE}>
+              <div className={getButtonClassName({ variant: 'primary', surface: 'main', fullWidth: true, interactive: false })}>
                 {cta.label}
               </div>
             )}

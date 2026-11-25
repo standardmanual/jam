@@ -338,3 +338,21 @@ export default function BadgeGridCard({
   if (onClick) return <button type="button" onClick={onClick} disabled={disabled} aria-pressed={pressed} className={containerCls}>{content}</button>
   return <div className={containerCls}>{content}</div>
 }
+
+/**
+ * 인벤토리 빈 슬롯 플레이스홀더 — 일반 `BadgeGridCard`와 동일한 썸네일(`w-[calc(100%+0.75rem)] aspect-square`)·
+ * 이름(`text-sm font-bold`)·칩(`h-6`) 기하를 공유해 채운 카드와 행 높이가 정확히 일치한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
+ */
+export function BadgeGridCardPlaceholder({ className = '' }: { className?: string }) {
+  return (
+    <div className={`${BASE} bg-card-bg opacity-30${className ? ` ${className}` : ''}`} aria-hidden="true">
+      <div className="relative w-[calc(100%+0.75rem)] -mt-1.5">
+        <div className="w-full aspect-square rounded-2xl" />
+      </div>
+      <div className="flex flex-col items-center gap-1 pt-2 w-full">
+        <p className="text-sm font-bold text-foreground text-center truncate w-full leading-tight">&nbsp;</p>
+        <div className="h-6" />
+      </div>
+    </div>
+  )
+}

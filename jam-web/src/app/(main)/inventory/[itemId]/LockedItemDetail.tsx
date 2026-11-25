@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import { LabelChip } from '@ds/components/cards/LabelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
@@ -155,7 +155,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
   const openButton = (compact: boolean) => (
     <Button
       variant="primary"
-      size={compact ? 'sm' : 'md'}
+      size={compact ? 'xs' : 'md'}
       fullWidth={!compact}
       disabled={pending || blocked}
       aria-busy={pending || undefined}

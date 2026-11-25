@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
 
 /**
@@ -14,11 +15,13 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * - `ghost`     : 투명 / --link / 투명
  * - `arrow`     : 화살표(→) 접두 텍스트 버튼. 배경·테두리 없음(투명 테두리), --foreground
  *
- * surface = "이 버튼이 놓인 배경". primary에서만 색을 바꾼다. 나머지 변형은 surface와 무관하게 한 값이다
- * - `main`(기본): primary는 --background-inverse 채움 + --snow 글자(검정 알약). 결정 2(주 버튼 → accent)를
- *   이 면에는 적용하지 않기로 했다(사용자 결정 2026-10-16). MODULAR light primary(--accent)와 같은 크림 바탕에서
- *   색이 갈라진 채 남는다(알려진 임시 결함)
+ * surface = "이 버튼이 놓인 배경".
+ * - `main`(기본): primary는 --background-inverse 채움 + --snow 글자(검정 알약).
  * - `sub`: primary는 --accent 채움 + --accent-foreground 글자(MODULAR light primary와 같은 쌍)
+ * - `dark`: 반전 면(--background-inverse 등 어두운 바탕) 위 전용(MODULAR surface="dark"와 같은 쌍).
+ *   primary는 --snow 채움 + --foreground 글자, secondary는 투명 + 1px --snow 테두리 + --snow 글자, ghost는 --snow 글자.
+ *
+ * `href`를 넘기면 내부 경로는 Next `<Link>`, 외부(`external`·`http(s):`·`mailto:`·`#`)는 `<a>`로 렌더한다.
  *
  * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
  * 드롭섀도/그라데이션 금지. 모든 변형에 1px 테두리를 두고(외곽선 외에는 투명) 세로 패딩에서 그 두께를 뺀다 —
@@ -26,7 +29,7 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost' | 'arrow'
 
-export type ButtonSurface = 'main' | 'sub'
+export type ButtonSurface = 'main' | 'sub' | 'dark'
 /**
  * xs: --scale-compact(0.7, design-system/tokens/motion.css) 배율 — 44px 기준 약 31px
  * 최소 높이. 내비게이션 바처럼 세로 공간이 44px로 고정된 조밀한 컨텍스트 전용
@@ -35,12 +38,16 @@ export type ButtonSurface = 'main' | 'sub'
  */
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
-  /** primary의 면만 바꾼다(위 설명). secondary·danger·outline·ghost·arrow는 무시한다. */
+  /** primary의 면(및 dark의 secondary·ghost)을 바꾼다. */
   surface?: ButtonSurface
   loading?: boolean
   fullWidth?: boolean
+  /** 링크 버튼 경로. 내부 경로는 Next `<Link>`, 외부(`external`·`http(s):`·`mailto:`·`#`)는 `<a>`로 렌더한다. */
+  href?: string
+  /** `href`와 함께 쓰면 새 탭(`target="_blank" rel="noopener noreferrer"`)으로 연다. */
+  external?: boolean
   /** @deprecated 'sm'/'md'/'lg'는 크기 위계를 타이포 스케일로만 표현합니다(패딩만 미세 조정).
    * 'xs'는 예외 — 44px 미만 높이가 필요한 조밀한 컨텍스트 전용으로 실제 높이가 줄어듭니다. */
   size?: ButtonSize
@@ -58,6 +65,18 @@ const colorClasses: Record<Exclude<ButtonVariant, 'primary'>, string> = {
 const primaryColorClasses: Record<ButtonSurface, string> = {
   main: 'text-snow bg-background-inverse border-transparent', // 검정 알약 유지(사용자 결정 2026-10-16)
   sub: 'text-accent-foreground bg-accent border-transparent', // 밝은 배경 위 primary = accent 알약
+  dark: 'text-foreground bg-snow border-transparent', // 반전 면 위 알약 윤곽(MODULAR surface="dark"와 동일)
+}
+
+const darkColorOverrides: Partial<Record<Exclude<ButtonVariant, 'primary'>, string>> = {
+  secondary: 'text-snow bg-transparent border-snow',
+  ghost: 'text-snow bg-transparent border-transparent',
+}
+
+function resolveColorClass(variant: ButtonVariant, surface: ButtonSurface): string {
+  if (variant === 'primary') return primaryColorClasses[surface]
+  if (surface === 'dark' && darkColorOverrides[variant]) return darkColorOverrides[variant]!
+  return colorClasses[variant]
 }
 
 // 세로 패딩은 1px 테두리 두께를 뺀 값이다 — 14→13(md 52px 유지), arrow 24→23.
@@ -95,6 +114,57 @@ const xsStyle: CSSProperties = {
   fontSize: 'var(--text-xs)',
 }
 
+/** 정적 필(`ArticleView`의 href 없는 CTA 등)에서 버튼과 동일한 외형 클래스를 공유할 때 쓴다. */
+export function getButtonClassName({
+  variant = 'primary',
+  surface = 'main',
+  size = 'md',
+  fullWidth = false,
+  interactive = true,
+  disabled = false,
+  className = '',
+}: {
+  variant?: ButtonVariant
+  surface?: ButtonSurface
+  size?: ButtonSize
+  fullWidth?: boolean
+  interactive?: boolean
+  disabled?: boolean
+  className?: string
+} = {}): string {
+  return [
+    // 최소 44×44pt 터치 영역 + weight 400 고정 (xs는 예외 — 인라인 style로 31px 강제)
+    'inline-flex items-center justify-center gap-2 min-h-11 font-normal border',
+    interactive ? 'transition-transform duration-100' : '',
+    shapeClasses[variant],
+    resolveColorClass(variant, surface),
+    sizePadding[size],
+    fullWidth ? 'w-full' : '',
+    !interactive ? '' : disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-95',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+function ButtonSpinner() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      width={16}
+      height={16}
+      aria-hidden="true"
+      className="shrink-0 animate-spin"
+    >
+      <path d="M12 2a10 10 0 0 1 10 10" />
+    </svg>
+  )
+}
+
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
@@ -103,15 +173,19 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size = 'md',
       loading = false,
       fullWidth = false,
+      href,
+      external = false,
       disabled,
+      type = 'button',
       className = '',
       children,
       style: styleProp,
+      'aria-busy': ariaBusyProp,
       ...props
     },
     ref
   ) => {
-    const isDisabled = disabled || loading
+    const isDisabled = Boolean(disabled || loading)
 
     // 사이즈 기본 스타일 위에 호출부가 넘긴 style을 병합한다(완전 대체가 아님) —
     // 호출부가 xs 사이즈와 함께 style을 보탤 수 있어야 한다.
@@ -120,31 +194,60 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ...styleProp,
     }
 
+    const classes = getButtonClassName({
+      variant,
+      surface,
+      size,
+      fullWidth,
+      disabled: isDisabled,
+      className,
+    })
+
+    const content = (
+      <>
+        {loading && <ButtonSpinner />}
+        {variant === 'arrow' && <span aria-hidden="true">&rarr;</span>}
+        {children}
+      </>
+    )
+
+    if (href && !isDisabled) {
+      const isExternalHref = external || /^(https?:|mailto:)/.test(href) || href === '#'
+      if (isExternalHref) {
+        return (
+          <a
+            href={href}
+            target={external ? '_blank' : undefined}
+            rel={external ? 'noopener noreferrer' : undefined}
+            className={classes}
+            style={Object.keys(mergedStyle).length > 0 ? mergedStyle : undefined}
+          >
+            {content}
+          </a>
+        )
+      }
+      return (
+        <Link
+          href={href}
+          className={classes}
+          style={Object.keys(mergedStyle).length > 0 ? mergedStyle : undefined}
+        >
+          {content}
+        </Link>
+      )
+    }
+
     return (
       <button
         ref={ref}
+        type={type}
         disabled={isDisabled}
-        className={[
-          // 최소 44×44pt 터치 영역 + weight 400 고정 (xs는 예외 — 인라인 style로 32px 강제)
-          'inline-flex items-center justify-center gap-2 min-h-11 font-normal border',
-          'transition-transform duration-100',
-          shapeClasses[variant],
-          variant === 'primary' ? primaryColorClasses[surface] : colorClasses[variant],
-          sizePadding[size],
-          fullWidth ? 'w-full' : '',
-          isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-95',
-          className,
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        aria-busy={ariaBusyProp ?? (loading ? true : undefined)}
+        className={classes}
         style={mergedStyle}
         {...props}
       >
-        {loading && (
-          <span className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
-        )}
-        {variant === 'arrow' && <span aria-hidden="true">&rarr;</span>}
-        {children}
+        {content}
       </button>
     )
   }

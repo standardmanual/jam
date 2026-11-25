@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
@@ -11,7 +10,7 @@ import SyncButton from '@/components/SyncButton'
 import Button from '@/components/ui/Button'
 import NotificationBell from '@/components/ui/NotificationBell'
 import SyncIconButton from '@/components/ui/SyncIconButton'
-import { UserIcon } from '@/components/ui/icons'
+import Avatar from '@/components/ui/Avatar'
 import { d } from '@/lib/i18n'
 
 /**
@@ -111,13 +110,13 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       aria-label={d.profile.title}
       className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
     >
-      {avatarUrl ? (
-        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
-      ) : (
-        <span className="w-9 h-9 rounded-full bg-surface border border-border text-foreground flex items-center justify-center">
-          <UserIcon className="w-4 h-4" />
-        </span>
-      )}
+      <Avatar
+        src={avatarUrl}
+        alt={d.profile.avatarAlt}
+        size={36}
+        iconClassName="w-4 h-4"
+        className={avatarUrl ? '' : 'bg-surface border border-border text-foreground'}
+      />
     </Link>
   )
 

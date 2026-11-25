@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
@@ -6,7 +5,8 @@ import { getDisplayName } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
 import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon, SearchIcon } from '@/components/ui/icons'
+import Avatar from '@/components/ui/Avatar'
+import { SearchIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
@@ -121,13 +121,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <ListRow
                   key={u.id}
                   href={`/${u.username}`}
-                  lead={
-                    u.avatar_url ? (
-                      <Image src={u.avatar_url} alt="" width={48} height={48} />
-                    ) : (
-                      <UserIcon className="w-5 h-5 text-muted" />
-                    )
-                  }
+                  lead={<Avatar src={u.avatar_url} alt="" size={48} iconClassName="w-5 h-5 text-muted" />}
                   leadShape="round"
                   title={displayName}
                   titleVariant="regular"

@@ -57,8 +57,8 @@ describe('RecipeSlotCard', () => {
 
   it('filled: «−»는 기존대로 우상단 안쪽이고 틀이 없다', () => {
     const html = render({ status: 'filled' })
-    // «−»는 레드 19.2px 원이라 중심을 지키려고 8.4px 안쪽이다(티켓 20261114_1722)
-    expect(html).toContain('absolute right-[8.4px] top-[8.4px]')
+    // «+»·«−» 공통 20px 원 기준 8px 안쪽(티켓 20261125_1444)
+    expect(html).toContain('absolute right-2 top-2')
     expect(html).not.toContain('pointer-events-none')
     expect(html).not.toContain('data-outline-state')
   })

@@ -31,7 +31,13 @@ describe('클래스 스크림', () => {
     }
   })
 
-  it('모달 스크림은 투명도 줄이기에서 필터를 끈다', () => {
+  it('transitions.css 코드에 -webkit-backdrop-filter가 없다(lightningcss가 표준 backdrop-filter를 제거하는 회귀 방지)', () => {
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code).not.toContain('-webkit-backdrop-filter')
+  })
+
+  it('토스트·모달 스크림은 투명도 줄이기에서 필터를 끈다', () => {
+    expect(css).toMatch(/prefers-reduced-transparency: reduce\) \{\s*\.t-toast-scrim \{[^}]*backdrop-filter: none/)
     expect(css).toMatch(/prefers-reduced-transparency: reduce\) \{\s*\.t-modal-backdrop \{[^}]*backdrop-filter: none/)
   })
 })

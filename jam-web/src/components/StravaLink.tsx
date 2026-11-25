@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button'
 import { d } from '@/lib/i18n'
 
 interface StravaLinkProps {
@@ -6,14 +7,13 @@ interface StravaLinkProps {
 
 export default function StravaLink({ stravaId }: StravaLinkProps) {
   return (
-    <a
+    <Button
       href={`https://www.strava.com/activities/${stravaId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center justify-center w-full min-h-11 rounded-full text-base font-bold active:scale-95 transition-transform duration-100"
-      style={{ background: 'var(--foreground)', color: 'var(--snow)' }}
+      external
+      variant="primary"
+      fullWidth
     >
       {d.badges.viewOnStrava} ↗
-    </a>
+    </Button>
   )
 }

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import Button from '@/components/ui/Button'
+import InlineNotice from '@/components/ui/InlineNotice'
 import SlotActionPill from './SlotActionPill'
 import SlotCircleButton from '@/components/ui/SlotCircleButton'
 import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
@@ -464,11 +465,7 @@ export default function SlotGrid({
   return (
     // tabIndex -1: 모두 해제에 성공했을 때 코드로 포커스를 받는 자리다(`handleUnslotAllDone`). 탭 순서에는 들어가지 않고 윤곽선도 그리지 않는다
     <div ref={gridRef} tabIndex={-1} className="outline-none">
-      {error && (
-        <div className="mb-3 rounded-2xl bg-card-bg px-3 py-2 text-xs text-muted">
-          {error}
-        </div>
-      )}
+      {error && <InlineNotice className="mb-3">{error}</InlineNotice>}
 
       <div className="grid grid-cols-3 gap-2">
         {badgeSlots.map((badgeSlot, index) => {

@@ -240,7 +240,7 @@ describe('SlotGrid — 등급 고정 안내 한 줄 (티켓 20261109_0941)', () 
 describe('SlotGrid — 우측 상단 빼기 원 버튼 (2026-11-09 사용자 지시)', () => {
   const removeOf = (html: string) => html.match(/<button[^>]*aria-label="빼기"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? ''
 
-  it('레드 원(jam-red + snow 아이콘, 19.2px = «+» 24px의 80%)이고 칸의 우측 상단 안쪽에 놓인다 (티켓 20261114_1722)', () => {
+  it('레드 원(jam-red + snow 아이콘, 20px 통일)이고 칸의 우측 상단 안쪽에 놓인다 (티켓 20261125_1444)', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={[cell('이름1', 'rare', { slot: slotted })]} />)
     const button = removeOf(html)
 
@@ -249,11 +249,11 @@ describe('SlotGrid — 우측 상단 빼기 원 버튼 (2026-11-09 사용자 지
     expect(button).not.toContain('bg-background-inverse')
     expect(button).toContain('text-snow')
     expect(button).toContain('absolute')
-    expect(button).toContain('h-[19.2px] w-[19.2px]')
-    // 눌림 영역은 그대로 44px: 19.2px 원에서 사방 12.4px를 넓힌다
-    expect(button).toContain('before:-inset-[12.4px]')
-    // 오른쪽·위 가장자리에서 8.4px 안쪽이다(원 중심은 이전 6px·24px 원과 같다) — 모서리 밖으로 밀어내지 않는다
-    for (const c of ['right-[8.4px]', 'top-[8.4px]']) expect(button, c).toContain(c)
+    expect(button).toContain('h-5 w-5')
+    // 눌림 영역은 그대로 44px: 20px 원에서 사방 12px(before:-inset-3)를 넓힌다
+    expect(button).toContain('before:-inset-3')
+    // 오른쪽·위 가장자리에서 8px 안쪽이다 — 모서리 밖으로 밀어내지 않는다
+    for (const c of ['right-2', 'top-2']) expect(button, c).toContain(c)
     expect(button).not.toContain('translate')
     expect(button).toContain('<svg')
     expect(button).toContain('M11 24 H37')
@@ -302,7 +302,7 @@ describe('SlotGrid — 이미지 정중앙 추가 원 버튼 (2026-11-09 사용�
   it('«빼기»와 같은 검은 원이고 «+» 아이콘이며 글자가 없다. 모서리 위치(right-1.5 top-1.5)는 쓰지 않는다', () => {
     const button = addOf(html)
 
-    for (const c of ['rounded-full', 'bg-background-inverse', 'text-snow', 'h-6 w-6', 'pointer-events-auto']) {
+    for (const c of ['rounded-full', 'bg-background-inverse', 'text-snow', 'h-5 w-5', 'before:-inset-3', 'pointer-events-auto']) {
       expect(button, c).toContain(c)
     }
     for (const c of ['right-1.5', 'top-1.5', 'translate']) expect(button, c).not.toContain(c)

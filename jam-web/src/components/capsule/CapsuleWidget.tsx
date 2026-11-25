@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { Skeleton } from '@ds/components/feedback/Skeleton'
 import CapsuleBlockedCard from '@/components/capsule/CapsuleBlockedCard'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'

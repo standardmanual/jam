@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { FollowButton } from './FollowButton'
+import Avatar from '@/components/ui/Avatar'
 import { ListRow } from '@/components/ui/ListRow'
-import { UserIcon } from '@/components/ui/icons'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { getDisplayName } from '@/lib/utils'
 
@@ -58,13 +57,7 @@ export default function FollowUserList({
         <ListRow
           key={u.id}
           href={`/${u.username}`}
-          lead={
-            u.avatar_url ? (
-              <Image src={u.avatar_url} alt="" width={48} height={48} />
-            ) : (
-              <UserIcon className="w-5 h-5 text-muted" />
-            )
-          }
+          lead={<Avatar src={u.avatar_url} alt="" size={48} iconClassName="w-5 h-5 text-muted" />}
           leadShape="round"
           title={getDisplayName(u)}
           titleVariant="regular"

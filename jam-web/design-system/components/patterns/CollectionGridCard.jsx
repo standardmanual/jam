@@ -71,7 +71,7 @@ export function CollectionGridCard({
           <img
             src={imageUrl}
             alt={name}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         ) : (
           // 이미지가 없을 때의 자리 표시 — 서비스의 MagicBookIcon(w-10 h-10, text-muted)과 같은 40px 상자·--muted 색이다(완성 카드는 검정 면 위라 --accent-foreground)
