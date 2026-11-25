@@ -1,0 +1,5 @@
+#!/bin/bash
+# UI 승인 관문 — 토큰·정본 컴포넌트 변경 커밋에 사용자 승인 기록이 있는지 확인한다 (티켓 20261125_2013).
+# 우회 환경변수는 두지 않는다 (pre-commit의 무인 루틴 방어와 같은 이유).
+node "$(git rev-parse --show-toplevel)/scripts/check-ui-approval.mjs" "$1"
+exit $?

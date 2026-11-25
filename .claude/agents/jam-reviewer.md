@@ -78,6 +78,8 @@ a one-word reason; do not silently omit it.
 실제로 걸렸을 때만 판정하고, 안 걸렸으면 `해당없음`으로 처리한다는 뜻이다 — 유형만으로 기계적으로
 정하지 말고 diff를 보고 결정한다.
 
+If the diff adds or edits a ticket's `- 사용자 승인:` line, that is a `FAIL` — only 카리나 writes it.
+
 1. Mechanical checks — the commit's CI status (GitHub Actions `verify` check). Look it up with
    `gh run list --branch <branch> --limit 1 --json status,conclusion,databaseId,url`. If it is
    still `in_progress`/`queued`, judge items 2~12 first and wait on this one **last**:

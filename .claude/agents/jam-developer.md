@@ -105,6 +105,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
 13. **Never assert an unverified environment claim.** Before writing that something "doesn't
     exist" or "doesn't work," check it with `ls`, `grep`, or `test -e` and quote that command and
     its result alongside the claim.
+14. **Never write or edit a ticket's `- 사용자 승인:` line** — only 카리나 writes it. If the UI approval gate (`.githooks/commit-msg`) blocks your commit, do not bypass it with `--no-verify`; return `halted` with the gate's message.
 
 ## Verification before handing off
 
