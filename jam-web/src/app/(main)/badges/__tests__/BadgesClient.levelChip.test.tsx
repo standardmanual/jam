@@ -49,15 +49,18 @@ describe('BadgesClient 액티비티 탭 — 레벨형 배지 칩', () => {
 
     expect(html).toContain('>Common<')
     expect(html.split('>Common<').length - 1).toBe(1)
-    // Common 칩의 면은 레벨 칩과 같다(--default-soft 면 + --foreground 글자, 2026-11-09 사용자 지시)
+    // Common 등급 칩은 원래 색이다(--default-soft 면 + --foreground 글자)
     const faceOf = (label: string) => html.match(new RegExp(`<span[^>]*style="([^"]*)"[^>]*>${label}</span>`))?.[1] ?? ''
     const common = faceOf('Common')
     const level = faceOf('Lv\\.2')
     for (const part of ['background:var(--default-soft)', 'color:var(--foreground)']) {
       expect(common, part).toContain(part)
-      expect(level, part).toContain(part)
     }
     expect(common).not.toContain('--rarity-common')
+    // 회색 면 위의 Lv 칩은 Common 등급 칩 색이다(티켓 20261125_1649)
+    for (const part of ['background:var(--rarity-common)', 'color:var(--rarity-common-foreground)']) {
+      expect(level, part).toContain(part)
+    }
     // 레벨형에는 Common 칩이 같이 붙지 않는다
     expect(html).toContain('Lv.2')
   })

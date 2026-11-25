@@ -5,14 +5,14 @@ import BadgeGridCard from '../BadgeGridCard'
 import { d } from '@/lib/i18n'
 
 describe('BadgeGridCard compact', () => {
-  it('compact를 주지 않으면 기본 마크업 그대로다(p-3, bg-card-bg, 썸네일은 카드 가장자리에서 6px 안쪽 면, text-sm)', () => {
+  it('compact를 주지 않으면 기본 마크업 그대로다(p-3, bg-background-secondary, 썸네일은 카드 가장자리에서 6px 안쪽 면, text-sm)', () => {
     const html = renderToStaticMarkup(<BadgeGridCard name="이름" rarity="rare" onClick={() => {}} />)
     expect(html).toContain('p-3')
-    expect(html).toContain('bg-card-bg')
+    expect(html).toContain('bg-background-secondary')
     expect(html).toContain('relative w-[calc(100%+0.75rem)] -mt-1.5')
     expect(html).not.toContain('max-w-[90px]')
     expect(html).toContain('text-sm font-bold')
-    expect(html).not.toContain('bg-background-secondary')
+    expect(html).not.toContain('bg-card-bg')
     expect(renderToStaticMarkup(<BadgeGridCard name="이름" rarity="rare" onClick={() => {}} compact={false} />)).toBe(html)
   })
 
@@ -27,6 +27,8 @@ describe('BadgeGridCard compact', () => {
     expect(html).not.toContain('w-14 h-14')
     expect(html).toContain('w-full aspect-square rounded-xl')
     expect(html).not.toContain('rounded-2xl overflow-hidden flex items-center justify-center bg-surface')
+    // 이미지 면은 카드 면과 같은 회색, 모서리 ×N 필만 bg-surface다
+    expect(html).toContain('rounded-xl overflow-hidden flex items-center justify-center bg-background-secondary')
     expect(html).toContain('bg-surface')
     expect(html).toContain('text-xs font-bold')
     expect(html).toContain('line-clamp-2')
