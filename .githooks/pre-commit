@@ -491,4 +491,21 @@ if [ "${JAM_SKIP_SEARCHPARAMS_LINT:-0}" != "1" ]; then
   fi
 fi
 
+# DS 밖 UI 값 차단 (티켓 20261125_2050). 클로드 코드의 Write·Edit 훅(.claude/hooks/ui-guard.mjs)은 셸로 쓴 변경을
+# 못 잡으므로 커밋 단계에서 같은 규칙 엔진으로 스테이징된 파일을 다시 판정한다. 대상 밖 파일은 엔진이 통과시킨다.
+ui_files=()
+while IFS= read -r -d '' f; do
+  ui_files+=("$f")
+done < <(git diff --cached --name-only -z --diff-filter=ACM)
+if [ "${#ui_files[@]}" -gt 0 ] && [ -f scripts/check-ui-rules.mjs ]; then
+  if ! ui_out=$(node scripts/check-ui-rules.mjs --files "${ui_files[@]}" 2>&1); then
+    echo "" >&2
+    echo "차단(pre-commit): 서비스 화면에 DS 밖 값이 늘었습니다." >&2
+    printf "%s\n" "$ui_out" >&2
+    echo "  정본 컴포넌트(jam-web/src/components/ui/)와 DS 토큰으로 다시 쓰세요. 맞는 게 없으면 카리나에게 승인을 요청하세요." >&2
+    echo "" >&2
+    exit 1
+  fi
+fi
+
 exit 0
