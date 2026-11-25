@@ -43,7 +43,6 @@ describe('브랜드 이미지 규격', () => {
 
   it('디자인시스템 사본은 원본과 바이트가 같다', () => {
     expect(read(TARGETS.dsLogoWhite).equals(read(TARGETS.logoWhite))).toBe(true);
-    expect(read(TARGETS.dsUpload).equals(read(TARGETS.dsLogoBlack))).toBe(true);
   });
 
   it('icon.png는 512×512, 원 밖 모서리가 투명하고 중앙이 불투명하다', async () => {

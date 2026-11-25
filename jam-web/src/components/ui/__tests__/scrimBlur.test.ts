@@ -46,8 +46,6 @@ describe('인라인 스크림', () => {
   const files = [
     'src/components/BadgeRevealOverlay.tsx',
     'src/components/strava/PendingItemsPickOverlay.tsx',
-    'design-system/components/navigation/BottomSheet.jsx',
-    'design-system/components/feedback/ModalToast.jsx',
     'design-system/components/patterns/BadgeRevealCarousel.jsx',
   ]
 

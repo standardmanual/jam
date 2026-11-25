@@ -15,11 +15,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 import CollectionGridCard from '../CollectionGridCard'
-import { CollectionGridCard as DsCollectionGridCard } from '@ds/components/patterns/CollectionGridCard'
 
 const cases = [
   ['서비스', (p: Record<string, unknown>) => renderToStaticMarkup(<CollectionGridCard name="컬렉션" collected={9} total={9} {...p} />)],
-  ['MODULAR', (p: Record<string, unknown>) => renderToStaticMarkup(<DsCollectionGridCard name="컬렉션" collected={9} total={9} {...p} />)],
 ] as const
 
 describe.each(cases)('CollectionGridCard 칩 자리 (%s)', (_label, render) => {

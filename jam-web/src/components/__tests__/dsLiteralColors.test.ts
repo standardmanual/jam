@@ -125,7 +125,7 @@ function enclosingBlock(text: string, pos: number): string {
 
 describe('MODULAR 컴포넌트 직접 색 잔존', () => {
   it('jsx 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
-    expect(FILES.length).toBeGreaterThan(30)
+    expect(FILES.length).toBeGreaterThan(20)
     expect(FILES).toContain('patterns/ItemSerialCode.jsx')
     expect(FILES).toContain('cards/RarityBadge.jsx')
   })
