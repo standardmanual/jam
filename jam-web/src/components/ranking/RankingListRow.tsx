@@ -1,6 +1,6 @@
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import { UserIcon } from '@/components/ui/icons'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 import { d, t } from '@/lib/i18n'
 
 /**
@@ -14,7 +14,7 @@ import { d, t } from '@/lib/i18n'
  * 강제하지 않고, 재료(`ListRow`·`ProgressBar`)는 그대로 재사용한다).
  *
  * 행 골격은 서비스 사본 `ListRow`(`@/components/ui/ListRow`)다(티켓 20261107_1947, 목록 행 4단계 3-5배치).
- * `ProgressBar`는 MODULAR 원본(`@ds/components/feedback/ProgressBar`)을 그대로 쓴다.
+ * `ProgressBar`는 MODULAR 원본(`@/components/ui/ProgressBar`)을 그대로 쓴다.
  *
  * **`'use client'`가 없다**(티켓 20261001_2104). 이 파일은 훅이 없고 안쪽 `ListRow`에는 문자열·JSX만 넘긴다. 옛 홈 `ListCard`(서버 컴포넌트, 티켓 20261122_1101에서 지웠다)가 쓰던 때와 같은 이유로
  * 이 컴포넌트가 클라이언트 경계면 `formatValue` 함수 prop을 서버에서 클라이언트로 넘기게 되어 렌더 때 「Functions cannot be passed directly to Client Components」로

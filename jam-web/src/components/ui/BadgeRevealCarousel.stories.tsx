@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
-import { Button } from '../buttons/Button';
+import { Button } from '@ds/components/buttons/Button';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
 const meta: Meta<typeof BadgeRevealCarousel> = {

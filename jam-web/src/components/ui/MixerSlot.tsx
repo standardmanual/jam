@@ -1,11 +1,30 @@
 import React from 'react';
+import type { CSSProperties } from 'react';
+
+export interface MixerSlotProps {
+  /** empty: 채울 수 있는 슬롯(정중앙의 검은 원 안 흰 «+», 테두리 없음) · locked: 후보 미보유(점선·흐린 «+») · filled: 채움(3px 그레이 안쪽 테두리) */
+  status?: 'empty' | 'locked' | 'filled';
+  /** filled일 때 배지 썸네일 URL */
+  imageUrl?: string | null;
+  /** filled일 때 배지 이름 */
+  name?: string;
+  /** 슬롯 탭 핸들러 */
+  onClick?: () => void;
+  /** filled일 때만 렌더되는 제거 버튼 핸들러 — 없으면 제거 버튼을 그리지 않는다 */
+  onRemove?: () => void;
+  removeLabel?: string;
+  /** empty/locked일 때 aria-label로 쓸 문구(화면에는 '+' 아이콘만 보인다) */
+  emptyLabel?: string;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * ActionCircle — 믹서·컬렉션 칸의 «+»·«−» 원.
  * «+»는 검은 원(--background-inverse), «−»는 레드 원(--jam-red)이며 둘 다 20px 원 안에 12px 흰(--snow) 아이콘(strokeWidth 4.5, round cap)으로 통일한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
  * 링·그림자·글로우를 얹지 않는다. 눌리는 영역은 호출부가 정한다(filled의 제거 버튼은 44px 박스, empty는 슬롯 전체).
  */
-export function ActionCircle({ kind }) {
+export function ActionCircle({ kind }: { kind: 'plus' | 'minus' }) {
   const minus = kind !== 'plus';
   const circle = 20;
   const icon = 12;
@@ -77,12 +96,12 @@ export function MixerSlot({
   emptyLabel = '슬롯 채우기',
   className = '',
   style = {},
-}) {
+}: MixerSlotProps) {
   const filled = status === 'filled';
   const locked = status === 'locked';
   const fillable = status === 'empty';
 
-  const baseStyle = {
+  const baseStyle: CSSProperties = {
     position: 'relative',
     aspectRatio: '1 / 1',
     width: '100%',

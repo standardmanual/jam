@@ -36,7 +36,7 @@ vi.mock('@/components/ui/BottomSheet', () => ({
 
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
-import { Input } from '@ds/components/forms/Input'
+import { Input } from '@/components/ui/Input'
 import { d, t } from '@/lib/i18n'
 import { WITHDRAW_CONFIRM_PHRASE, type AccountSummary } from '@/lib/account/withdraw-contract'
 import WithdrawSheet, { WithdrawSheetView, type WithdrawSummaryState } from '../WithdrawSheet'

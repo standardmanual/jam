@@ -9,8 +9,8 @@ import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { MissionType } from '@/types/database'
 import { formatMissionProgress, missionProgressUnit } from '@/lib/missions/format'
-import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { WanderingEyesLoader } from '@/components/ui/WanderingEyesLoader'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 
 interface RankingEntry {

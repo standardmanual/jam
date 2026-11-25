@@ -32,7 +32,7 @@ vi.mock('@/components/ui/SlidingTabs', () => ({
     return <div data-testid="tabs" data-value={props.value} />
   },
 }))
-vi.mock('@ds/components/forms/Select', () => ({
+vi.mock('@/components/ui/Select', () => ({
   Select: (props: { value: string; onChange: (e: { target: { value: string } }) => void }) => {
     selects.push(props)
     return <select data-value={props.value} />

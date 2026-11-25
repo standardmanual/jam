@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
 import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { ListRow, ListRowEm } from '@/components/ui/ListRow'
-import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import {
   SyncCircleIcon,
   AlertTriangleIcon,

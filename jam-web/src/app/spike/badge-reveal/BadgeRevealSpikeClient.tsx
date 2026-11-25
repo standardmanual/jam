@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
+import { BadgeRevealCarousel } from '@/components/ui/BadgeRevealCarousel'
 import { Button } from '@ds/components/buttons/Button'
 import { d, t } from '@/lib/i18n'
 

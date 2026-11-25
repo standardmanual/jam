@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
-import { PointText } from '@ds/components/patterns/PointText'
+import { PointText } from '@/components/ui/PointText'
 import { t } from './index'
 
 /**

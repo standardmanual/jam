@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { useRouter } from 'next/navigation'
-import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
+import { BadgeRevealCarousel } from '@/components/ui/BadgeRevealCarousel'
 import { Card } from '@/components/ui/Card'
-import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { WanderingEyesLoader } from '@/components/ui/WanderingEyesLoader'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'

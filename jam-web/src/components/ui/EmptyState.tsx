@@ -1,5 +1,21 @@
 import React from 'react';
-import { Button } from '../buttons/Button.jsx';
+import { Button } from '@ds/components/buttons/Button';
+import type { ReactNode, CSSProperties, HTMLAttributes } from 'react';
+
+export interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
+  /** Icon slot. Defaults to a generic empty-box icon. Pass null to hide completely. */
+  icon?: ReactNode | null;
+  title?: string;
+  description?: string;
+  action?: EmptyStateAction;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /* Default icon — generic empty box */
 const DefaultIcon = () => (
@@ -29,7 +45,7 @@ export function EmptyState({
   className = '',
   style = {},
   ...rest
-}) {
+}: EmptyStateProps) {
   const showIcon = icon !== null; /* null explicitly hides icon; undefined shows default */
   const resolvedIcon = icon ?? <DefaultIcon />;
 

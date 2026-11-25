@@ -1,4 +1,15 @@
 import React, { useMemo } from 'react';
+import type { CSSProperties } from 'react';
+
+export interface WanderingEyesLoaderProps {
+  /** 한 사이클(눈동자 이동 + 깜빡임) 길이 — default "2s" */
+  duration?: string;
+  /** 흰자 색상 — default "var(--background-inverse)" */
+  eyeColor?: string;
+  /** 눈동자 색상 — default "var(--snow)" */
+  pupilColor?: string;
+  style?: CSSProperties;
+}
 
 /**
  * WanderingEyesLoader — 눈 안에서 눈동자가 돌아다니다가 주기적으로 깜빡이는 대기 표시.
@@ -16,7 +27,7 @@ const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-cont
 // 눈동자 이동 키프레임의 중간 정지 지점(%) — 깜빡임 키프레임과 리듬을 맞춘 값 (소스 동일)
 const MOVE_STOPS = [15, 30, 45, 60, 75, 88];
 
-function randomOffset(maxPercent) {
+function randomOffset(maxPercent: number) {
   const angle = Math.random() * Math.PI * 2;
   const radius = maxPercent * (0.55 + Math.random() * 0.45);
   return { x: Math.round(Math.cos(angle) * radius * 100) / 100, y: Math.round(Math.sin(angle) * radius * 100) / 100 };
@@ -24,7 +35,7 @@ function randomOffset(maxPercent) {
 
 let _uid = 0;
 
-export function WanderingEyesLoader({ duration = '2s', eyeColor = 'var(--background-inverse)', pupilColor = 'var(--snow)', style = {} }) {
+export function WanderingEyesLoader({ duration = '2s', eyeColor = 'var(--background-inverse)', pupilColor = 'var(--snow)', style = {} }: WanderingEyesLoaderProps) {
   const animName = useMemo(() => `wem-${++_uid}`, []);
   const keyframesCss = useMemo(() => {
     const start = randomOffset(34);
@@ -36,7 +47,7 @@ export function WanderingEyesLoader({ duration = '2s', eyeColor = 'var(--backgro
   return (
     <div
       className="wandering-eyes"
-      style={{ '--duration': duration, '--eye-color': eyeColor, '--pupil-color': pupilColor, ...style }}
+      style={{ '--duration': duration, '--eye-color': eyeColor, '--pupil-color': pupilColor, ...style } as CSSProperties}
       role="status"
       aria-label="로딩 중"
     >

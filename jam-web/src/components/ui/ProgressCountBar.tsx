@@ -1,4 +1,4 @@
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 
 /**
  * 진행도 바 + 오른쪽 «n/n» 수치 한 줄 — 컬렉션 상세의 진행도 바(`collections/[id]/page.tsx`)와 인벤토리의 칸 사용량 바가 같은 모양을 쓴다

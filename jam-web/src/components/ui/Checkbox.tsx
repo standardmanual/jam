@@ -1,4 +1,16 @@
 import React from 'react';
+import type { ChangeEventHandler, InputHTMLAttributes } from 'react';
+
+export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type'> {
+  checked?: boolean;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
+  label?: string;
+  id?: string;
+  name?: string;
+  disabled?: boolean;
+  /** Visual validation state */
+  state?: 'default' | 'error' | 'success';
+}
 
 /* Checkmark SVG — inline, no CDN */
 const CheckIcon = () => (
@@ -29,7 +41,7 @@ export function Checkbox({
   state = 'default',
   style = {},
   ...rest
-}) {
+}: CheckboxProps) {
   const borderByState = {
     default: checked ? 'none' : '1.5px solid var(--border)',
     error: '2px solid var(--danger)',
