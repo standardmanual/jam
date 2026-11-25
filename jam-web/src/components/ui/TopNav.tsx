@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
+import { TopNavBar as DsTopNav } from '@/components/ui/TopNavBar'
 import { useTopNavData } from '@/lib/topNavData'
 import { goBackOrPush } from '@/lib/appHistory'
 import SyncButton from '@/components/SyncButton'
@@ -16,7 +16,7 @@ import { d } from '@/lib/i18n'
 /**
  * SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴)
  *
- * 20260820_009: 실연결 — `@ds/components/navigation/TopNav`(모듈러 캐노니컬 스펙)를
+ * 20260820_009: 실연결 — `@/components/ui/TopNavBar`(모듈러 캐노니컬 스펙)를
  * 내부에서 렌더링하고, Next.js 전용 라우팅(backHref → router.push)과 서비스 타이틀
  * 크기(16px, 일반체)만 이 래퍼에서 매핑한다.
  *

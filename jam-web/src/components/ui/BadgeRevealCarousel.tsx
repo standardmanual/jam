@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RarityBadge, getRarityLabel } from '@/components/ui/RarityBadge';
 import { BadgeLevelChip } from '@/components/ui/BadgeLevelChip';
-import { IconButton } from '@ds/components/buttons/IconButton';
+import { IconButton } from './IconButton';
 import { Button } from '@ds/components/buttons/Button';
 import { LockedTile } from '@/components/ui/LockedTile';
 import type { CSSProperties, ReactNode } from 'react';
@@ -248,7 +248,7 @@ const FALLBACK_ICON = (
   </svg>
 );
 
-/** OS 모션 축소 설정 구독 (design-system은 서비스 lib/motion.ts를 import할 수 없다) */
+/** OS 모션 축소 설정 구독 (예전엔 design-system 쪽 파일이라 서비스 lib/motion.ts를 쓰지 못해 따로 구현했다. 합치기는 7회차) */
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {

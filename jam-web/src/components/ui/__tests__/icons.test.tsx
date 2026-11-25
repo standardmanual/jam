@@ -1,7 +1,7 @@
 /**
  * 아이콘 세트 v2 (티켓 20261114_2345) — 42종 × 라인·채움
  *
- * 사양 docs/assets/prototypes/icon-set-v2/spec.json 과 서비스 icons.tsx · DS IconCatalog.jsx 두 사본을 대조한다.
+ * 사양 docs/assets/prototypes/icon-set-v2/spec.json 과 서비스 icons.tsx(정본)가 맞는지 대조한다.
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -10,7 +10,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { ComponentType, SVGProps } from 'react'
 
 import * as service from '../icons'
-import * as ds from '@ds/components/icons/IconCatalog'
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { variant?: 'line' | 'fill' }>
 interface SpecIcon {
@@ -23,7 +22,6 @@ interface SpecIcon {
 const specPath = path.resolve(process.cwd(), '..', 'docs/assets/prototypes/icon-set-v2/spec.json')
 const spec = JSON.parse(readFileSync(specPath, 'utf8')) as { icons: SpecIcon[] }
 const svc = service as unknown as Record<string, IconComponent>
-const dsx = ds as unknown as Record<string, IconComponent>
 const html = (C: IconComponent, props: Record<string, unknown> = {}) => renderToStaticMarkup(<C {...props} />)
 
 // 옛 이름을 조각으로 이어 붙인다. 완성된 이름을 그대로 적으면 별칭 제거를 확인하는 grep 검사에 이 파일이 걸린다.
@@ -47,14 +45,6 @@ describe('아이콘 세트 v2', () => {
       }
     })
 
-    it('서비스와 DS 사본의 마크업이 두 variant 모두 같다', () => {
-      for (const variant of ['line', 'fill']) {
-        const a = html(svc[name], { variant, className: 'w-5 h-5' })
-        const b = html(dsx[name], { variant, className: 'w-5 h-5' })
-        expect(a).toBe(b)
-      }
-    })
-
     it('색은 currentColor·none·url(#…)뿐이다 (mask 안 보임/가림 신호 white·black 제외)', () => {
       for (const variant of ['line', 'fill']) {
         const out = html(svc[name], { variant }).replace(/<mask[\s\S]*?<\/mask>/g, '')
@@ -71,10 +61,9 @@ describe('아이콘 세트 v2', () => {
     }
   })
 
-  it('옛 이름 10개는 서비스·DS 어디에도 내보내지 않는다', () => {
+  it('옛 이름 10개는 서비스 icons에서 내보내지 않는다', () => {
     for (const oldName of OLD_NAMES) {
       expect(svc[oldName], oldName).toBeUndefined()
-      expect(dsx[oldName], oldName).toBeUndefined()
     }
   })
 

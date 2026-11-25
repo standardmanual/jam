@@ -84,8 +84,8 @@ const REEL_SPIN_BLUR_PX = 3; // --reel-spin-blur 미러링 (기준: REEL_BLUR_RE
 const REEL_BLUR_REF_FONT = 200; // 위 블러 기준 폰트 크기(Figma 스탬프 스케일) — 다른 크기는 비례 축소
 const REEL_CELL_RATIO = 1.08; // 릴 셀 높이 = fontSize * 이 비율(숫자 글리프가 클리핑되지 않을 여유)
 
-/** OS 수준 모션 축소 설정 구독 (design-system은 서비스 lib/motion.ts를 import할 수 없어
- *  BadgeRevealCarousel과 동일한 로직을 내부에 다시 구현한다). */
+/** OS 수준 모션 축소 설정 구독 (옛 design-system 쪽 파일이어서 서비스 lib/motion.ts를 쓰지 못해
+ *  BadgeRevealCarousel과 동일한 로직을 내부에 다시 구현했다. 합치기는 7회차). */
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {

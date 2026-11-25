@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
+import { TopNavBar as DsTopNav } from '@/components/ui/TopNavBar'
 
 /**
  * 정책 문서 전용 최소 상단 바 (티켓 20260929_1400): 뒤로가기 + 제목만.

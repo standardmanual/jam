@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import { BadgeHeroSection } from './BadgeHeroSection';
 import { LabelChip } from './LabelChip';
 import { LockedTile } from './LockedTile';
-import { MedalIcon } from '@ds/components/icons/IconCatalog';
+import { MedalIcon } from '@/components/ui/icons';
 
 const SAMPLE = '/badges/sample/s331.png';
 

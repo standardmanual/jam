@@ -311,7 +311,7 @@ export default function DropsClient({ focusPoi = null }: DropsClientProps) {
     <div className="fixed inset-0 bg-background overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
       {/* 20260831_2106: 탭 최상위 공통 TopNav 추가 — 노치까지 채우는 풀블리드 지도를 위해
           의도적으로 뺐던 결정을 뒤집었다(트레이드오프로 지도 상단 일부가 가려짐, 완료 기록 참고).
-          TopNav(position: sticky, z-index: 30, design-system/components/navigation/TopNav.jsx)는
+          TopNav(position: sticky, z-index: 30, src/components/ui/TopNavBar.tsx)는
           이 fixed 컨테이너(position:fixed라 자체 스태킹 컨텍스트 생성) 안에서 z-index:auto인
           아래 지도 레이어보다 항상 위에 그려지므로 별도 z-index 조정 불필요. */}
       <TopNav logo logoText={d.drops.screenTitle} />

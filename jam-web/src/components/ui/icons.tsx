@@ -9,8 +9,7 @@ import { createElement, useId, type ReactElement, type SVGProps } from 'react'
  * - variant: 'line'(기본) | 'fill'. 채움은 켜진 탭·지도 마커(드랍 있음)에만 쓴다. CoinIcon만 기본이 'fill'.
  *   동작 글리프 7종(Chevron 2·Plus·Minus·Close·Check·Sync)과 MoreIcon은 variant와 무관하게 라인이다.
  * - 비운 면·틈은 배경색 칠이 아니라 SVG mask로 뚫는다. 어떤 배경 위에서도 같은 모양이다.
- * - DS 사본(design-system/components/icons/IconCatalog.jsx)과 같은 조각·같은 규칙이다. 한쪽만 고치지 않는다
- *   (두 사본 동일성은 __tests__/icons.test.tsx가 지킨다).
+ * - 이 파일이 아이콘의 정본이다(MODULAR 사본은 정본 단일화로 없앴다). 사양과의 대조는 __tests__/icons.test.tsx가 지킨다.
  */
 export type IconVariant = 'line' | 'fill'
 type IconProps = SVGProps<SVGSVGElement> & { variant?: IconVariant }

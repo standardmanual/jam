@@ -1,6 +1,6 @@
 'use client'
 
-import { Accordion, type AccordionItem } from '@ds/components/navigation/Accordion'
+import { Accordion, type AccordionItem } from '@/components/ui/Accordion'
 
 /**
  * FAQ 아코디언 클라이언트 경계 (티켓 20260907_0934).

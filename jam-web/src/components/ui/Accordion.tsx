@@ -1,4 +1,18 @@
 import React, { useState } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
+
+export interface AccordionItem {
+  title: string;
+  content: ReactNode;
+  /** If true, this item is open on initial render. Only one item can be open at a time. */
+  defaultOpen?: boolean;
+}
+
+export interface AccordionProps {
+  items: AccordionItem[];
+  style?: CSSProperties;
+  className?: string;
+}
 
 /* DS-021: Accordion — collapsible disclosure items with WAI-ARIA and keyboard nav.
    Pattern: single-open accordion (closing current item re-opens nothing).
@@ -32,7 +46,7 @@ const CHEVRON = (
   </svg>
 );
 
-function ToggleBadge({ isOpen }) {
+function ToggleBadge({ isOpen }: { isOpen: boolean }) {
   return (
     <span
       aria-hidden="true"
@@ -56,7 +70,9 @@ function ToggleBadge({ isOpen }) {
   );
 }
 
-function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
+function AccordionItemView({ item, index, isOpen, onToggle, headerId, panelId }: {
+  item: AccordionItem; index: number; isOpen: boolean; onToggle: (index: number) => void; headerId: string; panelId: string;
+}) {
   /* grid-template-rows: 0fr → 1fr avoids layout thrash from maxHeight animation.
      Inner div needs min-height:0 to collapse properly in the 0fr state. */
   return (
@@ -104,12 +120,12 @@ function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
  * items: [{ title: string, content: ReactNode, defaultOpen?: boolean }]
  * Keyboard: Enter/Space to toggle; Tab moves between headers.
  */
-export function Accordion({ items = [], style = {}, className = '' }) {
+export function Accordion({ items = [], style = {}, className = '' }: AccordionProps) {
   const [openIndex, setOpenIndex] = useState(
     () => items.findIndex((item) => item.defaultOpen)
   );
 
-  const handleToggle = (index) => {
+  const handleToggle = (index: number) => {
     setOpenIndex((prev) => (prev === index ? -1 : index));
   };
 
@@ -129,7 +145,7 @@ export function Accordion({ items = [], style = {}, className = '' }) {
     >
       <style>{STATIC_CSS}</style>
       {items.map((item, i) => (
-        <AccordionItem
+        <AccordionItemView
           key={i}
           item={item}
           index={i}

@@ -20,8 +20,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@ds/components/navigation/TopNav', () => ({
-  TopNav: (props: { onBack?: () => void }) => {
+vi.mock('@/components/ui/TopNavBar', () => ({
+  TopNavBar: (props: { onBack?: () => void }) => {
     captured.onBack = props.onBack ?? null
     return <header data-testid="ds-topnav" />
   },

@@ -1,4 +1,26 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
+
+export interface CarouselRenderInfo {
+  isActive: boolean;
+  realIndex: number;
+}
+
+export interface CarouselProps<T = unknown> {
+  /** 캐러셀에 노출할 항목 목록(현재 공개된 윈도우) */
+  items: T[];
+  /** 현재 중앙(선택됨)에 있는 항목의 인덱스 — 컨트롤드 */
+  activeIndex: number;
+  /** 스와이프/키보드로 항목이 바뀔 때 호출 */
+  onActiveIndexChange: (index: number) => void;
+  /** 각 항목을 렌더링 */
+  renderItem: (item: T, info: CarouselRenderInfo) => ReactNode;
+  /** React key 계산(생략 시 배열 인덱스 사용) */
+  getItemKey?: (item: T, index: number) => string | number;
+  ariaLabel?: string;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * Carousel — 센터 포커스 카드 캐러셀 (무한 루프).
@@ -35,7 +57,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 
 const SLIDE_WIDTH_PERCENT = 72; // 20260820_022: 여백 없는 풀블리드 레이아웃에서 peek이 잘리지 않도록 축소(기존 80%)
 const SLIDE_INSET_PERCENT = (100 - SLIDE_WIDTH_PERCENT) / 2;
 
-export function Carousel({
+export function Carousel<T = unknown>({
   items,
   activeIndex,
   onActiveIndexChange,
@@ -44,20 +66,20 @@ export function Carousel({
   ariaLabel = '카드 캐러셀',
   className = '',
   style = {},
-}) {
+}: CarouselProps<T>) {
   const n = items.length;
-  const containerRef = useRef(null);
-  const settleTimerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 프로그램적으로 scrollTo를 호출하는 동안에는 onScroll 핸들러가 그 결과를
   // 사용자 스와이프로 오인하지 않도록 억제한다.
   const suppressScrollRef = useRef(false);
   // extended 배열의 각 위치(pos)에 실제로 렌더된 슬라이드 DOM 요소를 보관한다.
   // peek 레이아웃에서는 슬라이드 폭이 컨테이너 폭과 다르므로, "한 스텝"의
   // 스크롤 거리를 폭 곱셈으로 가정하지 않고 이 실측값으로 계산한다.
-  const slideElsRef = useRef(new Map());
+  const slideElsRef = useRef(new Map<number, HTMLElement>());
 
   const getKey = useCallback(
-    (item, i) => (getItemKey ? getItemKey(item, i) : i),
+    (item: T, i: number) => (getItemKey ? getItemKey(item, i) : i),
     [getItemKey]
   );
 
@@ -68,7 +90,7 @@ export function Carousel({
     if (n > 1) {
       return [
         { item: items[n - 1], key: `__clone-head__${getKey(items[n - 1], n - 1)}`, realIndex: n - 1 },
-        ...items.map((it, i) => ({ item: it, key: getKey(it, i), realIndex: i })),
+        ...items.map((it: T, i: number) => ({ item: it, key: getKey(it, i), realIndex: i })),
         { item: items[0], key: `__clone-tail__${getKey(items[0], 0)}`, realIndex: 0 },
       ];
     }
@@ -78,7 +100,7 @@ export function Carousel({
   const extPosition = n <= 1 ? 0 : activeIndex + 1;
 
   const registerSlideRef = useCallback(
-    (pos) => (el) => {
+    (pos: number) => (el: HTMLElement | null) => {
       if (el) slideElsRef.current.set(pos, el);
       else slideElsRef.current.delete(pos);
     },
@@ -88,7 +110,7 @@ export function Carousel({
   // extended 배열의 위치(pos)에 해당하는 실제 슬라이드 DOM 요소를 기준으로
   // "중앙 정렬" scrollLeft 값을 계산한다. 슬라이드 폭이 컨테이너 폭보다 좁은
   // peek 레이아웃에서도 폭 가정 없이 정확히 동작한다.
-  const scrollToPos = useCallback((pos, behavior) => {
+  const scrollToPos = useCallback((pos: number, behavior: ScrollBehavior) => {
     const el = containerRef.current;
     const slideEl = slideElsRef.current.get(pos);
     if (!el || !slideEl) return false;
@@ -154,7 +176,7 @@ export function Carousel({
     };
   }, []);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (n <= 1) return;
     if (e.key === 'ArrowRight') {
       e.preventDefault();

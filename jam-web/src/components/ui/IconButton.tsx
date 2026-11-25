@@ -1,4 +1,23 @@
 import React from 'react';
+import type { ButtonHTMLAttributes } from 'react';
+
+export type IconButtonIcon =
+  | 'chevron-left' | 'chevron-right'
+  | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share';
+
+export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: IconButtonIcon;
+  /** Required: non-empty string for screen reader label */
+  label: string;
+  onClick?: () => void;
+  surface?: 'light' | 'dark';
+  /**
+   * Soft-disabled state (20260821_004). Dims the button and sets `aria-disabled`,
+   * but does NOT apply the native `disabled` attribute — `onClick` still fires so
+   * callers can show an explanatory popover/tooltip on click.
+   */
+  disabled?: boolean;
+}
 
 /**
  * IconButton — 44×44 circular icon-only touch target.
@@ -46,7 +65,7 @@ const ICON_PATHS = {
   'share':         <path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h120v80H240v400h480v-400H600v-80h120q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm200-240v-447l-64 64-56-57 160-160 160 160-56 57-64-64v447h-80Z" fill="currentColor" stroke="none" transform="scale(0.025) translate(0, 960)" />,
 };
 
-export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', disabled = false, ...rest }) {
+export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', disabled = false, ...rest }: IconButtonProps) {
   if (!label) {
     console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
   }
