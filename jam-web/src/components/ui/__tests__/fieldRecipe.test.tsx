@@ -19,8 +19,8 @@ import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { Input } from '@ds/components/forms/Input'
-import { Select } from '@ds/components/forms/Select'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 
 const OPTIONS = [
   { value: 'running', label: '러닝' },
@@ -109,9 +109,9 @@ describe('입력창 상태 테두리', () => {
 })
 
 describe('Input surface="inverse" 삭제', () => {
-  it('Input.jsx 소스에 inverse 분기와 흰색 반투명 테두리가 없다', () => {
+  it('Input.tsx 소스에 inverse 분기와 흰색 반투명 테두리가 없다', () => {
     const source = readFileSync(
-      path.resolve(__dirname, '../../../../design-system/components/forms/Input.jsx'),
+      path.resolve(__dirname, '../Input.tsx'),
       'utf8'
     )
     expect(source).not.toMatch(/isInverse|surface\s*=\s*['"]default['"]/)

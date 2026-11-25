@@ -1,7 +1,7 @@
 'use client'
 
-import { MixerSlot } from '@ds/components/patterns/MixerSlot'
-import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { MixerSlot } from '@/components/ui/MixerSlot'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { RarityBadge } from '@/components/ui/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'

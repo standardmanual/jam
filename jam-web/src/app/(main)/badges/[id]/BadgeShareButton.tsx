@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
-import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { WanderingEyesLoader } from '@/components/ui/WanderingEyesLoader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { useToast } from '@/components/ui/Toast'
 import { pushTabBarHidden } from '@/lib/uiOverlay'

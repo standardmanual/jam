@@ -1,6 +1,22 @@
 'use client';
 
 import React, { useEffect, useId, useState } from 'react';
+import type { CSSProperties } from 'react';
+
+export interface ItemSerialCodeProps {
+  /** 배지 일련번호 원문. 앞 4자(알파벳 prefix)는 카드 1장씩, 나머지(숫자)는 하나의 박스로
+   * 렌더링한다. 예: "ABCD000042" (4자리 대문자 + 6자리 zero-pad 숫자). */
+  code: string;
+  /** 알파벳 카드 1장의 높이(px). 다른 모든 치수(폭·코너·폰트 크기·간격)는 이 값에서
+   * 비례 계산된다. 기본 160. */
+  height?: number;
+  /** 숫자 자리의 슬롯머신 릴 연출 사용 여부. 기본 true(기존 동작 유지).
+   * false면 릴 없이 최종 값을 즉시 정적으로 그린다 — 이미 가진 여러 개체의 번호를 비교해
+   * 고르는 화면(컬렉션 장착 개체 선택 시트)용. 렌더 결과는 prefers-reduced-motion과 같다. */
+  animate?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * ItemSerialCode — 아이템 배지 일련번호 스탬프 패턴.
@@ -49,7 +65,7 @@ const TRACKING_LARGE_RATIO = -0.04;
 const TRACKING_SMALL_FONT = 20;
 const TRACKING_SMALL_RATIO = 0.08;
 
-function trackingRatioFor(fontSize) {
+function trackingRatioFor(fontSize: number) {
   const t = (fontSize - TRACKING_SMALL_FONT) / (TRACKING_LARGE_FONT - TRACKING_SMALL_FONT);
   const clamped = Math.min(1, Math.max(0, t));
   return TRACKING_SMALL_RATIO + clamped * (TRACKING_LARGE_RATIO - TRACKING_SMALL_RATIO);
@@ -84,7 +100,18 @@ function useReducedMotion() {
 }
 
 /** 자리 하나 — 0-9 스트립을 목표 숫자 위치까지 스핀 후 착지시킨다. */
-function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize, landed, reduced, filterId, blurPx }) {
+function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize, landed, reduced, filterId, blurPx }: {
+  digit: number;
+  index: number;
+  colWidth: number;
+  cellHeight: number;
+  marginRight: number;
+  fontSize: number;
+  landed: boolean;
+  reduced: boolean;
+  filterId: string;
+  blurPx: number;
+}) {
   const target = SPIN_CYCLES * 10 + digit;
   // reduced-motion: 스핀 없이 목표 숫자 한 칸만 즉시 표시(요구사항 — "스핀 없이 즉시 최종
   // 값으로 표시"). transitions.css의 reduced-motion 가드(transition/filter none !important)는
@@ -146,7 +173,7 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
  *  trackingRatioFor)과 동일한 값을 재사용해 외곽 Tile 폭 계산과 어긋나지 않게 한다. 릴 셀은
  *  고정폭이라 "가변폭 텍스트" 가정과는 다르지만, 자리 수 × 자리당 advance + (n-1)×tracking
  *  이라는 총 폭 공식 자체는 변하지 않는다 — 텍스트 한 덩어리 대신 자리마다 나눠 렌더링할 뿐. */
-function DigitReelGroup({ digits, height, animate }) {
+function DigitReelGroup({ digits, height, animate }: { digits: string; height: number; animate: boolean }) {
   const uid = useId();
   const prefersReduced = useReducedMotion();
   // `animate=false`는 OS 모션 축소와 **완전히 같은 렌더 경로**를 탄다(cells=[digit],
@@ -181,8 +208,8 @@ function DigitReelGroup({ digits, height, animate }) {
   const chars = digits.split('');
 
   return (
-    <div className="t-reel" aria-hidden="true" style={{ '--reel-cell': `${cellHeight}px` }}>
-      {chars.map((ch, i) => {
+    <div className="t-reel" aria-hidden="true" style={{ '--reel-cell': `${cellHeight}px` } as CSSProperties}>
+      {chars.map((ch: string, i: number) => {
         const parsed = Number(ch);
         const digit = Number.isFinite(parsed) ? Math.abs(parsed) % 10 : 0;
         return (
@@ -205,7 +232,7 @@ function DigitReelGroup({ digits, height, animate }) {
   );
 }
 
-function tilePath(w, h) {
+function tilePath(w: number, h: number) {
   const r = h * CORNER_RATIO;
   const nr = h * NOTCH_RATIO;
   const cy = h / 2;
@@ -227,7 +254,7 @@ function tilePath(w, h) {
   ].join(' ');
 }
 
-function TileShell({ width, height, children }) {
+function TileShell({ width, height, children }: { width: number; height: number; children?: React.ReactNode }) {
   return (
     <div
       style={{
@@ -250,7 +277,7 @@ function TileShell({ width, height, children }) {
   );
 }
 
-function Tile({ text, width, height }) {
+function Tile({ text, width, height }: { text: string; width: number; height: number }) {
   const fontSize = height * FONT_RATIO;
   return (
     <TileShell width={width} height={height}>
@@ -271,7 +298,7 @@ function Tile({ text, width, height }) {
   );
 }
 
-function DigitTile({ digits, width, height, animate }) {
+function DigitTile({ digits, width, height, animate }: { digits: string; width: number; height: number; animate: boolean }) {
   // 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재하므로(시각적으로는 마스크로
   // 한 칸만 보임) textContent가 뒤섞인다. 릴 전체를 aria-hidden으로 접근성 트리에서
   // 제외하고(DigitReelGroup 내부), 실제 최종 숫자값만 스크린리더 전용 텍스트로 노출한다.
@@ -283,7 +310,7 @@ function DigitTile({ digits, width, height, animate }) {
   );
 }
 
-export function ItemSerialCode({ code, height = 160, animate = true, className = '', style = {} }) {
+export function ItemSerialCode({ code, height = 160, animate = true, className = '', style = {} }: ItemSerialCodeProps) {
   const letters = code.slice(0, 4).padEnd(4, '?').split('');
   const digits = code.slice(4);
 

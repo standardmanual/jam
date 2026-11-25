@@ -1,4 +1,30 @@
 import React from 'react';
+import type { CSSProperties, HTMLAttributes } from 'react';
+
+export interface PointTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'color'> {
+  /**
+   * 포인트 값. 숫자면 `toLocaleString('ko-KR')`로 포맷하고, 문자열(이미 포맷된 값, 부호 포함 가능)이면 그대로 쓴다.
+   * `null`/`undefined`면 아무것도 그리지 않는다. 0은 그린다(숨길지는 호출부가 정한다).
+   */
+  value: number | string | null | undefined;
+  /** 단위 글자. 기본 «포인트». 빈 문자열(`""`)이면 값만 그린다 */
+  unit?: string;
+  /**
+   * `inline`(기본)은 문장 속 «값 포인트» 한 덩어리(줄바꿈 없음), `stacked`는 우측 보상 칸용 —
+   * 굵은 숫자(16px) 위, 작은 단위(12px) 아래, 가운데 정렬.
+   */
+  layout?: 'inline' | 'stacked';
+  /**
+   * 색조. `point`(기본)는 `--point-text` 오렌지, `muted`는 차감 같은 «빠져나간 포인트»용 회색(`--muted`)이다.
+   * 값과 단위가 함께 바뀐다. 둘 외의 색은 없다.
+   */
+  tone?: 'point' | 'muted';
+  /** 글자 크기·굵기·배치용 클래스. 색은 호출부가 직접 정하지 않고 `tone`으로만 고른다 */
+  className?: string;
+  style?: CSSProperties;
+}
+
+/** 포인트 값+단위를 `--point-text` 오렌지로 그리는 표시 전용 컴포넌트. 비인터랙티브 `<span>`. */
 
 /**
  * PointText — 포인트 «값 + 단위» 표기. 티켓 20261104_2319(1회차).
@@ -31,11 +57,11 @@ const TONES = {
   muted: { color: 'var(--muted)', className: 'text-muted' },
 };
 
-function formatValue(value) {
+function formatValue(value: number | string) {
   return typeof value === 'number' ? value.toLocaleString('ko-KR') : String(value);
 }
 
-export function PointText({ value, unit = '포인트', layout = 'inline', tone = 'point', className = '', style = {}, ...rest }) {
+export function PointText({ value, unit = '포인트', layout = 'inline', tone = 'point', className = '', style = {}, ...rest }: PointTextProps) {
   if (value == null) return null;
   const text = formatValue(value);
   const { color: COLOR, className: toneClass } = TONES[tone] ?? TONES.point;

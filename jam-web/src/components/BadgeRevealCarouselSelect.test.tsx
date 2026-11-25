@@ -12,7 +12,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
+import { BadgeRevealCarousel } from '@/components/ui/BadgeRevealCarousel'
 
 const ITEMS = [
   { id: 'a', name: '바람의 깃', description: '', rarity: 'rare' as const },

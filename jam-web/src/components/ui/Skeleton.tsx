@@ -1,4 +1,16 @@
 import React from 'react';
+import type { CSSProperties } from 'react';
+
+export interface SkeletonProps {
+  /** Any CSS length value — px, %, rem, etc. Defaults to '100%'. */
+  width?: string | number;
+  /** Any CSS length value. Defaults to 16. */
+  height?: string | number;
+  /** Defaults to var(--radius-lg). Pass '50%' for avatar, var(--radius-full) for text lines. */
+  borderRadius?: string;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * Skeleton — inline loading placeholder with shimmer animation.
@@ -17,7 +29,7 @@ export function Skeleton({
   borderRadius,
   className = '',
   style = {},
-}) {
+}: SkeletonProps) {
   return (
     <div
       className={className}

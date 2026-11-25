@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { LabelChip } from '@/components/ui/LabelChip'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 import { d, t } from '@/lib/i18n'
 import { formatMissionProgress } from '@/lib/missions/format'
 import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'

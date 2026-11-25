@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card'
 import LocalDate from '@/components/LocalDate'
 import { MagicBookIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
-import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
+import { ItemSerialCode } from '@/components/ui/ItemSerialCode'
 import BadgeHeroSection from '@/components/BadgeHeroSection'
 
 /**

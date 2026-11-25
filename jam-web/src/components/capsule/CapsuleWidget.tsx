@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import { Skeleton } from '@ds/components/feedback/Skeleton'
+import { Skeleton } from '@/components/ui/Skeleton'
 import CapsuleBlockedCard from '@/components/capsule/CapsuleBlockedCard'
 import CapsuleGauge, { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { fetchCapsule } from '@/lib/capsule/capsule-client'

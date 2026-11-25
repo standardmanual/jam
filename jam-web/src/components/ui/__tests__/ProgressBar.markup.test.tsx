@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 
 type Props = React.ComponentProps<typeof ProgressBar>
 

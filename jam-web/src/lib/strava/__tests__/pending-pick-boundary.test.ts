@@ -94,7 +94,7 @@ describe('고르기 화면의 import 사슬에 서버 전용 모듈이 없다', 
     const reached = [...files].map(rel)
 
     expect(reached.some((f) => f.endsWith('lib/strava/pending-items-contract.ts'))).toBe(true)
-    expect(reached.some((f) => f.endsWith('patterns/BadgeRevealCarousel.jsx'))).toBe(true)
+    expect(reached.some((f) => f.endsWith('ui/BadgeRevealCarousel.tsx'))).toBe(true)
     expect(reached.some((f) => f.endsWith('lib/uiOverlay.ts'))).toBe(true)
   })
 

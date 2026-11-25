@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { PointText } from '@ds/components/patterns/PointText'
+import { PointText } from '@/components/ui/PointText'
 
 // 티켓 20261104_2319 — 포인트 값+단위는 PointText 한 곳에서 --point-text로 칠한다.
 describe('PointText', () => {

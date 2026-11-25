@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
-import { Input } from '@ds/components/forms/Input'
+import { Input } from '@/components/ui/Input'
 import { ListRow } from '@/components/ui/ListRow'
 import { SHEET_BUTTON_CLASS, SHEET_TEXT_LEADING, SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { useSkeletonReveal } from '@/components/transitions-pages'

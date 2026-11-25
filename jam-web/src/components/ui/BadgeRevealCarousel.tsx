@@ -1,9 +1,121 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RarityBadge, getRarityLabel } from '@/components/ui/RarityBadge';
 import { BadgeLevelChip } from '@/components/ui/BadgeLevelChip';
-import { IconButton } from '../buttons/IconButton.jsx';
-import { Button } from '../buttons/Button.jsx';
+import { IconButton } from '@ds/components/buttons/IconButton';
+import { Button } from '@ds/components/buttons/Button';
 import { LockedTile } from '@/components/ui/LockedTile';
+import type { CSSProperties, ReactNode } from 'react';
+import type { Rarity } from '@/components/ui/RarityBadge';
+
+/** 캐러셀 카드 1장이 그리는 배지 데이터 */
+export interface BadgeRevealItem {
+  id: string;
+  name: string;
+  description: string;
+  /** 빈 문자열·null이면 실루엣 폴백 아이콘을 그린다 */
+  imageUrl?: string | null;
+  /**
+   * `null`은 "등급이 존재하지 않음"(무한레벨형)이라 등급 칩도 등급 낭독도 하지 않는다.
+   * `undefined`(미지정)는 기존대로 common으로 취급한다.
+   */
+  rarity?: Rarity | null;
+  /**
+   * 레벨형 배지의 Lv.N (v5, 마이그레이션 130). 값이 있으면 등급 칩 대신 `BadgeLevelChip`을
+   * 그리고, 라이브 리전도 등급 대신 레벨을 읽는다. `rarity`와 배타적이다.
+   */
+  level?: number | null;
+  /**
+   * 지금까지 이 배지를 획득한 횟수. 2 이상이면 칩 줄에 «×N»이 붙는다.
+   * 반복형의 회차는 발급이 아니라 피드·연출을 다시 만들지 않으므로(20260905_0030 §2),
+   * 「카드 장수」가 아니라 이 값이 회차의 출처다.
+   */
+  earnCount?: number;
+  /**
+   * 잠긴 아이템 배지 — `true`이면 `imageUrl`을 무시하고 그림 자리에 중립 «잠금 타일»(자물쇠)을 그린다.
+   * 사람 모양 폴백 아이콘은 쓰지 않는다. `name`·`description`은 호출부가 가린 문구(예: «잠긴 아이템 배지», «여는 데 잼 60만큼 채워야 해요»)로 넘긴다.
+   * 생략하면 지금과 똑같이 그린다.
+   */
+  locked?: boolean;
+}
+
+export interface BadgeRevealCarouselProps {
+  /**
+   * 오버레이 표시 여부.
+   * 배지 드랍 엔진의 최종 결과가 나온 뒤에만 true로 올린다 — 열리면 곧바로 실제 배지 카드다.
+   * 결과를 기다리는 동안의 대기 표현은 호출부 버튼의 loading 스피너가 담당한다.
+   * false → true로 바뀔 때마다 중앙 카드는 항상 첫 배지(0번)로 돌아온다 — 직전 노출에서
+   * 스와이프한 위치가 남지 않는다.
+   */
+  open: boolean;
+  /**
+   * 노출할 배지 목록(획득 순서 그대로) — **서버가 상한(10장)까지 잘라 내려준다**.
+   * 호출부는 받은 배열을 그대로 넘기고, 잘려나간 잔여 개수를 moreCount로 넘긴다.
+   * (상한 상수는 서버 `src/lib/strava/sync.ts`의 EARNED_BADGE_DETAIL_LIMIT 한 곳에만 있다)
+   */
+  items?: BadgeRevealItem[];
+  /** 마지막 "전체 보기" 카드에 표시할 잔여 개수. 0이면 카드 미표시 */
+  moreCount?: number;
+  /** "전체 보기" CTA 클릭 — 이동 경로는 호출부 책임 */
+  onMoreClick?: () => void;
+  /** 닫기 버튼·Escape */
+  onClose?: () => void;
+  /** 중앙 카드 폭(px). 기본 292 ≈ 서비스 컬럼 430px의 68%(344px 대비 85%) */
+  cardWidth?: number;
+  /** 카드 높이(px). 생략 시 cardWidth × 1.34 */
+  cardHeight?: number;
+  /** 닫기 버튼 aria-label */
+  closeLabel?: string;
+  /** "전체 보기" CTA 라벨 */
+  moreLabel?: string;
+  /**
+   * "전체 보기" 카드 본문 문구. 문자열이면 그대로, 함수면 잔여 개수를 받아 문자열을 만든다.
+   * 기본값 `(n) => \`배지 ${n}개를 더 획득했어요\``.
+   * 서비스는 i18n 사전(`d`)에서 주입해 쓴다.
+   */
+  moreMessage?: string | ((count: number) => string);
+  /**
+   * 반복 획득 «×N»을 보조기술이 읽을 문구. 기본값 `(n) => \`${n}번 획득했어요\``.
+   * 서비스는 i18n 사전(`d.badges.earnCountAria`)에서 주입한다.
+   */
+  earnCountMessage?: string | ((count: number) => string);
+  /**
+   * dialog·carousel aria-label.
+   * 중앙 카드의 등급·이름·설명은 오버레이 안 라이브 리전이 따로 읽는다 —
+   * "열렸다 + 몇 개 획득" 안내는 호출부가 별도 라이브 리전으로 처리한다.
+   */
+  ariaLabel?: string;
+  /**
+   * 선택 모드 — 중앙 카드 하단에 토글 버튼(`aria-pressed`)이 생기고, 선택된 카드는 안쪽 링 + 체크 칩으로 구분한다.
+   * 카드 아래쪽 72px를 토글 자리로 비운다. 기본 false(이전 화면 그대로).
+   * 선택 상태와 개수 제한은 호출부가 소유한다(`selectedIds`·`onToggleSelect`·`selectionFull`).
+   */
+  selectable?: boolean;
+  /** 선택된 항목 id 목록(제어). `selectable`일 때만 쓴다 */
+  selectedIds?: string[];
+  /** 토글 클릭 — 눌린 항목의 `id`를 넘긴다. 선택·해제 판단은 호출부가 한다 */
+  onToggleSelect?: (id: string) => void;
+  /** 선택 전 토글 라벨. 기본 '고르기' */
+  selectLabel?: string;
+  /** 선택 후 토글 라벨. 기본 '골랐어요' */
+  selectedLabel?: string;
+  /**
+   * 더 고를 수 없는 상태(정한 개수를 다 채움). 안 고른 카드의 토글은 `aria-disabled`가 되어 눌러도 반응하지 않고,
+   * 이미 고른 카드는 해제할 수 있다.
+   */
+  selectionFull?: boolean;
+  /**
+   * 오버레이 위쪽 슬롯. `header`·`footer` 중 하나라도 있으면 «헤더 / 스테이지 / 푸터» 세로 배치가 되고
+   * 스테이지는 남는 가운데 영역에서 세로 중앙에 놓인다. 다이얼로그의 자식이라 포커스 트랩이 슬롯 안 버튼까지 돈다.
+   * 안전영역 여백·배경은 슬롯 내용(호출부)이 책임진다.
+   */
+  header?: ReactNode;
+  /** 오버레이 아래쪽 슬롯. `header`와 같은 규칙 */
+  footer?: ReactNode;
+  /** true면 닫기 버튼(soft disabled)과 Escape를 함께 막는다. 제출 중처럼 닫으면 안 되는 동안 쓴다 */
+  closeDisabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * BadgeRevealCarousel — 배지 획득 연출용 3D 코버플로우 캐러셀 (오버레이 포함 패턴).
@@ -99,7 +211,7 @@ const NEIGHBOR_SCALE = 0.84;
 const NEIGHBOR_OPACITY = 0.68;
 
 /** 화면에는 보이지 않고 보조기술만 읽는 영역 */
-const SR_ONLY_STYLE = {
+const SR_ONLY_STYLE: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,
@@ -111,8 +223,16 @@ const SR_ONLY_STYLE = {
   border: 0,
 };
 
+/** 렌더 목록의 카드 한 장 — 배지 카드(`badge`) 또는 마지막 «전체 보기» 카드(`more`) */
+interface RenderCard {
+  key: string;
+  kind: 'badge' | 'more';
+  item?: BadgeRevealItem;
+  foldedCount?: number;
+}
+
 /** moreMessage prop은 문자열 또는 (잔여 개수) => 문자열 */
-function resolveMoreMessage(message, count) {
+function resolveMoreMessage(message: string | ((count: number) => string), count: number) {
   return typeof message === 'function' ? message(count) : message;
 }
 
@@ -147,7 +267,7 @@ function useReducedMotion() {
  * 0..n-1로 접은 뒤 n/2를 **초과**할 때만 음수로 뒤집는다(양수 우선).
  * n=2에서 나머지 한 장이 왼쪽(-1)이 아니라 오른쪽(+1)에 서는 이유가 이 "초과" 비교다.
  */
-function relativeOffset(index, active, count) {
+function relativeOffset(index: number, active: number, count: number) {
   if (count <= 1) return index - active;
   let rel = (index - active) % count;
   if (rel < 0) rel += count;
@@ -189,16 +309,16 @@ export function BadgeRevealCarousel({
   closeDisabled = false,
   className = '',
   style = {},
-}) {
+}: BadgeRevealCarouselProps) {
   const reduced = useReducedMotion();
-  const rootRef = useRef(null);
-  const stageRef = useRef(null);
-  const closeSlotRef = useRef(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const closeSlotRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef(0);
   const draggingRef = useRef(false);
-  const velocitySamplesRef = useRef([]);
+  const velocitySamplesRef = useRef<{ t: number; x: number }[]>([]);
   /** document 레벨 화살표 핸들러가 참조하는 최신 핸들러 (아래 Escape 이펙트에서 사용) */
-  const arrowHandlerRef = useRef(null);
+  const arrowHandlerRef = useRef<((e: { key: string; preventDefault: () => void }) => void) | null>(null);
   /** document 레벨 Escape 핸들러가 참조하는 최신 closeDisabled */
   const closeDisabledRef = useRef(closeDisabled);
 
@@ -206,7 +326,7 @@ export function BadgeRevealCarousel({
 
   const height = cardHeight ?? Math.round(cardWidth * 1.34);
   const hasSlots = header != null || footer != null;
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedSet = useMemo(() => new Set<string | undefined>(selectedIds), [selectedIds]);
 
   /**
    * 렌더할 카드 목록 — 배지 N장 + (잔여가 있으면) 전체 보기 카드 1장.
@@ -214,7 +334,7 @@ export function BadgeRevealCarousel({
    * `earnCount`에 반영한다 — 이미 기록된 회차가 더 크면 그쪽이 사실이라 그대로 둔다.
    */
   const cards = useMemo(() => {
-    const list = [];
+    const list: RenderCard[] = [];
     const indexById = new Map();
     items.forEach((item, i) => {
       const id = item?.id;
@@ -258,7 +378,7 @@ export function BadgeRevealCarousel({
   const active = nav.token === navToken ? nav.index : 0;
 
   const step = useCallback(
-    (dir) => {
+    (dir: number) => {
       if (!canFlick) return;
       setNav((prev) => {
         const base = prev.token === navToken ? prev.index : 0;
@@ -271,10 +391,10 @@ export function BadgeRevealCarousel({
   /* Escape 닫기 + 화살표 전환 + 포커스 트랩 (BottomSheet·ModalToast와 동일 패턴) */
   useEffect(() => {
     if (!open) return;
-    const prevFocused = typeof document !== 'undefined' ? document.activeElement : null;
+    const prevFocused = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
     closeSlotRef.current?.querySelector('button')?.focus();
 
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (!closeDisabledRef.current) onClose?.();
         return;
@@ -290,7 +410,7 @@ export function BadgeRevealCarousel({
       if (e.key !== 'Tab') return;
       // aria-hidden 카드(이웃 카드) 안의 버튼은 포커스 대상이 아니다 — 선택 모드의 토글이 카드마다 있어 걸러야 한다.
       const focusable = Array.from(
-        rootRef.current?.querySelectorAll(
+        rootRef.current?.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         ) ?? []
       ).filter((el) => !el.closest('[aria-hidden="true"]'));
@@ -327,18 +447,18 @@ export function BadgeRevealCarousel({
   /** 중앙 카드 — 아래 라이브 리전이 이 카드의 텍스트를 읽는다 */
   const center = layout.find((card) => card.rel === 0);
 
-  function handlePointerDown(e) {
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!canFlick) return;
     // 닫기 버튼·CTA 위에서 시작한 포인터는 드래그로 가로채지 않는다.
     // (setPointerCapture가 click 대상을 스테이지로 가져가 버튼이 눌리지 않는 문제 방지)
-    if (e.target?.closest?.('button')) return;
+    if ((e.target as Element | null)?.closest?.('button')) return;
     draggingRef.current = true;
     dragStartRef.current = e.clientX;
     velocitySamplesRef.current = [{ t: e.timeStamp, x: e.clientX }];
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
 
-  function handlePointerMove(e) {
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return;
     const delta = e.clientX - dragStartRef.current;
     const limit = cardWidth * NEIGHBOR_OFFSET_RATIO;
@@ -369,7 +489,7 @@ export function BadgeRevealCarousel({
     else if (distance >= DRAG_DISTANCE_THRESHOLD || velocity >= DRAG_VELOCITY_THRESHOLD) step(-1);
   }
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: { key: string; preventDefault: () => void }) {
     if (!canFlick) return;
     if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -394,14 +514,14 @@ export function BadgeRevealCarousel({
     const focused = document.activeElement;
     if (!focused || !focused.hasAttribute?.('data-select-toggle')) return;
     if (!focused.closest('[aria-hidden="true"]')) return;
-    stageRef.current?.querySelector('[aria-hidden="false"] [data-select-toggle]')?.focus();
+    stageRef.current?.querySelector<HTMLElement>('[aria-hidden="false"] [data-select-toggle]')?.focus();
   }, [active, selectable]);
 
   if (!open) return null;
   // 배지 0개 — 캐러셀을 노출하지 않는다.
   if (count === 0) return null;
 
-  const cardBaseStyle = {
+  const cardBaseStyle: CSSProperties = {
     position: 'absolute',
     top: '50%',
     left: '50%',
@@ -547,7 +667,7 @@ export function BadgeRevealCarousel({
                   reduced={reduced}
                   selectLabel={selectLabel}
                   selectedLabel={selectedLabel}
-                  onToggle={() => onToggleSelect?.(item?.id)}
+                  onToggle={() => onToggleSelect?.(item?.id as string)}
                 />
               )}
               {kind === 'more' && (
@@ -609,7 +729,7 @@ const SELECT_RESERVE_PX = 72;
 const LOCK_TILE_RATIO = 0.8;
 
 /** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
-function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
+function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }: { item?: BadgeRevealItem; foldedCount?: number; cardWidth: number; selectable?: boolean }) {
   const locked = item?.locked === true;
   // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 아예 그리지 않는다(서버도 값을 내리지 않는다).
   const imageUrl = locked ? null : item?.imageUrl;
@@ -743,7 +863,7 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }) {
  * 시각 구성(중앙 정렬 / 원형 아이콘 / 메시지 / pill CTA)은 feedback/ModalToast를 참조했지만,
  * ModalToast는 도입 보류 컴포넌트(20260820_010)라 import하지 않고 카드 안에 직접 구현한다.
  */
-function MoreCard({ count, label, message, onClick }) {
+function MoreCard({ count, label, message, onClick }: { count: number; label: string; message: string | ((count: number) => string); onClick?: () => void }) {
   // 문구는 서비스가 i18n 사전에서 주입할 수 있어야 하므로 prop으로 받는다(20260823_007 개선 리뷰 5번).
   const text = resolveMoreMessage(message, count);
   return (
@@ -811,7 +931,7 @@ function MoreCard({ count, label, message, onClick }) {
 }
 
 /** 슬롯이 있을 때만 스테이지를 감싸는 가운데 영역. 없으면 스테이지가 오버레이의 직계 자식이다(이전 DOM 그대로). */
-function MiddleRegion({ enabled, children }) {
+function MiddleRegion({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   if (!enabled) return children;
   return (
     <div
@@ -837,9 +957,9 @@ const SELECT_MARK_TRANSITION = 'opacity var(--duration-quick) var(--ease-out), t
  * 링·체크 칩은 장식이라 aria-hidden이고, 선택 여부는 토글의 `aria-pressed`가 알린다.
  * 링은 `--link`(글자·선에 쓰는 색), 체크 칩 면은 `--accent`, 체크는 `--accent-foreground`다.
  */
-function SelectionLayer({ selected, isCenter, full, reduced, selectLabel, selectedLabel, onToggle }) {
+function SelectionLayer({ selected, isCenter, full, reduced, selectLabel, selectedLabel, onToggle }: { selected: boolean; isCenter: boolean; full: boolean; reduced: boolean; selectLabel: string; selectedLabel: string; onToggle: () => void }) {
   const blocked = full && !selected;
-  const markTransform = (on) => (reduced ? 'none' : `scale(${on ? 1 : 0.9})`);
+  const markTransform = (on: boolean) => (reduced ? 'none' : `scale(${on ? 1 : 0.9})`);
   return (
     <>
       <div

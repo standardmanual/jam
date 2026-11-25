@@ -1,6 +1,6 @@
 'use client'
 
-import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { d } from '@/lib/i18n'
 import { AlertCircleIcon } from '@/components/ui/icons'
 

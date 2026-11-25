@@ -28,7 +28,7 @@ function listJsx(dir: string): string[] {
 }
 
 /**
- * 티켓 20261126_0002: 카드류 8개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
+ * 티켓 20261126_0002·20261126_0110: 카드류 8개와 피드백·폼·패턴 11개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
  * (`design-system/components` 기준 상대 경로로 `../../src/components/ui/<이름>.tsx`가 된다).
  */
 const MOVED_TO_SERVICE_UI = [
@@ -40,6 +40,17 @@ const MOVED_TO_SERVICE_UI = [
   'LockedTile',
   'RarityBadge',
   'SlotOutline',
+  'EmptyState',
+  'ProgressBar',
+  'Skeleton',
+  'WanderingEyesLoader',
+  'Checkbox',
+  'Input',
+  'Select',
+  'BadgeRevealCarousel',
+  'ItemSerialCode',
+  'MixerSlot',
+  'PointText',
 ].map((name) => path.resolve(COMPONENTS_DIR, '../../src/components/ui', `${name}.tsx`))
 
 const FILES = [...listJsx(COMPONENTS_DIR), ...MOVED_TO_SERVICE_UI]
@@ -70,12 +81,12 @@ const LITERAL_COLOR =
 /** 사유가 있는 예외 — 파일 경로와 줄 내용으로 가린다(줄 번호는 바뀌므로 쓰지 않는다) */
 const ALLOWED_LITERAL: { file: string; line: RegExp; reason: string }[] = [
   {
-    file: 'patterns/ItemSerialCode.jsx',
+    file: '../../src/components/ui/ItemSerialCode.tsx',
     line: /radial-gradient\(120% 90% at 22% 12%, rgba\(255,255,255,0\.19\)/,
     reason: '어두운 인장 면 자체의 재질(흰 하이라이트 19%) — 페이지 바탕에 따라 바뀌는 값이 아니고 위 글자는 --snow(최저 4.63:1)',
   },
   {
-    file: 'patterns/ItemSerialCode.jsx',
+    file: '../../src/components/ui/ItemSerialCode.tsx',
     line: /var\(--base-neutral-600\) 0%, var\(--base-neutral-800\) 100%/,
     reason: '인장 그라디언트 — 팔레트 단계 값이고 대응하는 역할 토큰이 없다',
   },
@@ -96,12 +107,12 @@ const TEXT_COLOR_KEY = /(?<![A-Za-z-])color\s*:\s*(?!'?inherit)/
 /** 사유가 있는 예외 — 비활성·장식 표현 */
 const ALLOWED_OPACITY: { file: string; snippet: RegExp; reason: string }[] = [
   {
-    file: 'patterns/MixerSlot.jsx',
+    file: '../../src/components/ui/MixerSlot.tsx',
     snippet: /fontSize:\s*20,\s*lineHeight:\s*1,\s*opacity:\s*0\.4/,
     reason: '잠긴 슬롯의 「+」 — 채울 후보가 없다는 비활성 표현이라 대비 대상이 아니다',
   },
   {
-    file: 'feedback/EmptyState.jsx',
+    file: '../../src/components/ui/EmptyState.tsx',
     snippet: /color:\s*'var\(--muted\)',\s*opacity:\s*0\.5/,
     reason: '장식 일러스트 아이콘 — 정보가 없다. 시각이 크게 바뀌는 연결 컴포넌트라 별도 판단 대상(티켓 20261015_2134 범위 밖 발견물)',
   },
@@ -141,7 +152,7 @@ function enclosingBlock(text: string, pos: number): string {
 describe('MODULAR 컴포넌트 직접 색 잔존', () => {
   it('jsx 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
     expect(FILES.length).toBeGreaterThan(20)
-    expect(FILES).toContain('patterns/ItemSerialCode.jsx')
+    expect(FILES).toContain('../../src/components/ui/ItemSerialCode.tsx')
     expect(FILES).toContain('../../src/components/ui/RarityBadge.tsx')
   })
 
@@ -149,7 +160,7 @@ describe('MODULAR 컴포넌트 직접 색 잔존', () => {
     const raw = readFileSync(path.join(COMPONENTS_DIR, '../../src/components/ui/RarityBadge.tsx'), 'utf-8')
     expect(raw).toMatch(/#fff/)
     expect(stripComments(raw)).not.toMatch(/#fff/)
-    const serial = load('patterns/ItemSerialCode.jsx')
+    const serial = load('../../src/components/ui/ItemSerialCode.tsx')
     expect(serial).toMatch(/--base-neutral-600/)
   })
 

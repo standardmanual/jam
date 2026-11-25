@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
-import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { BadgeRevealCarousel } from '@/components/ui/BadgeRevealCarousel'
+import { WanderingEyesLoader } from '@/components/ui/WanderingEyesLoader'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'

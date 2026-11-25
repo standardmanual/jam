@@ -167,6 +167,9 @@
   "jam-web/src/components/ui/BadgeLevelChip.tsx": {
     "inline-visual": 1
   },
+  "jam-web/src/components/ui/BadgeRevealCarousel.tsx": {
+    "inline-visual": 9
+  },
   "jam-web/src/components/ui/BottomSheet.tsx": {
     "arbitrary": 3
   },
@@ -176,16 +179,35 @@
   "jam-web/src/components/ui/CollectionGridCard.tsx": {
     "arbitrary": 3
   },
+  "jam-web/src/components/ui/EmptyState.tsx": {
+    "inline-visual": 1
+  },
   "jam-web/src/components/ui/Footer.tsx": {
     "arbitrary": 12
   },
   "jam-web/src/components/ui/FooterLogo.tsx": {
     "arbitrary": 1
   },
+  "jam-web/src/components/ui/Input.tsx": {
+    "inline-visual": 2
+  },
+  "jam-web/src/components/ui/ItemSerialCode.tsx": {
+    "color-literal": 2,
+    "inline-visual": 4
+  },
   "jam-web/src/components/ui/LabelChip.tsx": {
     "inline-visual": 1
   },
   "jam-web/src/components/ui/ListRow.tsx": {
+    "inline-visual": 2
+  },
+  "jam-web/src/components/ui/MixerSlot.tsx": {
+    "inline-visual": 2
+  },
+  "jam-web/src/components/ui/PointText.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/components/ui/ProgressBar.tsx": {
     "inline-visual": 2
   },
   "jam-web/src/components/ui/ProgressCountBar.tsx": {
