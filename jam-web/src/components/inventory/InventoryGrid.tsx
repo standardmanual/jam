@@ -1,7 +1,7 @@
 'use client'
 
 import LocalDate from '@/components/LocalDate'
-import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import BadgeGridCard, { BadgeGridCardPlaceholder } from '@/components/ui/BadgeGridCard'
 import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import { ListRowChip } from '@/components/ui/ListRow'
 import { d } from '@/lib/i18n'
@@ -113,19 +113,9 @@ export default function InventoryGrid({
           </BadgeGridCard>
         )
       })}
-      {/* 빈 슬롯 placeholder — BadgeGridCard와 동일한 구조로 맞춰 행 높이를 일치시킨다. 카드 면만 보이고 안쪽 회색 상자와 «+»는 그리지 않는다
-          (사용자 지시 2026-11-14, 티켓 20261114_1040). 상자 자리는 행 높이를 지키려고 비워 둔다 */}
+      {/* 빈 슬롯 placeholder — BadgeGridCardPlaceholder가 채운 카드와 동일한 폭·aspect-square·text-sm 기하를 유지한다 */}
       {Array.from({ length: emptySlots }).map((_, i) => (
-        <div
-          key={`empty-${i}`}
-          className="flex flex-col items-center bg-card-bg rounded-2xl p-3 overflow-hidden opacity-30"
-        >
-          <div className="w-[90px] h-[90px]" aria-hidden="true" />
-          <div className="flex flex-col items-center gap-1 pt-2 w-full">
-            <p className="text-[11px] font-bold text-foreground text-center truncate w-full leading-tight">&nbsp;</p>
-            <div className="h-6" />
-          </div>
-        </div>
+        <BadgeGridCardPlaceholder key={`empty-${i}`} />
       ))}
     </div>
   )

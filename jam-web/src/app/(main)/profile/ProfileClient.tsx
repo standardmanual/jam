@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { buildQueryHref, currentQuerySource, pushUrlQuery, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import TopNav from '@/components/ui/TopNav'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { Skeleton } from '@ds/components/feedback/Skeleton'
+import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { PointHistorySection } from '@/components/points/PointHistoryList'
@@ -18,7 +19,6 @@ import { ListRow } from '@/components/ui/ListRow'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
 import {
-  UserIcon,
   UsersIcon,
   MedalIcon,
 } from '@/components/ui/icons'
@@ -470,13 +470,7 @@ export default function ProfileClient({
           <ListRow
             key={u.id}
             href={`/${u.username}`}
-            lead={
-              u.avatar_url ? (
-                <Image src={u.avatar_url} alt="" width={48} height={48} />
-              ) : (
-                <UserIcon className="w-5 h-5 text-muted" />
-              )
-            }
+            lead={<Avatar src={u.avatar_url} alt="" size={48} iconClassName="w-5 h-5 text-muted" />}
             leadShape="round"
             title={getDisplayName(u)}
             titleVariant="regular"
@@ -562,19 +556,13 @@ export default function ProfileClient({
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
             <Link href={`/${username}`} onClick={clearProfileTab}>
-              {profile?.avatar_url ? (
-                <Image
-                  src={profile.avatar_url}
-                  alt={d.profile.avatarAlt}
-                  width={96}
-                  height={96}
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-surface text-foreground flex items-center justify-center">
-                  <UserIcon className="w-10 h-10" />
-                </div>
-              )}
+              <Avatar
+                src={profile?.avatar_url}
+                alt={d.profile.avatarAlt}
+                size={96}
+                iconClassName="w-10 h-10"
+                className={profile?.avatar_url ? '' : 'bg-surface text-foreground'}
+              />
             </Link>
           </div>
 
@@ -652,7 +640,7 @@ export default function ProfileClient({
             >
               <div className="t-skel-skeleton is-pulsing flex flex-col gap-2 content-start" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-[72px] rounded-2xl bg-background-inverse/15" />
+                  <Skeleton key={i} height={72} borderRadius="var(--radius-2xl)" className="w-full" />
                 ))}
               </div>
               <div className="t-skel-content" aria-busy={isTabLoading}>

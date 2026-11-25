@@ -14,9 +14,11 @@ import React from 'react';
  *   - 오류 --danger, 성공 --success (옛 희귀도 색 제거). 상태 테두리는 border를 1px로
  *     두고 같은 색 inset 링 1px를 더해 시각 2px로 만든다 — border 두께가 1px → 2px로 변하면 안쪽 글자가
  *     1px 움직인다.
- *   - `surface="inverse"` 삭제: 어두운 면 + 흰색 반투명 테두리라 라이트 전용 시스템과 맞지 않고
- *     서비스 사용처도 없었다. 검색바는 기본 모양이 UserSearchBar와 같다.
- *   - --field-border는 흰 면 위 1.66:1이라 UI 경계 3:1에 못 미친다. 값 재검토는 사용자 판단으로 열려 있다.
+ *   - `surface="inverse"` 삭제.
+ *
+ * v4 changes (티켓 20261125_1444):
+ *   - `leading` / `trailing` 슬롯(아이콘, `@` 접두어, 스피너, 우측 버튼)과 `containerRef` / `containerClassName` / `containerStyle` 추가.
+ *     슬롯을 넘기지 않으면 기존과 동일한 단일 `<input>`을 그대로 렌더한다.
  */
 export function Input({
   placeholder = '',
@@ -29,6 +31,13 @@ export function Input({
   'aria-describedby': ariaDescribedby,
   state = 'default',
   disabled = false,
+  leading,
+  trailing,
+  containerRef,
+  containerClassName = '',
+  containerStyle,
+  style,
+  className,
   ...rest
 }) {
   const borderColorByState = {
@@ -42,6 +51,64 @@ export function Input({
     success: 'inset 0 0 0 1px var(--success)',
   };
 
+  const border = `1px solid ${borderColorByState[state] ?? borderColorByState.default}`;
+  const boxShadow = ringByState[state] ?? ringByState.default;
+
+  if (leading || trailing || containerRef || containerClassName || containerStyle) {
+    return (
+      <div
+        ref={containerRef}
+        className={containerClassName || undefined}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          minHeight: 44,
+          borderRadius: 'var(--field-radius)',
+          border,
+          boxShadow,
+          padding: trailing ? '4px 4px 4px 16px' : '0 16px',
+          background: 'var(--surface)',
+          boxSizing: 'border-box',
+          opacity: disabled ? 0.4 : 1,
+          ...containerStyle,
+        }}
+      >
+        {leading}
+        <input
+          id={id}
+          name={name}
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          aria-describedby={ariaDescribedby}
+          aria-invalid={state === 'error' ? true : undefined}
+          className={className}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: 'none',
+            background: 'transparent',
+            outline: 'none',
+            padding: 0,
+            fontSize: 'var(--text-base)',
+            lineHeight: 'var(--text-base--line-height)',
+            fontFamily: 'var(--font-family-base)',
+            color: 'var(--foreground)',
+            cursor: disabled ? 'not-allowed' : 'text',
+            ...style,
+          }}
+          {...rest}
+        />
+        {trailing}
+      </div>
+    );
+  }
+
   return (
     <input
       id={id}
@@ -54,12 +121,13 @@ export function Input({
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedby}
       aria-invalid={state === 'error' ? true : undefined}
+      className={className}
       style={{
         width: '100%',
         height: 44,
         borderRadius: 'var(--field-radius)',
-        border: `1px solid ${borderColorByState[state] ?? borderColorByState.default}`,
-        boxShadow: ringByState[state] ?? ringByState.default,
+        border,
+        boxShadow,
         padding: '0 20px',
         fontSize: 'var(--text-base)',
         lineHeight: 'var(--text-base--line-height)',
@@ -69,6 +137,7 @@ export function Input({
         boxSizing: 'border-box',
         opacity: disabled ? 0.4 : 1,
         cursor: disabled ? 'not-allowed' : 'text',
+        ...style,
       }}
       {...rest}
     />

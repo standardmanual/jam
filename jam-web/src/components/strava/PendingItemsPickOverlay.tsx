@@ -3,10 +3,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
-import { Button } from '@ds/components/buttons/Button'
+import { Card } from '@ds/components/cards/Card'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { pushTabBarHidden } from '@/lib/uiOverlay'
+import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
 import type { PendingItemsPayload } from '@/lib/strava/pending-items-contract'
 import { fetchPendingPayload, isExactChoice, submitChoice, toggleChoice, type PickResult } from '@/lib/strava/pending-pick'
@@ -148,15 +149,10 @@ export default function PendingItemsPickOverlay({ open, quiet = false, onFinish 
     return pushTabBarHidden()
   }, [open])
 
-  // 배경 스크롤 락 — 스크롤 컨테이너는 body가 아니라 (main)/layout.tsx의 <main>이다
+  // 배경 스크롤 락 — 참조 카운팅 헬퍼(pushMainScrollLock)로 중첩 오버레이 간 충돌을 방지한다
   useEffect(() => {
     if (!open) return
-    const scroller = document.querySelector<HTMLElement>('main')
-    const prevOverflow = scroller?.style.overflow
-    if (scroller) scroller.style.overflow = 'hidden'
-    return () => {
-      if (scroller) scroller.style.overflow = prevOverflow ?? ''
-    }
+    return pushMainScrollLock()
   }, [open])
 
   /* 카드 폭 — 세로가 640px 미만이면 240, 그 밖에는 292. 헤더·푸터의 실측 높이(offsetHeight)를 뺀 남는 높이에 카드가 들어가지
@@ -430,18 +426,9 @@ export function PendingItemsPickView({
             fontFamily: 'var(--font-family-base)',
           }}
         >
-          <style>{`@keyframes ds-badge-reveal-in { from { opacity: 0; } to { opacity: 1; } }`}</style>
-          <div
-            style={{
-              width: '100%',
-              background: 'var(--surface)',
-              borderRadius: 'var(--radius-2xl)',
-              padding: 'var(--spacing-24)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--spacing-16)',
-              animation: 'ds-badge-reveal-in 220ms var(--ease-out) both',
-            }}
+          <Card
+            className="w-full flex flex-col gap-4"
+            style={{ padding: 'var(--spacing-24)' }}
           >
             <p
               id={titleId}
@@ -490,7 +477,7 @@ export function PendingItemsPickView({
                 </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 

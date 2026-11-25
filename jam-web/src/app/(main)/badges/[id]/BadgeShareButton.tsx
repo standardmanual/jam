@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { useToast } from '@/components/ui/Toast'

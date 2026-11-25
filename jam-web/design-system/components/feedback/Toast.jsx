@@ -40,40 +40,24 @@ export function Toast({ message, type = 'info', open = true, onDismiss }) {
     <div
       role="status"
       aria-live="polite"
+      onClick={onDismiss}
       style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 12px 10px 20px', borderRadius: 'var(--radius-full)',
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+        padding: '12px 16px', borderRadius: 'var(--radius-3xl)',
         background: 'var(--background-inverse)', color: 'var(--snow)',
-        fontSize: 'var(--text-sm)',
+        fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)',
+        cursor: onDismiss ? 'pointer' : 'default',
         // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
+        // 20261125_1444: 서비스 Toast.tsx와 동일 규격(rounded-3xl, 16px, X 버튼 없이 탭으로 닫기)
         transform: visible ? 'translateY(0)' : 'translateY(8px)',
         opacity: visible ? 1 : 0,
         transition: 'transform var(--duration-fast) var(--ease-smooth-out), opacity var(--duration-fast) ease',
       }}
     >
-      <span style={{ color: 'var(--snow)', flexShrink: 0 }}>
+      <span style={{ display: 'flex', height: 24, alignItems: 'center', color: 'var(--muted-on-inverse)', flexShrink: 0 }}>
         {ICONS[type]}
       </span>
-      <span style={{ flex: 1 }}>{message}</span>
-      {onDismiss && (
-        <button
-          onClick={onDismiss}
-          aria-label="알림 닫기"
-          style={{
-            flexShrink: 0,
-            width: 28, height: 28,
-            borderRadius: '50%', border: 'none',
-            background: 'transparent', color: 'var(--snow)',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 0,
-          }}
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={14} height={14} aria-hidden="true">
-            <line x1="12" y1="4" x2="4" y2="12" /><line x1="4" y1="4" x2="12" y2="12" />
-          </svg>
-        </button>
-      )}
+      <span style={{ flex: 1, minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'break-word' }}>{message}</span>
     </div>
   );
 }

@@ -18,4 +18,5 @@ export interface MixerSlotProps {
   style?: CSSProperties;
 }
 
+export function ActionCircle(props: { kind: 'plus' | 'minus' }): JSX.Element;
 export function MixerSlot(props: MixerSlotProps): JSX.Element;

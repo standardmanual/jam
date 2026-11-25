@@ -8,7 +8,8 @@ import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import TierUpRevealOverlay, { measureTierUpMaterials, type TierUpRevealMaterial, type TierUpRevealResult } from '@/components/TierUpRevealOverlay'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
+import { Input } from '@ds/components/forms/Input'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { SearchIcon, ArrowDownIcon } from '@/components/ui/icons'
 import RecipeRewardRow from './RecipeRewardRow'
@@ -950,16 +951,15 @@ export default function CombineClient({
 
           {/* 검색 */}
           <div className="px-4 pt-4 pb-4">
-            <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-surface">
-              <SearchIcon className="w-4 h-4 text-muted shrink-0" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={d.combine.searchPlaceholder}
-                className="flex-1 bg-transparent outline-none text-base text-foreground placeholder:text-muted"
-              />
-            </div>
+            <Input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={d.combine.searchPlaceholder}
+              aria-label={d.combine.searchPlaceholder}
+              className="placeholder:text-muted"
+              leading={<SearchIcon className="w-4 h-4 text-muted shrink-0" />}
+            />
           </div>
 
           {/* 레시피 탐색 목록 */}
@@ -1041,18 +1041,17 @@ export default function CombineClient({
 
           {/* CTA — 화면 전체 폭을 채우지 않는다(티켓 20260917_1828, 요구사항 8) */}
           <div className="px-4 pb-6 flex flex-col items-center gap-2">
-            <button
-              onClick={handleCombine}
-              disabled={loading || !canSubmit || pendingBlocked}
+            <Button
+              variant="primary"
+              fullWidth
+              loading={loading}
+              disabled={!canSubmit || pendingBlocked}
               aria-describedby={pendingBlocked ? 'combine-pending-note' : undefined}
-              className="w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+              onClick={handleCombine}
+              className="max-w-[220px]"
             >
-              {/* 아이콘은 없다 — 로딩이 아닐 때는 글자만(티켓 20261112_1627, 캔버스 확정). 로딩 스피너는 그대로다 */}
-              {loading && (
-                <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-              )}
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
-            </button>
+            </Button>
             {/* 새 믹스가 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
             {pendingBlocked && (
               <p id="combine-pending-note" className="m-0 self-stretch text-sm text-foreground break-keep wrap-break-word text-balance">

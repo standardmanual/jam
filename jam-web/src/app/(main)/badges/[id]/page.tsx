@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isItemBookViewable } from '@/lib/itembook/visibility'
 import { BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
 import { Card } from '@ds/components/cards/Card'
@@ -447,14 +448,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               {/* action-section */}
               <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
                 {badgeRow.patch_available && (
-                  <a
-                    href="#"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
-                  >
+                  <Button href="#" external variant="secondary" fullWidth className="bg-surface!">
                     {d.badges.physicalPatchButton} ↗
-                  </a>
+                  </Button>
                 )}
 
                 {!hasEarned && (
@@ -552,14 +548,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
               {/* 실물 패치 버튼 */}
               {badgeRow.patch_available && (
-                <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-14 w-full rounded-full bg-surface text-base text-foreground inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
-                >
+                <Button href="#" external variant="secondary" fullWidth className="bg-surface!">
                   {d.badges.physicalPatchButton} ↗
-                </a>
+                </Button>
               )}
 
               {/* 획득 정보 (획득한 경우) */}

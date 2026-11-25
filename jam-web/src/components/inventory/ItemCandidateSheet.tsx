@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
+import InlineNotice from '@/components/ui/InlineNotice'
 import { SHEET_BUTTON_CLASS } from '@/components/ui/sheetClasses'
 import ItemCandidateRow, { type ItemCandidate } from '@/components/inventory/ItemCandidateRow'
 import type { BadgeRarity } from '@/types/database'
@@ -76,11 +77,7 @@ export default function ItemCandidateSheet({
       title={badgeName}
     >
       <div className="px-6 py-6 flex flex-col gap-2">
-        {error && (
-          <div className="rounded-2xl bg-card-bg px-3 py-2 text-xs text-muted">
-            {error}
-          </div>
-        )}
+        {error && <InlineNotice>{error}</InlineNotice>}
         <div className="grid grid-cols-3 gap-2" aria-busy={busy}>
           {candidates.map((candidate) => (
             <ItemCandidateRow

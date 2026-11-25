@@ -116,7 +116,7 @@ import RecipeSlotCard from './RecipeSlotCard'
 import BagItemCell from './BagItemCell'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { d, t } from '@/lib/i18n'
 import { MixingBowlIcon } from '@/components/ui/icons'
 import { TEST_RECIPE } from './testRecipeFixture'
@@ -240,7 +240,7 @@ describe('CombineClient — 믹서 화면과 시험 믹스 결과 안내 (티켓
     }
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
     const ctaButton = (tree: ReactNode) =>
-      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+      findAll(tree, (el) => el.type === Button && String(el.props.className).includes('max-w-[220px]'))[0]
     /** 목록에서 레시피 행을 눌러 믹서 화면으로 들어간다 */
     const openMixer = () => {
       const row = findAll(render(), (el) => el.type === RecipeRewardRow)[0]
@@ -484,7 +484,7 @@ describe('CombineClient — 받지 않은 믹스 결과 (티켓 20261018_0055 2�
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
     const sheetEl = (tree: ReactNode) => findAll(tree, (el) => el.type === PendingResultsSheet)[0]
     const ctaButton = (tree: ReactNode) =>
-      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+      findAll(tree, (el) => el.type === Button && String(el.props.className).includes('max-w-[220px]'))[0]
     const bannerButton = (tree: ReactNode) =>
       findAll(tree, (el) => el.type === Button && textOf(el) === d.combine.pendingBanner.action)[0]
     const openMixer = () => {
@@ -1085,7 +1085,7 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
     const sheet = (tree: ReactNode) => findAll(tree, (el) => el.type === BottomSheet)[0]
     const cells = (tree: ReactNode) => findAll(tree, (el) => el.type === BagItemCell)
     const cta = (tree: ReactNode) =>
-      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+      findAll(tree, (el) => el.type === Button && String(el.props.className).includes('max-w-[220px]'))[0]
     return { render, cards, sheet, cells, cta }
   }
 
@@ -1283,7 +1283,7 @@ describe('CombineClient — 등급 대응형 레시피 (티켓 20261114_1705 3�
     const cells = (tree: ReactNode) => findAll(tree, (el) => el.type === BagItemCell)
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
     const cta = (tree: ReactNode) =>
-      findAll(tree, (el) => el.type === 'button' && String(el.props.className).includes('max-w-[220px]'))[0]
+      findAll(tree, (el) => el.type === Button && String(el.props.className).includes('max-w-[220px]'))[0]
     const note = (tree: ReactNode) => findAll(tree, (el) => el.type === 'p' && el.props['aria-live'] === 'polite')
     const open = (recipeId: string) => {
       const row = rows(render()).find((r) => r.key === recipeId)

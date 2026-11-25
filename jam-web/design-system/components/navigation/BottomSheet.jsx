@@ -86,6 +86,8 @@ export function BottomSheet({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
+          maxWidth: 430,
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
           // 패널과 푸터 모두 흰 면(--card-bg·--surface) — 서비스 BottomSheet.tsx와 같은 쌍이다
@@ -103,7 +105,7 @@ export function BottomSheet({
       >
         {/* Drag handle — decorative (swipe-to-dismiss 자체는 미구현) */}
         <div style={{
-          width: 36, height: 4,
+          width: 40, height: 4,
           borderRadius: 'var(--radius-full)',
           background: 'var(--border)',
           margin: 'var(--spacing-12) auto 0',

@@ -29,7 +29,15 @@ const FILES = [
   'components/inventory/InventoryGrid.tsx',
   'components/inventory/ItemCandidateRow.tsx',
   'components/ui/BadgeGridCard.tsx',
+  'components/ui/Avatar.tsx',
+  'components/ui/Button.tsx',
+  'components/ui/Toast.tsx',
   'components/ui/SlidingTabs.tsx',
+  'components/capsule/CapsuleGauge.tsx',
+  'components/capsule/CapsuleBlockedCard.tsx',
+  'components/capsule/CapsuleWidget.tsx',
+  'components/today/feed/FeedGalleryListCard.tsx',
+  'app/(main)/badges/[id]/BadgeTicket.module.css',
   'components/transitions.css',
   'components/transitions-pages.css',
   'app/globals.css',
@@ -49,7 +57,7 @@ const FILES = [
 ]
 
 const LITERAL_COLOR =
-  /text-white|bg-black|bg-white|border-white|white\/|black\/|rgba\(\s*(255|0,\s*0|232)|#fff|#FFF|#000|#e8461f|#E8461F|yellow-[0-9]|text-foreground\/[0-9]|text-\[var\(--muted\)\]\/[0-9]|placeholder:text-foreground\/|shadow-lg|backdrop-blur|shadow-\[0|--base-neutral/
+  /text-white|bg-black|bg-white|border-white|white\/|black\/|text-snow\/[0-9]|rgba\(\s*(255|0,\s*0|232)|#fff|#FFF|#000|#e8461f|#E8461F|yellow-[0-9]|text-foreground\/[0-9]|text-\[var\(--muted\)\]\/[0-9]|placeholder:text-foreground\/|shadow-lg|backdrop-blur|shadow-\[0|--base-neutral/
 
 /** 사유가 있는 예외 — 파일 경로와 줄 내용으로 가린다(줄 번호는 바뀌므로 쓰지 않는다) */
 const ALLOWED: { file: string; line: RegExp; reason: string }[] = [
@@ -67,6 +75,11 @@ const ALLOWED: { file: string; line: RegExp; reason: string }[] = [
     file: 'lib/badgeBackgroundTheme.ts',
     line: /textShadow: '0 1px 2px rgba\(0,0,0,0\.65\)/,
     reason: '이미지·블롭 위 글자 대비 보정 textShadow — 사용자 승인 2(2026-10-16)로 유지',
+  },
+  {
+    file: 'app/(main)/badges/[id]/BadgeTicket.module.css',
+    line: /--base-neutral-900|\/\*.*#fff|\/\*.*#171717/,
+    reason: '티켓 스코프 내부에서 --foreground 등 역할 토큰을 재정의하는 기준값(--base-neutral-900) 및 설명 주석',
   },
 ]
 

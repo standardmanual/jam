@@ -341,12 +341,12 @@ export default function DropsClient({ focusPoi = null }: DropsClientProps) {
       )}
 
       {!poisLoading && pois.length === 0 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-snow/70 text-base text-center whitespace-nowrap">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-muted-on-inverse text-base text-center whitespace-nowrap">
           {t(d.drops.noNearbyPlaces, { m: DROP_RADIUS_METERS })}
         </div>
       )}
       {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !carouselPoiId && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-snow/70 text-base text-center whitespace-nowrap">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-2xl px-4 py-4 text-muted-on-inverse text-base text-center whitespace-nowrap">
           {t(d.drops.moveCloser, { m: DROP_RADIUS_METERS })}
         </div>
       )}

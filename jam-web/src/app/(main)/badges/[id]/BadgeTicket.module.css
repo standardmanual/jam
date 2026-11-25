@@ -9,7 +9,7 @@
   position: relative;
   /* 티켓 면 위 글자색(티켓 20261124_2253). 기본 #171717이라 배지 상세는 그대로다. 컬렉션 상세는 서버가 인라인으로 #fff·#000을 넣는다.
      머리 글자·로고·글자 상자 테두리·--muted(80%)·--border(12%)·--link가 이 값에서 나온다 */
-  --ticket-text: #171717;
+  --ticket-text: var(--base-neutral-900);
   --ticket-muted: rgba(23, 23, 23, 0.8);
   --ticket-border: rgba(23, 23, 23, 0.12);
   /* 카드 바탕에 섞는 티켓색 비율. 기본 70%·45%, 흰 글자 티켓에서만 서버가 낮춰 인라인으로 넣는다 */
@@ -29,21 +29,21 @@
   .ticket {
     --ticket-muted: color-mix(in srgb, var(--ticket-text) 80%, transparent);
     --ticket-border: color-mix(in srgb, var(--ticket-text) 12%, transparent);
-    --card-bg: color-mix(in srgb, var(--ticket) var(--card-mix), #fff);
-    --surface: color-mix(in srgb, var(--ticket) var(--card-mix), #fff);
-    --background-secondary: color-mix(in srgb, var(--ticket) var(--card-mix-2), #fff);
+    --card-bg: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
+    --surface: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
+    --background-secondary: color-mix(in srgb, var(--ticket) var(--card-mix-2), var(--base-white));
   }
 }
 
-/* 카드 안 글자는 항상 #171717(티켓 20261124_2253). 티켓 면 위 글자색은 .face가 되살린다 */
+/* 카드 안 글자는 항상 var(--base-neutral-900)(#171717)(티켓 20261124_2253). 티켓 면 위 글자색은 .face가 되살린다 */
 .ink,
 .cards {
-  --foreground: #171717;
+  --foreground: var(--base-neutral-900);
   --muted: rgba(23, 23, 23, 0.8);
   --border: rgba(23, 23, 23, 0.12);
-  --link: #171717;
-  --point-text: #171717;
-  color: #171717;
+  --link: var(--base-neutral-900);
+  --point-text: var(--base-neutral-900);
+  color: var(--base-neutral-900);
 }
 
 /* 카드 구간 안이지만 카드가 아니라 티켓 면 위에 놓이는 글자(이야기 글·체크인 제목 등) */
@@ -62,12 +62,12 @@
 .faceKeepCards :global(.grid-cols-3),
 .faceKeepCards :global(.bg-card-bg),
 .faceKeepCards :global(button:not(.bg-accent)) {
-  --foreground: #171717;
+  --foreground: var(--base-neutral-900);
   --muted: rgba(23, 23, 23, 0.8);
   --border: rgba(23, 23, 23, 0.12);
-  --link: #171717;
-  --point-text: #171717;
-  color: #171717;
+  --link: var(--base-neutral-900);
+  --point-text: var(--base-neutral-900);
+  color: var(--base-neutral-900);
 }
 
 /* 머리: 티켓색 단색, 윗모서리 직각 */

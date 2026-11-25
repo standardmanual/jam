@@ -3,7 +3,6 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { LockedTile } from '../cards/LockedTile.jsx';
 import { SlotOutline } from '../cards/SlotOutline.jsx';
-import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
 /** 잠긴 카드의 이름 줄 — 서비스 `d.lockedItem.card.name`과 같은 문구다(이 DS 파일은 서비스 사전을 가져오지 않는다) */
 const LOCKED_NAME = '잠긴 아이템 배지';
@@ -79,16 +78,14 @@ export function BadgeGridCard({
   selected = false,
   highlighted = false,
   locked = false,
-  fillPercent = 0,
   thumbBackground,
   className = '',
   style = {},
   children,
 }) {
-  // 판정 순서: undiscovered(이미지 없이 점선만) > !earned(원본 + grayscale). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 점선이 사라진다
+  // 판정 순서: undiscovered(이미지 없이 점선만) > !earned(원본 + grayscale + opacity 0.4). 미발견 칸은 earned=false도 함께 오므로 순서가 바뀌면 점선이 사라진다
   const thumbFilter = !earned ? 'grayscale(1)' : 'none';
-  // 넣을 수 있는 칸의 이미지는 서비스와 같이 반투명(opacity-40). 점선은 이 <img>의 형제라 영향을 받지 않는다
-  const thumbOpacity = outlined && !earned ? 0.4 : undefined;
+  const thumbOpacity = !earned && !undiscovered ? 0.4 : undefined;
   const interactive = !!(href || onClick);
 
   const containerStyle = {
@@ -112,8 +109,8 @@ export function BadgeGridCard({
   };
 
   const thumbnailStyle = {
-    width: 90,
-    height: 90,
+    width: '100%',
+    aspectRatio: '1',
     borderRadius: 'var(--radius-2xl)',
     overflow: 'hidden',
     display: 'flex',
@@ -132,12 +129,12 @@ export function BadgeGridCard({
 
   const content = (
     <>
-      {/* 카운터 필의 기준점 — 썸네일 자체가 아니라 래퍼에 건다(필이 grayscale을 먹지 않게) */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 90 }}>
+      {/* 카운터 필의 기준점 — 썸네일 자체가 아니라 래퍼에 건다(필이 grayscale을 먹지 않게). 서비스 BadgeGridCard.tsx와 동일한 풀폭 정사각형 */}
+      <div style={{ position: 'relative', width: 'calc(100% + 12px)', marginTop: -6 }}>
         {locked ? (
-          <LockedTile size={90} />
+          <LockedTile size={128} style={{ width: '100%' }} />
         ) : undiscovered ? (
-          <SlotOutline src={imageUrl} fallback="box" />
+          <SlotOutline src={imageUrl} fallback="box" size={128} inset={6} style={{ maxWidth: 'none' }} />
         ) : (
         <>
         <div style={thumbnailStyle}>
@@ -147,7 +144,7 @@ export function BadgeGridCard({
               src={imageUrl}
               alt={name}
               style={{
-                width: '100%', height: '100%', objectFit: 'contain', padding: 4,
+                width: '100%', height: '100%', objectFit: 'contain', padding: '4.4%',
                 filter: thumbFilter,
                 opacity: thumbOpacity,
                 ...aboveBackground,
@@ -160,7 +157,7 @@ export function BadgeGridCard({
             </svg>
           )}
         </div>
-        {outlined && <SlotOutline src={imageUrl} fallback="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />}
+        {outlined && <SlotOutline src={imageUrl} fallback="none" size={128} inset={6} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: 'none' }} />}
         </>
         )}
         {showCount && (
@@ -207,12 +204,6 @@ export function BadgeGridCard({
           >
             ×{visitCount}
           </span>
-        )}
-        {locked && (
-          // 채운 비율은 게이지로만 보인다 — 숫자와 퍼센트는 화면에도 보조기술에도 싣지 않는다(운영 로직 4.3절)
-          <div aria-hidden="true" style={{ width: '100%', paddingTop: 'var(--spacing-4)' }}>
-            <ProgressBar outlined percent={fillPercent} fillMode="track-gradient" trackColor="var(--background)" height={6} labelType="none" />
-          </div>
         )}
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}

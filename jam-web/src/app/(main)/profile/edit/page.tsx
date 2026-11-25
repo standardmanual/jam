@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import TopNav from '@/components/ui/TopNav'
+import { Input } from '@ds/components/forms/Input'
 import Button from '@/components/ui/Button'
-import { UserIcon } from '@/components/ui/icons'
+import Avatar from '@/components/ui/Avatar'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import StravaSettingsSection, { type StravaSettingsState } from '@/components/strava/StravaSettingsSection'
@@ -234,11 +234,8 @@ export default function ProfileEditPage() {
     }
   }
 
-  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
+  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — DS Input의 state('error'|'success'|'default')와 메시지 텍스트로 구분
   const hasError = checkStatus === 'invalid' || checkStatus === 'taken'
-  const inputBorderClass = hasError
-    ? 'shadow-[inset_0_0_0_2px_var(--border)]'
-    : 'shadow-[inset_0_0_0_1px_var(--border)]'
 
   // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
   const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(checkMessage)
@@ -267,13 +264,14 @@ export default function ProfileEditPage() {
             disabled={uploading}
             aria-label={d.profileEdit.changePhotoAlt}
           >
-            {avatarUrl ? (
-              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover" />
-            ) : (
-              <div className="w-24 h-24 rounded-2xl bg-surface flex items-center justify-center">
-                <UserIcon className="w-10 h-10 text-muted" />
-              </div>
-            )}
+            <Avatar
+              src={avatarUrl}
+              alt={d.onboarding.avatarAlt}
+              size={96}
+              shape="rounded"
+              iconClassName="w-10 h-10 text-muted"
+              className={avatarUrl ? '' : 'bg-surface'}
+            />
             {uploading && (
               <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
                 <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
@@ -298,26 +296,26 @@ export default function ProfileEditPage() {
           {/* 아이디 편집 */}
           <div className={`t-input-wrap flex flex-col${hasError ? ' is-error' : ''}`}>
             <label className="text-base text-muted mb-1">{d.profileEdit.usernameLabel}</label>
-            <div
-              ref={inputShakeRef}
-              className={`t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
-            >
-              <span className="text-muted mr-1">@</span>
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={handleUsernameChange}
-                placeholder={currentUsername ?? d.onboarding.usernamePlaceholder}
-                maxLength={30}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-              />
-              {checkStatus === 'checking' && (
-                <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
-              )}
-            </div>
+            <Input
+              type="text"
+              value={usernameInput}
+              onChange={handleUsernameChange}
+              placeholder={currentUsername ?? d.onboarding.usernamePlaceholder}
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              state={hasError ? 'error' : checkStatus === 'available' ? 'success' : 'default'}
+              containerRef={inputShakeRef}
+              containerClassName={`t-input${hasError ? ' is-error' : ''}`}
+              className="placeholder:text-muted"
+              leading={<span className="text-muted">@</span>}
+              trailing={
+                checkStatus === 'checking' ? (
+                  <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin mr-3 shrink-0" />
+                ) : undefined
+              }
+            />
             {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김, aria-live 영역 유지).
                 상시 자리는 두지 않는다 — 래퍼에 gap을 두면 빈 p도 gap을 차지하므로 라벨 아래 4는 label의 mb-1로 주고,
                 메시지가 있을 때만 입력칸 아래 4(mt-1)가 생긴다. */}
@@ -330,21 +328,17 @@ export default function ProfileEditPage() {
             </p>
           </div>
 
-          {/* 이름 편집 — 20260830_0113: username과 동일한 커스텀 t-input 마크업을 재사용한다
-              (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
-              필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
+          {/* 이름 편집 — DS Input으로 통일(티켓 20261125_1444). */}
           <div className="t-input-wrap flex flex-col">
             <label className="text-base text-muted mb-1">{d.profileEdit.nameLabel}</label>
-            <div className="t-input flex items-center w-full min-h-11 rounded-full px-4 transition-shadow shadow-[inset_0_0_0_1px_var(--border)]">
-              <input
-                type="text"
-                value={nameInput}
-                onChange={handleNameChange}
-                placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
-                maxLength={30}
-                className="flex-1 bg-transparent placeholder:text-muted focus:outline-none"
-              />
-            </div>
+            <Input
+              type="text"
+              value={nameInput}
+              onChange={handleNameChange}
+              placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
+              maxLength={30}
+              className="placeholder:text-muted"
+            />
           </div>
         </div>
 

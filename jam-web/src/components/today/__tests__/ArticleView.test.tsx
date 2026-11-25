@@ -93,10 +93,12 @@ describe('ArticleView — 머리 영역', () => {
 
   it('칩은 MODULAR LabelChip 반전 색조(검정 바탕 위 흰 칩)이고 flex 칸으로 한 번 감쌌다', () => {
     const html = render()
-    expect(html).toMatch(/<div class="flex"><span class="" style="[^"]*background:var\(--background-inverse\);color:var\(--snow\)[^"]*">기사<\/span><\/div>/)
+    const chipMatch = html.match(/<div class="flex"><span class="([^"]*)" style="([^"]*)">기사<\/span><\/div>/)
+    expect(chipMatch).not.toBeNull()
+    expect(chipMatch![2]).toContain('background:var(--background-inverse);color:var(--snow)')
     // LabelChip 규격(padding --chip-padding·줄 높이 16px) — 옛 직접 마크업(bg-background-inverse 클래스)이 아니다
-    expect(html).toContain('padding:var(--chip-padding)')
-    expect(html).not.toContain('bg-background-inverse')
+    expect(chipMatch![2]).toContain('padding:var(--chip-padding)')
+    expect(chipMatch![1]).not.toContain('bg-background-inverse')
   })
 
   it('제목은 h1이고 말줄임 없이 줄바꿈된다(line-clamp·truncate 없음)', () => {
@@ -162,13 +164,12 @@ describe('ArticleView — 본문', () => {
 })
 
 describe('ArticleView — CTA', () => {
-  it('href가 있으면 링크 필이다 — 풀폭 min-h-11·눌림(active:scale-95) 유지', () => {
+  it('href가 있으면 공용 Button 링크 필이다 — 풀폭 min-h-11·눌림(active:scale-95) 유지', () => {
     const html = render()
-    expect(html).toMatch(/<a class="[^"]*" style="[^"]*" href="\/missions\/m1">/)
+    expect(html).toMatch(/<a class="[^"]*" href="\/missions\/m1">/)
     expect(html).toContain(
-      'class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal transition-transform duration-100 active:scale-95 rounded-full px-8 py-[14px] text-base text-snow"',
+      'class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border transition-transform duration-100 rounded-full px-8 py-[13px] text-base text-snow bg-background-inverse border-transparent w-full cursor-pointer active:scale-95"',
     )
-    expect(html).toContain('background-color:var(--background-inverse)')
     expect(html).toContain('>미션 보기</a>')
   })
 
@@ -182,15 +183,19 @@ describe('ArticleView — CTA', () => {
     expect(html).not.toContain('active:scale-95')
     expect(html).not.toContain('transition-transform')
     expect(html).toContain(
-      '<div class="inline-flex items-center justify-center gap-2 min-h-11 w-full font-normal rounded-full px-8 py-[14px] text-base text-snow"',
+      '<div class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border rounded-full px-8 py-[13px] text-base text-snow bg-background-inverse border-transparent w-full"',
     )
     expect(html).toContain('>미션 보기</div>')
   })
 
-  it('정적 필은 링크 필과 눌림 클래스만 다르다(같은 모양)', () => {
+  it('정적 필은 링크 필과 눌림·커서 클래스만 다르다(같은 모양)', () => {
     const link = render().match(/<a [^>]*class="([^"]*)"/)![1]
     const fixed = render({ cta: { label: '미션 보기' } }).match(/<div class="(inline-flex[^"]*)"/)![1]
-    expect(link.replace('transition-transform duration-100 active:scale-95 ', '')).toBe(fixed)
+    expect(
+      link
+        .replace('transition-transform duration-100 ', '')
+        .replace(' cursor-pointer active:scale-95', ''),
+    ).toBe(fixed)
   })
 
   it('cta가 없으면 블록이 없다(링크 없음과는 다른 상태)', () => {

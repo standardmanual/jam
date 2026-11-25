@@ -2,7 +2,7 @@
 
 import { useId } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { d, t } from '@/lib/i18n'
@@ -53,9 +53,9 @@ export default function CapsuleBlockedCard({ pendingItemCount }: { pendingItemCo
         <div className="flex flex-row items-center justify-between gap-3">
           <p id={noteId} className="m-0 min-w-0 flex-1 text-base text-snow break-keep wrap-break-word">
             <span className="block">{copy.line1}</span>
-            <span className="block text-snow/80">{line2}</span>
+            <span className="block text-muted-on-inverse">{line2}</span>
           </p>
-          <Button variant="secondary" size="sm" className="shrink-0 whitespace-nowrap" onClick={() => router.push('/inventory')}>
+          <Button variant="secondary" size="xs" className="shrink-0 whitespace-nowrap" onClick={() => router.push('/inventory')}>
             {copy.cta}
           </Button>
         </div>

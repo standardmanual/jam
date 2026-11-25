@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Input } from '@ds/components/forms/Input'
 import Button from '@/components/ui/Button'
 import { SearchIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
@@ -29,35 +30,31 @@ export default function UserSearchBar({ defaultValue = '', size = 'default' }: U
     router.push(`/search?q=${encodeURIComponent(trimmed)}`)
   }
 
-  // 면 --surface + 1px --field-border(반경은 그대로 rounded-2xl), 글자 --foreground, placeholder·아이콘 --muted(흰 면 위 5.74:1).
-  // input의 포커스 윤곽은 없애고 바 전체에 focus-within 표시(--link 2px)를 둔다(티켓 20261015_2133).
+  // DS Input(캡슐 --field-radius, --surface 면, 1px --field-border, --foreground 글자)에 검색 아이콘과 제출 버튼을 슬롯으로 결합한다(티켓 20261125_1444).
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`flex items-center gap-2 rounded-2xl bg-surface border border-field-border focus-within:border-link focus-within:shadow-[inset_0_0_0_1px_var(--link)] ${
-        isCompact ? 'p-1' : 'p-2'
-      }`}
-    >
-      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-muted" />
-      <input
+    <form onSubmit={handleSubmit}>
+      <Input
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={d.today.searchPlaceholder}
         aria-label={d.today.searchAriaLabel}
-        className={`flex-1 min-w-0 bg-transparent px-1 text-base text-foreground placeholder:text-muted focus:outline-none ${
-          isCompact ? 'py-1' : 'py-2'
-        }`}
+        containerClassName="focus-within:border-link focus-within:shadow-[inset_0_0_0_1px_var(--link)]"
+        containerStyle={{ padding: isCompact ? '4px 4px 4px 12px' : '6px 6px 6px 16px' }}
+        className="placeholder:text-muted"
+        leading={<SearchIcon className="w-5 h-5 shrink-0 text-muted" />}
+        trailing={
+          <Button
+            type="submit"
+            variant="primary"
+            surface="sub"
+            size={isCompact ? 'xs' : 'sm'}
+            className="shrink-0"
+          >
+            {d.today.searchButton}
+          </Button>
+        }
       />
-      <Button
-        type="submit"
-        variant="primary"
-        surface="sub"
-        size={isCompact ? 'xs' : 'sm'}
-        className="shrink-0"
-      >
-        {d.today.searchButton}
-      </Button>
     </form>
   )
 }

@@ -4,6 +4,7 @@ import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
+import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { ArrowDownIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
@@ -156,15 +157,17 @@ export default function TierUpPanel<T extends TierUpMaterial>({
       {/* CTA — 레시피 믹서의 CTA(`CombineClient.tsx`, `max-w-[220px]` 버튼)와 같은 모양이다. 기존 `CombineClient.test.tsx`가 믹서 트리에서 이 버튼을
           요소 그대로 찾아 부르므로 컴포넌트로 추출하면 시험이 깨진다 — 추출을 취소하고 복사한다(채원 판정의 취소 조건). 믹서 쪽을 고치면 이쪽도 맞춘다 */}
       <div className="px-4 pb-6 flex flex-col items-center gap-2">
-        <button
-          onClick={onSubmit}
-          disabled={submitting || !canSubmit || pendingBlocked}
+        <Button
+          variant="primary"
+          fullWidth
+          loading={submitting}
+          disabled={!canSubmit || pendingBlocked}
           aria-describedby={pendingBlocked ? 'tier-up-pending-note' : undefined}
-          className="w-full max-w-[220px] py-4 rounded-full bg-foreground text-background text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          onClick={onSubmit}
+          className="max-w-[220px]"
         >
-          {submitting && <span className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />}
           {submitting ? d.combine.tierUp.submitLoading : d.combine.tierUp.submit}
-        </button>
+        </Button>
         {/* 제출이 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
         {pendingBlocked && (
           <p id="tier-up-pending-note" className={`${PARAGRAPH} self-stretch`}>

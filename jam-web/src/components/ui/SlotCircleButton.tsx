@@ -47,12 +47,12 @@ export default function SlotCircleButton({
   onClick,
 }: SlotCircleButtonProps) {
   const Icon = icon === 'plus' ? PlusIcon : MinusIcon
-  // «−»는 레드 원이고 «+»의 80% 크기다(19.2px, 사용자 지시 2026-11-14, 티켓 20261114_1722). 눌림 영역은 둘 다 44px로 같다:
-  // «+» 24px 원은 사방 10px, «−» 19.2px 원은 사방 12.4px를 넓힌다.
+  // «+»·«−» 원 모두 20px(h-5 w-5)로 통일한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
+  // 눌림 영역은 사방 12px(before:-inset-3)씩 넓혀 44×44px 터치 타겟을 유지한다.
   const minus = icon === 'minus'
   const circleCls = minus
-    ? 'flex h-[19.2px] w-[19.2px] items-center justify-center rounded-full bg-jam-red text-snow transition-all before:absolute before:-inset-[12.4px] disabled:opacity-40'
-    : 'flex h-6 w-6 items-center justify-center rounded-full bg-background-inverse text-snow transition-all before:absolute before:-inset-2.5 disabled:opacity-40'
+    ? 'flex h-5 w-5 items-center justify-center rounded-full bg-jam-red text-snow transition-all before:absolute before:-inset-3 disabled:opacity-40'
+    : 'flex h-5 w-5 items-center justify-center rounded-full bg-background-inverse text-snow transition-all before:absolute before:-inset-3 disabled:opacity-40'
   const extra = className ? ` ${className}` : ''
   const button = (placement: string) => (
     <button
@@ -63,7 +63,7 @@ export default function SlotCircleButton({
       disabled={pending || disabled}
       className={`${placement} ${circleCls}${extra}`}
     >
-      <Icon className={minus ? 'h-[11.2px] w-[11.2px]' : 'h-3.5 w-3.5'} strokeWidth={4.5} />
+      <Icon className="h-3 w-3" strokeWidth={4.5} />
     </button>
   )
 
@@ -76,6 +76,6 @@ export default function SlotCircleButton({
       </div>
     )
   }
-  // «−»는 원이 작아진 만큼 안쪽으로 옮겨(6px → 8.4px) 원의 중심이 이전과 같다
-  return button(minus ? 'absolute right-[8.4px] top-[8.4px] z-10' : 'absolute right-1.5 top-1.5 z-10')
+  // 20px 원 기준 우측·위 가장자리에서 8px 안쪽(MixerSlot의 44px 박스 -4px 오프셋과 중심 일치)
+  return button('absolute right-2 top-2 z-10')
 }

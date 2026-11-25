@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import FaqAccordion from './FaqAccordion'
 
@@ -269,12 +270,9 @@ export default function PhilosophyPage() {
               여기서 답을 찾지 못했다면 이메일로 바로 물어보세요. 확인하는 대로 답장
               드릴게요.
             </p>
-            <a
-              href="mailto:sihyunrr@gmail.com"
-              className="self-start inline-flex items-center justify-center min-h-11 px-8 py-[14px] rounded-full bg-[var(--background-inverse)] text-[color:var(--snow)] text-base active:scale-95 transition-transform duration-100"
-            >
+            <Button href="mailto:sihyunrr@gmail.com" variant="primary" surface="dark" className="self-start">
               이메일 보내기
-            </a>
+            </Button>
           </div>
         </section>
       </article>

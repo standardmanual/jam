@@ -188,7 +188,6 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
         padding: PADDING_PX,
         background: 'var(--capsule-track)',
         border: `${BORDER_PX}px solid var(--capsule-ring)`,
-        boxShadow: '0 2px 0 rgba(25, 32, 28, 0.1)',
       }}
     >
       {/* 트랙 안쪽 — 채움과 글자의 기준 상자 */}

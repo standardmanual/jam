@@ -12,9 +12,10 @@ import type {
   InventoryItemRow,
   UserItemBookSlotRow,
 } from '@/types/database'
-import SafeImage from '@/components/SafeImage'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { ListRowChip } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
-import { PinIcon, MagicBookIcon } from '@/components/ui/icons'
+import { MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import CollectionTicketPhoto from './CollectionTicketPhoto'
@@ -373,48 +374,30 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                   </p>
                 </TicketTone>
                 <div className="grid grid-cols-3 gap-2">
-              {checkinBadges.map((checkinBadge) => {
-                const earned = earnedCheckinBadgeIds.has(checkinBadge.id)
-                return (
-                  <div
-                    key={checkinBadge.id}
-                    className="flex flex-col items-center p-3 rounded-2xl gap-2 bg-card-bg"
-                  >
-                    <div
-                      className="w-[90px] h-[90px] rounded-2xl overflow-hidden flex items-center justify-center"
-                      style={{ background: 'var(--background-secondary)' }}
-                    >
-                      {checkinBadge.image_url ? (
-                        <SafeImage
-                          src={checkinBadge.image_url}
-                          alt={checkinBadge.name}
-                          width={90}
-                          height={90}
-                          className={`w-full h-full object-contain ${earned ? '' : 'grayscale opacity-40'}`}
-                        />
-                      ) : (
-                        <PinIcon className="w-8 h-8" style={{ color: 'var(--muted)' }} />
-                      )}
-                    </div>
-                    <p
-                      className="text-center line-clamp-2 w-full"
-                      style={{ color: earned ? 'var(--foreground)' : 'var(--muted)', fontSize: '12px', lineHeight: '1.3' }}
-                    >
-                      {checkinBadge.name}
-                    </p>
-                    <span
-                      className="inline-flex items-center px-2 py-1 rounded-full font-bold uppercase"
-                      style={{
-                        background: earned ? 'var(--foreground)' : 'var(--background-secondary)',
-                        color: earned ? 'var(--snow)' : 'var(--muted)',
-                        fontSize: '10px',
-                      }}
-                    >
-                      {earned ? d.itembooks.checkinEarned : d.itembooks.checkinNotEarned}
-                    </span>
-                  </div>
-                )
-              })}
+                  {checkinBadges.map((checkinBadge) => {
+                    const earned = earnedCheckinBadgeIds.has(checkinBadge.id)
+                    return (
+                      <BadgeGridCard
+                        key={checkinBadge.id}
+                        name={checkinBadge.name}
+                        imageUrl={checkinBadge.image_url}
+                        rarity={null}
+                        earned={earned}
+                        nameMuted={!earned}
+                      >
+                        <div className="flex justify-center">
+                          <ListRowChip
+                            style={{
+                              background: earned ? 'var(--foreground)' : 'var(--background-secondary)',
+                              color: earned ? 'var(--snow)' : 'var(--muted)',
+                            }}
+                          >
+                            {earned ? d.itembooks.checkinEarned : d.itembooks.checkinNotEarned}
+                          </ListRowChip>
+                        </div>
+                      </BadgeGridCard>
+                    )
+                  })}
                 </div>
               </div>
             )}

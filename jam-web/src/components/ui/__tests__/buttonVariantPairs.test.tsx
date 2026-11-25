@@ -237,6 +237,21 @@ describe('MODULAR surface="dark" (반전 면 위)', () => {
     expect(renderDark('danger')).toBe(renderDs('danger'))
     expect(renderDark('outline')).toBe(renderDs('outline'))
   })
+
+  it('서비스 Button surface="dark"도 MODULAR surface="dark"와 같은 토큰 쌍이다(티켓 20261125_1444)', () => {
+    const primary = classesOf(renderToStaticMarkup(<ServiceButton variant="primary" surface="dark">확인</ServiceButton>))
+    expect(primary).toContain('bg-snow')
+    expect(primary).toContain('text-foreground')
+
+    const secondary = classesOf(renderToStaticMarkup(<ServiceButton variant="secondary" surface="dark">확인</ServiceButton>))
+    expect(secondary).toContain('bg-transparent')
+    expect(secondary).toContain('border-snow')
+    expect(secondary).toContain('text-snow')
+
+    const ghost = classesOf(renderToStaticMarkup(<ServiceButton variant="ghost" surface="dark">확인</ServiceButton>))
+    expect(ghost).toContain('bg-transparent')
+    expect(ghost).toContain('text-snow')
+  })
 })
 
 describe('두 구현 소스에 다크 전용 값이 없다', () => {

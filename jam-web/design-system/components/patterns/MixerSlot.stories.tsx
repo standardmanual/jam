@@ -39,14 +39,14 @@ export const Empty: Story = {
     const button = canvasElement.querySelector('button')!;
     const circle = button.querySelector('span[aria-hidden="true"]') as HTMLElement;
     expect(circle).toBeTruthy();
-    // 슬롯 전체가 버튼이고 원은 장식이다. 24px 검은 원(--background-inverse #171717) 안 --snow(#fcfcfc) «+»다(filled의 제거 버튼과 같은 규격).
+    // 슬롯 전체가 버튼이고 원은 장식이다. 20px 검은 원(--background-inverse #171717) 안 --snow(#fcfcfc) «+»다(filled의 제거 버튼과 같은 규격).
     const rect = circle.getBoundingClientRect();
-    expect(Math.round(rect.width)).toBe(24);
-    expect(Math.round(rect.height)).toBe(24);
+    expect(Math.round(rect.width)).toBe(20);
+    expect(Math.round(rect.height)).toBe(20);
     expect(getComputedStyle(circle).backgroundColor).toBe('rgb(23, 23, 23)');
     expect(getComputedStyle(circle).color).toBe('rgb(252, 252, 252)');
     const icon = circle.querySelector('svg')!;
-    expect(icon.getAttribute('width')).toBe('14');
+    expect(icon.getAttribute('width')).toBe('12');
     expect(icon.getAttribute('stroke-width')).toBe('4.5');
     expect(icon.querySelector('path')?.getAttribute('d')).toBe('M12 6v12M6 12h12');
     // 슬롯 정중앙에 놓인다.
@@ -76,18 +76,18 @@ export const Filled: Story = {
   play: async ({ canvasElement }) => {
     const remove = canvasElement.querySelector('[role="button"]') as HTMLElement;
     expect(remove).toBeTruthy();
-    // 눌리는 영역은 바깥 44px 박스이고, 보이는 원은 그 안의 19.2px(«+» 24px의 80%)다(티켓 20261114_1722).
+    // 눌리는 영역은 바깥 44px 박스이고, 보이는 원은 «+»·«−» 공통 20px다(사용자 결정 2026-11-25, 티켓 20261125_1444).
     const circle = remove.firstElementChild as HTMLElement;
     expect(remove.getBoundingClientRect().width).toBe(44);
-    expect(circle.getBoundingClientRect().width).toBeCloseTo(19.2, 1);
-    expect(circle.getBoundingClientRect().height).toBeCloseTo(19.2, 1);
+    expect(circle.getBoundingClientRect().width).toBeCloseTo(20, 1);
+    expect(circle.getBoundingClientRect().height).toBeCloseTo(20, 1);
     // 원은 레드 면(--jam-red, #FF1D1D) + --snow(#fcfcfc) 아이콘이다.
     expect(getComputedStyle(circle).backgroundColor).toBe('rgb(255, 29, 29)');
     expect(getComputedStyle(circle).color).toBe('rgb(252, 252, 252)');
-    // 슬롯 가장자리에서 8.4px 안쪽이다(오른쪽·위) — 원의 중심은 이전(6px 안쪽 24px 원)과 같다.
+    // 슬롯 가장자리에서 8px 안쪽이다(오른쪽·위) — 44px 박스(-4px 오프셋)의 중심에 20px 원이 놓인다.
     const slot = remove.parentElement as HTMLElement;
-    expect(slot.getBoundingClientRect().right - circle.getBoundingClientRect().right).toBeCloseTo(8.4, 1);
-    expect(circle.getBoundingClientRect().top - slot.getBoundingClientRect().top).toBeCloseTo(8.4, 1);
+    expect(slot.getBoundingClientRect().right - circle.getBoundingClientRect().right).toBeCloseTo(8, 1);
+    expect(circle.getBoundingClientRect().top - slot.getBoundingClientRect().top).toBeCloseTo(8, 1);
     // 글자 «✕»가 아니라 «−» 아이콘이다.
     expect(circle.textContent).toBe('');
     expect(circle.querySelector('svg path')?.getAttribute('d')).toBe('M6 12h12');

@@ -53,17 +53,18 @@ describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
   })
 })
 
-describe('InventoryGrid 빈 슬롯 (티켓 20261114_1040)', () => {
-  it('빈 슬롯은 카드 면만 그리고 안쪽 회색 상자와 «+»는 없다', () => {
+describe('InventoryGrid 빈 슬롯 (티켓 20261114_1040 → 20261125_1444 치수 통일)', () => {
+  it('빈 슬롯은 BadgeGridCardPlaceholder로 카드 면만 그리고 안쪽 회색 상자와 «+»는 없다', () => {
     const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" emptySlots={2} />)
-    expect(html.match(/bg-card-bg rounded-2xl p-3 overflow-hidden opacity-30/g)).toHaveLength(2)
+    expect(html.match(/flex flex-col items-center rounded-2xl p-3 overflow-hidden bg-card-bg opacity-30/g)).toHaveLength(2)
     expect(html).not.toContain('>+<')
-    // 회색 상자(bg-background-secondary 90px 칸)가 빈 슬롯 안에 없다
-    expect(html).not.toMatch(/opacity-30[^>]*>\s*<div class="w-\[90px\] h-\[90px\] rounded-2xl[^"]*bg-background-secondary/)
+    expect(html).not.toContain('bg-background-secondary')
   })
 
-  it('빈 슬롯도 행 높이를 지키려고 90px 자리를 비워 둔다', () => {
+  it('빈 슬롯도 채운 카드와 동일한 풀폭 aspect-square·text-sm 기하를 유지한다', () => {
     const html = renderToStaticMarkup(<InventoryGrid items={[]} mode="navigate" emptySlots={1} />)
-    expect(html).toContain('<div class="w-[90px] h-[90px]" aria-hidden="true"></div>')
+    expect(html).toContain('w-full aspect-square rounded-2xl')
+    expect(html).toContain('text-sm font-bold')
+    expect(html).not.toContain('w-[90px] h-[90px]')
   })
 })
