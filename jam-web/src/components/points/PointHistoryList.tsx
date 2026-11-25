@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { PointHistoryItem } from '@/app/api/points/route'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { ListRow } from '@/components/ui/ListRow'
 import Button from '@/components/ui/Button'

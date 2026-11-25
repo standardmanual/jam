@@ -1,4 +1,21 @@
 import React from 'react';
+import type { ReactNode, CSSProperties, HTMLAttributes } from 'react';
+
+export interface LabelChipProps extends HTMLAttributes<HTMLSpanElement> {
+  /**
+   * 색조. `default`(기본)는 `--background-secondary` 채움 + `--foreground` 글자로 기본 `Card`(흰 면) 위에서 쓴다.
+   * `inverse`는 `--background-inverse`(어두운 알약) 채움 + `--snow` 글자로 크림 바탕 위(기사 화면)에서 쓴다.
+   */
+  tone?: 'default' | 'inverse';
+  /**
+   * 라벨 글자. `null`/`undefined`/`''`이면 아무것도 그리지 않는다(빈 필이 남지 않게).
+   * 영문은 대문자로 보이고(`text-transform: uppercase`) 한글은 영향이 없다.
+   */
+  children?: ReactNode;
+  /** 배치용 클래스(예: flex-col 카드 안에서 `self-start`). 배치는 컴포넌트가 정하지 않는다 */
+  className?: string;
+  style?: CSSProperties;
+}
 
 /** 색조별 배경·글자색. 나머지 모양(12px bold 대문자·padding·radius·lineHeight)은 두 색조가 같다. */
 const TONES = {
@@ -29,7 +46,7 @@ const TONES = {
  * 비인터랙티브 `<span>` — 터치 대상이 아니다(44px 규칙 비해당). `children`이 비어 있으면
  * 빈 필이 남지 않게 아무것도 그리지 않는다.
  */
-export function LabelChip({ tone = 'default', children, className = '', style = {}, ...rest }) {
+export function LabelChip({ tone = 'default', children, className = '', style = {}, ...rest }: LabelChipProps) {
   if (children == null || children === '') return null;
   return (
     <span

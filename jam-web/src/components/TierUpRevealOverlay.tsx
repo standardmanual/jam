@@ -3,7 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Button from '@/components/ui/Button'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
 import { splitDescriptionSentences } from '@/lib/splitDescriptionSentences'

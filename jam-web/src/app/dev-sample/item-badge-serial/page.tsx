@@ -1,6 +1,6 @@
 import TopNav from '@/components/ui/TopNav'
 import { ListRow } from '@/components/ui/ListRow'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import LocalDate from '@/components/LocalDate'
 import { MagicBookIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'

@@ -16,7 +16,7 @@
  *
  * 칩 색은 여기서 정하지 않는다(저장값 `chip_color_key` 그대로, 결정 2). 이 파일은 카드 값 → 후보 입력 어댑터(`chainInputOf`)도 맡는다.
  */
-import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@ds/components/cards/CategorySticker'
+import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@/components/ui/CategorySticker'
 import type { FeedCardView } from './cardView'
 import type { ChipCorner } from './feedChipLayout'
 import { cornerOfSlot } from './feedChipLayout'

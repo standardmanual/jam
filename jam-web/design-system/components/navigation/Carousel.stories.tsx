@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
 import { Carousel } from './Carousel';
-import { Card } from '../cards/Card';
-import { RarityBadge } from '../cards/RarityBadge';
+import { Card } from '@/components/ui/Card';
+import { RarityBadge } from '@/components/ui/RarityBadge';
 
 const meta: Meta<typeof Carousel> = {
   title: 'MODULAR/Navigation/Carousel',

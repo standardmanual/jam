@@ -1,4 +1,24 @@
 import React from 'react';
+import type { CSSProperties } from 'react';
+
+export interface BadgeLevelChipProps {
+  /**
+   * 레벨(1부터). `null`/`undefined`면 아무것도 그리지 않는다 — 등급형·반복형 배지는
+   * `level`이 없고 `RarityBadge`를 쓴다.
+   */
+  level?: number | null;
+  /**
+   * 칩 크기 (티켓 20260906_2140). `sm`(기본) = 8px 라벨 — **기존 렌더 그대로**.
+   * `md`·`row` = 12px 라벨 · 높이 20px — 모든 칩의 기준인 ListRowChip과 같다(티켓 20261106_2322, 20261112_0010). `md`는 예전에 높이 22px이었다. `RarityBadge`와 같은 어휘다.
+   */
+  size?: 'sm' | 'md' | 'row';
+  /** 칩 고정 폭. 기본 52 — 계열 카드 1행 그리드 `[52px 칩][1fr 이름][auto 카운터]`와 맞춘다 */
+  width?: number | string;
+  /** 기본 `'default'`(`--default-soft`), 회색 카드 면 위는 `'common'`(`--rarity-common` + `--rarity-common-foreground`). */
+  tone?: 'default' | 'common';
+  className?: string;
+  style?: CSSProperties;
+}
 
 /**
  * BadgeLevelChip — 무한레벨형 배지의 «Lv.N» 칩. 티켓 20260905_0036.
@@ -30,7 +50,7 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
 };
 
-export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default', className = '', style = {} }) {
+export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default', className = '', style = {} }: BadgeLevelChipProps) {
   if (level == null) return null;
   const s = SIZES[size] ?? SIZES.sm;
   const isCommon = tone === 'common';

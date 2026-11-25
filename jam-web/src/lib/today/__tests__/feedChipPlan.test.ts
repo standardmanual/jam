@@ -24,7 +24,7 @@ import {
   type ChipPlanInput,
   type PlanWork,
 } from '../feedChipPlan'
-import { STICKER_COLOR_PAIRS } from '@ds/components/cards/CategorySticker'
+import { STICKER_COLOR_PAIRS } from '@/components/ui/CategorySticker'
 
 const label = (text: string, size: 'lg' | 'sm' = 'lg', fixed?: ChipPlanDraft['fixed']): ChipPlanDraft => ({ kind: 'label', text, size, fixed })
 const value = (text: string, size: 'lg' | 'sm' = 'lg', fixed?: ChipPlanDraft['fixed']): ChipPlanDraft => ({ kind: 'value', text, size, fixed })

@@ -164,6 +164,9 @@
   "jam-web/src/components/ui/BadgeGridCard.tsx": {
     "arbitrary": 13
   },
+  "jam-web/src/components/ui/BadgeLevelChip.tsx": {
+    "inline-visual": 1
+  },
   "jam-web/src/components/ui/BottomSheet.tsx": {
     "arbitrary": 3
   },
@@ -179,11 +182,17 @@
   "jam-web/src/components/ui/FooterLogo.tsx": {
     "arbitrary": 1
   },
+  "jam-web/src/components/ui/LabelChip.tsx": {
+    "inline-visual": 1
+  },
   "jam-web/src/components/ui/ListRow.tsx": {
     "inline-visual": 2
   },
   "jam-web/src/components/ui/ProgressCountBar.tsx": {
     "inline-visual": 3
+  },
+  "jam-web/src/components/ui/RarityBadge.tsx": {
+    "inline-visual": 1
   },
   "jam-web/src/components/ui/SlotCircleButton.tsx": {
     "arbitrary": 2

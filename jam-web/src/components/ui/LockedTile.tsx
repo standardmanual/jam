@@ -1,5 +1,14 @@
 import React from 'react';
-import { LockIcon } from '../icons/IconCatalog.jsx';
+import type { CSSProperties } from 'react';
+import { LockIcon } from '@ds/components/icons/IconCatalog';
+
+export interface LockedTileProps {
+  /** 한 변(px). 기본 90. 부모가 더 좁으면 정사각형을 유지한 채 줄어든다 */
+  size?: number;
+  /** 배치용 클래스. 색·테두리는 컴포넌트가 정한다 */
+  className?: string;
+  style?: CSSProperties;
+}
 
 /** 타일 안 자물쇠 크기 — 타일 한 변 대비 비율 */
 const LOCK_ICON_RATIO = 0.45;
@@ -17,7 +26,7 @@ const LOCK_ICON_RATIO = 0.45;
  *
  * `maxWidth: 100%` + `aspectRatio: 1`이라 부모가 `size`보다 좁으면 정사각형을 유지한 채 줄어든다(3열 그리드의 320px 화면).
  */
-export function LockedTile({ size = 90, className = '', style = {} }) {
+export function LockedTile({ size = 90, className = '', style = {} }: LockedTileProps) {
   return (
     <div
       aria-hidden="true"

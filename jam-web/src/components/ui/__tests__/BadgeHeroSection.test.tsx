@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BadgeHeroSection } from '@ds/components/cards/BadgeHeroSection'
+import { BadgeHeroSection } from '@/components/ui/BadgeHeroSection'
 
 const IMAGE = <div data-testid="image">이미지</div>
 

@@ -8,7 +8,7 @@
  * 등급은 저장하지 않는다. 채운 칸의 등급에서 매번 계산하므로 칸을 모두 비우면 저절로 풀린다(상태 불일치가 없다).
  * 서버 전용 모듈은 가져오지 않는다 — `gradeMode.ts`는 Supabase 의존이 없는 순수 파일이다.
  */
-import { getRarityLabel } from '@ds/components/cards/RarityBadge'
+import { getRarityLabel } from '@/components/ui/RarityBadge'
 import { d, t } from '@/lib/i18n'
 import { representativeRewardBadges, resolveGradeMode } from '@/lib/combine/gradeMode'
 import type { BadgeRarity, CombineSlotBadgeType } from '@/types/database'

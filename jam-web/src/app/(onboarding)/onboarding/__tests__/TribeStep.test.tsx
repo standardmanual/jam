@@ -31,7 +31,7 @@ vi.mock('next/image', () => ({
 }))
 
 import TribeStep, { TRIBE_STEP_TITLE_ID, type TribeOption, type TribeStepProps } from '../TribeStep'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { d } from '@/lib/i18n'
 

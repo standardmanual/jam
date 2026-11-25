@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'

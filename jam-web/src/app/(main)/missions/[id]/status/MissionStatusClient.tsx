@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'

@@ -1,6 +1,6 @@
 'use client'
 
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
 import { ListRowChip } from '@/components/ui/ListRow'
 import { PointHistoryList, usePointHistory } from '@/components/points/PointHistoryList'

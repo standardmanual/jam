@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { Rarity } from '../cards/RarityBadge';
+import type { Rarity } from '@/components/ui/RarityBadge';
 
 /** 캐러셀 카드 1장이 그리는 배지 데이터 */
 export interface BadgeRevealItem {

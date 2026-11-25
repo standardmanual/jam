@@ -11,7 +11,7 @@ import {
   clearSlotOutlineCache,
   traceAlphaOutline,
   traceSlotOutlineImage,
-} from '@ds/components/cards/SlotOutline'
+} from '@/components/ui/SlotOutline'
 
 /** 알파만 의미 있는 RGBA 배열을 만든다. `filledAt(x, y)`가 참이면 alpha 255 */
 function makeRgba(width: number, height: number, filledAt: (x: number, y: number) => boolean | number): Uint8ClampedArray {

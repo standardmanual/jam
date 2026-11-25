@@ -27,7 +27,7 @@ import {
   FEED_STAMP_TILT,
   FEED_TEXT_BOX_TITLE_STEPS,
 } from './feedConstants'
-import { PEBBLE_SIZE, WAVE_SIZE } from '@ds/components/cards/CategorySticker'
+import { PEBBLE_SIZE, WAVE_SIZE } from '@/components/ui/CategorySticker'
 
 /** 칩 배치 계산 대상 유형 7개. 전체 배경 이미지(`full_image`)는 서비스에서 꺼져 있어 뺀다. */
 export const CHIP_GEOMETRY_TYPES = [
@@ -110,7 +110,7 @@ export type StickerShapeName = 'pebble' | 'wave'
 // ── 칩·스티커 크기 추정 ─────────────────────────────────────
 
 /**
- * 굵기 900 한 글자 폭(em). `design-system/components/cards/CategorySticker.jsx`의 `CHAR_EM`과 같은 방식(실측 + 여유 4%)이다.
+ * 굵기 900 한 글자 폭(em). `src/components/ui/CategorySticker.tsx`의 `CHAR_EM`과 같은 방식(실측 + 여유 4%)이다.
  * 그 표는 내보내지 않아 대문자·공백만 같은 값을 옮겼고, 숫자·소문자·기호는 이 파일이 보수적으로 정했다(한글 1.02).
  */
 const CHAR_EM: Readonly<Record<string, number>> = {

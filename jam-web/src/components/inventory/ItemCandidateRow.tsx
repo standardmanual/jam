@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import LocalDate from '@/components/LocalDate'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import { ListRowChip } from '@/components/ui/ListRow'
 import { d } from '@/lib/i18n'
 import { tPoint } from '@/lib/i18n/tPoint'

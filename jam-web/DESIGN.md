@@ -94,7 +94,7 @@ accent-content 계열이다. 진행 상태 색은 글자로 쓰지 않는다. �
 
 ### RarityBadge (신호 컴포넌트)
 - **역할:** 배지 희귀도 4단계를 나타내는 캡슐 칩이다. `BadgeGridCard`, 배지 상세, 컬렉션 카드가 공유하는 단일 컴포넌트
-  (`design-system/components/cards/RarityBadge.jsx`)라 고치면 참조하는 모든 화면에 반영된다.
+  (`src/components/ui/RarityBadge.tsx`)라 고치면 참조하는 모든 화면에 반영된다.
 - **색:** 등급별 배경과 대비 안전 글자 쌍(Fixed Rarity Rule). 무한레벨형 배지는 `rarity`가 NULL이라 RarityBadge 대신 레벨 칩을 쓴다.
 
 ### Cards

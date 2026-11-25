@@ -44,7 +44,7 @@ import {
   type StickerShapeName,
 } from './feedChipGeometry'
 import { FEED_CORNER_TILT_RANGE } from './feedConstants'
-import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@ds/components/cards/CategorySticker'
+import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@/components/ui/CategorySticker'
 
 /** 분류 칩 중 스티커가 되는 몫(카드마다 시드로 정한다). */
 const STICKER_SHARE = 0.5
