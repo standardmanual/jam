@@ -28,8 +28,8 @@ Apache License 2.0 §4가 요구하는 원본 저작권 고지·라이선스 사
 - **NOTICE 고지**("Powered by Paper Shaders: https://shaders.paper.design")
 - **이식 시점**: 2026-09-13 (npm `@paper-design/shaders@0.0.80`)
 - **현재 상태**: 이 패키지를 쓰던 리퀴드 메탈 레이어는 쉐이더 랩 제거(티켓 20260925_1416)와
-  함께 사라졌다. 다만 `@paper-design/shaders@0.0.80`은 `package.json` 의존성으로 아직
-  남아 있으므로(`src`에서의 임포트는 0건) 이 절의 고지는 유지한다. 코드를 복사하지 않고
+  함께 사라졌고, `@paper-design/shaders`는 2026-11-25에 `package.json` 의존성에서도 뺐다(티켓
+  20261125_2123). 과거 배포본에 대한 고지 근거로 이 절은 유지한다. 코드를 복사하지 않고
   npm 의존성으로만 설치해 썼다.
 
 ---
