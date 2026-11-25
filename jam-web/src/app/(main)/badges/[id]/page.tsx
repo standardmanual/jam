@@ -224,7 +224,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     image_url: string | null
     description: string | null
     rarity: string
-    bg_colors: string[] | null
     owned: boolean
   }[] = []
   if (prereqs.length > 0) {
@@ -233,7 +232,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     // 아래 map에서 해당 항목만 걸러내 목록에서 빠지고 나머지 선행 배지는 그대로 유지한다.
     const { data: prereqBadgesRaw, error: prereqBadgesError } = await supabase
       .from('badges')
-      .select('id, name, image_url, description, rarity, is_hidden, bg_colors')
+      .select('id, name, image_url, description, rarity, is_hidden')
       .in('name', prereqs)
       .is('deleted_at', null)
     if (prereqBadgesError) console.error('[badges/[id]/page] 선행 배지 조회 실패', prereqBadgesError)
@@ -246,7 +245,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         description: string | null
         rarity: string
         is_hidden: boolean
-        bg_colors: string[] | null
       }[],
       ownedBadgeIds
     )
@@ -260,7 +258,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           image_url: match.image_url,
           description: match.description,
           rarity: match.rarity,
-          bg_colors: match.bg_colors,
           owned: ownedBadgeIds.has(match.id),
         }
       })
@@ -516,7 +513,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                         key={p.id}
                         name={p.name}
                         imageUrl={p.image_url}
-                        bgColors={p.bg_colors}
                         rarity={p.rarity as BadgeRarity}
                         // 내 배지 목록의 활동 배지와 같이 Common도 등급 칩으로 알린다(2026-11-25 사용자 지시, 티켓 20261125_1530)
                         showCommonChip

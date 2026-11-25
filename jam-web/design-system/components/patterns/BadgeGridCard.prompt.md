@@ -20,26 +20,21 @@
 <BadgeGridCard name="장착 가능 칸" rarity="epic" highlighted={true} href="/collections/1?slot=1" />
 
 // 잠김 — 열기 전의 아이템 배지. 이름·그림은 넘기지 않는다(넘겨도 그리지 않는다)
-<BadgeGridCard locked rarity="rare" fillPercent={40} href="/inventory/123" />
+<BadgeGridCard locked rarity="rare" href="/inventory/123" />
 ```
 
 `children`에 만료일 문구나 "슬롯에 넣기" 버튼을 추가할 수 있다.
 그리드 레이아웃은 호출부에서 결정한다 (예: `grid-template-columns: repeat(3, 1fr)`).
 
-- 카드 면은 `--surface`(흰) + 1px `--border`, 그림자 없음이다(크림 바탕과 흰 면은 1.05:1이라 테두리가 경계를 맡는다).
-  `selected`는 면을 `--accent-soft`로 채운다(기본 면과 겹치지 않고 한쪽만 고른다).
+- 카드 면과 썸네일 면은 `--background-secondary`(회색 단색, 외곽선·그림자 없음, 티켓 20261125_1649·1650)이다.
+  `selected`는 면을 유지하고 블랙 2px 링(`0 0 0 2px var(--foreground)`)을 두른다.
+- 회색 면 위에서 Lv·방문 횟수·Common 칩은 `--rarity-common` + `--rarity-common-foreground` 톤(`tone="common"`)을 쓴다.
 - `highlighted`는 컬렉션 슬롯 장착 모드(`/collections/[id]?slot=1`)에서 "지금 넣을 수 있는
-  칸"을 짚어주는 강조 링이다. `selected`(면 채움)와는 시각적으로 다르며 둘은 독립적으로
+  칸"을 짚어주는 강조 링이다. `selected`와는 시각적으로 다르며 둘은 독립적으로
   쓸 수 있다.
-- `locked`(티켓 20261018_0054 2회)는 열기 전의 아이템 배지다. 면은 일반 카드와 같고, 썸네일 자리에 `LockedTile`(90px),
-  이름 줄은 «잠긴 아이템 배지», 등급 칩 아래에 `ProgressBar outlined`(높이 6, `track-gradient`, 숫자 없음)가 붙는다.
-  `fillPercent`는 서버가 준 채운 비율(0~100)이다. **`locked`이면 `imageUrl`·`name`이 넘어와도 그리지 않는다** — 호출부 실수로
-  가림이 뚫리지 않게 컴포넌트가 막는다. 등급 색·글로우를 더하지 않는다(등급은 칩 하나로만 전달). 게이지는 `aria-hidden`이라
-  진행 수치를 화면에도 보조기술에도 싣지 않는다. 만료 칩 같은 `children`은 게이지 아래에 붙는다.
-- `thumbBackground`(티켓 20261120_0323)는 썸네일 뒤에 까는 배경 면 슬롯이다. 서비스는 배지 대표색(`bgColors`)으로 글로우 배경을
-  깔지만 그 계산이 서비스 코드(`badgeAura.ts`)에 있어 DS는 가져오지 않는다. 호출부가 `absolute inset-0` 요소를 넘기면 썸네일
-  뒤에 깔고 이미지를 그 위로 올린다(상세 히어로 `BadgeHeroSection`의 `backgroundSlot`과 같은 방식). `locked`·`undiscovered` 칸에서는
-  그리지 않고, 미획득의 무채색 처리는 슬롯 쪽에서 한다.
+- `locked`(티켓 20261018_0054 2회)는 열기 전의 아이템 배지다. 면은 일반 카드와 같고, 썸네일 자리에 `LockedTile`,
+  이름 줄은 «잠긴 아이템 배지»다. **`locked`이면 `imageUrl`·`name`이 넘어와도 그리지 않는다** — 호출부 실수로
+  가림이 뚫리지 않게 컴포넌트가 막는다.
 - `onNavigate`는 `href` 모드에서만 의미가 있다 — `<a href>`로 이동하기 직전에 실행할 부수효과
   클릭 핸들러다(`onClick`은 Button 모드 전용이라 href와 상호 배타).
 

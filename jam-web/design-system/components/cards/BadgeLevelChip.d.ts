@@ -13,6 +13,8 @@ export interface BadgeLevelChipProps {
   size?: 'sm' | 'md' | 'row';
   /** 칩 고정 폭. 기본 52 — 계열 카드 1행 그리드 `[52px 칩][1fr 이름][auto 카운터]`와 맞춘다 */
   width?: number | string;
+  /** 기본 `'default'`(`--default-soft`), 회색 카드 면 위는 `'common'`(`--rarity-common` + `--rarity-common-foreground`). */
+  tone?: 'default' | 'common';
   className?: string;
   style?: CSSProperties;
 }

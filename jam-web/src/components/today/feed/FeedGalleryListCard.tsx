@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
-import { ArrowUpIcon } from '@/components/ui/icons'
 import type { FeedCardView, FeedCardViewListItem } from '@/lib/today/cardView'
 import { FEED_CARD_MIN_HEIGHT, FEED_GALLERY, feedColorVar, feedTextOnBg } from '@/lib/today/feedConstants'
 import { d, t } from '@/lib/i18n'
@@ -66,10 +65,19 @@ function MoreCell({ view, href }: { view: FeedCardView; href: string }) {
   return (
     <Cell href={view.tracking ? href : undefined} label={view.tracking ? label : undefined}>
       <span className={`${TILE_CLASS} bg-foreground text-snow`}>
-        <ArrowUpIcon
-          className="rotate-90"
-          style={{ width: FEED_GALLERY.arrowIconSize, height: FEED_GALLERY.arrowIconSize }}
-        />
+        <svg
+          viewBox="0 0 24 24"
+          width={FEED_GALLERY.arrowIconSize}
+          height={FEED_GALLERY.arrowIconSize}
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
         {!view.tracking && <span className="sr-only">{label}</span>}
       </span>
     </Cell>

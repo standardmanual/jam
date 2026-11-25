@@ -36,8 +36,6 @@ export interface PendingResultView {
   name: string
   /** 잠긴 결과는 null이다 */
   imageUrl: string | null
-  /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 잠긴 결과에는 키 자체가 없다 */
-  bgColors?: string[] | null
   rarity: string
   locked: boolean
   /** 생긴 때(ISO 8601) */
@@ -77,7 +75,6 @@ interface BadgeRow {
   name: string
   image_url: string | null
   rarity: string
-  bg_colors: string[] | null
 }
 
 /** 받지 않은 결과 목록과 인벤토리 빈칸 수. 없으면 `pendingCount` 0과 빈 목록이다. 읽지 못하면 던진다. */
@@ -97,7 +94,7 @@ export async function listPendingResults(supabase: SupabaseClient, userId: strin
   const badgeIds = [...new Set(pending.map((r) => r.badge_id))]
   const { data: badgeRows, error: badgeError } = await supabase
     .from('badges')
-    .select('id, name, image_url, rarity, bg_colors')
+    .select('id, name, image_url, rarity')
     .in('id', badgeIds)
   if (badgeError) throw new Error(`받지 않은 결과 배지 조회 실패: ${badgeError.message}`)
   const badgeById = new Map(((badgeRows ?? []) as BadgeRow[]).map((b) => [b.id, b]))
@@ -133,7 +130,6 @@ export async function listPendingResults(supabase: SupabaseClient, userId: strin
         badgeId: r.badge_id,
         name: badge?.name ?? '',
         imageUrl: badge?.image_url ?? null,
-        bgColors: badge?.bg_colors ?? null,
         rarity,
         locked: false,
         createdAt: r.created_at,

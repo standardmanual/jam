@@ -165,7 +165,7 @@ const press = (element: El) => (element.props.onClick as () => unknown)()
 const logoutOnAccountStep = (tree: El) =>
   findAll(tree, (e) => e.type === Button && e.props.children === d.profile.logoutButton)[0]
 const nextOnAccountStep = (tree: El) =>
-  findAll(tree, (e) => e.type === 'button' && e.props.children === d.onboarding.step1NextButton)[0]
+  findAll(tree, (e) => e.type === Button && e.props.children === d.onboarding.step1NextButton)[0]
 
 /** 1단계까지 «다음»이 열려 있는 상태로 간다 — 아이디가 있는 유저가 2단계에서 «뒤로»를 눌러 돌아온 모양이다 */
 async function mountAccountStepReadyToProceed(): Promise<El> {

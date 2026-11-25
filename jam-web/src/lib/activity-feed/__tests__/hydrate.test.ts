@@ -217,39 +217,21 @@ describe('hydrateFeedBadgeInfo — 반복 발급형 회차별 가상 피드 항�
   })
 })
 
-describe('hydrateFeedBadgeInfo — 대표색(badge_bg_colors, 티켓 20261119_1654)', () => {
+describe('hydrateFeedBadgeInfo — 대표색 미전달 (티켓 20261125_1650)', () => {
   beforeEach(() => {
     fromMock.mockClear()
     earnRowsResult = { data: [] }
   })
 
-  it('획득 행에는 배지의 대표색을 실어, 회차마다 쪼개져도 모두 갖는다', async () => {
+  it('Aura 제거 이후에는 획득·드랍 행 모두에 대표색 필드를 싣지 않는다', async () => {
     badgesResult = { data: [{ ...liveBadge, bg_colors: ['#e0e8ff', '#7090e0'] } as Row] }
-    earnRowsResult = {
-      data: [{ user_id: 'u-1', badge_id: 'badge-1', earn_count: 2, earn_history: [
-        { earned_at: '2026-09-02T00:00:00.000Z', strava_activity_id: 1 },
-        { earned_at: '2026-09-03T00:00:00.000Z', strava_activity_id: 2 },
-      ] }],
-    }
 
-    const result = await hydrateFeedBadgeInfo([badgeEarnedItem()])
+    const [earned, dropped] = await hydrateFeedBadgeInfo([
+      badgeEarnedItem(),
+      badgeEarnedItem({ id: 'feed-2', event_type: 'item_dropped' }),
+    ])
 
-    expect(result.map((r) => r.metadata.badge_bg_colors)).toEqual([['#e0e8ff', '#7090e0'], ['#e0e8ff', '#7090e0']])
-  })
-
-  it('색을 아직 안 뽑은 배지는 null이다', async () => {
-    badgesResult = { data: [liveBadge] }
-
-    const result = await hydrateFeedBadgeInfo([badgeEarnedItem()])
-
-    expect(result[0].metadata.badge_bg_colors).toBeNull()
-  })
-
-  it('드랍·픽업 행에는 싣지 않는다(잠긴 개체 가림이 뚫리지 않게)', async () => {
-    badgesResult = { data: [{ ...liveBadge, bg_colors: ['#e0e8ff'] } as Row] }
-
-    const result = await hydrateFeedBadgeInfo([badgeEarnedItem({ event_type: 'item_dropped' })])
-
-    expect(result[0].metadata).not.toHaveProperty('badge_bg_colors')
+    expect(earned.metadata).not.toHaveProperty('badge_bg_colors')
+    expect(dropped.metadata).not.toHaveProperty('badge_bg_colors')
   })
 })

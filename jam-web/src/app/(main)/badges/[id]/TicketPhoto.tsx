@@ -17,7 +17,6 @@ const SILHOUETTE_FILTER_ID = 'ticket-silhouette'
 interface TicketPhotoProps {
   badge: Pick<BadgeRow, 'image_url' | 'name' | 'background_color' | 'background_shader_id' | 'background_image_url'> & {
     background_animation: unknown
-    bg_colors?: string[] | null
   }
   hasEarned: boolean
   /** 미획득 실루엣 색(hex) — 티켓색에서 정한 값(`ticketSilhouetteColor`) */

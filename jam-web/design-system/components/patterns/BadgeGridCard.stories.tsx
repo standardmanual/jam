@@ -377,16 +377,16 @@ export const VisitCount: Story = {
 };
 
 /**
- * 잠김 — 열기 전의 아이템 배지(티켓 20261018_0054 2회). 일반 카드와 같은 면, 썸네일 자리에 LockedTile, 이름 줄은 가린 이름,
- * 등급 칩 아래에 `ProgressBar outlined` 한 줄. 이름·그림은 넘기지 않는다.
+ * 잠김 — 열기 전의 아이템 배지(티켓 20261018_0054 2회, 티켓 20261125_1444/1650). 일반 카드와 같은 회색 면, 썸네일 자리에 LockedTile,
+ * 이름 줄은 가린 이름, 등급 칩만 둔다(카드 안 게이지 제거). 이름·그림은 넘기지 않는다.
  */
 export const Locked: Story = {
-  name: '잠김 — 채운 비율 0 · 40 · 100',
+  name: '잠김 — 등급별(common · rare · mystic)',
   render: () => (
     <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
-      <BadgeGridCard locked rarity="common" fillPercent={0} />
-      <BadgeGridCard locked rarity="rare" fillPercent={40} />
-      <BadgeGridCard locked rarity="mystic" fillPercent={100} />
+      <BadgeGridCard locked rarity="common" />
+      <BadgeGridCard locked rarity="rare" />
+      <BadgeGridCard locked rarity="mystic" />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -400,44 +400,12 @@ export const Locked: Story = {
   },
 };
 
-/**
- * 썸네일 배경 슬롯(티켓 20261120_0323) — 서비스의 배지 대표색 글로우 배경 자리. 슬롯은 `absolute inset-0` 면이고 이미지가 그 위에 올라온다.
- * 여기서는 토큰 색 그라데이션으로 자리만 보인다(실제 글로우 색 계산은 서비스 코드에 있다). 잠김·미발견 칸에서는 그리지 않는다.
- */
-export const ThumbBackground: Story = {
-  name: '썸네일 배경 슬롯 — 이미지가 슬롯 위, 잠김·미발견은 그리지 않음',
-  render: () => {
-    const slot = (
-      <div
-        data-testid="slot"
-        aria-hidden="true"
-        style={{ position: 'absolute', inset: 0, zIndex: 0, background: 'linear-gradient(to bottom, var(--accent-soft), var(--surface))' }}
-      />
-    );
-    return (
-      <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
-        <BadgeGridCard name="슬롯 있음" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" thumbBackground={slot} />
-        <BadgeGridCard locked rarity="rare" fillPercent={40} thumbBackground={slot} />
-        <BadgeGridCard name="미발견" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" undiscovered thumbBackground={slot} />
-      </div>
-    );
-  },
-  play: async ({ canvasElement }) => {
-    const cards = Array.from(canvasElement.querySelector('[data-testid="cards"]')!.children);
-    // 일반 카드만 슬롯을 그리고 이미지는 슬롯 위(z-index 1)에 있다
-    expect(cards[0].querySelector('[data-testid="slot"]')).not.toBeNull();
-    expect(getComputedStyle(cards[0].querySelector('img')!).zIndex).toBe('1');
-    expect(cards[1].querySelector('[data-testid="slot"]')).toBeNull();
-    expect(cards[2].querySelector('[data-testid="slot"]')).toBeNull();
-  },
-};
-
 /** 가림은 컴포넌트가 막는다 — `locked`인데 이름과 그림이 넘어와도 그리지 않는다. */
 export const LockedIgnoresNameAndImage: Story = {
   name: '잠김 — 이름·그림이 넘어와도 그리지 않는다',
   render: () => (
     <div data-testid="card" style={{ width: 120 }}>
-      <BadgeGridCard locked name="새어 나가면 안 되는 이름" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" fillPercent={30} />
+      <BadgeGridCard locked name="새어 나가면 안 되는 이름" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -461,15 +429,15 @@ export const LockedMixedGrid: Story = {
       }}
     >
       <BadgeGridCard name="첫 러닝" imageUrl={SAMPLE_IMAGES.common} rarity="common" />
-      <BadgeGridCard locked rarity="rare" fillPercent={40} />
+      <BadgeGridCard locked rarity="rare" />
       <BadgeGridCard name="한강 마스터" imageUrl={SAMPLE_IMAGES.epic} rarity="epic">
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, textAlign: 'center' }}>3/14 만료</p>
       </BadgeGridCard>
-      <BadgeGridCard locked rarity="mystic" fillPercent={100}>
+      <BadgeGridCard locked rarity="mystic">
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', fontWeight: 700, textAlign: 'center' }}>3/14 만료</p>
       </BadgeGridCard>
       <BadgeGridCard name="10km 완주" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" />
-      <BadgeGridCard locked rarity="common" fillPercent={0} />
+      <BadgeGridCard locked rarity="common" />
     </div>
   ),
   play: async ({ canvasElement }) => {

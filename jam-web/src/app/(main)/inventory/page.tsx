@@ -61,7 +61,6 @@ export default async function InventoryPage() {
           id: item.id,
           badgeName: item.badge.name,
           badgeImageUrl: item.badge.image_url,
-          badgeBgColors: item.badge.bg_colors ?? null,
           badgeRarity: item.badge.rarity,
           expiresAt: item.expires_at,
         }

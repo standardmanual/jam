@@ -226,11 +226,11 @@ describe('잠긴 개체 가림 (운영 로직 7.3절)', () => {
       badge_id: SECRET_BADGE_ID,
       badge_name: SECRET_NAME,
       badge_image_url: SECRET_IMAGE,
-      badge_bg_colors: SECRET_BG_COLORS,
       serial: `${SECRET_PREFIX}${String(SECRET_SERIAL).padStart(6, '0')}`,
       serial_prefix: SECRET_PREFIX,
       serial_number: SECRET_SERIAL,
     })
+    expect(drops[0]).not.toHaveProperty('badge_bg_colors')
     expect(drops[0]).not.toHaveProperty('locked')
   })
 })

@@ -13,14 +13,6 @@ import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
-/** 회색 면 위에서 Lv 칩이 묻히지 않도록 Common 등급 칩 색을 입힌다. DS 원본 기본색은 그대로다(티켓 20261125_1649) */
-const COMMON_CHIP_STYLE = { background: 'var(--rarity-common)', color: 'var(--rarity-common-foreground)' } as const
-/**
- * Common 등급 칩도 회색 면 위에서는 Lv·방문 칩과 같은 Common 색(면 `--rarity-common`·글자 `--rarity-common-foreground`)이다(사용자 확정 2026-11-25).
- * DS `RarityBadge`의 common 면은 `--default-soft`(카드 면과 같은 회색)이고 style prop이 없어, 인라인 색을 `!important` 클래스로 덮는다. DS 원본은 그대로다
- */
-const COMMON_RARITY_OVERRIDE = 'bg-[var(--rarity-common)]! text-[color:var(--rarity-common-foreground)]!'
-
 export interface BadgeGridCardProps {
   /** 배지 이름. `locked`이면 그리지 않는다(가린 이름이 대신 나온다) — 그래서 `locked`일 때는 생략해도 된다 */
   name?: string
@@ -126,8 +118,6 @@ export interface BadgeGridCardProps {
    * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
   compact?: boolean
-  /** @deprecated Aura 그라데이션을 걷어 쓰지 않는다(티켓 20261125_1649). 호출부 정리는 후속 티켓 20261125_1650 */
-  bgColors?: string[] | null
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
   children?: ReactNode
@@ -207,8 +197,8 @@ export default function BadgeGridCard({
   // 칩이 실제로 그려지는지: Lv 칩은 항상, 등급 칩은 등급이 있고 Common이 아닐 때(`showCommonChip`이면 Common도)
   const hasChip = level != null || (rarity != null && (rarity !== 'common' || showCommonChip))
   const chip = level != null
-    ? <BadgeLevelChip level={level} size="md" className={chipClass} style={COMMON_CHIP_STYLE} />
-    : <RarityBadge rarity={rarity ?? undefined} size="md" className={[chipClass, rarity === 'common' ? COMMON_RARITY_OVERRIDE : ''].filter(Boolean).join(' ')} showCommon={showCommonChip} />
+    ? <BadgeLevelChip level={level} size="md" tone="common" className={chipClass} />
+    : <RarityBadge rarity={rarity ?? undefined} size="md" tone="common" className={chipClass} showCommon={showCommonChip} />
 
   if (compact) {
     const compactContent = (

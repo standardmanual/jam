@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
-import { AURA_GRAIN_SIZE_PX, AURA_GRAIN_URL } from '@/lib/badgeAura'
+import { GRAIN_SIZE_PX, GRAIN_URL } from '@/lib/badgeGrain'
 import type { TicketPaint } from '@/lib/badgeTicket/ticketColor'
 import styles from './BadgeTicket.module.css'
 
@@ -62,7 +62,7 @@ export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPh
         <div
           className={styles.grain}
           aria-hidden="true"
-          style={{ backgroundImage: AURA_GRAIN_URL, backgroundSize: `${AURA_GRAIN_SIZE_PX}px ${AURA_GRAIN_SIZE_PX}px` }}
+          style={{ backgroundImage: GRAIN_URL, backgroundSize: `${GRAIN_SIZE_PX}px ${GRAIN_SIZE_PX}px` }}
         />
         <div className={styles.content}>
           {photo}

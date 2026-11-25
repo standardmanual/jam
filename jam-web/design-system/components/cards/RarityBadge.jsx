@@ -79,7 +79,7 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: 'var(--chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
-export function RarityBadge({ rarity = 'common', size = 'sm', className = '', showCommon = false }) {
+export function RarityBadge({ rarity = 'common', size = 'sm', tone = 'default', className = '', showCommon = false }) {
   // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다(대신 `BadgeLevelChip`).
   // common과 같은 처리지만 이유가 다르다: common은 "노이즈 축소"(20260827_024),
   // null은 "등급이 존재하지 않음", 미지 값은 "등급을 모름"(개발 빌드에서 경고).
@@ -87,7 +87,10 @@ export function RarityBadge({ rarity = 'common', size = 'sm', className = '', sh
   if (key == null) return null;
   // `showCommon`(2026-11-09) — 액티비티 배지 목록처럼 Common도 칩으로 알려야 하는 화면만 켠다. 기본 false라 다른 화면은 그대로다.
   if (key === 'common' && !showCommon) return null;
-  const c = config[key];
+  const c =
+    key === 'common' && tone === 'common'
+      ? { label: config.common.label, bg: 'var(--rarity-common)', text: 'var(--rarity-common-foreground)' }
+      : config[key];
   const s = SIZES[size] ?? SIZES.sm;
   return (
     <span

@@ -28,8 +28,6 @@ export interface BadgeSlot {
     image_url: string | null
     /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
     rarity: string | null
-    /** 썸네일 면 Aura 색(`badges.bg_colors`, 티켓 20261119_1654). 미발견 칸에는 `SlotGrid`가 넘기지 않는다 */
-    bg_colors?: string[] | null
   }
   /**
    * 이 배지로 장착 가능한 **미장착 개체 후보 전체**(obtained_at ASC). 20260907_2059에서
@@ -491,8 +489,6 @@ export default function SlotGrid({
               className="w-full"
               name={badge.name}
               imageUrl={badge.image_url}
-              // 미발견 칸은 점선만 그린다 — 색도 싣지 않는다(가림 규칙, 컴포넌트도 한 번 더 막는다)
-              bgColors={isUndiscovered ? null : badge.bg_colors}
               eager={index < FIRST_SCREEN_GRID_COUNT}
               // 등급이 없는 상태의 칸은 칩을 그리지 않는다: `null`을 넘기면 `BadgeGridCard`가 내부에서
               // `rarity ?? undefined`를 `RarityBadge`에 넘기고, `RarityBadge`는 undefined를 Common으로 보아
@@ -600,7 +596,6 @@ export default function SlotGrid({
         // 등급이 없는 상태에서는 후보마다 등급이 달라 시트 하나의 rarity를 줄 수 없다 — 생략하고 후보별 `rarity`를 쓴다
         rarity={sheetUndecided ? undefined : (sheetView?.badge.rarity as BadgeRarity | null)}
         badgeImageUrl={sheetView?.badge.image_url}
-        badgeBgColors={sheetView?.badge.bg_colors}
         candidates={sheetView?.candidates ?? []}
         error={sheetError}
         busy={sheetBusy}

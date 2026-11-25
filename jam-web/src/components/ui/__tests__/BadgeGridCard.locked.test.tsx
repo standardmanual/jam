@@ -20,12 +20,10 @@ import { d } from '@/lib/i18n'
 const SECRET_NAME = '새어 나가면 안 되는 이름'
 const SECRET_IMAGE = 'https://example.com/secret-badge.png'
 
-// 게이지만 두 구현이 다르다(티켓 20261028_1741 2회): 서비스 사본은 여는 비용이 채운 잼에서 포인트로 바뀌어 게이지를 걷어냈고,
-// MODULAR 원본(`design-system/`)은 이번 회차에 바꾸지 않아 게이지가 남아 있다. 가림 규칙 단언은 두 구현이 그대로 같다.
-// MODULAR 원본이 서비스를 따라오면(모드 ③ 동기화) 아래 `hasGauge`를 모두 false로 맞춘다.
+// 티켓 20261125_1444에서 MODULAR 원본도 게이지를 걷어내 두 구현이 모두 같다.
 const implementations = [
   { label: '서비스', hasGauge: false, render: (props: Record<string, unknown>) => renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" {...props} />) },
-  { label: 'MODULAR', hasGauge: true, render: (props: Record<string, unknown>) => renderToStaticMarkup(<DsBadgeGridCard rarity="epic" {...props} />) },
+  { label: 'MODULAR', hasGauge: false, render: (props: Record<string, unknown>) => renderToStaticMarkup(<DsBadgeGridCard rarity="epic" {...props} />) },
 ]
 
 describe.each(implementations)('BadgeGridCard locked — $label', ({ render, hasGauge }) => {

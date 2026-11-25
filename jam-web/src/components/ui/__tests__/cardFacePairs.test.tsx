@@ -101,14 +101,15 @@ describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
     expect(selected).not.toContain('border-border')
   })
 
-  it('MODULAR: 면은 항상 --card-bg(외곽선 없음), 선택은 블랙 2px 링이고 옛 빨강 리터럴이 없다', () => {
+  it('MODULAR: 면은 서비스와 같은 --background-secondary(외곽선 없음), 선택은 블랙 2px 링이고 옛 빨강 리터럴이 없다(티켓 20261125_1650)', () => {
+    const GREY_FACE = 'background:var(--background-secondary)'
     const base = renderToStaticMarkup(<DsBadgeGridCard {...props} />)
-    expect(base).toContain(CARD_FACE)
+    expect(base).toContain(GREY_FACE)
     expect(base).not.toContain(BORDER)
     expect(base).not.toContain('box-shadow')
 
     const selected = renderToStaticMarkup(<DsBadgeGridCard {...props} selected />)
-    expect(selected).toContain(CARD_FACE)
+    expect(selected).toContain(GREY_FACE)
     expect(selected).toContain('box-shadow:0 0 0 2px var(--foreground)')
     expect(selected).not.toContain('accent-soft')
     expect(selected).not.toContain(BORDER)

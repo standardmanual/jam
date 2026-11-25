@@ -99,11 +99,11 @@ describe('GET /api/inventory/items', () => {
       badge_name: '바람의 깃',
       badge_rarity: 'rare',
       badge_image_url: 'https://img/open.png',
-      badge_bg_colors: ['#e0e8ff', '#7090e0', '#203a8a'],
       serial_prefix: 'WND',
       serial_number: 7,
       expires_at: null,
     })
+    expect(body.items[0]).not.toHaveProperty('badge_bg_colors')
   })
 
   it('등급이 다른 잠긴 개체는 묶음 키가 다르다(드랍 목록이 badge_id로 묶는다)', async () => {

@@ -76,14 +76,15 @@ describe('SlotGrid — 등급이 정해진 칸', () => {
     expect(count(html, 'Rare')).toBe(2)
   })
 
-  it('대표색이 있어도 Aura를 깔지 않는다 (티켓 20261125_1649)', () => {
-    const colors = ['#e0e8ff', '#7090e0', '#203a8a']
-    const withColors = (extra: Partial<BadgeSlot>, name: string) =>
-      cell(name, 'rare', { ...extra, badge: { id: `${name}-rare`, name, image_url: null, rarity: 'rare', bg_colors: colors } })
+  it('모든 상태 칸에 Aura 배경을 깔지 않는다 (티켓 20261125_1649/1650)', () => {
     const html = renderToStaticMarkup(
       <SlotGrid
         itemBookId="book-1"
-        badgeSlots={[withColors({ slot: slotted }, '장착'), withColors({ candidates: [candidate('c1')] }, '후보'), withColors({}, '미발견')]}
+        badgeSlots={[
+          cell('장착', 'rare', { slot: slotted }),
+          cell('후보', 'rare', { candidates: [candidate('c1')] }),
+          cell('미발견', 'rare', {}),
+        ]}
       />,
     )
 
