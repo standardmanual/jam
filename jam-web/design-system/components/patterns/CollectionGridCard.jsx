@@ -6,7 +6,7 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * CollectionGridCard — 컬렉션(아이템북) 그리드 셀 패턴.
  *
  * 레이아웃: 썸네일(투명 배경) → 타이틀 → 맨 아래 한 행(20px 최소 높이)
- * 맨 아래 행: 미완성 = [프로그레스 바 | 카운트] / 완성 = 등급 칩들(왼쪽 정렬, 낮은 등급부터, Common 포함, «완성» 칩 없음). 두 카드의 높이가 같다.
+ * 맨 아래 행: 미완성 = [프로그레스 바 | 카운트] / 완성 = 등급 칩들(왼쪽 정렬, 낮은 등급부터, Common은 칩 없음, «완성» 칩 없음). 두 카드의 높이가 같다.
  *
  * 면 (티켓 20261015_2133): BadgeGridCard와 같은 면 — --card-bg(흰) 면, 외곽선 없음, 반경 --radius-2xl + 안쪽 여백 12, 그림자 없음.
  * 완성한 카드는 면이 검정 --accent이고 면 위 글자는 --accent-foreground다(2026-11-25 사용자 지시, 티켓 20261125_1113. 이전 면은 강조색 그린). 썸네일 위에는 등급 칩을 얹지 않는다.
@@ -14,7 +14,7 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  *
  * Props:
  *   completed  — 완성 카드: 면이 검정이 되고 바·숫자 대신 등급 칩(`rarities`)을 맨 아래에 둔다
- *   rarities   — 완성 카드의 맨 아래 행에 칩으로 그릴 등급들(낮은 등급부터, 선택). Common도 그린다. 완성하지 않은 카드는 그리지 않는다(티켓 20261117_1856 → 20261125_1113)
+ *   rarities   — 완성 카드의 맨 아래 행에 칩으로 그릴 등급들(낮은 등급부터, 선택). Common은 칩이 없어 그리지 않는다. 완성하지 않은 카드는 그리지 않는다(티켓 20261117_1856 → 20261125_1113)
  *   hideProgress — 진행 바와 «수집/전체» 숫자(맨 아래 행)를 그리지 않는다(전체 슬롯 수를 아직 모르는 미리보기용, 기본 false). completed이면 등급 칩 행은 그대로 둔다
  *
  * 인터랙션 모드 (상호 배타):
@@ -104,7 +104,7 @@ export function CollectionGridCard({
       {(completed || !hideProgress) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: completed ? 4 : 'var(--spacing-8)', flexWrap: completed ? 'wrap' : 'nowrap', minHeight: 20 }}>
           {completed ? (
-            rarities.map((r) => <RarityBadge key={r} rarity={r} size="md" showCommon />)
+            rarities.map((r) => <RarityBadge key={r} rarity={r} size="md" />)
           ) : (
             <>
               <ProgressBar shape="capsule" percent={pct} height={16} color="var(--capsule-fill)" />

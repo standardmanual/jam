@@ -229,6 +229,8 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.badgeSlots[2].candidates).toHaveLength(0)
     expect(progress?.total).toBe(9)
     expect(progress?.current).toBe(1)
+    // 진행 바 채움은 홈 캡슐 게이지와 같은 색이다(2026-11-25 사용자 지시)
+    expect(progress?.color).toBe('var(--capsule-fill)')
     expect(gridProps?.tierFixed).toBe(true)
   })
 
@@ -242,7 +244,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.tierFixed).toBe(true)
   })
 
-  // 컬렉션 이름 위의 등급 칩(2026-11-25 사용자 지시): 지금 장착한 배지의 등급, Common도 그린다
+  // 컬렉션 이름 위의 등급 칩(2026-11-25 사용자 지시): 지금 장착한 배지의 등급, Common은 칩이 없다
   function titleChipHtml(html: string) {
     return html.match(/titleTop[^"]*">(.*?)<h1/)?.[1] ?? ''
   }
@@ -256,13 +258,13 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(titleChipHtml(html)).toContain('Rare')
   })
 
-  it('Common을 장착했으면 이름 위에 Common 칩을 그린다', async () => {
+  it('Common을 장착했으면 이름 위에 칩이 없다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-common')]
 
     const html = renderToStaticMarkup(await callPage())
 
-    expect(titleChipHtml(html)).toContain('Common')
+    expect(titleChipHtml(html)).toBe('')
   })
 
   it('아무것도 장착하지 않았으면 등급이 없어 이름 위에 칩이 없다', async () => {

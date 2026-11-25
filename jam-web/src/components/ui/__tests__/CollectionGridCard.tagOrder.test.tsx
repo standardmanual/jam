@@ -1,7 +1,7 @@
 /**
  * 컬렉션 카드의 칩 자리 (티켓 20261102_2300 → 20261114_1502 → 20261125_1113)
  *
- * 썸네일 위에는 등급 칩을 얹지 않는다. 완성 카드는 면이 검정이고 «완성» 칩 없이 맨 아래 행에 등급 칩(`rarities`, Common 포함)을 낮은 등급부터 놓는다.
+ * 썸네일 위에는 등급 칩을 얹지 않는다. 완성 카드는 면이 검정이고 «완성» 칩 없이 맨 아래 행에 등급 칩(`rarities`, Common은 칩이 없다)을 낮은 등급부터 놓는다.
  * 완성하지 않은 카드는 맨 아래 행에 진행 바와 «수집/전체» 숫자만 있고 등급 칩이 없다.
  * 서비스 카드와 디자인시스템 사본이 같은 규칙이어야 한다. 저장소에 jsdom이 없어(`environment: 'node'`) 서버 렌더 문자열로 확인한다.
  */
@@ -23,11 +23,11 @@ const cases = [
 ] as const
 
 describe.each(cases)('CollectionGridCard 칩 자리 (%s)', (_label, render) => {
-  it('완성 카드에는 «완성» 칩이 없고, 등급 칩이 이름보다 뒤(맨 아래 행)에 낮은 등급부터 나열되며 Common도 그린다', () => {
+  it('완성 카드에는 «완성» 칩이 없고, 등급 칩이 이름보다 뒤(맨 아래 행)에 낮은 등급부터 나열되며 Common 칩은 없다', () => {
     const html = render({ completed: true, rarities: ['common', 'rare', 'mystic'] })
     expect(html).not.toContain('>완성<')
-    expect(html.indexOf('Common')).toBeGreaterThan(html.indexOf('컬렉션</p>'))
-    expect(html.indexOf('Rare')).toBeGreaterThan(html.indexOf('Common'))
+    expect(html).not.toContain('Common')
+    expect(html.indexOf('Rare')).toBeGreaterThan(html.indexOf('컬렉션</p>'))
     expect(html.indexOf('Mystic')).toBeGreaterThan(html.indexOf('Rare'))
     expect(html).not.toContain('Epic')
   })

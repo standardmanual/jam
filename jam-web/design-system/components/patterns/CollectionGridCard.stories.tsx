@@ -39,8 +39,8 @@ export const OnCreamCanvas: Story = {
     >
       <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} />
       <CollectionGridCard name="이미지 없는 컬렉션" collected={0} total={10} />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['common', 'rare', 'mystic']} />
-      <CollectionGridCard name="이미지 없는 완성 컬렉션" collected={10} total={10} completed rarities={['common']} />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['rare', 'mystic']} />
+      <CollectionGridCard name="이미지 없는 완성 컬렉션" collected={10} total={10} completed rarities={['rare']} />
     </div>
   ),
 };
@@ -63,7 +63,7 @@ export const Completed: Story = {
     collected: 10,
     total: 10,
     completed: true,
-    rarities: ['common', 'rare', 'epic'],
+    rarities: ['rare', 'epic'],
   },
 };
 
@@ -146,7 +146,7 @@ export const Grid: Story = {
       <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} />
       <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} />
       <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['common', 'rare', 'mystic']} />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['rare', 'mystic']} />
     </div>
   ),
 };

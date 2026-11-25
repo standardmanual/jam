@@ -282,10 +282,10 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         photo={<CollectionTicketPhoto name={book.name} imageUrl={book.image_url} />}
         afterPhoto={
           <>
-            {/* 컬렉션 이름 위의 등급 칩 — 지금 장착한 배지의 등급(컬렉션 등급)이고 Common도 그린다(2026-11-25 사용자 지시).
+            {/* 컬렉션 이름 위의 등급 칩 — 지금 장착한 배지의 등급(컬렉션 등급)이다. Common은 칩이 없다(2026-11-25 사용자 지시).
                 등급이 아직 정해지지 않았거나 4등급 컬렉션이 아니면 `collectionTier`가 null이라 칩이 없다. */}
             <TicketTitleBoxesView
-              chip={collectionTier ? <RarityBadge rarity={collectionTier as BadgeRarity} size="md" showCommon /> : undefined}
+              chip={collectionTier ? <RarityBadge rarity={collectionTier as BadgeRarity} size="md" /> : undefined}
               name={book.name}
               description={book.description}
             />
@@ -308,7 +308,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                   </p>
                 </div>
               ) : (
-                <ProgressCountBar percent={progressPercent} current={slottedCount} total={totalBadgeCount} />
+                <ProgressCountBar percent={progressPercent} current={slottedCount} total={totalBadgeCount} color="var(--capsule-fill)" />
               )}
             </div>
           </>

@@ -76,13 +76,13 @@ export default function CollectionGridCard({
       <p className={`text-[15px] font-bold leading-[18px] truncate ${completed ? 'text-accent-foreground' : 'text-foreground'}`}>{name}</p>
 
       {/* 맨 아래 한 행 — 높이는 칩 높이(20px)로 맞춰 완성·미완성 카드의 높이가 같다.
-          완성: 바·숫자 없이 등급 칩들(왼쪽 정렬, 이름과 같은 시작선, 낮은 등급부터, Common 포함). «완성» 칩은 없앴다 — 검정 면이 완성을 알린다
+          완성: 바·숫자 없이 등급 칩들(왼쪽 정렬, 이름과 같은 시작선, 낮은 등급부터, Common은 칩이 없다). «완성» 칩은 없앴다 — 검정 면이 완성을 알린다
           (2026-11-25 사용자 지시, 티켓 20261125_1113). 썸네일 위에는 등급 칩을 얹지 않는다.
           미완성: 진행 바 + 「수집/전체」 숫자. */}
       {(completed || !hideProgress) && (
         <div className={`flex items-center min-h-5 ${completed ? 'flex-wrap gap-1' : 'gap-2'}`}>
           {completed ? (
-            rarities.map((r) => <RarityBadge key={r} rarity={r} size="md" showCommon />)
+            rarities.map((r) => <RarityBadge key={r} rarity={r} size="md" />)
           ) : (
             <>
               {/* 캡슐 모양 바 — 어두운 트랙과 채움색이 홈 캡슐 게이지와 같다(채움 `--capsule-fill`, 2026-11-25 사용자 지시, 티켓 20261125_1113).

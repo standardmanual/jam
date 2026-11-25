@@ -10,14 +10,14 @@
   href="/collections/line2"
 />
 
-// 완성 카드 — 면이 검정(--accent), 바·숫자 없이 맨 아래에 등급 칩(낮은 등급부터, Common 포함)
+// 완성 카드 — 면이 검정(--accent), 바·숫자 없이 맨 아래에 등급 칩(낮은 등급부터, Common은 칩 없음)
 <CollectionGridCard
   name="강남 3대 공원"
   imageUrl="/collections/gangnam-park.png"
   collected={3}
   total={3}
   completed={true}
-  rarities={['common', 'rare']}
+  rarities={['rare', 'epic']}
   href="/collections/gangnam-park"
 />
 
@@ -31,6 +31,6 @@
 그리드 레이아웃은 호출부에서 결정한다 (예: `grid-template-columns: repeat(2, 1fr)`).
 썸네일은 투명 배경이라 카드의 흰 면이 그대로 비친다 — 배지 이미지가 투명 PNG인 경우 자연스럽게 보임.
 진행 바는 `ProgressBar shape="capsule"`(어두운 트랙 `--capsule-track`, 필 홈 캡슐 게이지와 같은 `--capsule-fill`, 높이 16px)를 쓴다.
-완성 카드는 면이 `--accent`(검정)이고 글자는 `--accent-foreground`다. 맨 아래 행에는 «완성» 칩 없이 `rarities`의 등급 칩(`RarityBadge md`, 20px)을 낮은 등급부터 왼쪽 정렬로 놓고 Common도 그린다. 칩이 넘치면 줄을 바꾼다.
+완성 카드는 면이 `--accent`(검정)이고 글자는 `--accent-foreground`다. 맨 아래 행에는 «완성» 칩 없이 `rarities`의 등급 칩(`RarityBadge md`, 20px)을 낮은 등급부터 왼쪽 정렬로 놓는다. Common은 칩이 없어 그리지 않는다. 칩이 넘치면 줄을 바꾼다.
 맨 아래 행은 완성·미완성 모두 최소 높이 20px이라 두 카드의 높이가 같다. 썸네일 위에는 등급 칩을 얹지 않는다(2026-11-25 사용자 지시).
 `hideProgress`는 맨 아래 행을 아예 그리지 않아 카드가 그만큼 낮아진다. `completed`이면 등급 칩 행은 유지된다(서비스 `src/components/ui/CollectionGridCard.tsx`의 `completed || !hideProgress` 조건과 같다).

@@ -47,5 +47,5 @@ MissionStatusClient의 3px 임의값 등).
   채움 너비는 `calc(원지름px + (100% - 원지름px) × 비율)`(원지름 = `height` - 4)이라 아주 작아도 얇은 렌즈로 찌그러지지 않고, 0%이면 채움이 없다.
   테두리·그림자·점·숫자 겹침은 게이지 전용이라 가져오지 않는다.
 - **숫자 `height`만 받는다.** 문자열이면 flat으로 그린다. `fillMode='track-gradient'`·`outlined`는 capsule에서 지원하지 않는다.
-- 쓰는 곳: 컬렉션 카드(높이 16, 채움 `--jam-green`)·컬렉션 상세와 인벤토리(`ProgressCountBar`, 높이 16, 채움 `--jam-green`).
+- 쓰는 곳: 컬렉션 카드와 컬렉션 상세(높이 16, 채움 `--capsule-fill`, 홈 캡슐 게이지와 같은 색)·인벤토리(`ProgressCountBar`, 높이 16, 채움 `--jam-green`).
   홈 `CapsuleGauge`는 아직 이 부품 위에 얹지 않았다(36px 테두리·그림자·점·진입 모션·이름표 두 겹 글자가 서비스 전용이다 — 후속).
