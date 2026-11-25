@@ -2,8 +2,9 @@
 id: "20261126_0720"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-26
+closed: 2026-11-26
 parent: "20261125_1923"
 ---
 
@@ -67,23 +68,39 @@ parent: "20261125_1923"
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
--
+- MODULAR `Button.jsx`·`.d.ts`·`.stories.tsx`를 지웠다. `design-system/components/` 폴더가 비어 사라졌다(MODULAR 컴포넌트 정리 끝).
+- 사용처 5곳(EmptyState·BadgeRevealCarousel·spike·TopNavBar 스토리·BadgeRevealCarousel 스토리)을 서비스 Button(default export)으로 바꿨다.
+  EmptyState·spike primary(삼항 두 곳 포함)와 캐러셀 스토리 primary에 `surface="sub"`를 더해 accent 색을 유지했다. 스토리의 `size="sm"`은 `"xs"`로 바꿨다.
+- 서비스 `Button.tsx`·`.storybook/main.ts`는 주석만 고쳤다(코드 줄 변경 없음).
+- 시험: `buttonVariantPairs`·`surfaceColorPairs`에서 MODULAR 대조 사례만 빼고 서비스 값 단언은 유지했다. `dsLiteralColors`는 기준 폴더를 `src/components/ui`로 바꿔 23개 파일을 계속 검사한다.
+- 티켓 밖 필요 변경: 폴더가 사라져 문서 검사에 걸린 `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md` 74행을 당시 측정 범위 기록으로 고치고(백틱 경로 제거), 2026-11-26에 합쳐졌다는 한 줄을 더했다.
+  민지 [참고] 2건(Button 주석의 괄호 중복·끊긴 문장, `LabelChip.test.tsx` 5행의 옛 폴더 설명)을 주석만 고쳐 반영했다.
+- 기준선: 늘지 않음.
 
 ### 테스트 결과
-- [ ]
+- [x] 실제 설치본(wf_54d2152d-e9c-1)에서 커밋 상태(`7fdd81349`)로 `scripts/verify.sh` 16단계 전체 통과(카리나 재실행, 종료 코드 0), `build-storybook` 성공(아현 보고)
+- [x] 주석 수정 커밋(`d0f879a83`) 뒤 해당 파일 eslint, 시험 2개 파일 39건, `check-slop`·`check-ui-rules` 통과
+- [x] 게이트(민지) PASS, 시험 3개 파일 95건 직접 실행 통과. 받아들인 화면 차이 2건 외 화면 변화 없음. 채원②는 가벼운 경로(`route: 'light'`)라 생략
+- [x] 머지 뒤 staging: `check-ui-rules`·`check-spacing` 통과
+- [ ] 원격 CI: 리뷰 브랜치를 올리지 않아 돌지 않았다(push 금지 지시). Next 빌드는 다음 push 때 staging 빌드로 확인
 
 ### 배포 정보
-- 배포일:
+- 배포일: (staging push 대기 — 사용자 요청 시)
 - 환경: staging
-- 커밋:
+- 커밋: `7fdd81349`, `d0f879a83` (머지 `d58f6510a`)
 
 ### 실행 지표
 
 | 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
 |---|---|---|---|---|---|
+| 1차 (아현 halted) | 1 | 76,851 | 11,267 / 0 | 8분 50초 | 30 |
+| 2차 (gateOnly) | 1 | 53,377 | 0 / 3,898 | 43초 | 8 |
+| 합계 | 2 | 130,228 | 11,267 / 3,898 | 9분 34초 | 38 |
 
 ### 주요 의사결정 / 핵심 메모
--
+- 사용자 결정(2026-11-26, «추천대로»): 다시 시도 버튼 좌우 여백 24→32px, 눌림 축소 효과를 받아들이고 서비스 Button 하나로 합쳤다.
+- 아현이 커밋 단계에서 문서 검사에 막혀 halted. 카리나가 문서 한 줄을 사실대로 고쳐 우회 없이 커밋했고(`7fdd81349`), gateOnly로 민지 판정만 받았다.
+- 마지막 MODULAR 컴포넌트가 지워졌으므로 «원본 폴더가 있으면 막힌다»는 문서 검사 사례가 앞으로도 나올 수 있다. 옛 경로를 인용한 티켓은 경고로만 남는다(`codespanWarnPaths`).
 
 ### 잔여 이슈
--
+- 없음 (`ds:check`와 그 참조, pre-commit MODULAR 스토리 경고 블록 정리는 5-3c회차)
