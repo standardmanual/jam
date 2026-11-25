@@ -16,7 +16,7 @@ import { HomePreviewPanel } from './HomePreviewPanel'
  */
 
 const TEXT_CLASS = 'break-keep wrap-break-word'
-export const OPEN_PREVIEW_LABEL = '홈피드로 보기'
+const OPEN_PREVIEW_LABEL = '홈피드로 보기'
 
 interface OpsHomeFeedPreviewRowProps {
   bundleId: string

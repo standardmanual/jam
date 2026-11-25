@@ -19,7 +19,7 @@ export interface BulkAdmin {
   email: string
 }
 
-export interface BulkRequestContext {
+interface BulkRequestContext {
   admin: BulkAdmin
   body: ParsedBulkBody
 }
@@ -63,7 +63,7 @@ interface BulkQueryResult {
   error: { message: string } | null
 }
 
-export interface BulkTableClient {
+interface BulkTableClient {
   update(patch: Record<string, unknown>): {
     in(column: string, values: string[]): { select(columns: string): PromiseLike<BulkQueryResult> }
     eq(column: string, value: string): PromiseLike<{ error: { message: string } | null }>

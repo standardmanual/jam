@@ -15,7 +15,7 @@ export const GRADE_ORDER: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'm
 
 const GRADE_LABEL: Record<BadgeRarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
 
-export function gradeLabel(rarity: BadgeRarity): string {
+function gradeLabel(rarity: BadgeRarity): string {
   return GRADE_LABEL[rarity]
 }
 

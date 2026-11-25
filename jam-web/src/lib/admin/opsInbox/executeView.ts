@@ -111,9 +111,9 @@ export interface SummaryItem {
 }
 
 /** 예약할 항목의 한 줄. 연결 묶음은 한 덩어리(`group`)로 묶어 보인다. */
-export type ReadyEntry = { type: 'single'; item: SummaryItem } | { type: 'group'; items: SummaryItem[] }
+type ReadyEntry = { type: 'single'; item: SummaryItem } | { type: 'group'; items: SummaryItem[] }
 
-export type ExecuteAction = 'schedule' | 'close' | 'none'
+type ExecuteAction = 'schedule' | 'close' | 'none'
 
 export interface ExecuteSummary {
   /** 예약할 항목 수. */
@@ -254,9 +254,9 @@ const JAM_BADGE_KIND = 'jam_badge'
 
 /** 미리 세기 줄의 상태. 서버 `badgePreview.ts`의 `BadgePreviewStatus`와 같다(그 모듈을 값으로 가져올 수 없어 여기에 적는다). */
 const BADGE_PREVIEW_STATUSES = ['counted', 'collectionReward', 'missionReward', 'notCountable', 'formatInvalid', 'failed'] as const
-export type BadgePreviewStatus = (typeof BADGE_PREVIEW_STATUSES)[number]
+type BadgePreviewStatus = (typeof BADGE_PREVIEW_STATUSES)[number]
 
-export type BadgePreviewLine = { itemId: string; status: 'counted'; userCount: number; points: number } | { itemId: string; status: Exclude<BadgePreviewStatus, 'counted'> }
+type BadgePreviewLine = { itemId: string; status: 'counted'; userCount: number; points: number } | { itemId: string; status: Exclude<BadgePreviewStatus, 'counted'> }
 
 /** 배지 미리 세기 응답(`{ badgePreview: true }`)에서 요약창이 쓰는 칸. */
 export interface BadgePreviewView {
@@ -268,7 +268,7 @@ export interface BadgePreviewView {
 }
 
 /** 요약창의 배지 구역 한 줄. `name`은 예약할 항목과 같은 표시, `text`는 센 값이나 세지 않은 이유다. */
-export interface BadgePreviewLineView {
+interface BadgePreviewLineView {
   id: string
   name: string
   text: string
@@ -442,8 +442,8 @@ export const CANCEL_CLOSE = '닫기'
 export const CANCEL_LOADING = '함께 취소될 항목을 확인하는 중이에요'
 export const CANCEL_REASON_LABEL = '취소 사유(선택)'
 export const CANCEL_REASON_HELP = '결정 기록에 남아요'
-export const CANCEL_IRREVERSIBLE = '공개 전 취소는 되돌릴 수 없어요. 예약해 둔 자원도 지워져요.'
-export const CANCEL_IRREVERSIBLE_SAMPLE = '공개 전 취소는 되돌릴 수 없어요. 시험 묶음이라 지울 자원은 없어요.'
+const CANCEL_IRREVERSIBLE = '공개 전 취소는 되돌릴 수 없어요. 예약해 둔 자원도 지워져요.'
+const CANCEL_IRREVERSIBLE_SAMPLE = '공개 전 취소는 되돌릴 수 없어요. 시험 묶음이라 지울 자원은 없어요.'
 export const CANCEL_DECISION_LOG_FAILED = '결정 기록을 남기지 못했어요. 취소는 그대로예요.'
 
 /** 확인창 마지막 줄. 시험 묶음은 지울 자원이 없다(§8.8). */

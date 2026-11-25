@@ -11,7 +11,7 @@ import type { InventoryRow, UserRow } from '@/types/database'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type UserActionFailure = { ok: false; status: 404 | 500; error: string }
+type UserActionFailure = { ok: false; status: 404 | 500; error: string }
 
 export type ResetUserResult =
   | { ok: true; deletedActivityBadges: number; deletedInventoryItems: number }

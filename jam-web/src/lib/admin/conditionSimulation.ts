@@ -70,7 +70,7 @@ const STRUCTURAL_BLOCK_REASONS = new Set([
   '평가 가능한 조건 없음',
 ])
 
-export interface SimulateConditionResult {
+interface SimulateConditionResult {
   result: { pass: boolean; reason: string; actual: string; required: string }
   kind: 'pass' | 'blocked' | 'unmet'
   fieldBlockedReason: string | null

@@ -19,7 +19,7 @@ import { fetchTribeChangeHistory, type TribeChangeHistoryItem } from '@/lib/admi
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export interface TribeOption {
+interface TribeOption {
   id: string
   name: string
 }

@@ -43,7 +43,7 @@ export interface PendingLaunch {
 }
 
 /** 같은 계열의 기존 배지 하나(R7). `countType`은 횟수형 여부이고 조건을 읽지 못하면 `null`이다. */
-export interface ExistingFamilyBadge {
+interface ExistingFamilyBadge {
   id: string
   pointReward: number
   countType: boolean | null

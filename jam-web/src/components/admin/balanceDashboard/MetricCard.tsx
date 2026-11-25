@@ -30,7 +30,7 @@ export const INSUFFICIENT_TEXT = '아직 데이터가 부족해요'
 export const NO_TARGET_TEXT = '목표 없음'
 
 /** 견줌은 `lib/admin/balanceDashboard/fit.ts`로 옮겼다(티켓 20261026_2027). 기존 import 경로가 그대로 통하게 다시 내보낸다 */
-export { compareToTarget, type TargetFit }
+export { compareToTarget,  }
 
 function trimmed(value: number, digits: number): string {
   return String(Number(value.toFixed(digits)))

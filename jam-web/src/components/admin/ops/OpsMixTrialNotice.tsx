@@ -11,7 +11,7 @@ import Link from 'next/link'
 
 export const MIX_TRIAL_BEFORE_TEXT = '예약 등록하면 믹스 화면에서 미리 시험해 볼 수 있어요'
 export const MIX_TRIAL_AFTER_TEXT = '공개 전에도 믹스 화면에서 시험해 볼 수 있어요'
-export const MIX_TRIAL_LINK_LABEL = '믹스 화면 열기'
+const MIX_TRIAL_LINK_LABEL = '믹스 화면 열기'
 export const MIX_TRIAL_HREF = '/combine'
 
 const BEFORE_STATUSES: readonly string[] = ['reviewing', 'approved']

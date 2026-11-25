@@ -33,8 +33,8 @@ export const SAMPLE_ROLE_UNKNOWN_TEXT = '역할 모름'
 /** 새 8유형에 없는 값(8회차-3 전에 저장된 옛 모양 이름)의 표시. 값은 지우지 않고 그대로 보관한다(티켓 20261122_1239). */
 export const CARD_SHAPE_UNKNOWN_TEXT = '옛 모양 이름(그대로 보관)'
 export const ANGLE_TYPE_UNKNOWN_TEXT = '종류 모름'
-export const PATTERN_ORIGIN_UNKNOWN_TEXT = '출처 확인 필요'
-export const PATTERN_DETAIL_MISSING_TEXT = '–'
+const PATTERN_ORIGIN_UNKNOWN_TEXT = '출처 확인 필요'
+const PATTERN_DETAIL_MISSING_TEXT = '–'
 
 // ── 머리 ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export function groupAngleLines(lines: readonly AngleLine[]): AngleGroup[] {
 
 // ── 손잡이 ───────────────────────────────────────────────────────────────────────────────────────
 
-export interface KnobCell {
+interface KnobCell {
   label: string
   text: string
 }
@@ -255,7 +255,7 @@ export function tasteSignalLines(signals: readonly OpsTasteSignalRecord[], patte
 export const USAGE_PAGE_SIZE = 10
 export const USAGE_EMPTY_TEXT = '아직 이 패턴을 쓴 기록이 없어요'
 export const USAGE_FAILED_TEXT = '사용 기록을 읽지 못했어요'
-export const USAGE_NEVER_TEXT = '쓴 적 없어요'
+const USAGE_NEVER_TEXT = '쓴 적 없어요'
 
 /**
  * 요약 줄. 사용 기록을 못 읽었으면(`usage`가 `null`) 숫자 자리를 「–」로 둔다(0으로 보이지 않는다).

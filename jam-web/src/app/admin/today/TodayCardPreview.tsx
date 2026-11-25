@@ -50,7 +50,7 @@ export interface PreviewCardAnnotation {
   chips?: ReactNode
 }
 
-export const PENDING_LABEL = '승인 전'
+const PENDING_LABEL = '승인 전'
 
 function isPreviewDeviceWidth(value: number): value is PreviewDeviceWidth {
   return (PREVIEW_DEVICE_WIDTHS as readonly number[]).includes(value)

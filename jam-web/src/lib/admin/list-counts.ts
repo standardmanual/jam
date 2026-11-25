@@ -14,7 +14,7 @@
  * (`id`)를 함께 select해 `[keyColumn, id]` 복합 정렬로 안정적인 페이징을 보장한다.
  */
 
-export interface CountRowsResult {
+interface CountRowsResult {
   data: Record<string, unknown>[] | null
   error: { message: string } | null
 }

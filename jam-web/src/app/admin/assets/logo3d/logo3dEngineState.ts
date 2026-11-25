@@ -52,7 +52,7 @@ export function engineSvgOf(scene: Logo3DSceneState): { text: string; name: stri
 }
 
 /** 검증을 통과한 상태와 SVG 원문(없으면 빈 문자열)으로 화면 상태를 되살린다. */
-export function sceneFromEngineState(engine: EngineState, svgText: string): Logo3DSceneState {
+function sceneFromEngineState(engine: EngineState, svgText: string): Logo3DSceneState {
   const s = engine.state
   return {
     source: s.source,

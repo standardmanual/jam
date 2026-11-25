@@ -14,7 +14,7 @@ export const ACTION_METRIC_KEYS = ['mix_attempt', 'user_drop', 'pickup', 'missio
 
 export type ActionMetricKey = (typeof ACTION_METRIC_KEYS)[number]
 
-export const ACTION_METRIC_LABELS: Record<ActionMetricKey, string> = {
+const ACTION_METRIC_LABELS: Record<ActionMetricKey, string> = {
   mix_attempt: '믹스 시도',
   user_drop: '유저 드랍',
   pickup: '픽업',
@@ -34,7 +34,7 @@ export const ACTION_METRIC_MIN_KEYS: Record<ActionMetricKey, Extract<OpsSignalTh
 /** 「최근 7일」의 일수. 주평균과 맞대어 보는 기간이라 기준값 표에 두지 않고 고정한다. */
 export const ACTION_RECENT_DAYS = 7
 
-export interface ActionMetricCount {
+interface ActionMetricCount {
   /** 최근 7일 합계. */
   recent: number
   /** 직전 기간(`actionSpikeBaselineWeeks`주)의 주평균. */

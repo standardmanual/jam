@@ -35,7 +35,7 @@ export function previewNotes(r: RenderTemplateBadgeResult): string[] {
   return notes
 }
 
-export function PreviewMessage({ children }: { children: React.ReactNode }) {
+function PreviewMessage({ children }: { children: React.ReactNode }) {
   return <p className={`text-sm text-muted-foreground ${WRAP}`}>{children}</p>
 }
 

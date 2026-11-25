@@ -15,7 +15,7 @@ import type { ScheduleDrawerKind, ScheduleView } from '@/lib/admin/opsSchedule/p
 /** 시험 묶음 포함 여부를 담는 쿼리 키. */
 export const SAMPLE_PARAM = 'sample'
 /** 시험 묶음을 포함할 때의 쿼리 값. */
-export const SAMPLE_PARAM_ON = '1'
+const SAMPLE_PARAM_ON = '1'
 
 /** 쿼리를 읽을 수 있는 원천: 서버 페이지의 `searchParams`(값이 배열일 수 있다)와 클라이언트의 `URLSearchParams`. */
 export type SearchParamsSource =
@@ -78,7 +78,7 @@ export function dayHref(date: string, options: OpsLinkOptions = {}): string {
 }
 
 /** 일정표(S4) 경로. 링크는 `scheduleHref`·`scheduleHomeHref`에서만 만든다(티켓 20261006_1536 ③-a). */
-export const SCHEDULE_PATH = '/admin/ops-schedule'
+const SCHEDULE_PATH = '/admin/ops-schedule'
 
 /** 일정표 링크가 담는 값. 비어 있거나 없는 값은 쿼리에 넣지 않는다. */
 export interface ScheduleHrefTarget {

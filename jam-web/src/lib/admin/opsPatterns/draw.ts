@@ -32,9 +32,9 @@ export const OPS_DRAW_DEFAULT_LIMIT = 5
 /** `limit` 상한. */
 export const OPS_DRAW_MAX_LIMIT = 50
 /** 조합 뽑기 대상에서 빼는 지점 카테고리: 삭제대상·미분류(거부됨). 쓸 일이 없어 늘 0회라 영구히 상위에 뜨기 때문이다. */
-export const OPS_DRAW_EXCLUDED_PLACE_CATEGORIES: readonly string[] = ['delete', 'unassigned']
+const OPS_DRAW_EXCLUDED_PLACE_CATEGORIES: readonly string[] = ['delete', 'unassigned']
 /** 세지 않는 항목 종류. 패턴 제안은 운영 항목이 아니라 사전에 넣을 제안이다. */
-export const OPS_DRAW_UNCOUNTED_KINDS: readonly string[] = ['pattern_proposal']
+const OPS_DRAW_UNCOUNTED_KINDS: readonly string[] = ['pattern_proposal']
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const POST_APPROVAL_STATUSES: readonly string[] = OPS_POST_APPROVAL_ITEM_STATUSES
@@ -68,7 +68,7 @@ export interface OpsDrawUsageRow {
   ops_bundles: OpsDrawBundle | OpsDrawBundle[] | null
 }
 
-export interface OpsDrawBundle {
+interface OpsDrawBundle {
   is_sample: boolean
   received_at: string
 }
@@ -80,21 +80,21 @@ export interface OpsDrawTribe {
   sort_order: number
 }
 
-export interface OpsDrawPatternLine {
+interface OpsDrawPatternLine {
   patternNo: string
   name: string
   uses: number
   lastUsedAt: string | null
 }
 
-export interface OpsDrawTribeLine {
+interface OpsDrawTribeLine {
   tribeId: string
   name: string
   uses: number
   lastUsedAt: string | null
 }
 
-export interface OpsDrawPlaceCategoryLine {
+interface OpsDrawPlaceCategoryLine {
   slug: string
   uses: number
   lastUsedAt: string | null

@@ -16,7 +16,7 @@ import type { ExecuteItem, ExecuteLinkedIds } from './handlers'
 
 // ── 종류 쌍 표(§8.3) ────────────────────────────────────────────────────────────────────────────
 
-export type LinkField = Extract<keyof ExecuteLinkedIds, string>
+type LinkField = Extract<keyof ExecuteLinkedIds, string>
 
 export interface LinkPair {
   /** 가리키는 항목의 종류. */
@@ -307,7 +307,7 @@ export interface LinkFill {
   targetItemIds: string[]
 }
 
-export type LinkConflictCode = 'multiple_targets' | 'own_resource_field' | 'direct_selection'
+type LinkConflictCode = 'multiple_targets' | 'own_resource_field' | 'direct_selection'
 
 /** 칸을 채울 수 없는 경우(§8.3 「못 하는 항목」). */
 export interface LinkConflict {

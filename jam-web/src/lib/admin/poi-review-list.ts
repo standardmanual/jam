@@ -26,7 +26,7 @@ export type PoiReviewRow = Pick<
 >
 
 const POI_REVIEW_SORTS = ['created_desc', 'created_asc', 'name_asc', 'name_desc'] as const
-export type PoiReviewSort = (typeof POI_REVIEW_SORTS)[number]
+type PoiReviewSort = (typeof POI_REVIEW_SORTS)[number]
 
 function isPoiReviewSort(value: string | undefined): value is PoiReviewSort {
   return !!value && (POI_REVIEW_SORTS as readonly string[]).includes(value)
@@ -76,7 +76,7 @@ const SORT_COLUMN: Record<PoiReviewSort, readonly [string, boolean]> = {
   name_desc: ['name', false],
 }
 
-export interface PoiReviewQueryResult<T> {
+interface PoiReviewQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

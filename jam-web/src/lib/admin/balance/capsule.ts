@@ -54,7 +54,7 @@ export const CAPSULE_POLICY_KEYS = [
   'pre_quest_fill_amount',
 ] as const satisfies readonly (keyof CapsulePolicy)[]
 
-export type CapsulePolicyKey = (typeof CAPSULE_POLICY_KEYS)[number]
+type CapsulePolicyKey = (typeof CAPSULE_POLICY_KEYS)[number]
 
 /** 등급 확률 네 칸. 합이 100이어야 한다. */
 export const CAPSULE_RARITY_KEYS = ['rarity_common', 'rarity_rare', 'rarity_epic', 'rarity_mystic'] as const

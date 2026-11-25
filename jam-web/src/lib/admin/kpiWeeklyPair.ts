@@ -6,7 +6,7 @@ import { computeKpiWeeklyMetrics, resolveKpiWeeklyRange, DEFAULT_KPI_WEEKLY_DAYS
  * `app/admin/_home/sections.tsx`에 있던 것을 동작 그대로 옮겼다.
  */
 
-export interface KpiResult {
+interface KpiResult {
   metrics: KpiWeeklyMetrics | null
   error: string | null
 }

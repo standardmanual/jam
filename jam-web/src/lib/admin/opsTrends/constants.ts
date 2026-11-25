@@ -22,8 +22,6 @@ export const OPS_TREND_SOURCE_KIND_LABELS: Record<OpsTrendSourceKind, string> = 
  */
 export const OPS_TREND_SOURCE_FOLDERS = ['docs/operations/trendresearch/'] as const
 
-export type OpsTrendSourceFolder = (typeof OPS_TREND_SOURCE_FOLDERS)[number]
-
 /** 출처 이름 길이 상한(글자, 앞뒤 공백 제외). */
 export const OPS_TREND_SOURCE_MAX_NAME = 60
 /** 위치(주소·해시태그·검색어) 길이 상한(글자). */

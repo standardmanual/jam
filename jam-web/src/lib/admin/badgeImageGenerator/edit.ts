@@ -3,7 +3,7 @@ import { RECRAFT_PROMPT_MAX } from './prompt'
 
 /** 티켓 20261113_1332 — 후처리 편집의 마스크 생성과 Claude 계획 검증 */
 
-export type EditOperation = 'erase' | 'inpaint' | 'outpaint' | 'restyle'
+type EditOperation = 'erase' | 'inpaint' | 'outpaint' | 'restyle'
 export type EditBox = [number, number, number, number]
 
 export interface EditPlan {

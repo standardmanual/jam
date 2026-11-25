@@ -30,7 +30,7 @@ import { SYSTEM_DEFAULT_FONT, loadFontInBrowser } from '@/app/admin/asset-genera
 import { drawTextLayer, type Canvas2DContextLike } from '@/lib/asset-generator/render'
 import type { TextLayerFont } from '@/lib/asset-generator/types'
 
-export function svgToDataUrl(svg: string): string {
+function svgToDataUrl(svg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 

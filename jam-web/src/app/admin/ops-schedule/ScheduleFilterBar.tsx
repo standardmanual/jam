@@ -8,7 +8,7 @@ import { createServiceClient } from '@/lib/supabase/server'
  * 이 줄만 `Suspense`로 따로 읽어 본문을 막지 않는다. 한쪽이라도 못 읽으면 트라이브·패턴 단추를 막고 이유를 알린다 — 종류 거르기는 읽을 것이 없어 그대로 쓴다.
  */
 
-export const SCHEDULE_FILTER_OPTIONS_FAILED_LOG = '[admin/ops-schedule] 거르기 선택지 읽기 오류:'
+const SCHEDULE_FILTER_OPTIONS_FAILED_LOG = '[admin/ops-schedule] 거르기 선택지 읽기 오류:'
 
 async function loadOptions(): Promise<{ tribes: ScheduleFilterOption[]; patterns: ScheduleFilterOption[]; failed: boolean }> {
   try {

@@ -45,7 +45,7 @@ export interface XNode {
   parentNode: XNode | null
   removeChild(child: XNode): XNode
 }
-export interface XAttr {
+interface XAttr {
   name: string
   value: string
 }

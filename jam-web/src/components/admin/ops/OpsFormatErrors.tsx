@@ -16,10 +16,10 @@ import { parseFormatErrorPath, splitFormatError } from '@/lib/admin/opsInbox/lab
 
 const SUMMARY_VISIBLE = 5
 
-export const FORMAT_ERROR_HELP = '제출 형식에 맞지 않는 곳'
+const FORMAT_ERROR_HELP = '제출 형식에 맞지 않는 곳'
 
 /** 「형식 오류」 용어 자리. 마우스를 올리거나 키보드로 focus하면 뜻을 풀어 준다. */
-export function FormatErrorTerm() {
+function FormatErrorTerm() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>

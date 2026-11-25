@@ -14,7 +14,7 @@
 import type { OpsSignalLevel, OpsSignalKey, OpsSignalOutcome, OpsSignalResult } from '@/lib/admin/opsSignals/catalog'
 
 /** 칸 머리 칩과 서랍이 쓰는 줄 하나. */
-export interface DaySignalLine {
+interface DaySignalLine {
   signalKey: OpsSignalKey
   /** 신호 이름(`OpsSignalOutcome.name`). */
   name: string

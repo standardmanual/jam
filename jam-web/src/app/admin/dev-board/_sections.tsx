@@ -20,7 +20,7 @@ import { formatKstYmdHm } from '@/lib/admin/kst-format'
 import { createServiceClient } from '@/lib/supabase/server'
 
 /** 구역별 조회 실패 제목. 받침에 따라 조사가 달라 문장으로 적는다 */
-export const DEV_BOARD_NOTICE_TITLES = {
+const DEV_BOARD_NOTICE_TITLES = {
   deploy: '배포 현황을 불러오지 못했어요',
   bundles: '묶음 진행을 불러오지 못했어요',
   board: '개발 항목 보드를 불러오지 못했어요',

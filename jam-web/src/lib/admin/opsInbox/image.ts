@@ -26,7 +26,7 @@ const IMAGE_KIND_CONFIG = {
   collection_launch: { table: 'item_books', prefix: 'item_books' },
 } as const satisfies Record<ImageKind, { table: string; prefix: string }>
 
-export { imageKeyOfKind, type OpsImageKey }
+export { imageKeyOfKind,  }
 
 /** 저장소 경로 두 개(원본 PNG, 표시용 WebP). 이미지 칸이 없는 종류면 null이다. */
 export function storagePathOf(kind: string | null | undefined, itemId: string): { pngPath: string; webpPath: string } | null {

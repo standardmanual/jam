@@ -5,7 +5,7 @@
  * 유닛테스트 대상으로 삼는다.
  */
 import type { BadgeType, RankingModeMetricType, RankingModeTargetType } from '@/types/database'
-import { RANKING_SUPPORTED_CONDITION_FIELD_KEYS, isRankingSupportedConditionField } from '@/lib/ranking/metricValues'
+import { isRankingSupportedConditionField } from '@/lib/ranking/metricValues'
 import { CONDITION_FIELDS, CONDITION_FORM_SECTIONS, CONDITION_FORM_SECTION_LABEL } from '@/lib/badge-engine/conditionRegistry'
 
 export const RANKING_TARGET_TYPE_OPTIONS: readonly { value: RankingModeTargetType; label: string }[] = [
@@ -32,7 +32,7 @@ export const RANKING_BADGE_TYPE_OPTIONS: readonly { value: BadgeType; label: str
  * disabled로 표시한다**(구현 계획 권장 — 지표를 하나씩 추가할 때 선택 UI를 다시 만들
  * 필요 없이 활성화만 하면 되게).
  */
-export interface RankingMetricFieldOption {
+interface RankingMetricFieldOption {
   key: string
   label: string
   unit: string | null
@@ -137,5 +137,3 @@ export function buildRankingModeSavePayload(v: RankingModeFormValues): RankingMo
     visible_rank_count: v.visibleRankCount.trim() ? Number(v.visibleRankCount) : null,
   }
 }
-
-export { RANKING_SUPPORTED_CONDITION_FIELD_KEYS }

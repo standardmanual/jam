@@ -26,7 +26,7 @@ export const SERVER_ERROR_MESSAGE = '요청을 접수하지 못했어요. 서버
 export const DISMISS_NOT_FOUND_MESSAGE = '이미 처리된 요청이에요. 화면을 새로 고쳐 확인해 주세요.'
 export const DISMISS_ERROR_MESSAGE = '요청을 접지 못했어요. 서버에 문제가 있었을 수 있어요. 잠시 뒤 다시 시도해 주세요.'
 
-export function duplicateMessage(existingNo: number | null): string {
+function duplicateMessage(existingNo: number | null): string {
   return existingNo === null ? '같은 정책의 요청이 이미 열려 있어요' : `같은 정책의 요청 ${existingNo}번이 이미 열려 있어요`
 }
 

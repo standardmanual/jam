@@ -149,7 +149,7 @@ interface OpsCancelItemProps {
   editing?: boolean
 }
 
-export const EDIT_COPY_BUTTON = '문안 고치기'
+const EDIT_COPY_BUTTON = '문안 고치기'
 const EDITING_NOTICE = '수정 중이에요. 저장하거나 취소한 뒤 결정해 주세요'
 
 export function OpsCancelItem({ bundleId, item, items, isSample, onCancelled, onConflict, onEditCopy, editing = false }: OpsCancelItemProps) {

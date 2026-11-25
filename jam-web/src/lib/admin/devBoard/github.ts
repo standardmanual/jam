@@ -19,7 +19,7 @@ import type { SourceState } from './types'
 
 export type ReadResult<T> = { state: 'ok'; value: T } | { state: Exclude<SourceState, 'ok'> }
 
-export interface DeploymentInfo {
+interface DeploymentInfo {
   /** 배포가 만들어진 ISO 시각 */
   createdAt: string
   sha: string | null
@@ -27,7 +27,7 @@ export interface DeploymentInfo {
   state: string | null
 }
 
-export interface CommitInfo {
+interface CommitInfo {
   /** 커밋 시각(ISO) */
   date: string
   sha: string | null

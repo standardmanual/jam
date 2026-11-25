@@ -24,7 +24,7 @@ export interface BulkResult {
 /** 한 번에 처리할 수 있는 상한(상위 티켓 §2). 동작별로 더 낮은 상한을 둘 수 있다 */
 export const BULK_MAX_IDS = 1000
 
-export interface BulkActionConfig {
+interface BulkActionConfig {
   /** 이 동작 하나에 적용할 상한. 없으면 BULK_MAX_IDS를 쓴다 */
   maxIds?: number
 }

@@ -67,7 +67,7 @@ type Supabase = ReturnType<typeof createServiceClient>
  * `collection_items`는 컬렉션별 아이템 배지 수를 읽지 못한 경우다(「비어 있는 컨텐츠」 전체가 확인하지 못한 상태가 된다).
  * `item_paths`는 아이템 얻을 길을 읽거나 막힌 컬렉션 이름을 읽지 못한 경우다(「획득 경로가 막힌 컬렉션」만 확인하지 못한 상태가 된다).
  */
-export type OpsSignalSource =
+type OpsSignalSource =
   | 'cards'
   | 'missions'
   | 'bundles'
@@ -380,7 +380,7 @@ export interface LoadDayCompositionsOptions {
   includeSample?: boolean
 }
 
-export type DayCompositionSource = 'cards' | 'missions' | 'bundles'
+type DayCompositionSource = 'cards' | 'missions' | 'bundles'
 
 export interface LoadedDayCompositions {
   /** 읽은 묶음과 항목(제출 원본 `raw`는 받지 않아 null이다). 묶음을 읽지 못했으면 null이다. */

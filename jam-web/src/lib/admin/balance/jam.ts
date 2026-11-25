@@ -11,7 +11,7 @@ import { DEFAULT_JAM_POLICY, VALIDATORS, type JamPolicy } from '@/lib/jam/policy
 import type { Database } from '@/types/database.generated'
 import { INTEGER_MAX, type BalanceFieldDef, type BalanceSectionBinding, type BalanceValues } from './types'
 
-export const JAM_SECTION_ID = 'jam'
+const JAM_SECTION_ID = 'jam'
 
 /** 이 구역이 편집하는 `jam_policy` 칸. 화면 순서와 같다. */
 export const JAM_BALANCE_KEYS = [
@@ -22,8 +22,6 @@ export const JAM_BALANCE_KEYS = [
   'mass_earn_alert_weeks',
   'mass_earn_alert_no_history_amount',
 ] as const satisfies readonly (keyof JamPolicy)[]
-
-export type JamBalanceKey = (typeof JAM_BALANCE_KEYS)[number]
 
 const INTENSITY_GROUP = '강도 배율'
 const ALERT_GROUP = '대량 수령 경보 기준'

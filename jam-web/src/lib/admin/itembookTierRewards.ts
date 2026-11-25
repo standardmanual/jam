@@ -70,9 +70,9 @@ export function findDuplicateRewardBadgeTiers(
     .map(([badgeId, tiers]) => ({ badgeId, tiers: [...tiers].sort((a, b) => TIER_ORDER.indexOf(a) - TIER_ORDER.indexOf(b)) }))
 }
 
-export const INVALID_BODY_MESSAGE = `요청 형식이 올바르지 않아요. 등급 네 개(${TIER_ORDER.map((tier) => TIER_NAME_LABEL[tier]).join('·')})를 한 번에 보내 주세요.`
+const INVALID_BODY_MESSAGE = `요청 형식이 올바르지 않아요. 등급 네 개(${TIER_ORDER.map((tier) => TIER_NAME_LABEL[tier]).join('·')})를 한 번에 보내 주세요.`
 
-export function invalidPointsMessage(tier: TierName): string {
+function invalidPointsMessage(tier: TierName): string {
   return `${TIER_NAME_LABEL[tier]}의 보상을 저장하지 못했어요. 포인트는 0 이상의 정수만 쓸 수 있어요. 숫자를 고치거나, 기본값을 쓰려면 비워 주세요.`
 }
 
@@ -80,7 +80,7 @@ export function unavailableBadgeMessage(tiers: readonly TierName[]): string {
   return `${tiers.map((tier) => TIER_NAME_LABEL[tier]).join('·')}의 보상 배지를 저장하지 못했어요. 삭제됐거나 없는 배지예요. 다른 배지를 고르거나, 주지 않으려면 비워 주세요.`
 }
 
-export function duplicateBadgeMessage(tiers: readonly TierName[]): string {
+function duplicateBadgeMessage(tiers: readonly TierName[]): string {
   return `보상을 저장하지 못했어요. 같은 배지를 ${tiers.map((tier) => TIER_NAME_LABEL[tier]).join('·')}에 골랐어요. 한 배지는 한 번만 받을 수 있어서 두 등급이 나누면 한 등급의 보상만 나가요. 등급마다 다른 배지를 고르거나 비워 주세요.`
 }
 

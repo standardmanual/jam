@@ -22,17 +22,17 @@ import type { ActivityType, BadgeRarity } from '@/types/database'
 
 export const ALL_VALUE = '__all__'
 
-export const RARITY_OPTIONS: { value: BadgeRarity; label: string }[] = [
+const RARITY_OPTIONS: { value: BadgeRarity; label: string }[] = [
   { value: 'common', label: 'Common' },
   { value: 'rare', label: 'Rare' },
   { value: 'epic', label: 'Epic' },
   { value: 'mystic', label: 'Mystic' },
 ]
 
-export const ACTIVITY_OPTIONS = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({ value, label }))
+const ACTIVITY_OPTIONS = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({ value, label }))
 
 /** 무한레벨형은 등급이 없어 등급 필터로 좁힐 수 없다 — 종류 필터가 따로 있다. */
-export const KIND_OPTIONS = [
+const KIND_OPTIONS = [
   { value: 'graded', label: '등급형' },
   { value: 'leveled', label: '레벨형' },
 ]
@@ -60,7 +60,7 @@ export interface StudioSearchBadge {
 }
 
 /** 결과 표의 썸네일 — 표시 48px의 2배인 96px 변환 주소를 쓴다(티켓 20261116_1640) */
-export const THUMB_WIDTH = 96
+const THUMB_WIDTH = 96
 
 /** 썸네일 표시 부분. 불러오기에 실패했으면(`failed`) «불러오지 못함»을 보인다 */
 export function BadgeThumbView({

@@ -12,7 +12,7 @@ import type { NodeIndicator } from '@/lib/admin/ecosystem/types'
 import { formatHeadlineValue, formatShortfall } from './format'
 import { StatusMark } from './StatusMark'
 
-export function nodeHref(nodeId: string): string {
+function nodeHref(nodeId: string): string {
   return `/admin/ecosystem?node=${nodeId}`
 }
 

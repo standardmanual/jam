@@ -61,7 +61,7 @@ export function tribeChangeReasonLabel(value: string | null | undefined): string
   return TRIBE_CHANGE_REASONS.find((r) => r.value === value)?.label ?? value
 }
 
-export type TribeChangeInputFailure = 'invalid_reason' | 'invalid_memo' | 'memo_required' | 'memo_too_long'
+type TribeChangeInputFailure = 'invalid_reason' | 'invalid_memo' | 'memo_required' | 'memo_too_long'
 
 export type TribeChangeInputParse =
   | { ok: true; reasonCode: TribeChangeReasonCode; memo: string | null }
@@ -99,7 +99,7 @@ export interface ChangeUserTribeInput {
   memo?: unknown
 }
 
-export interface ChangedUserTribe {
+interface ChangedUserTribe {
   changeId: string
   fromTribeId: string
   toTribeId: string

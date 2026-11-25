@@ -3,9 +3,9 @@
  */
 import { readIntParam } from '@/lib/admin/opsPlaces/query'
 
-export const BADGES_DEFAULT_LIMIT = 30
-export const BADGES_MAX_LIMIT = 100
-export const BADGES_FAMILY_MAX_LENGTH = 100
+const BADGES_DEFAULT_LIMIT = 30
+const BADGES_MAX_LIMIT = 100
+const BADGES_FAMILY_MAX_LENGTH = 100
 export const BADGES_QUERY_INVALID_MESSAGE =
   'family는 100자 이하, limit은 1부터 100까지, offset은 0 이상의 정수로 보내 주세요.'
 

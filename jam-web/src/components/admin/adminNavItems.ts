@@ -119,7 +119,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-export const ALL_NAV_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.items)]
+const ALL_NAV_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.items)]
 
 export function isNavItemActive(pathname: string, item: NavItem) {
   if (item.exact) return pathname === item.href

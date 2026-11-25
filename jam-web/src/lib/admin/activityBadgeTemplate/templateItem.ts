@@ -5,11 +5,7 @@ import { BADGE_TEMPLATE_CLASS_LABEL, type BadgeTemplateClassKey } from './resolv
 import type { TemplateDefSlots } from './templateDef'
 import { getBadgeTemplateDef } from './templates'
 
-export const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count', 'etc']
-
-export function isTemplateClassKey(v: string): v is BadgeTemplateClassKey {
-  return (TEMPLATE_CLASS_KEYS as string[]).includes(v)
-}
+const TEMPLATE_CLASS_KEYS: BadgeTemplateClassKey[] = ['metric', 'days', 'streak', 'count', 'etc']
 
 export interface TemplateItem {
   classKey: BadgeTemplateClassKey

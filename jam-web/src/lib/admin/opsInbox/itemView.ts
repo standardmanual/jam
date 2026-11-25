@@ -26,7 +26,7 @@ export function itemField(item: ViewableItem, key: string): unknown {
 }
 
 /** 앞뒤 공백을 뗀 문자열. 문자열이 아니면 빈 문자열이다. */
-export function itemText(item: ViewableItem, key: string): string {
+function itemText(item: ViewableItem, key: string): string {
   const value = itemField(item, key)
   return typeof value === 'string' ? value.trim() : ''
 }

@@ -22,8 +22,8 @@ const ACTION_LABELS: Record<MyTurnReason, string> = {
   routine_stalled: '기획함 열기',
 }
 
-export const MY_TURN_EMPTY_TEXT = '내 차례인 일이 없어요'
-export const DEADLINE_PASSED_TEXT = '마감이 지났어요'
+const MY_TURN_EMPTY_TEXT = '내 차례인 일이 없어요'
+const DEADLINE_PASSED_TEXT = '마감이 지났어요'
 
 /** 「수 18:00까지」. 마감이 지났으면 「마감이 지났어요」. 마감을 읽을 수 없으면 null이다. */
 export function deadlineText(deadlineIso: string | null, now: Date): string | null {

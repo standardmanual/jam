@@ -19,7 +19,7 @@ export interface ArcTextInput {
   maxSpanDeg: number
 }
 
-export interface ArcGlyph {
+interface ArcGlyph {
   index: number
   x: number
   y: number

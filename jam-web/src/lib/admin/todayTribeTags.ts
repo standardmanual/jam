@@ -14,7 +14,7 @@ export interface TribeTagSource {
 }
 
 export const UNKNOWN_TRIBE_LABEL = '(삭제됐거나 모르는 트라이브)'
-export const INACTIVE_TRIBE_SUFFIX = '(비활성)'
+const INACTIVE_TRIBE_SUFFIX = '(비활성)'
 
 /** 목록에서 ID(대소문자 무관)로 트라이브를 찾는다. */
 function findTribe(tribes: readonly TribeTagSource[], tribeId: string): TribeTagSource | undefined {
@@ -23,7 +23,7 @@ function findTribe(tribes: readonly TribeTagSource[], tribeId: string): TribeTag
 }
 
 /** 트라이브 하나의 표시 이름. 비활성이면 「(비활성)」을 붙인다. */
-export function tribeDisplayName(tribe: TribeTagSource): string {
+function tribeDisplayName(tribe: TribeTagSource): string {
   return tribe.is_active ? tribe.name : `${tribe.name} ${INACTIVE_TRIBE_SUFFIX}`
 }
 

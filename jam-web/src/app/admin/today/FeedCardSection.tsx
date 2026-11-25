@@ -24,7 +24,7 @@ import {
   type FeedStampMode,
 } from '@/lib/admin/feedCardFields'
 import { currentColorChoice, FEED_COLOR_LABELS, feedColorChoices, type FeedColorRole } from '@/lib/admin/feedColorLabels'
-import { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
+import { FEED_TYPE_LABELS, feedTypeDisplayName } from '@/lib/admin/feedTypeLabels'
 import { cornerOfSlot } from '@/lib/today/feedChipLayout'
 import {
   BOX_FEED_TYPES,
@@ -51,12 +51,12 @@ import FeedListItemsEditor from './FeedListItemsEditor'
 import { AUTO_HINT, ChoiceField, TEXT_CLASS, stampSlotLabel, type ChoiceOption } from './FeedFieldParts'
 
 // 기존 가져오기 경로(`TodayCardForm`·시험)가 깨지지 않게 공용 조각을 다시 내보낸다.
-export { ChoiceField, stampSlotLabel, type ChoiceOption }
+export { ChoiceField, stampSlotLabel,  }
 
 // ── 이름 표 ────────────────────────────────────────────────────
 
 // 유형 이름 표는 서버 모듈도 쓰도록 순수 파일(`lib/admin/feedTypeLabels.ts`)로 옮겼다(티켓 20261122_1239). 기존 가져오기 경로를 위해 다시 내보낸다.
-export { FEED_TYPE_LABELS, FEED_TYPE_FALLBACK_TEXT, feedTypeDisplayName }
+export { FEED_TYPE_LABELS,  feedTypeDisplayName }
 
 /** 박스 모양 이름(PRD «박스 모양 5가지» 표). */
 export const BOX_SHAPE_LABELS: Readonly<Record<TodayBoxShape, string>> = {
@@ -108,7 +108,7 @@ export function feedFieldVisibility(feedType: FeedType): FeedFieldVisibility {
  * 값이 없으면 홈이 텍스트 박스로 그리는 유형의 안내(`lib/today/feedType.ts`의 `resolveFeedType`과 같은 조건).
  * 사용자가 값 없이 이 유형을 골라 미리보기가 텍스트 박스로 보여도 이유를 알 수 있게 한다. 해당하지 않는 유형은 null이다.
  */
-export const FEED_TYPE_VALUE_NOTES: Readonly<Partial<Record<FeedType, string>>> = {
+const FEED_TYPE_VALUE_NOTES: Readonly<Partial<Record<FeedType, string>>> = {
   collection_intro: '컬렉션 소개는 커버 미디어에 대표 그림을 넣어야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',
   drop_pickup: '드랍·픽업은 참조 컨텐츠에서 배지를 하나 이상 연결해야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',
   gallery_list: '목록형은 항목을 하나 이상 적어야 새 모습으로 보여요. 비어 있으면 텍스트 박스로 보여요.',

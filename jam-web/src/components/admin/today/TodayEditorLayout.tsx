@@ -11,7 +11,6 @@ import {
   EditorShell,
   SectionCard,
   SectionNav,
-  scrollToSection,
   type SectionCardProps,
   type SectionNavProps,
 } from '@/components/admin/AdminEditorLayout'
@@ -20,9 +19,7 @@ import type { TodaySectionId } from '@/lib/admin/today-sections'
 export {
   RAIL_ACTIONS_CLASS,
   RailCard,
-  SectionStatusBadge,
   FIELD_GRID_CLASS,
-  fieldSpanClass,
   ReadOnlyGrid,
   ReadOnlyItem,
 } from '@/components/admin/AdminEditorLayout'
@@ -32,11 +29,6 @@ export const TodayEditorShell = EditorShell
 /** 섹션 카드 — 제목·한 줄 설명·상태 배지를 머리에 두고, 목차 이동 대상이 된다 */
 export function TodaySectionCard(props: Omit<SectionCardProps<TodaySectionId>, 'namespace'>) {
   return <SectionCard namespace="today" {...props} />
-}
-
-/** 섹션으로 스크롤하고 제목에 포커스를 둔다 — 모션 감소 설정이면 즉시 이동 */
-export function scrollToTodaySection(id: TodaySectionId) {
-  scrollToSection('today', id)
 }
 
 /** 레일의 섹션 목차 — 상태를 보여 주고 누르면 해당 섹션으로 이동한다 */

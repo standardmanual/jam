@@ -44,7 +44,7 @@ const ICONS = {
   devboard: IconGitBranch,
 } as const satisfies Record<string, OpsIcon>
 
-export type OpsSectionNoticeIcon = keyof typeof ICONS
+type OpsSectionNoticeIcon = keyof typeof ICONS
 
 const LOAD_FAILED_DESCRIPTION = '서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요'
 const RETRY_LABEL = '새로 고치기'

@@ -19,7 +19,7 @@ import type { Json } from '@/types/database.generated'
 import { asRecord, itemField, type ViewableItem } from '@/lib/admin/opsInbox/itemView'
 import { isIsoDateTime } from '@/lib/admin/opsInbox/validate'
 
-export const EDIT_TIME_PATHS = ['starts_at', 'ends_at'] as const
+const EDIT_TIME_PATHS = ['starts_at', 'ends_at'] as const
 const EDIT_SCALAR_PATHS = ['user_experience', 'segment', ...EDIT_TIME_PATHS] as const
 const EDIT_OBJECT_ROOTS = ['copy', 'colors'] as const
 
@@ -68,7 +68,7 @@ export function isEditablePath(path: string): boolean {
  * 예약됨 항목에서 고칠 수 있는 문안 칸 (티켓 20261103_1446). 예약 등록으로 만든 자원 행(`today_cards`·`missions`)의 같은 열과 일대일이다.
  * 이 목록에 없는 종류·칸(시각·색·대상·「유저가 겪는 것」·이 목록 밖의 문안)은 예약된 뒤에 고치지 않는다.
  */
-export const SCHEDULED_COPY_KEYS: Readonly<Record<string, readonly string[]>> = {
+const SCHEDULED_COPY_KEYS: Readonly<Record<string, readonly string[]>> = {
   home_feed_card: ['title', 'subtitle', 'description'],
   mission: ['title', 'description', 'condition_text'],
 }

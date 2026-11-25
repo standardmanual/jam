@@ -49,11 +49,11 @@ export interface PoiBlockRow {
 }
 
 /** 머리 칸 정렬 id → DB 컬럼. 표의 `columnHelper` id와 같아야 한다 */
-export const ABUSING_SORT_COLUMNS: Record<AbusingListTab, Record<string, string>> = {
+const ABUSING_SORT_COLUMNS: Record<AbusingListTab, Record<string, string>> = {
   'poi-blocks': { expires: 'blocked_until' },
 }
 
-export interface AbusingListSort {
+interface AbusingListSort {
   column: string
   ascending: boolean
 }
@@ -90,7 +90,7 @@ export function parseAbusingListParams(raw: Record<string, string | undefined>, 
 /** 탭별 "만료 시각" 컬럼 */
 const EXPIRY_COLUMN_OF = { 'poi-blocks': 'blocked_until' } as const
 
-export function expiryColumnOf(tab: AbusingListTab): 'blocked_until' {
+function expiryColumnOf(tab: AbusingListTab): 'blocked_until' {
   return EXPIRY_COLUMN_OF[tab]
 }
 

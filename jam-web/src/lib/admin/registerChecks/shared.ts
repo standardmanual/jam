@@ -10,7 +10,7 @@
  * (선례: `list-counts.ts`·`ranking-mode-references.ts`).
  */
 
-export interface RegisterQueryError {
+interface RegisterQueryError {
   message: string
 }
 
@@ -33,7 +33,7 @@ export interface RegisterQuery extends PromiseLike<RegisterQueryResult<RegisterR
   maybeSingle(): PromiseLike<RegisterQueryResult<RegisterRow>>
 }
 
-export interface RegisterTable {
+interface RegisterTable {
   select(columns: string, options?: { count?: 'exact'; head?: boolean }): RegisterQuery
 }
 
@@ -41,7 +41,7 @@ export interface RegisterChecksClient {
   from(table: string): RegisterTable
 }
 
-export type RegisterCheckStatus = '통과' | '실패' | '건너뜀' | '해당 없음'
+type RegisterCheckStatus = '통과' | '실패' | '건너뜀' | '해당 없음'
 
 export interface RegisterCheck {
   label: string
@@ -55,7 +55,7 @@ export interface RegisterDbCheckResult {
   errors: string[]
 }
 
-export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 /**
  * 검사를 하나씩 기록하는 수집기. 세 등록 흐름이 같은 내용으로 따로 갖고 있던 `add`를 하나로 합쳤다.

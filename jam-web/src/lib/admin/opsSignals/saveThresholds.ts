@@ -40,10 +40,10 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 
 const LOG = '[admin/ops-rules]'
 
-export const SIGNAL_NOT_FOUND_MESSAGE = '찾을 수 없는 신호예요.'
-export const THRESHOLD_NOT_FOUND_MESSAGE = '찾을 수 없는 기준값이에요.'
+const SIGNAL_NOT_FOUND_MESSAGE = '찾을 수 없는 신호예요.'
+const THRESHOLD_NOT_FOUND_MESSAGE = '찾을 수 없는 기준값이에요.'
 export const THRESHOLD_CONFLICT_MESSAGE = '그사이 다른 곳에서 이 신호의 기준값이 바뀌었어요. 최신 값을 불러온 뒤 다시 바꿔 주세요.'
-export const THRESHOLD_SAVE_FAILED_MESSAGE = '기준값을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+const THRESHOLD_SAVE_FAILED_MESSAGE = '기준값을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 const VALUES_CHECK_MESSAGE = '값을 확인해 주세요.'
 const STAMP_REQUIRED_MESSAGE = '기준값의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
 

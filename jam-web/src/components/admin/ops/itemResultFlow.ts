@@ -7,7 +7,7 @@
 import { approveToastMessage, type OpsJsonResponse } from './decisionClient'
 import type { ScheduleItemOutcome } from './scheduleItemClient'
 
-export type ToastLevel = 'success' | 'error' | 'warning'
+type ToastLevel = 'success' | 'error' | 'warning'
 
 /** 결과 처리의 한 단계. 훅이 배열 순서대로 실행한다. */
 export type ResultStep =

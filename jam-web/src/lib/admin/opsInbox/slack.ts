@@ -353,7 +353,7 @@ export function formatReconcileAlertMessage(input: ReconcileAlertMessageInput): 
 /** 중단 신호 글에 결과를 나열하는 건수(예약 등록 글과 같다). 넘으면 「외 N건」으로 줄인다. */
 const SLACK_STOP_SIGNAL_ITEMS_MAX = 5
 
-export interface StopSignalAlertGroup {
+interface StopSignalAlertGroup {
   /** 신호 이름(「예약 누락」·「루틴 실패」). */
   label: string
   /** 새로 걸린 결과의 문장(운영자가 읽는 해요체). 항목 이름에 제출 문자열이 들어 있어 이스케이프해서 싣는다. */

@@ -43,10 +43,10 @@ export function OpsSampleBusy({ children, className }: { children: ReactNode; cl
   )
 }
 
-export const OPS_SAMPLE_SWITCH_LABEL = '시험 묶음 포함해서 보기'
-export const OPS_SAMPLE_SWITCH_STATE = { on: '켜짐', off: '꺼짐' } as const
-export const OPS_SAMPLE_SWITCH_HELP = '슬랙은 어떤 경우에도 가지 않아요'
-export const OPS_SAMPLE_NONE_NOTE = '지금 시험 묶음이 없어요'
+const OPS_SAMPLE_SWITCH_LABEL = '시험 묶음 포함해서 보기'
+const OPS_SAMPLE_SWITCH_STATE = { on: '켜짐', off: '꺼짐' } as const
+const OPS_SAMPLE_SWITCH_HELP = '슬랙은 어떤 경우에도 가지 않아요'
+const OPS_SAMPLE_NONE_NOTE = '지금 시험 묶음이 없어요'
 
 interface OpsSampleSwitchProps {
   /** 지금 시험 묶음을 포함해서 보는가(서버가 `?sample=1`을 읽어 넘긴다). */

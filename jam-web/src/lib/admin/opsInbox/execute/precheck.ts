@@ -76,19 +76,19 @@ export const PRECHECK_MESSAGES = {
 
 // ── 결과 ────────────────────────────────────────────────────────────────────────────────────────
 
-export interface PrecheckBlocked {
+interface PrecheckBlocked {
   id: string
   /** 못 하는 이유. 하나 이상이다. */
   reasons: string[]
 }
 
-export interface PrecheckFailClose {
+interface PrecheckFailClose {
   id: string
   /** 실행하면 「실패」로 남길 사유(예: 「연결된 미션이 반려됐어요」). */
   reason: string
 }
 
-export interface PrecheckWarning {
+interface PrecheckWarning {
   /** 경고가 가리키는 항목 ID. */
   itemIds: string[]
   message: string
@@ -163,7 +163,7 @@ function conflictReason(conflict: LinkConflict): string {
 }
 
 /** 핸들러가 붙은 종류인지. `constructor` 같은 이름이 객체 기본 속성에 걸리지 않게 자기 속성만 본다. 기획 상세의 예약 등록 요약(`query.ts`)도 쓴다. */
-export function hasHandler(handlers: ExecuteHandlerRegistry, kind: string | null): boolean {
+function hasHandler(handlers: ExecuteHandlerRegistry, kind: string | null): boolean {
   return kind !== null && Object.prototype.hasOwnProperty.call(handlers, kind) && handlers[kind] !== undefined
 }
 

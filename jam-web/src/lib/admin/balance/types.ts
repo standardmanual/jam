@@ -57,7 +57,7 @@ export interface BalanceSnapshot {
   updatedAt: string
 }
 
-export interface BalanceWriteInput {
+interface BalanceWriteInput {
   /** 바뀐 칸만 담긴 새 값. */
   values: BalanceValues
   /** 이 값과 같을 때만 갱신한다. */

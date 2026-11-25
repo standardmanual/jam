@@ -20,9 +20,9 @@ export interface CountWindow {
 }
 
 /** `kpiWeekly.ts`와 같은 정의: 동기화 중 드랍 시도가 실패한 행은 동기화 실패 건수에서 뺀다 */
-export const DROP_ATTEMPT_FAILED = 'drop_attempt_failed'
+const DROP_ATTEMPT_FAILED = 'drop_attempt_failed'
 /** 과거 활동을 한꺼번에 채워 넣은 행. 동기화된 활동 건수에서 뺀다 */
-export const MANUAL_BACKFILL = 'manual_backfill'
+const MANUAL_BACKFILL = 'manual_backfill'
 
 export interface ActivityRow {
   user_id: string

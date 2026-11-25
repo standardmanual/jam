@@ -9,9 +9,9 @@ import { inboxListHref } from '@/lib/admin/opsHome/links'
  * 0건이면 muted 한 줄이고 링크가 없다. 못 읽었으면 0건으로 보이지 않고 「읽지 못했어요」를 알린다. 링크는 받은 기획함의 「결정할 것」 탭이다.
  */
 
-export const PROPOSALS_NONE_TEXT = '승인 대기 제안이 없어요'
-export const PROPOSALS_FAILED_TEXT = '승인 대기 제안을 읽지 못했어요'
-export const PROPOSALS_LINK_LABEL = '받은 기획함으로'
+const PROPOSALS_NONE_TEXT = '승인 대기 제안이 없어요'
+const PROPOSALS_FAILED_TEXT = '승인 대기 제안을 읽지 못했어요'
+const PROPOSALS_LINK_LABEL = '받은 기획함으로'
 
 const LINK_CLASS =
   'inline-flex min-h-6 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'

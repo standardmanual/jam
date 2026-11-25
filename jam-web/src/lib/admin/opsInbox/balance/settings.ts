@@ -113,7 +113,7 @@ export function savedToastTitle(ruleName: string): string {
 }
 export const SAVED_TOAST_DESCRIPTION = '기획 상세를 다음에 열 때부터 반영돼요'
 
-export const OPEN_NOW_UNREADABLE = '열린 컬렉션 수를 읽지 못했어요'
+const OPEN_NOW_UNREADABLE = '열린 컬렉션 수를 읽지 못했어요'
 
 // ── 칸 정의 ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -202,7 +202,7 @@ export function textToNumberInput(text: string): number | string {
 }
 
 /** 초안을 저장 요청의 `value`(검증 함수가 읽는 모양)로 만든다. 값 칸이 없는 규칙은 `undefined`다. */
-export function valueInputFromDraft(key: BalanceRuleKey, draft: RuleDraft): unknown {
+function valueInputFromDraft(key: BalanceRuleKey, draft: RuleDraft): unknown {
   const specs = ruleFieldSpecs(key)
   if (specs.length === 0) return undefined
   if (key === 'point_reward_max') {

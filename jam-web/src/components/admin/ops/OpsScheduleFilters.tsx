@@ -29,11 +29,11 @@ export interface ScheduleFilterOption {
   label: string
 }
 
-export const FILTER_KIND_TITLE = '종류'
-export const FILTER_TRIBE_TITLE = '트라이브'
-export const FILTER_PATTERN_TITLE = '패턴'
-export const FILTER_CLEAR_LABEL = '거르기 지우기'
-export const FILTER_OPTIONS_FAILED_TEXT = '트라이브·패턴 목록을 읽지 못해 고를 수 없어요. 새로 고쳐 다시 불러와 주세요'
+const FILTER_KIND_TITLE = '종류'
+const FILTER_TRIBE_TITLE = '트라이브'
+const FILTER_PATTERN_TITLE = '패턴'
+const FILTER_CLEAR_LABEL = '거르기 지우기'
+const FILTER_OPTIONS_FAILED_TEXT = '트라이브·패턴 목록을 읽지 못해 고를 수 없어요. 새로 고쳐 다시 불러와 주세요'
 
 /** 종류 선택지: 일정표 칸·막대에 오르는 6개(「패턴 제안」 제외). */
 export const SCHEDULE_KIND_OPTIONS: readonly ScheduleFilterOption[] = OPS_ITEM_KINDS.filter((kind) => kind !== 'pattern_proposal').map((kind) => ({

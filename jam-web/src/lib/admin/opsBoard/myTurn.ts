@@ -15,10 +15,10 @@ import { shiftDateStr } from '@/lib/admin/today-calendar'
 import { weekStartOfRecord } from '@/lib/admin/opsBoard/weekFlow'
 import type { BoardBundleInput, BoardRoutineStartInput } from '@/lib/admin/opsBoard/types'
 
-export type MyTurnKind = 'decide' | 'problem'
+type MyTurnKind = 'decide' | 'problem'
 export type MyTurnReason = 'items' | 'failed_items' | 'routine_stalled'
 
-export interface MyTurnReasonChip {
+interface MyTurnReasonChip {
   kind: OpsRationaleKind
   count: number
 }
@@ -42,8 +42,8 @@ export interface MyTurnInput {
   includeSample?: boolean
 }
 
-export const MAX_REASON_CHIPS = 3
-export const ROUTINE_STALLED_TITLE = '루틴이 멈췄어요'
+const MAX_REASON_CHIPS = 3
+const ROUTINE_STALLED_TITLE = '루틴이 멈췄어요'
 const UNTITLED_BUNDLE = '이름 없는 기획'
 const INBOX_PATH = '/admin/ops-inbox'
 // 결정 마감: 그 주 수요일 18:00 KST (PRD §6.1). 월요일 + 2일.

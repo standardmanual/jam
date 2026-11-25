@@ -3,10 +3,10 @@ import { extractJson, validateEditPlan, type EditPlan } from './edit'
 import { cleanClaudeSentence } from './prompt'
 
 /** 티켓 20261113_1131 — Claude 호출은 이 파일의 세 함수로만 한다. 모델 상수는 이 한 곳에만 둔다. */
-export const CLAUDE_MODEL = 'claude-haiku-5-5'
+const CLAUDE_MODEL = 'claude-haiku-5-5'
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 
-export const DESCRIBE_SYSTEM = `Translate the Korean object description into ONE English sentence (15-45 words) for an image prompt.
+const DESCRIBE_SYSTEM = `Translate the Korean object description into ONE English sentence (15-45 words) for an image prompt.
 Rules:
 1. Keep only the physical appearance: shape, size cue, material, color, one state, one small imperfect detail.
 2. One object, or one compact group of the same object. No people, hands, places, names.
@@ -16,13 +16,13 @@ Rules:
 6. Describe the object as compact and self-contained: no cords, straps or parts trailing away from it.
 Output the sentence only.`
 
-export const REVISE_SYSTEM =
+const REVISE_SYSTEM =
   'Revise this object description to address the feedback. Keep all rules of the original sentence (one object or one compact group, no faces or eyes, no text on surfaces, no style or lighting words). Output the revised sentence only.'
 
-export const TEXT_CHECK_SYSTEM =
+const TEXT_CHECK_SYSTEM =
   'Look at the image. Reply with exactly YES if any text, letters, numbers, symbols, signatures, logos or letter-like marks are visible anywhere, otherwise reply with exactly NO.'
 
-export const EDIT_PLAN_SYSTEM = `You plan one edit for a badge illustration using Recraft tools. Read the operator's request (Korean) and look at the image.
+const EDIT_PLAN_SYSTEM = `You plan one edit for a badge illustration using Recraft tools. Read the operator's request (Korean) and look at the image.
 Choose exactly one operation:
 - "erase": remove an unwanted part (extra object, stray mark, text). Give boxes covering it.
 - "inpaint": redraw a region with something specific. Give boxes and an English prompt for what to draw there.

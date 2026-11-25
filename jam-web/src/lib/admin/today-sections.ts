@@ -216,17 +216,7 @@ export const TODAY_CONTENT_TYPE_OPTIONS: readonly { value: string; label: string
 export type TodaySectionId = 'class' | 'basic' | 'feed' | 'ref' | 'expose' | 'period'
 
 /** 「카드 모양」(`feed`)은 기본 정보 다음이다(티켓 20261121_1316, 홈피드 개편 5회차-2) */
-export const TODAY_SECTION_ORDER: readonly TodaySectionId[] = ['class', 'basic', 'feed', 'ref', 'expose', 'period']
-
-/** 섹션 카드의 DOM id — 목차 링크·저장 시 이동이 이 id로 찾아간다 */
-export function todaySectionDomId(id: TodaySectionId): string {
-  return `today-section-${id}`
-}
-
-/** 섹션 제목 요소의 DOM id — 목차로 이동한 뒤 포커스를 둔다 */
-export function todaySectionHeadingId(id: TodaySectionId): string {
-  return `today-section-${id}-heading`
-}
+const TODAY_SECTION_ORDER: readonly TodaySectionId[] = ['class', 'basic', 'feed', 'ref', 'expose', 'period']
 
 /**
  * 「참조 컨텐츠」 섹션은 템플릿이 배지·미션·컬렉션·지역·본문 중 하나라도 쓸 때만 보인다
@@ -280,7 +270,7 @@ export function todaySectionDescription(id: TodaySectionId): string {
  * 섹션 머리·목차에 붙는 상태.
  * - `ok`: 필수 입력을 다 채움 · `bad`: 필수 입력이 빠짐 · `set`: 선택 입력을 N개 채움 · `idle`: 비어 있음
  */
-export type TodaySectionTone = 'ok' | 'bad' | 'set' | 'idle'
+type TodaySectionTone = 'ok' | 'bad' | 'set' | 'idle'
 export interface TodaySectionStatus {
   tone: TodaySectionTone
   text: string

@@ -172,7 +172,7 @@ function LegacyItemSummary({ entry }: { entry: LegacyDrawerEntry }) {
   )
 }
 
-export interface ReadyItemBodyProps {
+interface ReadyItemBodyProps {
   detail: ScheduleItemDetail
   item: OpsItemRecord
   includeSample: boolean
@@ -182,7 +182,7 @@ export interface ReadyItemBodyProps {
 }
 
 /** 데이터를 받은 운영 항목 서랍의 안쪽. 결정 줄과 편집 초안은 기획 상세(S3)와 같은 부품이다. */
-export function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenItem }: ReadyItemBodyProps) {
+function ReadyItemBody({ detail, item, includeSample, onRefresh, onOpenItem }: ReadyItemBodyProps) {
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
   const [colorPick, setColorPick] = useState<OpsColorPick | null>(null)
   const handlers = useOpsItemResultHandlers({ bundleId: detail.bundleId, onRefresh })

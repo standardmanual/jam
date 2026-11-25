@@ -44,7 +44,7 @@ export const BADGE_LIST_SORTS = ['created_desc', 'created_asc', 'name_asc', 'nam
 
 export type BadgeListSort = (typeof BADGE_LIST_SORTS)[number]
 
-export const BADGE_LIST_SORT_LABEL: Record<BadgeListSort, string> = {
+const BADGE_LIST_SORT_LABEL: Record<BadgeListSort, string> = {
   created_desc: '최신순',
   created_asc: '오래된 순',
   name_asc: '이름 (가나다)',
@@ -100,7 +100,7 @@ function activityRank(row: BadgeListSortRow): number {
  * 계열 관리 화면(`compareFamilies`)이 계열을 늘어놓는 순서와 같은 기준이라, 두 화면에서
  * 같은 계열이 같은 자리에 온다.
  */
-export function compareByFamily(a: BadgeListSortRow, b: BadgeListSortRow): number {
+function compareByFamily(a: BadgeListSortRow, b: BadgeListSortRow): number {
   return (
     activityRank(a) - activityRank(b) ||
     sortRank(a.sort_order) - sortRank(b.sort_order) ||
@@ -114,7 +114,7 @@ export function compareByFamily(a: BadgeListSortRow, b: BadgeListSortRow): numbe
  * 레벨순 — 레벨 오름차순. **레벨이 없는 배지(등급형·체크인·아이템)는 맨 뒤**다.
  * 레벨이 같으면 계열순으로 갈라 같은 계열의 같은 자리가 흩어지지 않게 한다.
  */
-export function compareByLevel(a: BadgeListSortRow, b: BadgeListSortRow): number {
+function compareByLevel(a: BadgeListSortRow, b: BadgeListSortRow): number {
   const rank = (row: BadgeListSortRow) => (row.level == null ? Number.MAX_SAFE_INTEGER : row.level)
   return rank(a) - rank(b) || compareByFamily(a, b)
 }

@@ -20,7 +20,7 @@ export const FEED_TYPE_LABELS: Readonly<Record<FeedType, string>> = {
 }
 
 /** 유형이 비어 있는 옛 데이터를 홈이 그리는 유형 — 목록·상세에서도 같은 이름으로 보인다(티켓 20261122_1153). */
-export const FEED_TYPE_FALLBACK_TEXT = '텍스트 박스(기본)'
+const FEED_TYPE_FALLBACK_TEXT = '텍스트 박스(기본)'
 
 /** 카드 유형을 운영자에게 보이는 이름으로. 비어 있으면 «텍스트 박스(기본)», 모르는 유형 값은 키를 그대로 보인다. */
 export function feedTypeDisplayName(feedType: string | null | undefined): string {

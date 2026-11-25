@@ -60,7 +60,7 @@ import { createdToastText, submitPatternForm, type PatternFormTarget } from './p
  * - 고친 칸이 있으면 창 닫기·새로 고침에 브라우저 경고가 뜬다. 앱 안 링크 이동은 막지 않는다. [취소]는 고친 칸이 있으면 확인창을 먼저 연다.
  */
 
-export const PATTERN_FORM_NAMESPACE = 'pattern-form'
+const PATTERN_FORM_NAMESPACE = 'pattern-form'
 
 export const PATTERN_FORM_SECTIONS: ReadonlyArray<{ id: PatternFormSectionId; label: string; description: string }> = [
   { id: 'basic', label: '기본', description: '패턴의 이름과 작동 원리, 유저가 겪는 것을 적어요' },
@@ -72,14 +72,14 @@ export const PATTERN_FORM_SECTIONS: ReadonlyArray<{ id: PatternFormSectionId; la
 ]
 
 export const PATTERN_FORM_NOTE = '이전 내용은 남지 않아요. 저장하면 에이전트가 바로 새 내용을 읽어요'
-export const PATTERN_FORM_CANCEL_LABEL = '취소'
-export const PATTERN_RELOAD_LABEL = '최신 내용 불러오기'
-export const PATTERN_DISCARD_TITLE = '입력한 내용이 사라져요'
-export const PATTERN_CANCEL_DESCRIPTION = '저장하지 않은 내용은 남지 않아요. 나갈까요?'
-export const PATTERN_RELOAD_DESCRIPTION = '최신 내용을 불러오면 지금 입력한 내용은 남지 않아요.'
-export const PATTERN_UNCHANGED_TOAST = '바뀐 내용이 없어요'
+const PATTERN_FORM_CANCEL_LABEL = '취소'
+const PATTERN_RELOAD_LABEL = '최신 내용 불러오기'
+const PATTERN_DISCARD_TITLE = '입력한 내용이 사라져요'
+const PATTERN_CANCEL_DESCRIPTION = '저장하지 않은 내용은 남지 않아요. 나갈까요?'
+const PATTERN_RELOAD_DESCRIPTION = '최신 내용을 불러오면 지금 입력한 내용은 남지 않아요.'
+const PATTERN_UNCHANGED_TOAST = '바뀐 내용이 없어요'
 
-export function changedCountText(count: number): string {
+function changedCountText(count: number): string {
   return `바뀐 칸 ${count}개`
 }
 

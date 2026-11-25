@@ -8,15 +8,15 @@
  */
 import type { PlaceFilter, PlaceListQuery, PlaceSort, PlaceStatusFilter } from './types'
 
-export const PLACES_DEFAULT_LIMIT = 30
-export const PLACES_MAX_LIMIT = 100
-export const PLACES_Q_MAX_LENGTH = 100
+const PLACES_DEFAULT_LIMIT = 30
+const PLACES_MAX_LIMIT = 100
+const PLACES_Q_MAX_LENGTH = 100
 export const PLACES_QUERY_INVALID_MESSAGE =
   'category는 영문 소문자·숫자·밑줄, limit은 1부터 100까지, offset은 0 이상의 정수, sort는 drops 또는 name, status는 active·inactive·pending·all 중 하나, groupBy는 region, sido·gu는 100자 이하의 비어 있지 않은 글자로 보내 주세요. limit·offset·sort·q는 category와 함께만 쓸 수 있고 groupBy=region과는 함께 쓸 수 없어요.'
 
 const CATEGORY_RE = /^[a-z][a-z0-9_]{0,49}$/
 const STATUS_VALUES: readonly PlaceStatusFilter[] = ['active', 'inactive', 'pending', 'all']
-export const PLACES_REGION_MAX_LENGTH = 100
+const PLACES_REGION_MAX_LENGTH = 100
 /** 쿼리에 거름이 없을 때의 기본값 — 활성·검수 통과 장소만 센다 (티켓 20261102_2254) */
 export const DEFAULT_PLACE_FILTER: PlaceFilter = { status: 'active', sido: null, gu: null }
 const LIST_ONLY_KEYS = ['q', 'limit', 'offset', 'sort'] as const

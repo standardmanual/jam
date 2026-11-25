@@ -27,7 +27,7 @@ export type PoiExportRow = Pick<
 >
 
 const POI_LIST_SORTS = ['name_asc', 'name_desc', 'created_desc', 'created_asc'] as const
-export type PoiListSort = (typeof POI_LIST_SORTS)[number]
+type PoiListSort = (typeof POI_LIST_SORTS)[number]
 
 function isPoiListSort(value: string | undefined): value is PoiListSort {
   return !!value && (POI_LIST_SORTS as readonly string[]).includes(value)
@@ -64,7 +64,7 @@ const SORT_COLUMN: Record<PoiListSort, readonly [string, boolean]> = {
   created_asc: ['created_at', true],
 }
 
-export interface PoiListQueryResult<T> {
+interface PoiListQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

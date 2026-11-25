@@ -12,7 +12,7 @@ import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
 import type { AdjustTarget } from '@/lib/admin/balanceDashboard/types'
 
-export function balanceSectionHref(sectionId: string): string {
+function balanceSectionHref(sectionId: string): string {
   return `/admin/balance#${sectionId}`
 }
 

@@ -45,8 +45,8 @@ import { BalanceProbabilityConfirm, type BalanceConfirmLine } from './BalancePro
 export const SAVE_LABEL = '저장'
 export const SAVING_LABEL = '저장하는 중'
 export const RELOAD_LABEL = '새로 불러오기'
-export const SAVED_MESSAGE = '저장했어요. 바뀐 값은 staging과 프로덕션에 바로 반영돼요.'
-export { NOTE_LABEL, NOTE_PLACEHOLDER }
+const SAVED_MESSAGE = '저장했어요. 바뀐 값은 staging과 프로덕션에 바로 반영돼요.'
+export { NOTE_LABEL,  }
 
 const TEXT = 'break-keep wrap-break-word'
 

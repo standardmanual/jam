@@ -50,7 +50,7 @@ function decimalsOf(step: number): number {
   return dot === -1 ? 0 : text.length - dot - 1
 }
 
-export type SliderRowProps = {
+type SliderRowProps = {
   id: string
   label: string
   value: number
@@ -62,7 +62,7 @@ export type SliderRowProps = {
   onChange: (value: number) => void
 }
 
-export function SliderRow({ id, label, value, min, max, step, unit = '', disabled = false, onChange }: SliderRowProps) {
+function SliderRow({ id, label, value, min, max, step, unit = '', disabled = false, onChange }: SliderRowProps) {
   return (
     <div className={disabled ? 'opacity-50' : undefined}>
       <label htmlFor={id} className="mt-2.5 mb-1 flex items-center justify-between gap-2.5 text-[11px]">
@@ -87,7 +87,7 @@ export function SliderRow({ id, label, value, min, max, step, unit = '', disable
   )
 }
 
-export function SectionHeader({ title, caption }: { title: string; caption: string }) {
+function SectionHeader({ title, caption }: { title: string; caption: string }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold">
       <span>{title}</span>
@@ -96,7 +96,7 @@ export function SectionHeader({ title, caption }: { title: string; caption: stri
   )
 }
 
-export const SECTION = 'border-t border-[#e0e4df] px-5 py-4'
+const SECTION = 'border-t border-[#e0e4df] px-5 py-4'
 
 /** 변환 오류·자동 조정 경고·불러오는 중 안내. 내용이 없으면 아무것도 그리지 않는다. */
 export function Logo3DNotices({

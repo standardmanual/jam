@@ -3,7 +3,6 @@ import {
   buildSdfFromMask,
   cloneState,
   computeGeometry,
-  DEFAULT_STATE,
   edt,
   GLYPH_PRESETS,
   GRADIENT_PRESETS,
@@ -20,7 +19,6 @@ import {
 
 describe('shapeStudioConfig', () => {
   it('초깃값과 프리셋 목록이 원본 Shape Studio v2 스펙과 일치한다', () => {
-    expect(DEFAULT_STATE).toEqual(INITIAL_STATE)
     expect(INITIAL_STATE.version).toBe(2)
     expect(INITIAL_STATE.shape).toBe('mushroom')
     expect(INITIAL_STATE.grad).toBe('morning')

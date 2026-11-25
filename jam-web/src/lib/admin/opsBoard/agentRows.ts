@@ -14,9 +14,9 @@ import type { ScreenState } from '@/lib/admin/opsBoard/screenState'
 import type { FlowColumnKey, WeekFlowRow } from '@/lib/admin/opsBoard/weekFlow'
 
 /** 다음 실행을 읽는 예약 작업 이름. */
-export const WEEKLY_JOB_NAME = '주간'
-export const ROUTINE_OFF_LABEL = '예약 꺼짐'
-export const NO_NEXT_RUN_LABEL = '예정 없음'
+const WEEKLY_JOB_NAME = '주간'
+const ROUTINE_OFF_LABEL = '예약 꺼짐'
+const NO_NEXT_RUN_LABEL = '예정 없음'
 const IDLE_LINE = '대기 중'
 const DONE_FALLBACK_LINE = '완료'
 

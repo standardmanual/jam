@@ -38,10 +38,10 @@ import type { AmbientDropScheduleStatus } from '@/types/database'
 /** 컬렉션 준비 구간의 기본 길이(일). R4가 꺼졌거나 못 읽을 때 쓴다. */
 export const TIMELINE_DEFAULT_LEAD_DAYS = 28
 
-export const TIMELINE_ROW_KEYS = ['mission', 'drop_schedule', 'collection_launch'] as const
-export type TimelineRowKey = (typeof TIMELINE_ROW_KEYS)[number]
+const TIMELINE_ROW_KEYS = ['mission', 'drop_schedule', 'collection_launch'] as const
+type TimelineRowKey = (typeof TIMELINE_ROW_KEYS)[number]
 
-export const TIMELINE_ROW_LABELS: Record<TimelineRowKey, string> = {
+const TIMELINE_ROW_LABELS: Record<TimelineRowKey, string> = {
   mission: '미션',
   drop_schedule: '드랍 일정',
   collection_launch: '컬렉션 런칭',
@@ -133,7 +133,7 @@ export interface TimelineRow {
   laneCount: number
 }
 
-export interface TimelineTick {
+interface TimelineTick {
   /** 그 주의 첫 열. */
   col: number
   /** 「10/5」. */

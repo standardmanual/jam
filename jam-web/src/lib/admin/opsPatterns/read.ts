@@ -174,7 +174,7 @@ export function comparePatternNo(a: string, b: string): number {
 }
 
 /** 취향 신호의 순서: 공통(`patternNo: null`)이 먼저, 그다음 패턴 번호의 숫자 순서, 같은 패턴 안에서는 `sortOrder`(같으면 이름). */
-export function compareTasteSignals(a: OpsTasteSignalRecord, b: OpsTasteSignalRecord): number {
+function compareTasteSignals(a: OpsTasteSignalRecord, b: OpsTasteSignalRecord): number {
   if (a.patternNo === null || b.patternNo === null) {
     return Number(b.patternNo === null) - Number(a.patternNo === null) || a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
   }
@@ -184,10 +184,10 @@ export function compareTasteSignals(a: OpsTasteSignalRecord, b: OpsTasteSignalRe
 // ── 읽기 ────────────────────────────────────────────────────────────────────────────────────────
 
 /** 주제 거름 쿼리 값 «원리형만»(`topic` 칸이 NULL인 패턴). `none`은 주제 이름으로 쓰지 않는다는 약속이다. */
-export const OPS_PATTERN_TOPIC_NONE = 'none'
+const OPS_PATTERN_TOPIC_NONE = 'none'
 
 /** 주제로 거른다: `none`은 원리형만, 그 밖의 글은 정확히 일치하는 주제만, `undefined`는 거르지 않는다. */
-export function filterPatternsByTopic<T extends { topic: string | null }>(patterns: readonly T[], topic: string | undefined): T[] {
+function filterPatternsByTopic<T extends { topic: string | null }>(patterns: readonly T[], topic: string | undefined): T[] {
   if (topic === undefined) return [...patterns]
   if (topic === OPS_PATTERN_TOPIC_NONE) return patterns.filter((pattern) => pattern.topic === null)
   return patterns.filter((pattern) => pattern.topic === topic)

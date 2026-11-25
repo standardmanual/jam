@@ -11,23 +11,11 @@ import type { SaveBlock } from '@/lib/missions/reward-badges'
 import {
   findConditionShapeSaveError,
   findConditionShapeSaveWarning,
-  findUnpairedConditionError,
-  findRepeatRestConflictError,
-  findUsageMetricRepeatConflictError,
   findRarityLevelError,
-  findCrossGateShapeError,
 } from './badge-condition-guards'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
 
-export {
-  findConditionShapeSaveError,
-  findConditionShapeSaveWarning,
-  findUnpairedConditionError,
-  findRepeatRestConflictError,
-  findUsageMetricRepeatConflictError,
-  findRarityLevelError,
-  findCrossGateShapeError,
-}
+export { findConditionShapeSaveWarning, findRarityLevelError }
 
 /**
  * 아이템 배지(type='item')에 누적조건(monthly_km 등)을 걸면 활동 1건으로는 조건을 평가할 수 없어

@@ -67,17 +67,6 @@ export const BALANCE_RULE_OBJECTS: Record<BalanceRuleKey, string> = {
   economy_keys: '경제 수치 불변을',
 }
 
-export const BALANCE_RULE_DESCRIPTIONS: Record<BalanceRuleKey, string> = {
-  open_collections_max: '새 컬렉션이 열릴 때 함께 열려 있을 컬렉션 수의 한도예요',
-  weekly_new_collections_max: '같은 주(월~일)에 새로 여는 컬렉션 수의 한도예요',
-  rolling_new_collections_max: '공개 시각부터 거슬러 28일 안에 새로 여는 컬렉션 수의 한도예요',
-  launch_lead_days_min: '새 컬렉션을 공개하기 전에 미리 알려야 하는 최소 일수예요',
-  point_reward_max: '항목 하나가 주는 포인트의 한도예요(종류마다 따로 정해요)',
-  single_action_points: '한 번의 행동으로 받는 포인트 합의 한도예요(항목별 포인트 값을 따라요)',
-  count_ladder_points: '같은 계열 횟수형 배지의 단계별 포인트 합의 한도예요(달성형 값을 따라요)',
-  economy_keys: '기획에서 바꾸지 않는 경제 정책 값의 이름 목록이에요',
-}
-
 /**
  * 평가에서 빼는 항목 상태: 반려·취소·실패한 항목은 열리지 않으므로 세지도 점검하지도 않는다.
  * 화면(클라이언트 부품)도 읽는 값이라 서버 전용 코드를 끌어오지 않는 이 파일에 둔다.
@@ -127,7 +116,7 @@ export interface EconomyKeysValue {
 }
 
 /** 값 없는 규칙(R6·R7)은 R5를 따른다. */
-export type EmptyValue = Record<string, never>
+type EmptyValue = Record<string, never>
 
 /**
  * 읽은 규칙 한 건. `readable: false`는 값 모양이 틀린 규칙이다(그 규칙만 「점검 못 함」).
@@ -320,7 +309,7 @@ export function parseRuleValue(key: BalanceRuleKey, raw: unknown): ParsedRuleVal
 // ── 저장 입력 검증 (조각 B) ─────────────────────────────────────────────────────────────────────
 
 /** 값을 바꿀 수 있는 규칙. R6·R7은 R5를 따르고 R8은 키 목록을 읽기 전용으로 두므로 켜기·경고 수준만 바꾼다. */
-export const VALUE_EDITABLE_RULE_KEYS: readonly BalanceRuleKey[] = [
+const VALUE_EDITABLE_RULE_KEYS: readonly BalanceRuleKey[] = [
   'open_collections_max',
   'weekly_new_collections_max',
   'rolling_new_collections_max',

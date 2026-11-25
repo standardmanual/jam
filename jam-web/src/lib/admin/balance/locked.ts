@@ -31,7 +31,7 @@ export const LOCKED_BALANCE_KEYS = [
   'locked_min_mystic',
 ] as const satisfies readonly (keyof JamPolicy)[]
 
-export type LockedBalanceKey = (typeof LOCKED_BALANCE_KEYS)[number]
+type LockedBalanceKey = (typeof LOCKED_BALANCE_KEYS)[number]
 
 const POINTS_GROUP = '여는 포인트'
 const MIN_GROUP = '등급별 최소값'

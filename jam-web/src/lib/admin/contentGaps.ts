@@ -23,13 +23,13 @@ export const MISSION_GAP_HORIZON_DAYS = 60
  * 종료 임박 기준(일). 종료일이 오늘부터 이 일수 이내(오늘+N일까지)인 기간 공개 미션에
  * 이어지는 기간 공개 미션이 없으면 경고한다. 종료일이 오늘+N일인 미션은 검사하고 오늘+N+1일은 제외한다.
  */
-export const MISSION_ENDING_NOTICE_DAYS = 14
+const MISSION_ENDING_NOTICE_DAYS = 14
 
 /** 다음 주 카드 편성 검사를 시작하는 요일(0=일 … 5=금 … 6=토). 금요일부터(금·토·일) 검사한다. */
 export const NEXT_WEEK_CHECK_FROM_WEEKDAY = 5
 
 /** 경고 문구에 날짜를 나열하는 최대 개수 */
-export const CARD_GAP_LIST_MAX = 7
+const CARD_GAP_LIST_MAX = 7
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -47,7 +47,7 @@ export function isPublicMission(
   return !hasGateAxis && m.visibility_rule_json == null
 }
 
-export interface EndingMissionWithoutSuccessor {
+interface EndingMissionWithoutSuccessor {
   id: string
   title: string
   /** 'YYYY-MM-DD'(KST) 종료일 */
@@ -170,13 +170,13 @@ export function checkCardGaps(cards: WeeklyCardInput[], now: Date): CardGapResul
 }
 
 /** 'YYYY-MM-DD' → 'M/D' */
-export function formatMonthDay(dateStr: string): string {
+function formatMonthDay(dateStr: string): string {
   const [, m, d] = dateStr.split('-').map(Number)
   return `${m}/${d}`
 }
 
 /** 'YYYY-MM-DD' → 'M/D(요일)' */
-export function formatMonthDayWeekday(dateStr: string): string {
+function formatMonthDayWeekday(dateStr: string): string {
   return `${formatMonthDay(dateStr)}(${WEEKDAY_LABELS[weekdayOf(dateStr)]})`
 }
 

@@ -57,8 +57,8 @@ export function isGateMission(mission: Pick<MissionRow, 'gate_axis' | 'gated_bad
 }
 
 export type MissionKindFilter = 'normal' | 'gate' | 'all'
-export type MissionStateFilter = 'upcoming' | 'active' | 'ended' | 'all'
-export type MissionRewardFilter = 'badge' | 'points' | 'none' | 'all'
+type MissionStateFilter = 'upcoming' | 'active' | 'ended' | 'all'
+type MissionRewardFilter = 'badge' | 'points' | 'none' | 'all'
 
 const MISSION_LIST_SORTS = [
   'created_desc',
@@ -70,7 +70,7 @@ const MISSION_LIST_SORTS = [
   'title_asc',
   'title_desc',
 ] as const
-export type MissionListSort = (typeof MISSION_LIST_SORTS)[number]
+type MissionListSort = (typeof MISSION_LIST_SORTS)[number]
 
 const DEFAULT_SORT: MissionListSort = 'created_desc'
 
@@ -117,7 +117,7 @@ const SORT_COLUMN: Record<MissionListSort, { column: string; ascending: boolean;
   title_desc: { column: 'title', ascending: false },
 }
 
-export interface MissionListQueryResult<T> {
+interface MissionListQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

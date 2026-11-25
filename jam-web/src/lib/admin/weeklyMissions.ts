@@ -35,7 +35,7 @@ export interface WeeklyMissionBar {
   isGate: boolean
 }
 
-export interface WeeklyOpenEndedStartingMission {
+interface WeeklyOpenEndedStartingMission {
   id: string
   title: string
   /** 'YYYY-MM-DD'(KST) — 시작일 */
