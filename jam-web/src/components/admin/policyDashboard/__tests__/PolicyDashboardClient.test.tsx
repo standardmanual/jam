@@ -133,4 +133,13 @@ describe('PolicyDashboardClient — 값 읽기와 설정 화면 링크', () => {
     const out = html()
     for (const p of policies) expect(out).toContain(p.title)
   })
+
+  it('?q= 쿼리로 열면 검색어와 일치하는 정책만 걸러 보인다', () => {
+    const target = policies.find((p) => p.id === 'ch16-vehicle-speed-filter')!
+    const other = policies.find((p) => p.id === 'ch1-core-loop')!
+    nav.query = `q=${encodeURIComponent(target.title.slice(0, 4))}`
+    const out = html()
+    expect(out).toContain(target.title)
+    expect(out).not.toContain(other.title)
+  })
 })

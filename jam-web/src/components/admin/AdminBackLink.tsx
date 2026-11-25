@@ -2,14 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { MouseEvent, ReactNode } from 'react'
+import type { ComponentProps, MouseEvent, ReactNode } from 'react'
 import { canGoBackInApp } from '@/lib/appHistory'
 
-export interface AdminBackLinkProps {
+export interface AdminBackLinkProps extends Omit<ComponentProps<typeof Link>, 'href'> {
   /** 직접 진입(새 탭·공유 링크·외부 유입)이나 새 탭 열기 클릭 시 이동할 기본 목록 경로 */
   fallbackHref: string
   children: ReactNode
-  className?: string
 }
 
 /**
@@ -19,10 +18,11 @@ export interface AdminBackLinkProps {
  * 일반 클릭 시 앱 내부 히스토리가 있으면 `router.back()`으로 직전 목록의 탭·필터·검색·정렬·페이지를
  * 그대로 복원한다. 직접 진입이면 `fallbackHref`로 이동한다.
  */
-export function AdminBackLink({ fallbackHref, children, className }: AdminBackLinkProps) {
+export function AdminBackLink({ fallbackHref, children, onClick, ...rest }: AdminBackLinkProps) {
   const router = useRouter()
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(e)
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return
     }
@@ -33,7 +33,7 @@ export function AdminBackLink({ fallbackHref, children, className }: AdminBackLi
   }
 
   return (
-    <Link href={fallbackHref} onClick={handleClick} className={className}>
+    <Link href={fallbackHref} onClick={handleClick} {...rest}>
       {children}
     </Link>
   )

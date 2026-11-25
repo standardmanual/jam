@@ -61,6 +61,18 @@ export function buildQueryHref(
 }
 
 /**
+ * 클라이언트에서 필터·정렬을 연속 조작할 때 `useSearchParams()`의 비동기 transition 커밋 전
+ * 오래된 쿼리를 덮어쓰지 않도록 `window.location.search`를 우선 읽는다.
+ * SSR·테스트 환경(`window.location.search` 미정의)에서는 전달받은 `fallback`을 쓴다.
+ */
+export function currentQuerySource(fallback: QuerySource): QuerySource {
+  if (typeof window !== 'undefined' && typeof window.location?.search === 'string') {
+    return new URLSearchParams(window.location.search)
+  }
+  return fallback
+}
+
+/**
  * 현재 히스토리 항목의 URL을 서버 재요청 없이 교체한다(탭·필터 전환용).
  *
  * Next.js 16 App Router는 `window.history.replaceState`를 패치해 `useSearchParams()`와 동기화한다.

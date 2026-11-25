@@ -15,7 +15,7 @@ import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import { buildQueryHref, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import {
   MedalIcon,
   MagicBookIcon,
@@ -644,7 +644,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
     setVisibleCount(PAGE_SIZE) // 탭 전환 시 페이지네이션 초기화
     // history를 쌓지 않고(replaceUrlQuery) 서버 재요청 없이 새로고침·링크 공유·상세에서 돌아올 때 같은 필터를 유지한다
     replaceUrlQuery(
-      buildQueryHref(pathname, searchParams, { [FEED_FILTER_QUERY_KEY]: tab === DEFAULT_FILTER ? null : tab }, window.location.hash),
+      buildQueryHref(pathname, currentQuerySource(searchParams), { [FEED_FILTER_QUERY_KEY]: tab === DEFAULT_FILTER ? null : tab }, window.location.hash),
     )
   }
 

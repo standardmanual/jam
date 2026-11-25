@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { buildQueryHref, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -30,6 +30,7 @@ interface Props {
 
 type FilterTab = 'all' | PolicyType
 const FILTER_TABS: readonly FilterTab[] = ['all', 'admin_link', 'code_constant', 'ticket_decision', 'pre_launch_pending']
+const SEARCH_URL_DEBOUNCE_MS = 250
 
 export function PolicyDashboardClient({
   initialPolicies,
@@ -38,28 +39,48 @@ export function PolicyDashboardClient({
 }: Props) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const searchKey = searchParams.toString()
   const queryTab = readEnumParam(searchParams, 'tab', FILTER_TABS, 'all')
   const queryQ = readSingleParam(searchParams, 'q') ?? ''
 
   const [policies] = useState<readonly PolicyItem[]>(initialPolicies)
   // 값은 읽어서 보여 주기만 한다. 바꾸는 일은 카드의 링크가 이어 주는 설정 화면에서 한다.
   const liveValues = initialLiveValues
-  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
+  const [prevQueryTab, setPrevQueryTab] = useState(queryTab)
   const [searchQuery, setSearchQuery] = useState(() => queryQ)
   const [selectedTab, setSelectedTab] = useState<FilterTab>(() => queryTab)
   const [collapsedChapters, setCollapsedChapters] = useState<Record<number, boolean>>({})
 
-  if (prevSearchKey !== searchKey) {
-    setPrevSearchKey(searchKey)
+  // 탭은 주소 변경(뒤로가기 등)에 즉시 동기화한다. 검색어는 연속 타이핑·한글 IME 조합 충돌을 막기 위해
+  // 아래 popstate 리스너로만 뒤로가기 복원을 받고, 입력 중에는 디바운스로 주소에 기록한다.
+  if (prevQueryTab !== queryTab) {
+    setPrevQueryTab(queryTab)
     setSelectedTab(queryTab)
-    setSearchQuery(queryQ)
   }
+
+  useEffect(() => {
+    const onPopState = () => {
+      const nextQ = new URLSearchParams(window.location.search).get('q') ?? ''
+      setSearchQuery(nextQ)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   const updateUrl = (updates: Record<string, string | null>) => {
     const hash = typeof window !== 'undefined' ? window.location.hash : ''
-    replaceUrlQuery(buildQueryHref(pathname, searchParams, updates, hash))
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, hash))
   }
+
+  useEffect(() => {
+    const currentUrlQ = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('q') ?? '') : ''
+    const nextQ = searchQuery.trim() ? searchQuery : ''
+    if (currentUrlQ === nextQ) return
+    const timer = window.setTimeout(() => {
+      const hash = window.location.hash
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { q: nextQ || null }, hash))
+    }, SEARCH_URL_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [pathname, searchParams, searchQuery])
 
   const handleTabChange = (next: FilterTab) => {
     setSelectedTab(next)
@@ -68,7 +89,8 @@ export function PolicyDashboardClient({
 
   const handleSearchChange = (next: string) => {
     setSearchQuery(next)
-    updateUrl({ q: next.trim() ? next : null })
+    // 지우기 버튼 등으로 즉시 비울 때는 디바운스를 기다리지 않고 쿼리에서 바로 뺀다
+    if (!next.trim()) updateUrl({ q: null })
   }
 
   const handleResetFilters = () => {

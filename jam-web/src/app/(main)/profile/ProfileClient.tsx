@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
-import { buildQueryHref, pushUrlQuery, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, pushUrlQuery, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import TopNav from '@/components/ui/TopNav'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
@@ -142,7 +142,7 @@ export default function ProfileClient({
   const queryTab: TabKey | null = isValidTab(rawQueryTab, isOwnProfile) ? rawQueryTab : null
   const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
   const [tabView, setTabView] = useState<TabKey | null>(() => queryTab)
-  const [tabLoading, setTabLoading] = useState(false)
+  const [loadingTab, setLoadingTab] = useState<TabKey | null>(null)
   const [followersData, setFollowersData] = useState<FollowUser[] | null>(null)
   const [followingData, setFollowingData] = useState<FollowUser[] | null>(null)
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
@@ -223,52 +223,47 @@ export default function ProfileClient({
   // 유효 값이 있으면 목록. 타인의 `points`는 무효라 기본뷰다.
   const isTabView = tabView !== null
   const activeTab: TabKey = tabView ?? 'followers'
+  const isTabLoading = loadingTab !== null && loadingTab === tabView
 
   // 구 해시 링크(/[username]#followers|following|points) 진입 시 ?tab= 정본으로 정규화한다.
   // replaceUrlQuery가 useSearchParams()를 갱신하므로 위 searchKey 동기화가 tabView를 자동으로 맞춘다.
   useEffect(() => {
     const rawHash = window.location.hash.slice(1)
     if (!queryTab && isValidTab(rawHash, isOwnProfile)) {
-      replaceUrlQuery(buildQueryHref(pathname, searchParams, { [PROFILE_TAB_QUERY_KEY]: rawHash }, ''))
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: rawHash }, ''))
     }
     // 마운트 시 구 해시 1회 정규화만 수행한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── 탭 데이터 로드 (마운트·뒤로가기·전환 포함) ────────────────────────────
+  // StrictMode 이중 이펙트·빠른 탭 전환·네트워크 실패 시 영구 로딩/빈 화면에 고착되지 않도록
+  // fetchedRef는 응답이 정상 반영될 때만 기록하고, 취소 시 로딩 상태를 안전하게 정리한다.
   useEffect(() => {
     if (!tabView || tabView === 'points') return
     if (fetchedRef.current.has(tabView)) return
     let cancelled = false
-    fetchedRef.current.add(tabView)
-    setTabLoading(true)
+    const targetTab = tabView
     const load = async () => {
+      setLoadingTab(targetTab)
       try {
-        if (tabView === 'followers') {
-          const res = await fetch(`/api/users/${username}/followers`)
-          const json = await res.json()
-          if (cancelled) return
-          const users: FollowUser[] = json.users ?? []
-          setFollowersData(users)
-          setListFollowStates(prev => {
-            const next = { ...prev }
-            for (const u of users) next[u.id] = u.isFollowing
-            return next
-          })
-        } else if (tabView === 'following') {
-          const res = await fetch(`/api/users/${username}/following`)
-          const json = await res.json()
-          if (cancelled) return
-          const users: FollowUser[] = json.users ?? []
-          setFollowingData(users)
-          setListFollowStates(prev => {
-            const next = { ...prev }
-            for (const u of users) next[u.id] = u.isFollowing
-            return next
-          })
-        }
+        const res = await fetch(`/api/users/${username}/${targetTab}`)
+        if (!res.ok || cancelled) return
+        const json = await res.json()
+        if (cancelled) return
+        const users: FollowUser[] = json.users ?? []
+        fetchedRef.current.add(targetTab)
+        if (targetTab === 'followers') setFollowersData(users)
+        else setFollowingData(users)
+        setListFollowStates(prev => {
+          const next = { ...prev }
+          for (const u of users) next[u.id] = u.isFollowing
+          return next
+        })
+      } catch {
+        // 네트워크 실패 시 fetchedRef에 남기지 않아 재진입 시 다시 불러올 수 있게 한다
       } finally {
-        if (!cancelled) setTabLoading(false)
+        if (!cancelled) setLoadingTab(cur => (cur === targetTab ? null : cur))
       }
     }
     void load()
@@ -281,14 +276,14 @@ export default function ProfileClient({
   const handleTabClick = (tab: TabKey) => {
     if (tabView === tab) return
     setTabView(tab)
-    pushUrlQuery(buildQueryHref(pathname, searchParams, { [PROFILE_TAB_QUERY_KEY]: tab }, ''))
+    pushUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: tab }, ''))
   }
 
   // 헤더의 아바타·아이디 클릭 시 기본 프로필 화면으로 복귀한다
   const clearProfileTab = () => {
     if (tabView !== null || (typeof window !== 'undefined' && window.location.hash)) {
       setTabView(null)
-      replaceUrlQuery(buildQueryHref(pathname, searchParams, { [PROFILE_TAB_QUERY_KEY]: null }, ''))
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: null }, ''))
     }
   }
 
@@ -650,7 +645,7 @@ export default function ProfileClient({
         {isTabView && (
           <section>
             <div
-              className={['t-skel', 'jam-skel-flow', tabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
+              className={['t-skel', 'jam-skel-flow', isTabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
               style={{ '--jam-skel-min-h': '280px' } as CSSProperties}
             >
               <div className="t-skel-skeleton is-pulsing flex flex-col gap-2 content-start" aria-hidden="true">
@@ -658,8 +653,8 @@ export default function ProfileClient({
                   <div key={i} className="h-[72px] rounded-2xl bg-background-inverse/15" />
                 ))}
               </div>
-              <div className="t-skel-content" aria-busy={tabLoading}>
-                {tabLoading ? null : renderTabContent()}
+              <div className="t-skel-content" aria-busy={isTabLoading}>
+                {isTabLoading ? null : renderTabContent()}
               </div>
             </div>
           </section>

@@ -140,7 +140,12 @@ export function installAppHistoryTracker(): () => void {
 
   const onPopState = (event: PopStateEvent) => {
     const idx = readNavIdx(event.state ?? window.history.state)
-    currentIdx = idx ?? 0
+    if (idx !== null) {
+      currentIdx = idx
+    } else if (!window.location.hash) {
+      // 해시 앵커 이동(#chapter-N 등)은 state가 null이지만 같은 앱 화면 내부 이동이므로 깊이를 유지한다
+      currentIdx = 0
+    }
   }
 
   window.addEventListener('popstate', onPopState)

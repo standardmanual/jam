@@ -48,7 +48,7 @@ function createFakeBrowser(opts: {
 
   const fakeWindow = {
     history,
-    location: { origin: opts.origin ?? 'https://jam.example.com' },
+    location: { origin: opts.origin ?? 'https://jam.example.com', hash: '' },
     addEventListener(type: string, fn: (event: unknown) => void) {
       if (!listeners.has(type)) listeners.set(type, new Set())
       listeners.get(type)!.add(fn)
@@ -145,6 +145,20 @@ describe('installAppHistoryTracker · goBackOrPush', () => {
     // 뒤로가기(popstate로 0 복원)
     win.dispatchPopState({ __NA: true, [JAM_NAV_IDX_KEY]: 0 })
     expect(canGoBackInApp()).toBe(false)
+
+    cleanup()
+  })
+
+  it('해시 앵커 이동으로 state가 null인 popstate가 와도 해시가 있으면 앱 히스토리 깊이를 유지한다', () => {
+    const win = createFakeBrowser({ initialState: { __NA: true }, historyLength: 1 })
+    const cleanup = installAppHistoryTracker()
+
+    win.history.pushState({ __NA: true }, '', '/admin/policy-dashboard')
+    expect(canGoBackInApp()).toBe(true)
+
+    win.location.hash = '#chapter-3'
+    win.dispatchPopState(null)
+    expect(canGoBackInApp()).toBe(true)
 
     cleanup()
   })

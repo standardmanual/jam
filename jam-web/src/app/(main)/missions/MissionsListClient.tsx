@@ -18,7 +18,7 @@ import { PointText } from '@ds/components/patterns/PointText'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 import { missionStatusKind } from './missionStatusKind'
-import { buildQueryHref, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
 
 export interface MissionListItem extends MissionRow {
   joined: boolean
@@ -235,7 +235,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
   }
 
   const updateUrl = (updates: Record<string, string | null>) => {
-    replaceUrlQuery(buildQueryHref(pathname, searchParams, updates, window.location.hash))
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, window.location.hash))
   }
 
   // 탭·정렬·필터 전환은 history를 쌓지 않고(replaceUrlQuery) 서버 재요청 없이 주소만 갱신한다. 기본값은 쿼리에서 뺀다.

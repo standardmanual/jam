@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { useRouter } from 'next/navigation'
 import { goBackOrPush } from '@/lib/appHistory'
 import { IconAlertTriangle } from '@tabler/icons-react'
@@ -261,7 +261,7 @@ export function OpsPatternForm(props: OpsPatternFormProps) {
             </Button>
           ) : (
             <Button asChild variant="outline">
-              <Link href={cancelHref}>{PATTERN_FORM_CANCEL_LABEL}</Link>
+              <AdminBackLink fallbackHref={cancelHref}>{PATTERN_FORM_CANCEL_LABEL}</AdminBackLink>
             </Button>
           )}
         </div>

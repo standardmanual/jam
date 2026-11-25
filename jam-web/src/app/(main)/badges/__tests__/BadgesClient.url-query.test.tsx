@@ -98,4 +98,13 @@ describe('BadgesClient 탭·필터 URL 쿼리 동기화', () => {
     const src = readFileSync(path.resolve(__dirname, '../BadgesClient.tsx'), 'utf8')
     expect(src).not.toContain('clearHashOnNavigate')
   })
+
+  it('구 해시(#collection)가 있어도 첫 렌더(하이드레이션)는 SSR과 동일하게 activity로 그려 불일치가 없다', () => {
+    vi.stubGlobal('window', {
+      location: { hash: '#collection' },
+      history: { state: { __NA: true, __jamNavIdx: 0 }, replaceState },
+    })
+    render()
+    expect(tabs.value).toBe('activity')
+  })
 })

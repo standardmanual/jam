@@ -15,6 +15,7 @@ const nav = vi.hoisted(() => ({
   query: '',
 }))
 const tabs = vi.hoisted(() => ({ onChange: null as null | ((key: string) => void), value: '' }))
+const selects = vi.hoisted(() => [] as Array<{ value: string; onChange: (e: { target: { value: string } }) => void }>)
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: nav.push, replace: nav.replace, back: vi.fn(), prefetch: vi.fn() }),
@@ -29,6 +30,12 @@ vi.mock('@/components/ui/SlidingTabs', () => ({
     tabs.onChange = props.onChange
     tabs.value = props.value
     return <div data-testid="tabs" data-value={props.value} />
+  },
+}))
+vi.mock('@ds/components/forms/Select', () => ({
+  Select: (props: { value: string; onChange: (e: { target: { value: string } }) => void }) => {
+    selects.push(props)
+    return <select data-value={props.value} />
   },
 }))
 
@@ -47,6 +54,7 @@ describe('미션 목록 탭 URL 반영', () => {
     nav.query = ''
     tabs.onChange = null
     tabs.value = ''
+    selects.length = 0
     replaceState = vi.fn()
     vi.stubGlobal('window', {
       location: { hash: '' },
@@ -87,5 +95,18 @@ describe('미션 목록 탭 URL 반영', () => {
     render()
     tabs.onChange?.('ongoing')
     expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/missions?sort=ending_soon&activity=running')
+  })
+
+  it('?sort=·?activity= 쿼리를 드롭다운 초기값으로 읽고 변경 시 replaceState로 쓴다', () => {
+    nav.query = 'tab=joined&sort=ending_soon&activity=running'
+    render()
+    expect(selects[0]?.value).toBe('ending_soon')
+    expect(selects[1]?.value).toBe('running')
+
+    selects[0]?.onChange({ target: { value: 'oldest' } })
+    expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/missions?tab=joined&sort=oldest&activity=running')
+
+    selects[1]?.onChange({ target: { value: 'all' } })
+    expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/missions?tab=joined&sort=ending_soon')
   })
 })

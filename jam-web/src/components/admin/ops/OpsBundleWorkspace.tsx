@@ -295,7 +295,7 @@ export function OpsBundleWorkspace({
       {hasNotices && (
         <div className="space-y-3">
           <OpsFormatErrorSummary errors={bundleFormatErrors} onSelectItem={selectByPosition} />
-          <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => setFilter('balance')} />
+          <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => updateFilter('balance')} />
           {activeTrend && (
             <Alert>
               <IconFilter className="size-4" aria-hidden="true" />

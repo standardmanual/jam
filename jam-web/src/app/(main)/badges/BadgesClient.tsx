@@ -15,7 +15,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
-import { buildQueryHref, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 
 type TabKey = 'activity' | 'checkin' | 'collection'
 const VALID_TABS = new Set<string>(['activity', 'checkin', 'collection'])
@@ -106,15 +106,9 @@ export default function BadgesClient({
 
   const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    // 쿼리(?tab=)가 우선한다 — 서버 렌더·알림 착지·뒤로가기 복원 모두 쿼리를 정본으로 쓴다(티켓 20261125_1136)
-    if (queryTab) return queryTab
-    const fromInitial = normalizeTab(initialTab)
-    if (fromInitial) return fromInitial
-    if (typeof window !== 'undefined') {
-      const fromHash = normalizeTab(window.location.hash.slice(1))
-      if (fromHash) return fromHash
-    }
-    return DEFAULT_TAB
+    // SSR과 클라이언트 첫 하이드레이션이 동일하도록 쿼리(?tab=)와 initialTab만 읽는다.
+    // 구 해시 링크(/badges#collection 등)는 아래 마운트 이펙트에서 쿼리로 정규화한다(티켓 20261125_1136).
+    return queryTab ?? normalizeTab(initialTab) ?? DEFAULT_TAB
   })
   const [activityFilter, setActivityFilter] = useState<ActivityFilterValue | 'all'>(() => queryActivity)
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>(() => queryRarity)
@@ -140,14 +134,14 @@ export default function BadgesClient({
     if (!fromHash) return
     const nextTab = queryTab ?? fromHash
     replaceUrlQuery(
-      buildQueryHref(pathname, searchParams, { tab: nextTab === DEFAULT_TAB ? null : nextTab }, ''),
+      buildQueryHref(pathname, currentQuerySource(searchParams), { tab: nextTab === DEFAULT_TAB ? null : nextTab }, ''),
     )
     // 마운트 시 구 해시 1회 정규화만 수행한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const updateUrl = (updates: Record<string, string | null>) => {
-    replaceUrlQuery(buildQueryHref(pathname, searchParams, updates, ''))
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, ''))
   }
 
   const handleTabChange = (key: TabKey) => {
