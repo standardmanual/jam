@@ -56,9 +56,15 @@ describe('InventoryGrid 잠긴 개체 (티켓 20261018_0054 2회)', () => {
 describe('InventoryGrid 빈 슬롯 (티켓 20261114_1040 → 20261125_1444 치수 통일)', () => {
   it('빈 슬롯은 BadgeGridCardPlaceholder로 카드 면만 그리고 안쪽 회색 상자와 «+»는 없다', () => {
     const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" emptySlots={2} />)
-    expect(html.match(/flex flex-col items-center rounded-2xl p-3 overflow-hidden bg-card-bg opacity-30/g)).toHaveLength(2)
+    // 면은 채운 카드와 같은 회색(--background-secondary)을 옅게 깐다(티켓 20261125_1649)
+    const placeholders = html.match(/<div class="flex flex-col items-center rounded-2xl p-3 overflow-hidden bg-background-secondary opacity-30"[\s\S]*?<div class="h-6"><\/div><\/div><\/div>/g) ?? []
+    expect(placeholders).toHaveLength(2)
     expect(html).not.toContain('>+<')
-    expect(html).not.toContain('bg-background-secondary')
+    // 빈 슬롯 안쪽에는 회색 상자가 없다 — 썸네일 자리는 면 없는 정사각형뿐이다
+    for (const p of placeholders) {
+      expect(p).toContain('<div class="w-full aspect-square rounded-2xl"></div>')
+      expect(p.match(/bg-/g)).toHaveLength(1)
+    }
   })
 
   it('빈 슬롯도 채운 카드와 동일한 풀폭 aspect-square·text-sm 기하를 유지한다', () => {

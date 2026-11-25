@@ -327,10 +327,11 @@ export default function BadgeGridCard({
 /**
  * 인벤토리 빈 슬롯 플레이스홀더 — 일반 `BadgeGridCard`와 동일한 썸네일(`w-[calc(100%+0.75rem)] aspect-square`)·
  * 이름(`text-sm font-bold`)·칩(`h-6`) 기하를 공유해 채운 카드와 행 높이가 정확히 일치한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
+ * 면은 채운 카드와 같은 `--background-secondary`를 옅게(30%) 깐다 — 카드 면이 회색 단색으로 바뀐 티켓 20261125_1649와 맞춘다.
  */
 export function BadgeGridCardPlaceholder({ className = '' }: { className?: string }) {
   return (
-    <div className={`${BASE} bg-card-bg opacity-30${className ? ` ${className}` : ''}`} aria-hidden="true">
+    <div className={`${BASE} bg-background-secondary opacity-30${className ? ` ${className}` : ''}`} aria-hidden="true">
       <div className="relative w-[calc(100%+0.75rem)] -mt-1.5">
         <div className="w-full aspect-square rounded-2xl" />
       </div>
