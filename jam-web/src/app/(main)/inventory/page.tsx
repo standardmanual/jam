@@ -84,7 +84,7 @@ export default async function InventoryPage() {
             같은 날 가로 중앙으로 옮기고 레시피 상세의 믹스하기 버튼과 같은 가차머신 아이콘을 글자 앞에 붙였다(사용자 지시, 티켓 20261110_1757).
             20261114: 버튼이 페이지 폭을 가득 채우도록 늘렸다(사용자 지시, 티켓 20261114_1544) */}
         <div className="mt-3">
-          <Button href="/combine" variant="secondary" fullWidth className="bg-surface">
+          <Button href="/combine" variant="secondary" fullWidth className="bg-surface!">
             <MixingBowlIcon className="w-5 h-5 shrink-0" />
             {d.inventory.combineButton}
           </Button>

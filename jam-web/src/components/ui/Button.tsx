@@ -213,10 +213,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     if (href && !isDisabled) {
       const isExternalHref = external || /^(https?:|mailto:)/.test(href) || href === '#'
+      const linkAriaLabel = props['aria-label']
+      const linkId = props.id
       if (isExternalHref) {
         return (
           <a
+            id={linkId}
             href={href}
+            aria-label={linkAriaLabel}
             target={external ? '_blank' : undefined}
             rel={external ? 'noopener noreferrer' : undefined}
             className={classes}
@@ -228,7 +232,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       }
       return (
         <Link
+          id={linkId}
           href={href}
+          aria-label={linkAriaLabel}
           className={classes}
           style={Object.keys(mergedStyle).length > 0 ? mergedStyle : undefined}
         >

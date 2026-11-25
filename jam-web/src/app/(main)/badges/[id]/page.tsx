@@ -448,7 +448,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               {/* action-section */}
               <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
                 {badgeRow.patch_available && (
-                  <Button href="#" external variant="secondary" fullWidth className="bg-surface">
+                  <Button href="#" external variant="secondary" fullWidth className="bg-surface!">
                     {d.badges.physicalPatchButton} ↗
                   </Button>
                 )}
@@ -546,7 +546,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <div className="relative z-10 flex flex-col gap-5 pt-3 px-4 pb-6">
               {/* 실물 패치 버튼 */}
               {badgeRow.patch_available && (
-                <Button href="#" external variant="secondary" fullWidth className="bg-surface">
+                <Button href="#" external variant="secondary" fullWidth className="bg-surface!">
                   {d.badges.physicalPatchButton} ↗
                 </Button>
               )}

@@ -18,7 +18,7 @@ export default function PoiMapButton({ poiName }: PoiMapButtonProps) {
       external
       variant="secondary"
       fullWidth
-      className="bg-surface text-center"
+      className="bg-surface! text-center"
     >
       {d.badges.viewOnMapButton} ↗
     </Button>

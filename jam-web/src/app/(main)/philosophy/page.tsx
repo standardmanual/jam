@@ -270,7 +270,7 @@ export default function PhilosophyPage() {
               여기서 답을 찾지 못했다면 이메일로 바로 물어보세요. 확인하는 대로 답장
               드릴게요.
             </p>
-            <Button href="mailto:sihyunrr@gmail.com" variant="primary" className="self-start">
+            <Button href="mailto:sihyunrr@gmail.com" variant="primary" surface="dark" className="self-start">
               이메일 보내기
             </Button>
           </div>
