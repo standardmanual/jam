@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "next": {
+    "entry": [
+      "src/app/**/{page,layout,route,loading,error,not-found,template,default,global-error}.{ts,tsx}",
+      "src/middleware.ts",
+      "src/proxy.ts",
+      "next.config.*"
+    ]
+  },
+  "storybook": {
+    "entry": [".storybook/{main,preview}.{ts,tsx}", "**/*.stories.{js,jsx,ts,tsx,mdx}"]
+  },
+  "vitest": {
+    "config": ["vitest.config.ts"],
+    "entry": ["**/*.{test,spec}.{ts,tsx,js,mjs}"]
+  },
+  "entry": ["scripts/*.{mjs,js,ts}"],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "design-system/**/*.{js,jsx,ts,tsx}",
+    "scripts/**/*.{mjs,js,ts}"
+  ],
+  "ignore": ["public/**", "scripts/asset-generator/**", "scripts/badge-image-gen/**", "scripts/recraft/**","scripts/jam2-content/**"]
+}
