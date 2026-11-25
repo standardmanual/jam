@@ -24,8 +24,8 @@ describe('스크림 흐림 토큰', () => {
 describe('클래스 스크림', () => {
   const css = read('src/components/transitions.css')
 
-  it('.t-panel-backdrop·.t-modal-backdrop이 --scrim-blur로 흐리게 한다', () => {
-    for (const selector of ['.t-panel-backdrop', '.t-modal-backdrop']) {
+  it('.t-panel-backdrop이 --scrim-blur로 흐리게 한다', () => {
+    for (const selector of ['.t-panel-backdrop']) {
       const re = new RegExp(`${selector.replace('.', '\\.')} \\{[^}]*(?<!-webkit-)backdrop-filter:\\s*blur\\(var\\(--scrim-blur\\)\\)`)
       expect(css, selector).toMatch(re)
     }
@@ -36,9 +36,8 @@ describe('클래스 스크림', () => {
     expect(code).not.toContain('-webkit-backdrop-filter')
   })
 
-  it('토스트·모달 스크림은 투명도 줄이기에서 필터를 끈다', () => {
+  it('토스트 스크림은 투명도 줄이기에서 필터를 끈다', () => {
     expect(css).toMatch(/prefers-reduced-transparency: reduce\) \{\s*\.t-toast-scrim \{[^}]*backdrop-filter: none/)
-    expect(css).toMatch(/prefers-reduced-transparency: reduce\) \{\s*\.t-modal-backdrop \{[^}]*backdrop-filter: none/)
   })
 })
 

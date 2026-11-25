@@ -16,16 +16,13 @@
   /* 글자 크기와 행간 쌍 (피그마 dimensions/font·leading, Tailwind 기본 단계와 같다).
      이름과 값 표기를 Tailwind 4 기본 테마와 같게 둔다(rem, 행간은 글자 크기 대비 비율).
      text-N 유틸리티와 인라인 style이 같은 변수를 읽고, 어드민의 text-sm 등도 달라지지 않는다.
-     행간 px 값: xs 16 · sm 20 · base 24 · lg 28 · xl 28 · 2xl 32 · 3xl 36 · 4xl 40 · 5xl 48 */
+     행간 px 값: xs 16 · sm 20 · base 24 · lg 28 · xl 28 · 2xl 32 */
   --text-xs: 0.75rem;    --text-xs--line-height: calc(1 / 0.75);
   --text-sm: 0.875rem;   --text-sm--line-height: calc(1.25 / 0.875);
   --text-base: 1rem;     --text-base--line-height: calc(1.5 / 1);
   --text-lg: 1.125rem;   --text-lg--line-height: calc(1.75 / 1.125);
   --text-xl: 1.25rem;    --text-xl--line-height: calc(1.75 / 1.25);
   --text-2xl: 1.5rem;    --text-2xl--line-height: calc(2 / 1.5);
-  --text-3xl: 1.875rem;  --text-3xl--line-height: calc(2.25 / 1.875);
-  --text-4xl: 2.25rem;   --text-4xl--line-height: calc(2.5 / 2.25);
-  --text-5xl: 3rem;      --text-5xl--line-height: 1;
 
   /* 미션 상황 화면 카드 제목 전용(티켓 20261111_2049). 시안이 21px인데 위 눈금에 21px이 없어 이 화면만 따로 둔다.
      다른 화면에 쓰지 않고, 위 --text-* 눈금은 바꾸지 않는다. 행간 1.5 = 31.5px */
