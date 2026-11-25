@@ -42,7 +42,7 @@ const config: StorybookConfig = {
       publicDir: false,
       resolve: {
         alias: {
-          // @ds/components/buttons/Button 형태로 import 가능
+          // @ds/tokens·@ds/foundations 형태로 import 가능
           '@ds': path.resolve(__dirname, '../design-system'),
           // 티켓 20261126_0002: MODULAR 컴포넌트가 서비스 정본(src/components/ui)을 `@/components/ui/<이름>`으로 가져온다
           '@': path.resolve(__dirname, '../src'),

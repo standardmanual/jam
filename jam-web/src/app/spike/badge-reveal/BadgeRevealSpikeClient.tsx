@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { BadgeRevealCarousel } from '@/components/ui/BadgeRevealCarousel'
-import { Button } from '@ds/components/buttons/Button'
+import Button from '@/components/ui/Button'
 import { d, t } from '@/lib/i18n'
 
 /**
@@ -181,6 +181,7 @@ export default function BadgeRevealSpikeClient({
             <Button
               key={o.ms}
               variant={delayMs === o.ms ? 'primary' : 'secondary'}
+              surface="sub"
               onClick={() => setDelayMs(o.ms)}
             >
               {o.label}
@@ -198,6 +199,7 @@ export default function BadgeRevealSpikeClient({
             <Button
               key={o.key}
               variant={edge === o.key ? 'primary' : 'secondary'}
+              surface="sub"
               onClick={() => setEdge(o.key)}
             >
               {o.label}
@@ -212,6 +214,7 @@ export default function BadgeRevealSpikeClient({
             <Button
               key={n}
               variant="primary"
+              surface="sub"
               loading={pendingCount === n}
               disabled={pendingCount !== null && pendingCount !== n}
               onClick={() => run(n)}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@ds/components/buttons/Button';
+import Button from './Button';
 import type { ReactNode, CSSProperties, HTMLAttributes } from 'react';
 
 export interface EmptyStateAction {
@@ -103,7 +103,7 @@ export function EmptyState({
       )}
 
       {action && (
-        <Button variant="primary" onClick={action.onClick}>
+        <Button variant="primary" surface="sub" onClick={action.onClick}>
           {action.label}
         </Button>
       )}

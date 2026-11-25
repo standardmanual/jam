@@ -5,8 +5,8 @@
  * 이 짝이 어긋나면 글자가 배경과 같은 색이 되어 사라진다(실측: 1.00~3.37:1).
  *
  * 확인하는 것: ① 서비스 Button `sub`의 글자가 accent 면 위 --accent-foreground, 밝은 면 위 --foreground다
- * ② MODULAR Button·IconButton `surface="dark"`(반전 면 위)의 글자·아이콘이 --snow다(primary는 --snow 면이라 글자 --foreground)
- * 변형별 면·글자·테두리 토큰 전체와 서비스·MODULAR 일치는 `buttonVariantPairs.test.tsx`가 맡는다(티켓 20261015_2133).
+ * ② IconButton `surface="dark"`(반전 면 위)의 아이콘이 --snow다
+ * 변형별 면·글자·테두리 토큰 전체와 Button의 dark 값은 `buttonVariantPairs.test.tsx`가 맡는다(티켓 20261015_2133).
  *
  * 저장소에 jsdom이 없어(vitest.config.ts `environment: 'node'`) 서버 렌더(`renderToStaticMarkup`)로 확인한다.
  */
@@ -14,7 +14,6 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import ServiceButton from '../Button'
-import { Button as DsButton } from '@ds/components/buttons/Button'
 import { IconButton } from '@/components/ui/IconButton'
 
 describe('서비스 Button — sub 면의 글자색 쌍', () => {
@@ -39,24 +38,7 @@ describe('서비스 Button — sub 면의 글자색 쌍', () => {
   })
 })
 
-describe('MODULAR Button·IconButton — surface="dark"는 반전 면 위 --snow', () => {
-  it('Button dark의 primary는 --snow 면 위 --foreground 글자다(반전 면 위 알약 윤곽)', () => {
-    const html = renderToStaticMarkup(<DsButton surface="dark" variant="primary">확인</DsButton>)
-    expect(html).toContain('background:var(--snow)')
-    expect(html).toContain('color:var(--foreground)')
-    expect(html).not.toContain('background:var(--background-inverse)')
-  })
-
-  it('Button dark의 secondary·ghost 글자가 --snow다', () => {
-    for (const variant of ['secondary', 'ghost'] as const) {
-      const html = renderToStaticMarkup(
-        <DsButton surface="dark" variant={variant}>확인</DsButton>
-      )
-      expect(html).toContain('color:var(--snow)')
-      expect(html).not.toContain('color:var(--background-inverse)')
-    }
-  })
-
+describe('IconButton — surface="dark"는 반전 면 위 --snow', () => {
   it('IconButton dark의 아이콘이 --snow, light는 --foreground다', () => {
     const dark = renderToStaticMarkup(<IconButton icon="close" label="닫기" surface="dark" />)
     expect(dark).toContain('color:var(--snow)')

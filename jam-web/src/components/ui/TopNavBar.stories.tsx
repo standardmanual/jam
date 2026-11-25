@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { TopNavBar } from './TopNavBar';
 import { IconButton } from './IconButton';
-import { Button } from '@ds/components/buttons/Button';
+import Button from './Button';
 import { BellIcon } from './icons';
 
 // 20260901_1926: props API를 서비스 `src/components/ui/TopNav.tsx` 기준으로 재정렬
@@ -83,7 +83,7 @@ function DemoLogo() {
 }
 
 function DemoSyncButton() {
-  return <Button variant="secondary" size="sm">동기화</Button>;
+  return <Button variant="secondary" size="xs">동기화</Button>;
 }
 
 function DemoAvatar() {

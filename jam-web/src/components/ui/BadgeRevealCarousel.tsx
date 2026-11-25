@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RarityBadge, getRarityLabel } from '@/components/ui/RarityBadge';
 import { BadgeLevelChip } from '@/components/ui/BadgeLevelChip';
 import { IconButton } from './IconButton';
-import { Button } from '@ds/components/buttons/Button';
+import Button from './Button';
 import { LockedTile } from '@/components/ui/LockedTile';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Rarity } from '@/components/ui/RarityBadge';

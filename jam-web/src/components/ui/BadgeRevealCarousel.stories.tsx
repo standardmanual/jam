@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
-import { Button } from '@ds/components/buttons/Button';
+import Button from './Button';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
 const meta: Meta<typeof BadgeRevealCarousel> = {
@@ -508,7 +508,7 @@ function SelectModeHarness({
           }}
         >
           {/* 푸터에는 보이는 문구 없이 «N개 담기» 버튼만 둔다(티켓 20261112_1629). 서비스는 선택 개수를 sr-only 라이브 리전으로만 알린다 */}
-          <Button fullWidth disabled={selected.length !== need || submitting} loading={submitting}>
+          <Button surface="sub" fullWidth disabled={selected.length !== need || submitting} loading={submitting}>
             {submitting ? '담는 중' : `${need}개 담기`}
           </Button>
         </div>
