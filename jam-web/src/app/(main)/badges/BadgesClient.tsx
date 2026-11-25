@@ -137,7 +137,7 @@ export default function BadgesClient({
       buildQueryHref(pathname, currentQuerySource(searchParams), { tab: nextTab === DEFAULT_TAB ? null : nextTab }, ''),
     )
     // 마운트 시 구 해시 1회 정규화만 수행한다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 시 1회만 실행해야 하므로 의존성을 비운다
   }, [])
 
   const updateUrl = (updates: Record<string, string | null>) => {

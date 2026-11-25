@@ -233,7 +233,7 @@ export default function ProfileClient({
       replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: rawHash }, ''))
     }
     // 마운트 시 구 해시 1회 정규화만 수행한다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 시 1회만 실행해야 하므로 의존성을 비운다
   }, [])
 
   // ── 탭 데이터 로드 (마운트·뒤로가기·전환 포함) ────────────────────────────
