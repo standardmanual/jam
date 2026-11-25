@@ -1,8 +1,8 @@
 /**
- * MODULAR `LabelChip`(`@/components/ui/LabelChip`) 「픽셀 동일」 계약 테스트
+ * `LabelChip`(`@/components/ui/LabelChip`) 「픽셀 동일」 계약 테스트
  * (티켓 20261001_1204, 상위 20260930_1453 b0).
  *
- * `design-system/components/**` 의 Story `play` 단언은 CI에서 실행되지 않는다(vitest의
+ * 컴포넌트 Story의 `play` 단언은 CI에서 실행되지 않는다(vitest의
  * addon-vitest 연동이 티켓 20260906_1348에서 제거됨 — `vitest.config.ts` 머리말). 그래서
  * 「교체 전 Tailwind 클래스와 계산값이 같다」는 보증을 여기서 한다.
  *

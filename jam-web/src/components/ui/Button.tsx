@@ -18,7 +18,7 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * surface = "이 버튼이 놓인 배경".
  * - `main`(기본): primary는 --background-inverse 채움 + --snow 글자(검정 알약).
  * - `sub`: primary는 --accent 채움 + --accent-foreground 글자(밝은 배경 위 기본 primary)
- * - `dark`: 반전 면(--background-inverse 등 어두운 바탕) 위 전용(어두운 바탕 위 쌍).
+ * - `dark`: 반전 면(--background-inverse 등 어두운 바탕) 위 전용.
  *   primary는 --snow 채움 + --foreground 글자, secondary는 투명 + 1px --snow 테두리 + --snow 글자, ghost는 --snow 글자.
  *
  * `href`를 넘기면 내부 경로는 Next `<Link>`, 외부(`external`·`http(s):`·`mailto:`·`#`)는 `<a>`로 렌더한다.
@@ -32,9 +32,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'gh
 export type ButtonSurface = 'main' | 'sub' | 'dark'
 /**
  * xs: --scale-compact(0.7, design-system/tokens/motion.css) 배율 — 44px 기준 약 31px
- * 최소 높이. 내비게이션 바처럼 세로 공간이 44px로 고정된 조밀한 컨텍스트 전용
- * (20260824_010). 44px 터치 타겟 규칙의
- * 명시적 예외이므로 본문 액션에는 쓰지 않는다.
+ * 최소 높이. 내비게이션 바처럼 세로 공간이 44px로 고정된 조밀한 컨텍스트 전용이다(20260824_010).
+ * 44px 터치 타겟 규칙의 명시적 예외이므로 본문 액션에는 쓰지 않는다.
  */
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 
@@ -65,7 +64,7 @@ const colorClasses: Record<Exclude<ButtonVariant, 'primary'>, string> = {
 const primaryColorClasses: Record<ButtonSurface, string> = {
   main: 'text-snow bg-background-inverse border-transparent', // 검정 알약 유지(사용자 결정 2026-10-16)
   sub: 'text-accent-foreground bg-accent border-transparent', // 밝은 배경 위 primary = accent 알약
-  dark: 'text-foreground bg-snow border-transparent', // 반전 면 위 알약 윤곽(반전 면 위 알약 윤곽)
+  dark: 'text-foreground bg-snow border-transparent', // 반전 면 위 알약 윤곽
 }
 
 const darkColorOverrides: Partial<Record<Exclude<ButtonVariant, 'primary'>, string>> = {
@@ -102,8 +101,8 @@ const sizePadding: Record<ButtonSize, string> = {
 
 // xs는 Tailwind 클래스 우선순위 충돌(px-24/py-13 shapeClasses vs sizePadding)을 피하려고
 // 인라인 style로 강제 적용한다 — 클래스 문자열 순서는 실제 CSS 우선순위를 보장하지 않는다.
-// 치수는 --scale-compact(0.7, design-system/tokens/motion.css)
-// 배율로 md 기준(44px/12px/24px)에서 도출한다(매직 넘버 대신 토큰 계산, 20260824_010).
+// 치수는 --scale-compact(0.7, design-system/tokens/motion.css) 배율로 md 기준(44px/12px/24px)에서
+// 도출한다(매직 넘버 대신 토큰 계산, 20260824_010).
 // 세로 패딩은 1px 테두리 두께를 뺀다(높이 불변).
 const xsStyle: CSSProperties = {
   minHeight: 'calc(44px * var(--scale-compact))',
