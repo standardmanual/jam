@@ -69,7 +69,9 @@
   /* 하단 고정 UI의 기준선 (티켓 20261125_1840).
      --tabbar-bottom: 플로팅 탭바 하단과 화면 아래 끝 사이 간격. 홈 인디케이터가 있으면 그 위로 올리고, 없으면 최소 10px를 둔다.
        TabBar·지도 화면의 하단 계산이 모두 이 값을 읽는다. 값을 바꿀 때는 여기 한 곳만 고친다.
-     --toast-bottom: 토스트가 화면 아래에 붙는 간격. 탭바와 같은 줄에 놓여 토스트가 탭바 자리에 뜬다. */
+     --tabbar-height: 플로팅 탭바 높이(Figma 실측 49px).
+     --toast-bottom: 토스트 아랫면의 화면 아래 간격. 탭바 윗면에서 8px 위다. */
   --tabbar-bottom: max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px));
-  --toast-bottom: var(--tabbar-bottom);
+  --tabbar-height: 49px;
+  --toast-bottom: calc(var(--tabbar-bottom) + var(--tabbar-height) + 8px);
 }

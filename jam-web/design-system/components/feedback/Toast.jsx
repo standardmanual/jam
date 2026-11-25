@@ -24,8 +24,8 @@ const ICONS = {
  * type: 'success' | 'error' | 'info'
  *
  * 위치(20261125_1840): 이 컴포넌트는 한 줄의 겉모양만 그린다. 화면에 놓을 때는 컨테이너를
- * `position: fixed; bottom: var(--toast-bottom)`(tokens/spacing.css)에 두어 화면 아래에 붙인다.
- * 값은 플로팅 탭바의 `--tabbar-bottom`을 따르므로 토스트가 탭바 자리에 뜬다. 숫자를 직접 적지 않는다.
+ * `position: fixed; bottom: var(--toast-bottom)`(tokens/spacing.css)에 둔다.
+ * 값은 플로팅 탭바 윗면에서 8px 위이고, 탭바의 `--tabbar-bottom`·`--tabbar-height`를 따른다. 숫자를 직접 적지 않는다.
  *
  * v2 changes:
  *   - CDN icon replaced with inline SVG

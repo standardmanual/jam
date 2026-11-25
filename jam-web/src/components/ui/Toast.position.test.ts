@@ -27,9 +27,13 @@ describe('toastBottom', () => {
 describe('하단 기준선 토큰 단일 원천', () => {
   const tokens = read('../../../design-system/tokens/spacing.css')
 
-  it('--tabbar-bottom은 DS 토큰에 한 번만 정의되고 --toast-bottom이 그것을 따른다', () => {
+  it('--tabbar-bottom은 DS 토큰에 한 번만 정의되고 --toast-bottom이 탭바 윗면 8px 위로 풀린다', () => {
     expect(tokens.match(/^\s*--tabbar-bottom:\s*max\(/gm)).toHaveLength(1)
-    expect(tokens).toMatch(/--toast-bottom:\s*var\(--tabbar-bottom\)/)
+    // 토스트 아랫면 = 탭바 윗면 + 8px
+    expect(tokens).toMatch(
+      /--toast-bottom:\s*calc\(var\(--tabbar-bottom\) \+ var\(--tabbar-height\) \+ 8px\)/,
+    )
+    expect(tokens).toMatch(/--tabbar-height:\s*49px/)
   })
 
   it('서비스·DS 탭바와 지도 버튼이 같은 토큰을 읽는다', () => {

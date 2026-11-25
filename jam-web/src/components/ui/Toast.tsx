@@ -99,8 +99,8 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 /**
  * 토스트 컨테이너의 `bottom` 값 (티켓 20261125_1840).
  *
- * 기본은 DS 토큰 `--toast-bottom`(tokens/spacing.css)이다. 이 값은 플로팅 탭바의 하단 간격 `--tabbar-bottom`을 따르므로
- * 토스트가 브라우저 아래에 붙어 탭바 자리에 뜬다. 예전에는 탭바 높이를 64px로 가정한 숫자 88px를 이 파일에 두었는데,
+ * 기본은 DS 토큰 `--toast-bottom`(tokens/spacing.css)이다. 이 값은 플로팅 탭바 윗면에서 8px 위(`--tabbar-bottom`·`--tabbar-height`를 따른다)라
+ * 토스트가 탭바 바로 위에 붙는다. 예전에는 탭바 높이를 64px로 가정한 숫자 88px를 이 파일에 두었는데,
  * 탭바가 49px로 줄고 아래로 내려온 뒤에도 그대로 남아 토스트가 탭바보다 약 30px 높이 떠 있었다.
  *
  * 하단 오버레이(바텀시트 등)가 점유 높이를 신고하면 시트 위 `gap`만큼 띄운 값과 기본값 중 큰 쪽을 쓴다.
@@ -208,10 +208,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         컨테이너는 pointer-events-none이고 토스트가 없으면 높이 0이라, 항상 렌더돼 있어도
         아래 오버레이 조작을 막지 않는다.
 
-        위치는 하단 앵커 하나뿐이다("행동이 일어난 곳 근처에서 위로 올라온다"). 기본값은 화면 아래에
-        붙은 플로팅 탭바 자리(--toast-bottom)이고, 하단을 더 높이 점유하는 오버레이가 신고돼 있으면 그 위
+        위치는 하단 앵커 하나뿐이다("행동이 일어난 곳 근처에서 위로 올라온다"). 기본값은 플로팅
+        탭바 바로 위(--toast-bottom)이고, 하단을 더 높이 점유하는 오버레이가 신고돼 있으면 그 위
         --toast-distance만큼 띄운다 — 높이 실측은 오버레이 자신이 하므로 여기에는 footer 높이 매직 넘버가 없다.
-        가로폭은 탭바와 같게(좌우 21px, 최대 388px) 두어 탭바 자리를 덮을 때 가장자리가 비쳐 보이지 않는다.
+        가로폭은 탭바와 같게(좌우 21px, 최대 388px) 두어 위아래로 나란히 선다.
       */}
       {mounted &&
         createPortal(

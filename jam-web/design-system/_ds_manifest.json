@@ -1249,7 +1249,13 @@
     },
     {
       "name": "--toast-bottom",
-      "value": "var(--tabbar-bottom)",
+      "value": "calc(var(--tabbar-bottom) + var(--tabbar-height) + 8px)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--tabbar-height",
+      "value": "49px",
       "kind": "spacing",
       "definedIn": "tokens/spacing.css"
     }
