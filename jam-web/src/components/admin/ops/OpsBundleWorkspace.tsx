@@ -44,6 +44,7 @@ import { Card } from '@/components/admin/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import { requestJson } from '@/components/admin/data-table/admin-fetch'
 import { latestFailReasons } from '@/lib/admin/opsInbox/executeView'
+import { readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import {
   OPS_ITEM_FILTERS,
   OPS_ITEM_FILTER_LABELS,
@@ -170,10 +171,17 @@ export function OpsBundleWorkspace({
 }: OpsBundleWorkspaceProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const searchKey = searchParams.toString()
   const itemParam = searchParams.get(ITEM_PARAM)
   const drawerOpen = searchParams.get(DRAWER_PARAM) === DRAWER_EMPTY
+  const queryFilter = readEnumParam(searchParams, 'filter', OPS_ITEM_FILTERS, 'all')
 
-  const [filter, setFilter] = useState<OpsItemFilter>('all')
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
+  const [filter, setFilter] = useState<OpsItemFilter>(() => queryFilter)
+  if (prevSearchKey !== searchKey) {
+    setPrevSearchKey(searchKey)
+    setFilter(queryFilter)
+  }
   const [draft, setDraft] = useState<OpsItemDraft | null>(null)
   const [colorPick, setColorPick] = useState<OpsColorPick | null>(null)
   const [transitionFailed, setTransitionFailed] = useState(false)
@@ -208,8 +216,19 @@ export function OpsBundleWorkspace({
     const params = new URLSearchParams(window.location.search)
     mutate(params)
     const query = params.toString()
-    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
+    replaceUrlQuery(`${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
   }, [])
+
+  const updateFilter = useCallback(
+    (next: OpsItemFilter) => {
+      setFilter(next)
+      replaceQuery((params) => {
+        if (next === 'all') params.delete('filter')
+        else params.set('filter', next)
+      })
+    },
+    [replaceQuery]
+  )
 
   const selectItem = useCallback(
     (id: string) => {
@@ -221,11 +240,11 @@ export function OpsBundleWorkspace({
         replaceQuery((params) => params.delete(TREND_PARAM))
       }
       // 지금 탭에 없는 항목(다른 항목의 「연결」·오류 요약에서 옮겨 온 경우)이면 목록에서 보이도록 「전체」로 바꾼다.
-      if (!matchesItemFilter(target, filter, balanceItemIds)) setFilter('all')
+      if (!matchesItemFilter(target, filter, balanceItemIds)) updateFilter('all')
       replaceQuery((params) => params.set(ITEM_PARAM, id))
       requestAnimationFrame(() => document.getElementById(opsItemRowId(id))?.scrollIntoView({ block: 'nearest' }))
     },
-    [items, filter, balanceItemIds, replaceQuery, activeTrend]
+    [items, filter, balanceItemIds, replaceQuery, activeTrend, updateFilter]
   )
 
   const selectByPosition = useCallback(
@@ -276,7 +295,7 @@ export function OpsBundleWorkspace({
       {hasNotices && (
         <div className="space-y-3">
           <OpsFormatErrorSummary errors={bundleFormatErrors} onSelectItem={selectByPosition} />
-          <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => setFilter('balance')} />
+          <OpsBalanceBundleNotice view={balanceView} isSample={isSample} onShowItems={() => updateFilter('balance')} />
           {activeTrend && (
             <Alert>
               <IconFilter className="size-4" aria-hidden="true" />
@@ -308,7 +327,7 @@ export function OpsBundleWorkspace({
       >
         {/* 가운데: 탭 + 목록 | 상세. 1열일 때 표시줄·알림 다음에 온다. */}
         <div className="@container/center min-w-0 @4xl:col-start-2 @4xl:row-start-1">
-          <Tabs value={filter} onValueChange={(value) => isItemFilter(value) && setFilter(value)}>
+          <Tabs value={filter} onValueChange={(value) => isItemFilter(value) && updateFilter(value)}>
             <TabsList className="h-auto flex-wrap justify-start">
               {OPS_ITEM_FILTERS.map((key) => (
                 <TabsTrigger key={key} value={key}>
@@ -327,7 +346,7 @@ export function OpsBundleWorkspace({
               ) : filteredItems.length === 0 ? (
                 <Card className="flex flex-wrap items-center gap-3 p-6 text-sm text-muted-foreground">
                   <span>이 조건에 맞는 항목이 없어요</span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setFilter('all')}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => updateFilter('all')}>
                     전체 보기
                   </Button>
                 </Card>

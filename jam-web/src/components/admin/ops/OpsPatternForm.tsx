@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
@@ -230,7 +231,7 @@ export function OpsPatternForm(props: OpsPatternFormProps) {
   const leave = () => {
     setDone(true)
     setCancelOpen(false)
-    router.push(cancelHref)
+    goBackOrPush(router, cancelHref)
   }
 
   const reload = () => {
@@ -260,7 +261,7 @@ export function OpsPatternForm(props: OpsPatternFormProps) {
             </Button>
           ) : (
             <Button asChild variant="outline">
-              <Link href={cancelHref}>{PATTERN_FORM_CANCEL_LABEL}</Link>
+              <AdminBackLink fallbackHref={cancelHref}>{PATTERN_FORM_CANCEL_LABEL}</AdminBackLink>
             </Button>
           )}
         </div>

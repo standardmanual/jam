@@ -9,7 +9,7 @@
  * (2026-09-05 사용자 확정, 티켓 판단 ①). 실행 로그는 마이그레이션 136의
  * `admin_badge_bulk_runs`에 남는다.
  */
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { fetchRecentBulkRuns } from '@/lib/admin/badge-bulk-query'
 import BulkToolManager from './BulkToolManager'
 import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
@@ -30,9 +30,9 @@ export default async function AdminBadgeBulkPage({ searchParams }: AdminBadgeBul
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div>
-        <Link href="/admin/badges" className="text-sm text-muted-foreground underline underline-offset-4">
+        <AdminBackLink fallbackHref="/admin/badges" className="text-sm text-muted-foreground underline underline-offset-4">
           ← 배지
-        </Link>
+        </AdminBackLink>
         <h1 className="mt-2 text-2xl md:text-3xl font-bold">배지 수정</h1>
         <p className="text-muted-foreground text-sm mt-1">
           필터에 맞는 배지를 페이지 경계 없이 전부 골라 한 번에 처리해요. 실행 전에 영향 분석을

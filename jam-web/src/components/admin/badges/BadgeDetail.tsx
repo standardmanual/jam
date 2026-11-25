@@ -2,6 +2,7 @@
 
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import SafeImage from '@/components/SafeImage'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
@@ -372,7 +373,7 @@ export default function BadgeDetail({ badge, tribeName, itemBookName, linkedPois
       <BadgeEditorShell
         header={
           <div>
-            <Button variant="ghost" onClick={() => router.back()} className="mb-2 -ml-3">
+            <Button variant="ghost" onClick={() => goBackOrPush(router, '/admin/badges')} className="mb-2 -ml-3">
               ← 뒤로
             </Button>
             <div className="flex flex-wrap items-center gap-3">

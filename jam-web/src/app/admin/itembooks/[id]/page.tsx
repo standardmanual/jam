@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { Button } from '@/components/admin/ui/button'
 import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
 import { ItemBookTierPanel } from '@/components/admin/itembooks/ItemBookTierPanel'
@@ -54,11 +54,11 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     <div className="w-full space-y-8 p-4 md:p-8">
       {/* 뒤로가기 + 제목 */}
       <div className="space-y-3">
-        <Link href="/admin/itembooks">
+        <AdminBackLink fallbackHref="/admin/itembooks">
           <Button variant="ghost" className="h-auto p-0 text-sm">
             ← 컬렉션
           </Button>
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold md:text-3xl">컬렉션 수정</h1>
       </div>
 

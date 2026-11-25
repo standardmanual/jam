@@ -1,5 +1,7 @@
+import { extractCustomHistoryState } from '@/lib/appHistory'
+
 /**
- * 화면 안 선택 상태(탭·필터·정렬·페이지)를 쿼리 URL에 싣고 읽는 순수 함수 모음 (티켓 20261110_1217).
+ * 화면 안 선택 상태(탭·필터·정렬·페이지)를 쿼리 URL에 싣고 읽는 순수 함수 모음 (티켓 20261110_1217, 20261125_1136).
  *
  * 규칙은 세 가지다.
  * - 읽기: 허용한 값만 통과시키고, 모르는 값·빈 값·중복 키(`?tab=a&tab=b`)는 기본값으로 본다.
@@ -56,4 +58,39 @@ export function buildQueryHref(
   }
   const qs = next.toString()
   return `${pathname}${qs ? `?${qs}` : ''}${hash}`
+}
+
+/**
+ * 클라이언트에서 필터·정렬을 연속 조작할 때 `useSearchParams()`의 비동기 transition 커밋 전
+ * 오래된 쿼리를 덮어쓰지 않도록 `window.location.search`를 우선 읽는다.
+ * SSR·테스트 환경(`window.location.search` 미정의)에서는 전달받은 `fallback`을 쓴다.
+ */
+export function currentQuerySource(fallback: QuerySource): QuerySource {
+  if (typeof window !== 'undefined' && typeof window.location?.search === 'string') {
+    return new URLSearchParams(window.location.search)
+  }
+  return fallback
+}
+
+/**
+ * 현재 히스토리 항목의 URL을 서버 재요청 없이 교체한다(탭·필터 전환용).
+ *
+ * Next.js 16 App Router는 `window.history.replaceState`를 패치해 `useSearchParams()`와 동기화한다.
+ * 이때 Next 내부 키(`__NA`·`_N`)가 빠진 커스텀 상태(`__jamNavIdx` 등)만 넘겨야 Next가 내부 상태를
+ * 안전하게 복사하고 `useSearchParams()`를 갱신한다.
+ */
+export function replaceUrlQuery(nextHref: string): void {
+  if (typeof window === 'undefined') return
+  const nextData = extractCustomHistoryState(window.history.state)
+  window.history.replaceState(nextData, '', nextHref)
+}
+
+/**
+ * 새 히스토리 항목을 쌓으며 URL을 바꾼다(브라우저 뒤로가기로 직전 뷰를 되짚어야 하는 뷰 전환용).
+ * `replaceUrlQuery`와 동일하게 서버 재요청 없이 `useSearchParams()`와 동기화된다.
+ */
+export function pushUrlQuery(nextHref: string): void {
+  if (typeof window === 'undefined') return
+  const nextData = extractCustomHistoryState(window.history.state)
+  window.history.pushState(nextData, '', nextHref)
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import type { ActivityType, BadgeRarity, MissionCondition, MissionRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -18,7 +18,7 @@ import { PointText } from '@ds/components/patterns/PointText'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 import { missionStatusKind } from './missionStatusKind'
-import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
+import { buildQueryHref, currentQuerySource, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
 
 export interface MissionListItem extends MissionRow {
   joined: boolean
@@ -53,9 +53,13 @@ interface Props {
 
 type Tab = 'ongoing' | 'joined' | 'ended'
 const MISSIONS_TAB_QUERY_KEY = 'tab'
+const MISSIONS_SORT_QUERY_KEY = 'sort'
+const MISSIONS_ACTIVITY_QUERY_KEY = 'activity'
 const TAB_KEYS: readonly Tab[] = ['ongoing', 'joined', 'ended']
 const DEFAULT_TAB: Tab = 'ongoing'
 type SortKey = 'newest' | 'oldest' | 'ending_soon'
+const SORT_KEYS: readonly SortKey[] = ['newest', 'oldest', 'ending_soon']
+const DEFAULT_SORT: SortKey = 'newest'
 
 const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 = 신규 (2026-11-04 사용자 결정, 이전 7일)
 
@@ -63,6 +67,7 @@ const NEW_MISSION_WINDOW_MS = 2 * 24 * 60 * 60 * 1000 // 생성 후 2일 이내 
 const C_LOCK_GLYPH = 'var(--foreground)'
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
+const ACTIVITY_FILTER_KEYS: readonly (ActivityType | 'all')[] = ['all', ...ACTIVITY_TYPES]
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: d.missions.sortNewest },
@@ -208,21 +213,45 @@ function lockedToastText(m: MissionListItem): string {
 
 export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }: Props) {
   const { toast } = useToast()
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  // 탭은 ?tab=에서 읽어 시작하고(알 수 없는 값은 진행중), 바꿀 때 같은 키로 주소에 쓴다 (티켓 20261110_1217)
-  const [tab, setTab] = useState<Tab>(() => readEnumParam(searchParams, MISSIONS_TAB_QUERY_KEY, TAB_KEYS, DEFAULT_TAB))
-  const [sortKey, setSortKey] = useState<SortKey>('newest')
-  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
+  const searchKey = searchParams.toString()
 
-  // 탭 전환은 history를 쌓지 않는다(replace). 기본 탭(진행중)은 쿼리에서 뺀다.
+  const queryTab = readEnumParam(searchParams, MISSIONS_TAB_QUERY_KEY, TAB_KEYS, DEFAULT_TAB)
+  const querySort = readEnumParam(searchParams, MISSIONS_SORT_QUERY_KEY, SORT_KEYS, DEFAULT_SORT)
+  const queryActivity = readEnumParam(searchParams, MISSIONS_ACTIVITY_QUERY_KEY, ACTIVITY_FILTER_KEYS, 'all')
+
+  // 탭·정렬·활동종류는 쿼리에서 읽고, 뒤로가기·URL 변경 시 searchParams와 동기화한다 (티켓 20261110_1217, 20261125_1136)
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
+  const [tab, setTab] = useState<Tab>(() => queryTab)
+  const [sortKey, setSortKey] = useState<SortKey>(() => querySort)
+  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>(() => queryActivity)
+
+  if (prevSearchKey !== searchKey) {
+    setPrevSearchKey(searchKey)
+    setTab(queryTab)
+    setSortKey(querySort)
+    setActivityFilter(queryActivity)
+  }
+
+  const updateUrl = (updates: Record<string, string | null>) => {
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, window.location.hash))
+  }
+
+  // 탭·정렬·필터 전환은 history를 쌓지 않고(replaceUrlQuery) 서버 재요청 없이 주소만 갱신한다. 기본값은 쿼리에서 뺀다.
   const handleTabChange = (next: Tab) => {
     setTab(next)
-    router.replace(
-      buildQueryHref(pathname, searchParams, { [MISSIONS_TAB_QUERY_KEY]: next === DEFAULT_TAB ? null : next }, window.location.hash),
-      { scroll: false },
-    )
+    updateUrl({ [MISSIONS_TAB_QUERY_KEY]: next === DEFAULT_TAB ? null : next })
+  }
+
+  const handleSortChange = (next: SortKey) => {
+    setSortKey(next)
+    updateUrl({ [MISSIONS_SORT_QUERY_KEY]: next === DEFAULT_SORT ? null : next })
+  }
+
+  const handleActivityChange = (next: ActivityType | 'all') => {
+    setActivityFilter(next)
+    updateUrl({ [MISSIONS_ACTIVITY_QUERY_KEY]: next === 'all' ? null : next })
   }
 
   const activeFilterCount = activityFilter !== 'all' ? 1 : 0
@@ -289,14 +318,14 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
         <div className="flex-1 min-w-0">
           <Select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            onChange={(e) => handleSortChange(e.target.value as SortKey)}
             options={SORT_OPTIONS.map((s) => ({ value: s.key, label: s.label }))}
           />
         </div>
         <div className="flex-1 min-w-0">
           <Select
             value={activityFilter}
-            onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
+            onChange={(e) => handleActivityChange(e.target.value as ActivityType | 'all')}
             options={[
               { value: 'all', label: d.missions.activityTypeAll },
               ...ACTIVITY_TYPES.map((tp) => ({ value: tp, label: ACTIVITY_TYPE_LABELS[tp] ?? tp })),

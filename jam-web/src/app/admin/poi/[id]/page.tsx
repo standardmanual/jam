@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { Button } from '@/components/admin/ui/button'
 import { PoiDetail } from '@/components/admin/poi/PoiDetail'
 import PoiForm from '../PoiForm'
@@ -45,11 +45,11 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
     <div className="w-full space-y-8 p-4 md:p-8">
       {/* 뒤로가기 + 제목 */}
       <div className="space-y-3">
-        <Link href="/admin/poi">
+        <AdminBackLink fallbackHref="/admin/poi">
           <Button variant="ghost" className="h-auto p-0 text-sm">
             ← 체크인
           </Button>
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold md:text-3xl">장소 수정</h1>
       </div>
 

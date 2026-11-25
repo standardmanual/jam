@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
 import { useTopNavData } from '@/lib/topNavData'
+import { goBackOrPush } from '@/lib/appHistory'
 import SyncButton from '@/components/SyncButton'
 import Button from '@/components/ui/Button'
 import NotificationBell from '@/components/ui/NotificationBell'
@@ -31,7 +32,8 @@ import { d } from '@/lib/i18n'
  *   DS TopNav는 건드리지 않고 이 래퍼가 `headerStyle`의 기본 background만 채운다. 호출부가 넘긴
  *   `headerStyle.background`가 있으면 그쪽이 이긴다(예: 배지 상세의 테마 배경) / 텍스트: --foreground
  * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문이 같은 바탕이라 구분선도 없다
- * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
+ * - 뒤로가기: onBack 우선, 미지정 시 앱 내부 히스토리가 있으면 router.back()으로 직전 상태(탭·필터·스크롤)를
+ *   복원하고, 직접 진입(새 탭·외부 유입)이면 backHref(없으면 '/')로 폴백한다 (티켓 20261125_1136)
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
  *
  * 20260824_021: 알림 종 주입 — 우측 슬롯 합성(`rightSlot = <>{호출부 값}{알림 종}</>`).
@@ -57,9 +59,9 @@ import { d } from '@/lib/i18n'
  */
 export interface TopNavProps {
   title?: string
-  /** 커스텀 뒤로가기 핸들러. 미지정 시 router.back() */
+  /** 커스텀 뒤로가기 핸들러. 지정하면 기본 뒤로가기보다 우선한다(예: 알림함 출처 강제 복귀) */
   onBack?: () => void
-  /** 명시적 경로가 있으면 router.push로 이동 (onBack보다 우선) */
+  /** 직접 진입(앱 내부 히스토리 없음) 시 폴백 이동 경로. 앱 내 이동으로 진입했다면 router.back()이 우선한다 */
   backHref?: string
   /** 우측 액션 슬롯 (버튼/링크 등). 44×44pt는 슬롯 내부에서 보장할 것. 아바타보다 앞에 놓인다. */
   rightSlot?: ReactNode
@@ -100,7 +102,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const router = useRouter()
   const { username, avatarUrl, stravaState } = useTopNavData()
 
-  const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
+  const handleBack = onBack ?? (() => goBackOrPush(router, backHref ?? '/'))
   const profileHref = username ? `/${username}` : '/profile'
 
   const avatarSlot = (

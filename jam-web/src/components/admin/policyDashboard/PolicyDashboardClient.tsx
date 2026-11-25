@@ -1,7 +1,9 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { buildQueryHref, currentQuerySource, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import {
   IconSearch,
   IconAdjustmentsHorizontal,
@@ -27,18 +29,75 @@ interface Props {
 }
 
 type FilterTab = 'all' | PolicyType
+const FILTER_TABS: readonly FilterTab[] = ['all', 'admin_link', 'code_constant', 'ticket_decision', 'pre_launch_pending']
+const SEARCH_URL_DEBOUNCE_MS = 250
 
 export function PolicyDashboardClient({
   initialPolicies,
   initialLiveValues,
   updatedAt,
 }: Props) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const queryTab = readEnumParam(searchParams, 'tab', FILTER_TABS, 'all')
+  const queryQ = readSingleParam(searchParams, 'q') ?? ''
+
   const [policies] = useState<readonly PolicyItem[]>(initialPolicies)
   // 값은 읽어서 보여 주기만 한다. 바꾸는 일은 카드의 링크가 이어 주는 설정 화면에서 한다.
   const liveValues = initialLiveValues
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTab, setSelectedTab] = useState<FilterTab>('all')
+  const [prevQueryTab, setPrevQueryTab] = useState(queryTab)
+  const [searchQuery, setSearchQuery] = useState(() => queryQ)
+  const [selectedTab, setSelectedTab] = useState<FilterTab>(() => queryTab)
   const [collapsedChapters, setCollapsedChapters] = useState<Record<number, boolean>>({})
+
+  // 탭은 주소 변경(뒤로가기 등)에 즉시 동기화한다. 검색어는 연속 타이핑·한글 IME 조합 충돌을 막기 위해
+  // 아래 popstate 리스너로만 뒤로가기 복원을 받고, 입력 중에는 디바운스로 주소에 기록한다.
+  if (prevQueryTab !== queryTab) {
+    setPrevQueryTab(queryTab)
+    setSelectedTab(queryTab)
+  }
+
+  useEffect(() => {
+    const onPopState = () => {
+      const nextQ = new URLSearchParams(window.location.search).get('q') ?? ''
+      setSearchQuery(nextQ)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const updateUrl = (updates: Record<string, string | null>) => {
+    const hash = typeof window !== 'undefined' ? window.location.hash : ''
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, hash))
+  }
+
+  useEffect(() => {
+    const currentUrlQ = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('q') ?? '') : ''
+    const nextQ = searchQuery.trim() ? searchQuery : ''
+    if (currentUrlQ === nextQ) return
+    const timer = window.setTimeout(() => {
+      const hash = window.location.hash
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { q: nextQ || null }, hash))
+    }, SEARCH_URL_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [pathname, searchParams, searchQuery])
+
+  const handleTabChange = (next: FilterTab) => {
+    setSelectedTab(next)
+    updateUrl({ tab: next === 'all' ? null : next })
+  }
+
+  const handleSearchChange = (next: string) => {
+    setSearchQuery(next)
+    // 지우기 버튼 등으로 즉시 비울 때는 디바운스를 기다리지 않고 쿼리에서 바로 뺀다
+    if (!next.trim()) updateUrl({ q: null })
+  }
+
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedTab('all')
+    updateUrl({ tab: null, q: null })
+  }
 
   // 상단 통계 수치
   const metrics = useMemo(() => {
@@ -178,7 +237,7 @@ export function PolicyDashboardClient({
           className={`cursor-pointer transition-all border ${
             selectedTab === 'all' ? 'border-primary ring-2 ring-primary/20' : 'hover:border-slate-300'
           }`}
-          onClick={() => setSelectedTab('all')}
+          onClick={() => handleTabChange('all')}
         >
           <CardContent className="p-4">
             <div className="text-xs font-medium text-muted-foreground">전체 정책</div>
@@ -193,7 +252,7 @@ export function PolicyDashboardClient({
               ? 'border-emerald-500 ring-2 ring-emerald-500/20'
               : 'hover:border-emerald-300'
           }`}
-          onClick={() => setSelectedTab('admin_link')}
+          onClick={() => handleTabChange('admin_link')}
         >
           <CardContent className="p-4">
             <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 break-keep wrap-break-word">
@@ -213,7 +272,7 @@ export function PolicyDashboardClient({
               ? 'border-blue-500 ring-2 ring-blue-500/20'
               : 'hover:border-blue-300'
           }`}
-          onClick={() => setSelectedTab('code_constant')}
+          onClick={() => handleTabChange('code_constant')}
         >
           <CardContent className="p-4">
             <div className="text-xs font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1">
@@ -233,7 +292,7 @@ export function PolicyDashboardClient({
               ? 'border-purple-500 ring-2 ring-purple-500/20'
               : 'hover:border-purple-300'
           }`}
-          onClick={() => setSelectedTab('ticket_decision')}
+          onClick={() => handleTabChange('ticket_decision')}
         >
           <CardContent className="p-4">
             <div className="text-xs font-medium text-purple-700 dark:text-purple-400 flex items-center gap-1">
@@ -253,7 +312,7 @@ export function PolicyDashboardClient({
               ? 'border-amber-500 ring-2 ring-amber-500/20'
               : 'hover:border-amber-300'
           }`}
-          onClick={() => setSelectedTab('pre_launch_pending')}
+          onClick={() => handleTabChange('pre_launch_pending')}
         >
           <CardContent className="p-4">
             <div className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1">
@@ -278,13 +337,13 @@ export function PolicyDashboardClient({
               type="text"
               placeholder="정책명, 기준 수치(예: 20km, 60km), DB 테이블, 티켓 번호 검색..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 pr-8 bg-white dark:bg-slate-950"
             />
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearchChange('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
                 aria-label="검색어 지우기"
               >
@@ -322,7 +381,7 @@ export function PolicyDashboardClient({
             type="button"
             size="sm"
             variant={selectedTab === 'all' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('all')}
+            onClick={() => handleTabChange('all')}
             className="h-7 text-xs px-2.5"
           >
             전체 ({metrics.total})
@@ -331,7 +390,7 @@ export function PolicyDashboardClient({
             type="button"
             size="sm"
             variant={selectedTab === 'admin_link' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('admin_link')}
+            onClick={() => handleTabChange('admin_link')}
             className="h-7 text-xs px-2.5 text-emerald-800 dark:text-emerald-300 whitespace-nowrap break-keep wrap-break-word"
           >
             설정 화면에서 바꾸기 ({metrics.adminLink})
@@ -340,7 +399,7 @@ export function PolicyDashboardClient({
             type="button"
             size="sm"
             variant={selectedTab === 'code_constant' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('code_constant')}
+            onClick={() => handleTabChange('code_constant')}
             className="h-7 text-xs px-2.5 text-blue-800 dark:text-blue-300"
           >
             엔진 고정 규칙 ({metrics.codeConstant})
@@ -349,7 +408,7 @@ export function PolicyDashboardClient({
             type="button"
             size="sm"
             variant={selectedTab === 'ticket_decision' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('ticket_decision')}
+            onClick={() => handleTabChange('ticket_decision')}
             className="h-7 text-xs px-2.5 text-purple-800 dark:text-purple-300"
           >
             티켓 세부 결정 ({metrics.ticketDecision})
@@ -358,7 +417,7 @@ export function PolicyDashboardClient({
             type="button"
             size="sm"
             variant={selectedTab === 'pre_launch_pending' ? 'default' : 'ghost'}
-            onClick={() => setSelectedTab('pre_launch_pending')}
+            onClick={() => handleTabChange('pre_launch_pending')}
             className="h-7 text-xs px-2.5 text-amber-800 dark:text-amber-300"
           >
             오픈 전 대기 ({metrics.preLaunch})
@@ -401,7 +460,7 @@ export function PolicyDashboardClient({
             type="button"
             variant="link"
             size="sm"
-            onClick={() => setSearchQuery('')}
+            onClick={() => handleSearchChange('')}
             className="h-auto p-0 text-xs"
           >
             검색 초기화
@@ -419,10 +478,7 @@ export function PolicyDashboardClient({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setSearchQuery('')
-              setSelectedTab('all')
-            }}
+            onClick={handleResetFilters}
             className="mt-3 text-xs"
           >
             필터 및 검색 초기화

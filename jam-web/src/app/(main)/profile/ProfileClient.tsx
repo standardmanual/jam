@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, type CSSProperties } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
+import { buildQueryHref, currentQuerySource, pushUrlQuery, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import TopNav from '@/components/ui/TopNav'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
@@ -41,14 +42,11 @@ interface FollowResponse {
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
 type TabKey = 'followers' | 'following' | 'points'
-/** 해시 이동 — 브라우저 뒤로가기가 목록을 되짚는다. 해시와 같은 id의 요소가 없어 스크롤은 움직이지 않는다 */
-function openTabHash(tab: TabKey) {
-  window.location.hash = tab
-}
+const PROFILE_TAB_QUERY_KEY = 'tab'
 
-/** 해시가 열 수 있는 목록인가 — `#points`는 지갑이 본인 전용이라 타인 프로필에서는 무효(기본 화면으로 본다) */
-function isValidTab(hash: string, isOwnProfile: boolean): hash is TabKey {
-  return hash === 'followers' || hash === 'following' || (isOwnProfile && hash === 'points')
+/** 쿼리·구 해시가 열 수 있는 목록인가 — `points`는 지갑이 본인 전용이라 타인 프로필에서는 무효(기본 화면으로 본다) */
+function isValidTab(raw: string | null | undefined, isOwnProfile: boolean): raw is TabKey {
+  return raw === 'followers' || raw === 'following' || (isOwnProfile && raw === 'points')
 }
 
 // ─── 피드 (본인 Feed 섹션용 UI는 ../FeedSection 공용 컴포넌트로 이전됨) ──────
@@ -129,22 +127,31 @@ export default function ProfileClient({
   publicChapter,
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const searchKey = searchParams.toString()
   const { toast } = useToast()
   // 알림함에서 진입했으면(?from=notifications) `<` 버튼이 알림으로 직행해야 한다 —
-  // 통계탭 클릭(handleTabClick)이 해시 이동마다 히스토리 엔트리를 쌓아서, 순수
+  // 통계탭 클릭(handleTabClick)이 히스토리 엔트리를 쌓아서, 순수
   // router.back()이면 알림이 아니라 그 탭 히스토리를 되짚는다(20260831_2201).
-  // 검색·팔로워목록·직접 URL 등 이 파라미터가 없는 기존 경로는 기존 router.back()을 유지한다.
+  // 검색·팔로워목록·직접 URL 등 이 파라미터가 없는 기존 경로는 TopNav 기본 뒤로가기를 쓴다.
   const fromNotifications = searchParams.get('from') === 'notifications'
 
-  // ── 탭/해시 상태 ──────────────────────────────────────────────────────────
-  const [hashFragment, setHashFragment] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<TabKey>('followers')
-  const [tabLoading, setTabLoading] = useState(false)
+  // ── 탭 쿼리 상태 (?tab=followers|following|points, 티켓 20261125_1136) ────
+  const rawQueryTab = readSingleParam(searchParams, PROFILE_TAB_QUERY_KEY)
+  const queryTab: TabKey | null = isValidTab(rawQueryTab, isOwnProfile) ? rawQueryTab : null
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
+  const [tabView, setTabView] = useState<TabKey | null>(() => queryTab)
+  const [loadingTab, setLoadingTab] = useState<TabKey | null>(null)
   const [followersData, setFollowersData] = useState<FollowUser[] | null>(null)
   const [followingData, setFollowingData] = useState<FollowUser[] | null>(null)
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
   const fetchedRef = useRef<Set<TabKey>>(new Set())
+
+  if (prevSearchKey !== searchKey) {
+    setPrevSearchKey(searchKey)
+    setTabView(queryTab)
+  }
 
 
   // ── 배지 리빌 오버레이(팔로우로 배지 획득 시) — FollowButton.tsx(20260910_2056)와 동일 패턴,
@@ -212,71 +219,72 @@ export default function ProfileClient({
   })()
 
   // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
-  // 해시로만 판정: 해시 없으면 기본뷰(본인은 활동 피드, 타인은 배지 그리드 — 티켓 20261108_1216),
-  // 유효 해시 있으면 목록. 타인의 `#points`는 무효라 기본뷰다.
-  const isTabView = isValidTab(hashFragment, isOwnProfile)
+  // 쿼리(?tab=)로 판정: 없으면 기본뷰(본인은 활동 피드, 타인은 배지 그리드 — 티켓 20261108_1216),
+  // 유효 값이 있으면 목록. 타인의 `points`는 무효라 기본뷰다.
+  const isTabView = tabView !== null
+  const activeTab: TabKey = tabView ?? 'followers'
+  const isTabLoading = loadingTab !== null && loadingTab === tabView
 
-  // ── 해시 동기화 (마운트·뒤로가기 포함) ────────────────────────────────────
+  // 구 해시 링크(/[username]#followers|following|points) 진입 시 ?tab= 정본으로 정규화한다.
+  // replaceUrlQuery가 useSearchParams()를 갱신하므로 위 searchKey 동기화가 tabView를 자동으로 맞춘다.
   useEffect(() => {
-    const fetchIfNeeded = async (tab: TabKey) => {
-      if (fetchedRef.current.has(tab)) return
-      fetchedRef.current.add(tab)
-      setTabLoading(true)
+    const rawHash = window.location.hash.slice(1)
+    if (!queryTab && isValidTab(rawHash, isOwnProfile)) {
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: rawHash }, ''))
+    }
+    // 마운트 시 구 해시 1회 정규화만 수행한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── 탭 데이터 로드 (마운트·뒤로가기·전환 포함) ────────────────────────────
+  // StrictMode 이중 이펙트·빠른 탭 전환·네트워크 실패 시 영구 로딩/빈 화면에 고착되지 않도록
+  // fetchedRef는 응답이 정상 반영될 때만 기록하고, 취소 시 로딩 상태를 안전하게 정리한다.
+  useEffect(() => {
+    if (!tabView || tabView === 'points') return
+    if (fetchedRef.current.has(tabView)) return
+    let cancelled = false
+    const targetTab = tabView
+    const load = async () => {
+      setLoadingTab(targetTab)
       try {
-        if (tab === 'followers') {
-          const res = await fetch(`/api/users/${username}/followers`)
-          const json = await res.json()
-          const users: FollowUser[] = json.users ?? []
-          setFollowersData(users)
-          setListFollowStates(prev => {
-            const next = { ...prev }
-            for (const u of users) next[u.id] = u.isFollowing
-            return next
-          })
-        } else if (tab === 'following') {
-          const res = await fetch(`/api/users/${username}/following`)
-          const json = await res.json()
-          const users: FollowUser[] = json.users ?? []
-          setFollowingData(users)
-          setListFollowStates(prev => {
-            const next = { ...prev }
-            for (const u of users) next[u.id] = u.isFollowing
-            return next
-          })
-        }
-        // points는 PointHistorySection이 마운트될 때 스스로 불러온다
+        const res = await fetch(`/api/users/${username}/${targetTab}`)
+        if (!res.ok || cancelled) return
+        const json = await res.json()
+        if (cancelled) return
+        const users: FollowUser[] = json.users ?? []
+        fetchedRef.current.add(targetTab)
+        if (targetTab === 'followers') setFollowersData(users)
+        else setFollowingData(users)
+        setListFollowStates(prev => {
+          const next = { ...prev }
+          for (const u of users) next[u.id] = u.isFollowing
+          return next
+        })
+      } catch {
+        // 네트워크 실패 시 fetchedRef에 남기지 않아 재진입 시 다시 불러올 수 있게 한다
       } finally {
-        setTabLoading(false)
+        if (!cancelled) setLoadingTab(cur => (cur === targetTab ? null : cur))
       }
     }
-
-    const sync = () => {
-      const hash = window.location.hash.slice(1)
-      setHashFragment(hash)
-      if (isValidTab(hash, isOwnProfile)) {
-        setActiveTab(hash)
-        if (hash !== 'points') fetchIfNeeded(hash)
-      }
+    void load()
+    return () => {
+      cancelled = true
     }
+  }, [tabView, username])
 
-    sync()
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
-  }, [username, isOwnProfile])
+  // ── 탭 클릭 — 쿼리 히스토리 push (브라우저 뒤로가기가 기본 프로필 뷰로 되돌린다) ──
+  const handleTabClick = (tab: TabKey) => {
+    if (tabView === tab) return
+    setTabView(tab)
+    pushUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: tab }, ''))
+  }
 
-  // ── 탭 클릭 — 해시 이동 (브라우저 뒤로가기 지원) ────────────────────────────
-  const handleTabClick = (tab: TabKey) => openTabHash(tab)
-
-  // 헤더의 아바타·아이디 클릭 시 현재 프로필 URL(`/${username}`)로 이동한다.
-  // 탭 해시(`#followers` 등)로 열려 있던 상태에서 자기 자신에게 다시 링크하면
-  // pathname이 같아 해시가 지워지지 않고 남는다 — 이동 직전에 제거한다(20260902_0956,
-  // 팔로워·팔로잉 행의 ListRow onClick도 같은 함수를 쓴다 20260902_0915).
-  const clearProfileHash = () => {
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  // 헤더의 아바타·아이디 클릭 시 기본 프로필 화면으로 복귀한다
+  const clearProfileTab = () => {
+    if (tabView !== null || (typeof window !== 'undefined' && window.location.hash)) {
+      setTabView(null)
+      replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), { [PROFILE_TAB_QUERY_KEY]: null }, ''))
     }
-    // replaceState는 hashchange를 일으키지 않으므로 기본 화면 복귀를 상태로 직접 알린다(티켓 20261108_1216)
-    setHashFragment('')
   }
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
@@ -460,10 +468,6 @@ export default function ProfileClient({
           <ListRow
             key={u.id}
             href={`/${u.username}`}
-            // 팔로워/팔로잉 탭이 URL 해시로 열린 상태(예: /profile#followers)에서 다른 유저
-            // 프로필로 이동하면, Next 클라이언트 라우팅이 pathname만 바꾸고 기존 해시는
-            // 지우지 않아 /{username}#followers가 남는다. 이동 직전에 해시를 제거한다 (20260902_0915).
-            onClick={clearProfileHash}
             lead={
               u.avatar_url ? (
                 <Image src={u.avatar_url} alt="" width={48} height={48} />
@@ -538,7 +542,12 @@ export default function ProfileClient({
       {isOwnProfile ? (
         <TopNav logo />
       ) : (
-        <TopNav title="" showBack backHref={fromNotifications ? '/notifications' : undefined} />
+        <TopNav
+          title=""
+          showBack
+          onBack={fromNotifications ? () => router.push('/notifications') : undefined}
+          backHref={fromNotifications ? '/notifications' : '/'}
+        />
       )}
 
       <div
@@ -550,7 +559,7 @@ export default function ProfileClient({
             "편집" 버튼을 새로 두어 그걸로 /profile/edit에 진입한다. */}
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
-            <Link href={`/${username}`} onClick={clearProfileHash}>
+            <Link href={`/${username}`} onClick={clearProfileTab}>
               {profile?.avatar_url ? (
                 <Image
                   src={profile.avatar_url}
@@ -591,7 +600,7 @@ export default function ProfileClient({
             )}
             <Link
               href={`/${username}`}
-              onClick={clearProfileHash}
+              onClick={clearProfileTab}
               className="text-2xl break-words"
             >
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
@@ -636,7 +645,7 @@ export default function ProfileClient({
         {isTabView && (
           <section>
             <div
-              className={['t-skel', 'jam-skel-flow', tabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
+              className={['t-skel', 'jam-skel-flow', isTabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
               style={{ '--jam-skel-min-h': '280px' } as CSSProperties}
             >
               <div className="t-skel-skeleton is-pulsing flex flex-col gap-2 content-start" aria-hidden="true">
@@ -644,8 +653,8 @@ export default function ProfileClient({
                   <div key={i} className="h-[72px] rounded-2xl bg-background-inverse/15" />
                 ))}
               </div>
-              <div className="t-skel-content" aria-busy={tabLoading}>
-                {tabLoading ? null : renderTabContent()}
+              <div className="t-skel-content" aria-busy={isTabLoading}>
+                {isTabLoading ? null : renderTabContent()}
               </div>
             </div>
           </section>

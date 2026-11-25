@@ -1,9 +1,9 @@
 /**
- * 피드 필터의 URL 쿼리 반영 (티켓 20261110_1217)
+ * 피드 필터의 URL 쿼리 반영 (티켓 20261110_1217, 20261125_1136)
  *
  * - ?feed=badge|mission|activity_badge 로 열면 그 필터가 선택돼 있다. 없거나 모르는 값이면 전체.
- * - 필터를 바꾸면 router.replace({ scroll: false })로 feed 키만 바꾸고, ?u= 같은 다른 쿼리는 보존한다.
- *   전체(기본)로 돌아오면 feed 키만 빠진다.
+ * - 필터를 바꾸면 `replaceUrlQuery`(history.replaceState)로 서버 재요청 없이 feed 키만 바꾸고,
+ *   ?u= 같은 다른 쿼리와 커스텀 history 상태(`__jamNavIdx`)는 보존한다. 전체(기본)로 돌아오면 feed 키만 빠진다.
  * 저장소에 jsdom이 없어 서버 렌더로 초기 선택을 보고, 전환은 SlidingTabs를 대역으로 바꿔 onChange를 직접 부른다.
  * 실행: cd jam-web && npx vitest run "src/app/(main)/FeedSection.url-query.test.tsx"
  */
@@ -33,13 +33,19 @@ function render() {
 }
 
 describe('피드 필터 URL 반영', () => {
+  let replaceState: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
     nav.replace.mockClear()
     nav.push.mockClear()
     nav.query = ''
     tabs.onChange = null
     tabs.value = ''
-    vi.stubGlobal('window', { location: { hash: '' } })
+    replaceState = vi.fn()
+    vi.stubGlobal('window', {
+      location: { hash: '' },
+      history: { state: { __NA: true, __jamNavIdx: 0 }, replaceState },
+    })
   })
 
   afterEach(() => {
@@ -63,10 +69,10 @@ describe('피드 필터 URL 반영', () => {
     expect(tabs.value).toBe('all')
   })
 
-  it('필터를 바꾸면 replace(scroll:false)로 쓰고 history는 쌓지 않는다', () => {
+  it('필터를 바꾸면 replaceState로 쓰고 history는 쌓지 않는다', () => {
     render()
     tabs.onChange?.('mission')
-    expect(nav.replace).toHaveBeenCalledWith('/jam?feed=mission', { scroll: false })
+    expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/jam?feed=mission')
     expect(nav.push).not.toHaveBeenCalled()
   })
 
@@ -74,13 +80,13 @@ describe('피드 필터 URL 반영', () => {
     nav.query = 'u=jam&feed=badge'
     render()
     tabs.onChange?.('activity_badge')
-    expect(nav.replace).toHaveBeenCalledWith('/jam?u=jam&feed=activity_badge', { scroll: false })
+    expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/jam?u=jam&feed=activity_badge')
   })
 
   it('전체로 돌아오면 feed 키만 빠지고 나머지는 남는다', () => {
     nav.query = 'u=jam&feed=badge'
     render()
     tabs.onChange?.('all')
-    expect(nav.replace).toHaveBeenCalledWith('/jam?u=jam', { scroll: false })
+    expect(replaceState).toHaveBeenCalledWith({ __jamNavIdx: 0 }, '', '/jam?u=jam')
   })
 })

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { replaceUrlQuery } from '@/lib/urlQueryState'
 import { OpsScheduleDayDrawer } from '@/components/admin/ops/OpsScheduleDayDrawer'
 import { OpsScheduleDrawer } from '@/components/admin/ops/OpsScheduleDrawer'
 import { OpsScheduleMonth } from '@/components/admin/ops/OpsScheduleMonth'
@@ -104,10 +105,10 @@ function toBar(bar: ScheduleMissionBar): CalendarMissionBar {
 const DRAWER_PLACEMENT =
   'min-w-0 @[68rem]:sticky @[68rem]:top-[4.5rem] @[68rem]:max-h-[calc(100vh-6rem)] @[68rem]:self-start @[68rem]:overflow-y-auto'
 
-/** 주소만 바꾼다(`history.replaceState`). 다른 쿼리 키와 해시는 그대로 두고 쿼리 문자열만 새로 계산한다. */
+/** 주소만 바꾼다(`replaceUrlQuery`). 다른 쿼리 키·해시·앱 히스토리 깊이는 그대로 두고 쿼리 문자열만 새로 계산한다. */
 function replaceSearch(compute: (search: string) => string): void {
   const query = compute(window.location.search)
-  window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
+  replaceUrlQuery(`${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
 }
 
 /** 보기 하나의 데이터. 주간·월간·타임라인 중 하나만 준다. */

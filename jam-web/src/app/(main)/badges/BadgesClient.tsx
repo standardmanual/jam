@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { BADGE_ACTIVITY_FILTER_LABELS } from '@/lib/utils'
 import { matchesActivityFilter, type ActivityFilterValue } from './activityFilter'
@@ -14,6 +15,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Select } from '@ds/components/forms/Select'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
+import { buildQueryHref, currentQuerySource, readEnumParam, readSingleParam, replaceUrlQuery } from '@/lib/urlQueryState'
 
 type TabKey = 'activity' | 'checkin' | 'collection'
 const VALID_TABS = new Set<string>(['activity', 'checkin', 'collection'])
@@ -80,6 +82,10 @@ function tabLabel(label: string, count: number) {
 }
 
 type CheckinSortOrder = 'latest' | 'name'
+const DEFAULT_TAB: TabKey = 'activity'
+const CHECKIN_SORT_ORDERS: readonly CheckinSortOrder[] = ['latest', 'name']
+const ACTIVITY_FILTER_VALUES: readonly (ActivityFilterValue | 'all')[] = ['all', ...ACTIVITY_TYPE_ORDER]
+const RARITY_FILTER_VALUES: readonly (BadgeRarity | 'all')[] = ['all', ...RARITY_ORDER]
 
 export default function BadgesClient({
   badges,
@@ -88,44 +94,90 @@ export default function BadgesClient({
   checkinBadges,
   initialTab,
 }: BadgesClientProps) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchKey = searchParams.toString()
+
+  const queryTab = normalizeTab(readSingleParam(searchParams, 'tab'))
+  const queryActivity = readEnumParam(searchParams, 'activity', ACTIVITY_FILTER_VALUES, 'all')
+  const queryRarity = readEnumParam(searchParams, 'rarity', RARITY_FILTER_VALUES, 'all')
+  const queryCategory = readSingleParam(searchParams, 'category') ?? 'all'
+  const querySort = readEnumParam(searchParams, 'sort', CHECKIN_SORT_ORDERS, 'latest')
+
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    // 쿼리(?tab=)가 hash보다 우선한다 — 알림 착지점이 이 쿼리로 탭을 전달하기 때문
-    const fromQuery = normalizeTab(initialTab)
-    if (fromQuery) return fromQuery
-    if (typeof window !== 'undefined') {
-      const fromHash = normalizeTab(window.location.hash.slice(1))
-      if (fromHash) return fromHash
-    }
-    return 'activity'
+    // SSR과 클라이언트 첫 하이드레이션이 동일하도록 쿼리(?tab=)와 initialTab만 읽는다.
+    // 구 해시 링크(/badges#collection 등)는 아래 마운트 이펙트에서 쿼리로 정규화한다(티켓 20261125_1136).
+    return queryTab ?? normalizeTab(initialTab) ?? DEFAULT_TAB
   })
-  const [activityFilter, setActivityFilter] = useState<ActivityFilterValue | 'all'>('all')
-  const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
-  const [checkinCategoryFilter, setCheckinCategoryFilter] = useState<string>('all')
-  const [checkinSortOrder, setCheckinSortOrder] = useState<CheckinSortOrder>('latest')
+  const [activityFilter, setActivityFilter] = useState<ActivityFilterValue | 'all'>(() => queryActivity)
+  const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>(() => queryRarity)
+  const [checkinCategoryFilter, setCheckinCategoryFilter] = useState<string>(() => queryCategory)
+  const [checkinSortOrder, setCheckinSortOrder] = useState<CheckinSortOrder>(() => querySort)
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
-  // 브라우저 뒤로/앞으로 탐색 시 hash 변화를 탭에 반영
+  // 뒤로가기·앞으로가기·탭바 재진입으로 searchParams가 바뀌면 탭과 필터를 주소에 맞춰 동기화한다
+  if (prevSearchKey !== searchKey) {
+    setPrevSearchKey(searchKey)
+    setActiveTab(queryTab ?? DEFAULT_TAB)
+    setActivityFilter(queryActivity)
+    setRarityFilter(queryRarity)
+    setCheckinCategoryFilter(queryCategory)
+    setCheckinSortOrder(querySort)
+  }
+
+  // 구 해시 링크(/badges#collection, /badges#checkin, /badges#poi) 진입 시 쿼리 정본으로 정규화한다.
+  // replaceUrlQuery가 useSearchParams()를 갱신하므로 위 searchKey 동기화가 활성 탭을 자동으로 맞춘다.
   useEffect(() => {
-    const onPopState = () => {
-      const fromHash = normalizeTab(window.location.hash.slice(1))
-      if (fromHash) setActiveTab(fromHash)
-    }
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
+    const rawHash = window.location.hash.slice(1)
+    const fromHash = normalizeTab(rawHash)
+    if (!fromHash) return
+    const nextTab = queryTab ?? fromHash
+    replaceUrlQuery(
+      buildQueryHref(pathname, currentQuerySource(searchParams), { tab: nextTab === DEFAULT_TAB ? null : nextTab }, ''),
+    )
+    // 마운트 시 구 해시 1회 정규화만 수행한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const updateUrl = (updates: Record<string, string | null>) => {
+    replaceUrlQuery(buildQueryHref(pathname, currentQuerySource(searchParams), updates, ''))
+  }
 
   const handleTabChange = (key: TabKey) => {
     setActiveTab(key)
-    window.history.replaceState(null, '', `#${key}`)
+    // 다른 탭 전용 필터 쿼리는 정리해 주소를 깨끗하게 유지한다
+    setActivityFilter('all')
+    setRarityFilter('all')
+    setCheckinCategoryFilter('all')
+    setCheckinSortOrder('latest')
+    updateUrl({
+      tab: key === DEFAULT_TAB ? null : key,
+      activity: null,
+      rarity: null,
+      category: null,
+      sort: null,
+    })
   }
 
-  // 탭이 URL 해시로 열린 상태(예: /badges#checkin)에서 배지 상세로 이동하면, Next 클라이언트
-  // 라우팅이 pathname만 바꾸고 기존 해시는 지우지 않아 /badges/{id}#checkin이 남는다.
-  // 이동 직전에 해시를 제거한다 (20260902_0923, 20260902_0915와 동일 패턴).
-  const clearHashOnNavigate = () => {
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search)
-    }
+  const handleActivityFilterChange = (next: ActivityFilterValue | 'all') => {
+    setActivityFilter(next)
+    updateUrl({ activity: next === 'all' ? null : next })
+  }
+
+  const handleRarityFilterChange = (next: BadgeRarity | 'all') => {
+    setRarityFilter(next)
+    updateUrl({ rarity: next === 'all' ? null : next })
+  }
+
+  const handleCheckinCategoryChange = (next: string) => {
+    setCheckinCategoryFilter(next)
+    updateUrl({ category: next === 'all' ? null : next })
+  }
+
+  const handleCheckinSortChange = (next: CheckinSortOrder) => {
+    setCheckinSortOrder(next)
+    updateUrl({ sort: next === 'latest' ? null : next })
   }
 
   // badges는 이미 획득분만 전달되므로 개수가 곧 보유 개수
@@ -153,11 +205,16 @@ export default function BadgesClient({
     return Array.from(seen.entries()).sort(([, a], [, b]) => a.localeCompare(b, 'ko'))
   }, [earnedCheckinBadges])
 
+  const validCheckinCategory =
+    checkinCategoryFilter === 'all' || checkinCategoryOptions.some(([slug]) => slug === checkinCategoryFilter)
+      ? checkinCategoryFilter
+      : 'all'
+
   // 액티비티 배지 탭과 동일한 패턴 — 드롭다운 2개(카테고리, 정렬)로 필터링한
   // 평평한 그리드. 최신순은 가장 최근에 획득한 것부터, 이름순은 가나다순.
   const filteredCheckinBadges = useMemo(() => {
     const filtered = earnedCheckinBadges.filter(
-      (item) => checkinCategoryFilter === 'all' || item.category === checkinCategoryFilter
+      (item) => validCheckinCategory === 'all' || item.category === validCheckinCategory
     )
     const sorted = [...filtered]
     if (checkinSortOrder === 'latest') {
@@ -166,7 +223,7 @@ export default function BadgesClient({
       sorted.sort((a, b) => a.badge.name.localeCompare(b.badge.name, 'ko'))
     }
     return sorted
-  }, [earnedCheckinBadges, checkinCategoryFilter, checkinSortOrder])
+  }, [earnedCheckinBadges, validCheckinCategory, checkinSortOrder])
 
   // 이제 badges는 획득분만 들어오며, 서버 쿼리가 이미 earned_at 내림차순으로 정렬해
   // 온다(page.tsx) — 클라이언트에서 다시 정렬할 필요가 없다.
@@ -206,7 +263,7 @@ export default function BadgesClient({
                 <div className="flex-1 min-w-0">
                   <Select
                     value={activityFilter}
-                    onChange={(e) => setActivityFilter(e.target.value as ActivityFilterValue | 'all')}
+                    onChange={(e) => handleActivityFilterChange(e.target.value as ActivityFilterValue | 'all')}
                     options={[
                       { value: 'all', label: d.badges.filterActivityAll },
                       ...ACTIVITY_TYPE_ORDER.map((tp) => ({ value: tp, label: BADGE_ACTIVITY_FILTER_LABELS[tp] ?? tp })),
@@ -216,7 +273,7 @@ export default function BadgesClient({
                 <div className="flex-1 min-w-0">
                   <Select
                     value={rarityFilter}
-                    onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
+                    onChange={(e) => handleRarityFilterChange(e.target.value as BadgeRarity | 'all')}
                     options={[
                       { value: 'all', label: d.badges.filterRarityAll },
                       ...RARITY_ORDER.map((r) => ({ value: r, label: RARITY_LABEL[r] })),
@@ -231,7 +288,6 @@ export default function BadgesClient({
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
-                      onNavigate={clearHashOnNavigate}
                       name={badge.name}
                       imageUrl={badge.image_url}
                       bgColors={badge.bg_colors}
@@ -262,8 +318,8 @@ export default function BadgesClient({
               <div className="flex gap-2 mb-4">
                 <div className="flex-1 min-w-0">
                   <Select
-                    value={checkinCategoryFilter}
-                    onChange={(e) => setCheckinCategoryFilter(e.target.value)}
+                    value={validCheckinCategory}
+                    onChange={(e) => handleCheckinCategoryChange(e.target.value)}
                     options={[
                       { value: 'all', label: d.badges.filterCheckinCategoryAll },
                       ...checkinCategoryOptions.map(([slug, label]) => ({ value: slug, label })),
@@ -273,7 +329,7 @@ export default function BadgesClient({
                 <div className="flex-1 min-w-0">
                   <Select
                     value={checkinSortOrder}
-                    onChange={(e) => setCheckinSortOrder(e.target.value as CheckinSortOrder)}
+                    onChange={(e) => handleCheckinSortChange(e.target.value as CheckinSortOrder)}
                     options={[
                       { value: 'latest', label: d.badges.sortCheckinLatest },
                       { value: 'name', label: d.badges.sortCheckinName },
@@ -288,7 +344,6 @@ export default function BadgesClient({
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
-                      onNavigate={clearHashOnNavigate}
                       name={badge.name}
                       imageUrl={badge.image_url}
                       bgColors={badge.bg_colors}

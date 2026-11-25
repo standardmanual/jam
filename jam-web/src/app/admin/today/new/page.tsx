@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import TodayCardForm from '../TodayCardForm'
 import { normalizeDateParam } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
@@ -47,9 +47,9 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
         returnDate={date}
         header={
           <div>
-            <Link href={`/admin/today?date=${date}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+            <AdminBackLink fallbackHref={`/admin/today?date=${date}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
               ← 투데이
-            </Link>
+            </AdminBackLink>
             <h1 className="text-2xl font-bold mt-2">투데이 카드 등록</h1>
           </div>
         }

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import SafeImage from '@/components/SafeImage'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow, InventoryRow, PoiDropSource } from '@/types/database'
@@ -85,9 +85,9 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
 
   const header = (
     <div className="mb-6 space-y-3">
-      <Link href="/admin/item-badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+      <AdminBackLink fallbackHref="/admin/item-badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
         ← 아이템배지 현황
-      </Link>
+      </AdminBackLink>
       <div className="flex items-center gap-3">
         <div className="w-14 h-14 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
           {badge.image_url ? (

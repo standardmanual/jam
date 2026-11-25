@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { buildQueryHref, readEnumParam, readPageParam, readSingleParam } from '../urlQueryState'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { buildQueryHref, pushUrlQuery, readEnumParam, readPageParam, readSingleParam, replaceUrlQuery } from '../urlQueryState'
+import { JAM_NAV_IDX_KEY } from '../appHistory'
 
 const TABS = ['ongoing', 'joined', 'ended'] as const
 
@@ -58,5 +59,35 @@ describe('buildQueryHref', () => {
     expect(buildQueryHref('/voc', new URLSearchParams('page=3'), { sort: 'answered', page: null })).toBe(
       '/voc?sort=answered',
     )
+  })
+})
+
+describe('replaceUrlQuery · pushUrlQuery', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('replaceUrlQuery는 Next 내부 키를 제외하고 __jamNavIdx 등 커스텀 상태만 보존해 replaceState를 호출한다', () => {
+    const replaceState = vi.fn()
+    vi.stubGlobal('window', {
+      history: {
+        state: { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: ['t'], [JAM_NAV_IDX_KEY]: 2 },
+        replaceState,
+      },
+    })
+    replaceUrlQuery('/badges?tab=collection')
+    expect(replaceState).toHaveBeenCalledWith({ [JAM_NAV_IDX_KEY]: 2 }, '', '/badges?tab=collection')
+  })
+
+  it('pushUrlQuery는 커스텀 상태가 없으면 null로 pushState를 호출한다', () => {
+    const pushState = vi.fn()
+    vi.stubGlobal('window', {
+      history: {
+        state: { __NA: true },
+        pushState,
+      },
+    })
+    pushUrlQuery('/jam?tab=followers')
+    expect(pushState).toHaveBeenCalledWith(null, '', '/jam?tab=followers')
   })
 })

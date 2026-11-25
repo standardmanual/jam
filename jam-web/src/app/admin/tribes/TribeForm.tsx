@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import type { TribeRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 
@@ -183,7 +184,7 @@ export default function TribeForm({ tribe }: TribeFormProps) {
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/tribes')}
+          onClick={() => goBackOrPush(router, '/admin/tribes')}
           className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
