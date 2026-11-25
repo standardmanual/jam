@@ -12,7 +12,7 @@
 | changes | 무엇을 어떻게 |
 | files | 변경 파일 |
 | branch | 리뷰 브랜치 |
-| checks | lint·타입·테스트·ds:check 결과 + `definition-of-done.md` 정확성·품질 자기 점검 결과 |
+| checks | lint·타입·테스트·token-refs 결과 + `definition-of-done.md` 정확성·품질 자기 점검 결과 |
 | tests_added | 추가한 테스트 (없으면 사유) |
 | doc_updates | 문서 경로 / 섹션 / 바꿀 내용 / 근거 |
 | db_migration | SQL 파일 경로 또는 없음 |

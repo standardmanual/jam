@@ -2,7 +2,7 @@
  * Button 변형의 면·글자·테두리 짝 (티켓 20261015_2133, 2회 버튼·입력창·내비게이션)
  *
  * 서비스 `Button.tsx`(Tailwind 클래스)가 유일한 구현이다(MODULAR 사본은 티켓 20261126_0720에서 지웠다).
- * `npm run ds:check`는 색을 비교하지 못하므로, 이 파일이 변형별 토큰 한 표를 고정한다.
+ * 자동 검사(`scripts/check-token-refs.mjs`)는 색을 비교하지 못하므로, 이 파일이 변형별 토큰 한 표를 고정한다.
  *
  * 변형 대응(티켓 20261107_2202): primary `--accent`(글자 `--accent-foreground`), secondary·outline `--btn-secondary`(외곽선 없음,
  * 둘은 같은 면), danger `--danger`(글자 `--snow`), ghost 글자 `--link`.

@@ -14,7 +14,6 @@
     "test": "vitest run && npm run test:node",
     "test:node": "for f in src/lib/today/__tests__/today-logic.test.ts src/lib/missions/__tests__/*.test.ts src/app/admin/missions/__tests__/*.test.ts src/lib/admin/__tests__/today-calendar.test.ts; do echo \"→ $f\"; tsx \"$f\" || exit 1; done",
     "test:watch": "vitest",
-    "ds:check": "node scripts/ds-sync-check.mjs",
     "audit:unused": "knip --no-exit-code",
     "audit:unused:json": "knip --no-exit-code --reporter json",
     "audit:tokens": "node scripts/token-usage.mjs",

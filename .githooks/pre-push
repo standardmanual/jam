@@ -262,7 +262,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   # 리뷰 브랜치(claude/jamwork-*) push 시 verify 게이트 (티켓 20260918_0421)
   #
-  # lint·typecheck·test·ds:check·슬롭검사를 한 번에 묶어 실행한다(scripts/verify.sh).
+  # lint·typecheck·test·token-refs·슬롭검사를 한 번에 묶어 실행한다(scripts/verify.sh).
   # Workflow 에이전트 워크트리(wf_*)에서는 아현 로컬 → 여기(pre-push) → CI 세 번 도는 것을
   # 줄이기 위해 여기서는 건너뛰고 CI(verify 워크플로)가 검증한다(티켓 20260922_1755). 기준
   # 방어 검사(위 블록, eslint-disable 사유·skip/only·테스트 삭제 사유·max-warnings)는 모든

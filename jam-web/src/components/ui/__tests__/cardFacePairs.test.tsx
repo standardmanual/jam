@@ -6,7 +6,7 @@
  * 확인하는 것
  * ① MODULAR `Card` 세 톤(default·tint·inverse)의 면과 글자색 쌍
  * ② 서비스 BadgeGridCard·CollectionGridCard의 면·테두리·선택 면(MODULAR 사본은 티켓 20261125_2122에서 지웠다)
- *    (`npm run ds:check`는 색 쌍을 비교하지 못한다 — 이 파일이 그 자리를 맡는다)
+ *    (자동 검사(`scripts/check-token-refs.mjs`)는 색 쌍을 비교하지 못한다 — 이 파일이 그 자리를 맡는다)
  * ③ SlidingTabs 팔레트가 라이트 값이다(흰색 반투명 라벨이 크림 바탕에서 사라지던 것)
  * ④ UserSearchBar·RankingListRow의 면
  *
