@@ -30,7 +30,6 @@ export const TARGETS = {
   favicon: path.join(WEB_ROOT, 'src/app/favicon.ico'),
   dsLogoWhite: path.join(WEB_ROOT, 'design-system/assets/logo/jam-logo-white.png'),
   dsLogoBlack: path.join(WEB_ROOT, 'design-system/assets/logo/jam-logo-black.png'),
-  dsUpload: path.join(WEB_ROOT, 'design-system/uploads/jam_logo.png'),
 };
 
 const BLACK = { r: 0, g: 0, b: 0, alpha: 1 };
@@ -128,7 +127,6 @@ export async function buildAll() {
     [TARGETS.favicon]: favicon,
     [TARGETS.dsLogoWhite]: white,
     [TARGETS.dsLogoBlack]: black,
-    [TARGETS.dsUpload]: black,
   };
 }
 
@@ -191,7 +189,6 @@ export async function checkAssets() {
     if (!fa || !fb || !fa.equals(fb)) problems.push(`${a}와 ${b}의 바이트가 다름`);
   };
   same('dsLogoWhite', 'logoWhite');
-  same('dsUpload', 'dsLogoBlack');
 
   const iconSpecs = [
     ['icon', 512, 'circle'],

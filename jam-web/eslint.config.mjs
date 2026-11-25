@@ -21,9 +21,6 @@ const eslintConfig = defineConfig([
     // 성립하면 회귀 방지 장치로 쓸 수 없으므로 명시적으로 제외한다(20260827_022).
     "storybook-static/**",
     "public/storybook/**",
-    // 빌드 생성물: 1행에 "GENERATED from dc-runtime/src/*.ts — do not edit"가 명시돼 있어
-    // 파일에 예외 주석을 넣어도 재생성 시 사라진다.
-    "design-system/support.js",
   ]),
   {
     // scripts/는 전부 #!/usr/bin/env node 로 실행되는 CommonJS 1회성 스크립트라

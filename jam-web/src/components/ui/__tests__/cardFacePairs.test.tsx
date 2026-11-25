@@ -5,7 +5,7 @@
  *
  * 확인하는 것
  * ① MODULAR `Card` 세 톤(default·tint·inverse)의 면과 글자색 쌍
- * ② 병존 2쌍(BadgeGridCard·CollectionGridCard)의 서비스·MODULAR 면·테두리·선택 면이 같은 값이다
+ * ② 서비스 BadgeGridCard·CollectionGridCard의 면·테두리·선택 면(MODULAR 사본은 티켓 20261125_2122에서 지웠다)
  *    (`npm run ds:check`는 색 쌍을 비교하지 못한다 — 이 파일이 그 자리를 맡는다)
  * ③ SlidingTabs 팔레트가 라이트 값이다(흰색 반투명 라벨이 크림 바탕에서 사라지던 것)
  * ④ UserSearchBar·RankingListRow의 면
@@ -23,16 +23,12 @@ vi.mock('next/navigation', () => ({
 
 import { Card } from '@ds/components/cards/Card'
 import ServiceBadgeGridCard from '../BadgeGridCard'
-import { BadgeGridCard as DsBadgeGridCard } from '@ds/components/patterns/BadgeGridCard'
 import ServiceCollectionGridCard from '../CollectionGridCard'
-import { CollectionGridCard as DsCollectionGridCard } from '@ds/components/patterns/CollectionGridCard'
 import ServiceSlidingTabs from '../SlidingTabs'
-import { SlidingTabs as DsSlidingTabs } from '@ds/components/navigation/SlidingTabs'
 import RankingListRow from '@/components/ranking/RankingListRow'
 import UserSearchBar from '@/app/(main)/UserSearchBar'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 
-const BORDER = 'border:1px solid var(--border)'
 // 공통 Card default(티켓 20261107_2202): --card-bg 면 + 투명 1px 테두리(박스 크기 유지)
 const CARD_FACE = 'background:var(--card-bg)'
 
@@ -100,28 +96,6 @@ describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
     expect(selected).not.toContain('bg-accent-soft')
     expect(selected).not.toContain('border-border')
   })
-
-  it('MODULAR: 면은 서비스와 같은 --background-secondary(외곽선 없음), 선택은 블랙 2px 링이고 옛 빨강 리터럴이 없다(티켓 20261125_1650)', () => {
-    const GREY_FACE = 'background:var(--background-secondary)'
-    const base = renderToStaticMarkup(<DsBadgeGridCard {...props} />)
-    expect(base).toContain(GREY_FACE)
-    expect(base).not.toContain(BORDER)
-    expect(base).not.toContain('box-shadow')
-
-    const selected = renderToStaticMarkup(<DsBadgeGridCard {...props} selected />)
-    expect(selected).toContain(GREY_FACE)
-    expect(selected).toContain('box-shadow:0 0 0 2px var(--foreground)')
-    expect(selected).not.toContain('accent-soft')
-    expect(selected).not.toContain(BORDER)
-    expect(selected).not.toContain('232, 70, 31')
-    expect(selected).not.toContain('232,70,31')
-  })
-
-  it('MODULAR highlighted는 inset 2px --link 링이고 외곽선은 없다', () => {
-    const html = renderToStaticMarkup(<DsBadgeGridCard {...props} highlighted />)
-    expect(html).toContain('box-shadow:inset 0 0 0 2px var(--link)')
-    expect(html).not.toContain(BORDER)
-  })
 })
 
 describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
@@ -134,19 +108,7 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
     expect(html).toContain('var(--capsule-fill)')
   })
 
-  it('MODULAR: 같은 면이고, 진행 바 트랙이 어두운 캡슐 트랙(--capsule-track)·채움이 홈 캡슐 게이지와 같은 --capsule-fill이다(티켓 20261114_1502 → 20261125_1113)', () => {
-    const html = renderToStaticMarkup(<DsCollectionGridCard {...props} />)
-    expect(html).toContain(CARD_FACE)
-    expect(html).not.toContain(BORDER)
-    expect(html).toContain('padding:var(--spacing-12)')
-    expect(html).toContain('background:var(--capsule-track)')
-    expect(html).toContain('background:var(--capsule-fill)')
-    expect(html).not.toContain('background:var(--jam-green)')
-    expect(html).not.toContain('rgba(255,255,255')
-    expect(html).not.toContain('rgba(255, 255, 255')
-  })
-
-  it('완성 카드: 서비스는 bg-accent(검정) 면, MODULAR는 background:var(--accent) 면이다(미완성은 --card-bg 그대로, 티켓 20261125_1113)', () => {
+  it('완성 카드: 서비스는 bg-accent(검정) 면이다(미완성은 --card-bg 그대로, 티켓 20261125_1113)', () => {
     const service = renderToStaticMarkup(<ServiceCollectionGridCard {...props} collected={10} completed />)
     expect(service).toContain('rounded-2xl p-3 bg-accent')
     expect(service).not.toContain('bg-card-bg')
@@ -155,18 +117,10 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
     expect(service).not.toMatch(/shadow|border(?!-radius)/)
     expect(service).toContain('text-accent-foreground')
     expect(service).not.toContain('text-white')
-
-    const ds = renderToStaticMarkup(<DsCollectionGridCard {...props} collected={10} completed />)
-    expect(ds).toMatch(/^<div class="[^"]*" style="[^"]*background:var\(--accent\)/)
-    expect(ds).not.toContain('background:var(--card-bg)')
-    expect(ds).not.toContain('background:var(--jam-green)')
-    expect(ds).toContain('color:var(--accent-foreground)')
-    expect(ds).not.toMatch(/box-shadow|border:/)
   })
 
-  it('서비스·MODULAR 모두 카운트 글자는 --link다', () => {
+  it('카운트 글자는 --link다', () => {
     expect(renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)).toContain('text-[color:var(--link)]')
-    expect(renderToStaticMarkup(<DsCollectionGridCard {...props} />)).toContain('color:var(--link)')
   })
 })
 
@@ -195,22 +149,6 @@ describe('SlidingTabs 팔레트 — 크림 바탕·흰 카드 위에서 라벨�
     expect(html).toContain('--tabs-pill-bg:var(--accent)')
     expect(html).toContain('--tabs-text-active:var(--accent-foreground)')
     expect(html).not.toContain('rgba(0, 0, 0, 0.4)')
-  })
-
-  it('MODULAR는 서비스와 같은 값이다(비활성 --muted, onSurface 트랙 --default)', () => {
-    const onSurface = renderToStaticMarkup(
-      <DsSlidingTabs items={[...items]} value="a" onChange={() => {}} outlined={false} />,
-    )
-    expect(onSurface).toContain('background:var(--default)')
-    expect(onSurface).toContain('color:var(--muted)')
-    expect(onSurface).toContain('color:var(--snow)')
-    expect(onSurface).not.toContain('rgba(255, 255, 255')
-
-    const onCard = renderToStaticMarkup(
-      <DsSlidingTabs items={[...items]} value="a" onChange={() => {}} variant="onCard" outlined={false} />,
-    )
-    expect(onCard).toContain('color:var(--muted)')
-    expect(onCard).not.toContain('rgba(0, 0, 0, 0.4)')
   })
 })
 

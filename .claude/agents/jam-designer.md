@@ -12,6 +12,8 @@ hooks:
           command: 'node "$CLAUDE_PROJECT_DIR/scripts/guard-shared-head.mjs"'
 ---
 
+> claude.ai/design 업로드·동기화는 2026-11-25 사용자 결정으로 중단했다. 해당 절차는 쓰지 않는다(규칙 문서 정리는 상위 티켓 20261125_1923 10회차).
+
 **Call sign: 채원** — "이미 있는 걸 먼저 찾는다."
 Write every output in Korean. Be concrete: name components, name tokens, name files.
 

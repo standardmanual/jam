@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * ds-sync-check.mjs — 서비스 UI ↔ MODULAR ↔ Storybook ↔ claude.ai/design 정합성 진단
+ * ds-sync-check.mjs — 서비스 UI ↔ MODULAR ↔ Storybook 정합성 진단
  *
- * `/jam-ds` 스킬의 진단 엔진. 사람이 눈으로 네 층을 대조하던 일을 기계가 대신한다.
+ * `/jam-ds` 스킬의 진단 엔진. 사람이 눈으로 세 층을 대조하던 일을 기계가 대신한다.
  *
  * ── 왜 텍스트 diff가 아닌가 ─────────────────────────────────────────────────
  * 서비스 UI는 Tailwind 유틸리티(`h-[49px] px-1 max-w-[388px]`)로, MODULAR은 인라인 style
@@ -35,7 +35,6 @@ const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 const DS = path.join(WEB_ROOT, 'design-system');
 const SERVICE_UI = path.join(WEB_ROOT, 'src/components/ui');
-const SYNC_DIR = path.join(REPO_ROOT, '.design-sync');
 
 const argv = process.argv.slice(2);
 const AS_JSON = argv.includes('--json');
@@ -306,22 +305,16 @@ function expandShorthand(pairs) {
 const keyOf = ([k, v]) => `${k}: ${v}`;
 
 // ── 검사 1·2: 페어 기하 드리프트 / 페어 결손 ────────────────────────────────
-function loadManifest() {
-  const p = path.join(DS, '_ds_manifest.json');
-  return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null;
-}
-const manifest = loadManifest();
-
 function buildPairs() {
   const pairs = [];
-  if (!manifest) return pairs;
-  for (const c of manifest.components || []) {
-    const dsPath = path.join(DS, c.sourcePath);
-    const svcPath = path.join(SERVICE_UI, `${c.name}.tsx`);
+  const files = walk(path.join(DS, 'components'), (f) => f.endsWith('.jsx') && !/ \d\.jsx$/.test(f)).sort();
+  for (const dsPath of files) {
+    const name = path.basename(dsPath, '.jsx');
+    const svcPath = path.join(SERVICE_UI, `${name}.tsx`);
     pairs.push({
-      name: c.name,
+      name,
       dsPath, svcPath,
-      dsExists: existsSync(dsPath),
+      dsExists: true,
       svcExists: existsSync(svcPath),
       rel: { ds: path.relative(REPO_ROOT, dsPath), svc: path.relative(REPO_ROOT, svcPath) },
     });
@@ -332,8 +325,8 @@ function buildPairs() {
 function checkPairs(pairs) {
   for (const p of pairs) {
     if (!p.dsExists) {
-      report('MANIFEST_DRIFT', 'ERROR', p.name,
-        `manifest 가 가리키는 컴포넌트 파일이 없습니다: ${p.rel.ds}`);
+      report('PAIR_MISSING', 'ERROR', p.name,
+        `MODULAR 컴포넌트 파일이 없습니다: ${p.rel.ds}`);
       continue;
     }
     if (!p.svcExists) continue; // 서비스에 짝이 없는 DS 전용 컴포넌트는 정상 (@ds 직접 import)
@@ -480,7 +473,7 @@ function checkStories(pairs) {
   }
 }
 
-// ── 검사 6: manifest ↔ 실제 파일 ────────────────────────────────────────────
+// ── 파일 순회 ────────────────────────────────────────────
 function walk(dir, pred, acc = []) {
   if (!existsSync(dir)) return acc;
   for (const n of readdirSync(dir)) {
@@ -489,75 +482,6 @@ function walk(dir, pred, acc = []) {
     else if (pred(full)) acc.push(full);
   }
   return acc;
-}
-function checkManifest() {
-  if (!manifest) { report('MANIFEST_DRIFT', 'ERROR', '_ds_manifest.json', '파일이 없습니다.'); return; }
-  const listed = new Set((manifest.components || []).map((c) => path.join(DS, c.sourcePath)));
-  const actual = walk(path.join(DS, 'components'), (f) => f.endsWith('.jsx') && !/ \d\.jsx$/.test(f));
-  const unlisted = actual.filter((f) => !listed.has(f)).map((f) => path.relative(DS, f));
-  if (unlisted.length) {
-    report('MANIFEST_DRIFT', 'ERROR', '_ds_manifest.json',
-      `컴포넌트 파일이 색인에 없습니다 (${unlisted.length}개). 탐색·업로드에서 누락됩니다.`,
-      { 미등록: unlisted });
-  }
-  for (const c of manifest.cards || []) {
-    const p = path.join(DS, c.path);
-    if (!existsSync(p)) {
-      report('MANIFEST_DRIFT', 'ERROR', c.name, `카드가 가리키는 파일이 없습니다: ${c.path}`);
-    }
-  }
-  for (const g of manifest.globalCssPaths || []) {
-    if (!existsSync(path.join(DS, g))) {
-      report('MANIFEST_DRIFT', 'ERROR', 'globalCssPaths', `등록된 CSS 가 없습니다: ${g}`);
-    }
-  }
-  // globals.css 가 import 하는데 manifest 에는 빠진 토큰 파일을 찾는다.
-  const globals = path.join(WEB_ROOT, 'src/app/globals.css');
-  if (existsSync(globals)) {
-    const imported = [...readFileSync(globals, 'utf8')
-      .matchAll(/@import\s+["']\.\.\/\.\.\/design-system\/([^"']+)["']/g)].map((m) => m[1]);
-    const registered = new Set(manifest.globalCssPaths || []);
-    const missing = imported.filter((i) => !registered.has(i));
-    if (missing.length) {
-      report('MANIFEST_DRIFT', 'WARN', 'globalCssPaths',
-        '서비스가 import 하는데 manifest 에 등록되지 않은 토큰 파일이 있습니다. 업로드본에서 스타일이 빠집니다.',
-        { 누락: missing });
-    }
-  }
-}
-
-/** manifest 에 박제된 토큰 값이 tokens/*.css 의 현재 값과 같은지 본다. */
-function checkManifestTokens() {
-  if (!manifest) return;
-  const stale = [];
-  for (const t of manifest.tokens || []) {
-    const actual = TOKENS.get(t.name);
-    if (actual === undefined) { stale.push(`${t.name}: 등록됐으나 tokens/ 에 정의 없음`); continue; }
-    // rgb(234,232,226) 와 rgb(234, 232, 226) 은 같은 값이다 — 구분자 주변 공백을 지운 뒤 비교한다.
-    const canon = (v) => String(v).replace(/\s+/g, ' ').replace(/\s*([,()])\s*/g, '$1').trim();
-    if (canon(actual) !== canon(t.value)) {
-      stale.push(`${t.name}: manifest "${t.value}" ≠ 실제 "${actual}"`);
-    }
-  }
-  const declared = new Set((manifest.tokens || []).map((t) => t.name));
-  const undeclared = [...TOKENS.keys()].filter((n) => !declared.has(n));
-  if (stale.length) {
-    report('MANIFEST_TOKEN_DRIFT', 'ERROR', '_ds_manifest.json',
-      `manifest 의 토큰 값이 실제 tokens/*.css 와 다릅니다 (${stale.length}개). 업로드본이 틀린 값을 보여줍니다.`,
-      { 어긋난_토큰: stale });
-  }
-  if (undeclared.length) {
-    report('MANIFEST_TOKEN_DRIFT', 'WARN', '_ds_manifest.json',
-      `tokens/ 에는 있으나 manifest 색인에 없는 토큰 ${undeclared.length}개.`,
-      { 미등록: undeclared });
-  }
-  for (const bf of manifest.brandFonts || []) {
-    const fam = TOKENS.get('--font-family-base') || '';
-    if (bf.tokens?.includes('--font-family-base') && !fam.includes(bf.family)) {
-      report('MANIFEST_TOKEN_DRIFT', 'ERROR', 'brandFonts',
-        `manifest 의 브랜드 폰트가 실제 토큰과 다릅니다: "${bf.family}" ≠ ${fam.split(',')[0]}`);
-    }
-  }
 }
 
 // ── 검사 7: 토큰 미사용 (raw 값) ────────────────────────────────────────────
@@ -625,48 +549,13 @@ function checkUndefinedTokens() {
   }
 }
 
-// ── 검사 8: claude.ai/design 업로드 노후 ────────────────────────────────────
-function checkUploadState() {
-  const statePath = path.join(SYNC_DIR, 'state.json');
-  if (!existsSync(statePath)) {
-    report('UPLOAD_STALE', 'INFO', 'claude.ai/design',
-      '업로드 추적 파일이 없습니다 (.design-sync/state.json). 최초 동기화 후 생성됩니다.');
-    return;
-  }
-  const state = JSON.parse(readFileSync(statePath, 'utf8'));
-  if (!state.lastUploadCommit) {
-    report('UPLOAD_STALE', 'INFO', 'claude.ai/design', '마지막 업로드 커밋이 기록되지 않았습니다.');
-    return;
-  }
-  let changed = [];
-  try {
-    changed = execFileSync('git',
-      ['diff', '--name-only', `${state.lastUploadCommit}..HEAD`, '--', 'jam-web/design-system'],
-      { cwd: REPO_ROOT, encoding: 'utf8' })
-      .split('\n').filter(Boolean)
-      .filter((f) => !f.includes('.stories.'));  // Story 는 업로드 대상이 아니다
-  } catch {
-    report('UPLOAD_STALE', 'WARN', 'claude.ai/design',
-      `기록된 커밋을 찾을 수 없습니다: ${state.lastUploadCommit}`);
-    return;
-  }
-  if (changed.length) {
-    report('UPLOAD_STALE', 'WARN', 'claude.ai/design',
-      `마지막 업로드 이후 MODULAR 파일 ${changed.length}개가 바뀌었습니다. 재업로드가 필요합니다.`,
-      { projectId: state.projectId, 마지막업로드: state.lastUploadAt, 변경파일: changed });
-  }
-}
-
 // ── 실행 ────────────────────────────────────────────────────────────────────
 const pairs = buildPairs();
 checkPairs(pairs);
 checkProps(pairs);
 checkStories(pairs);
-checkManifest();
-checkManifestTokens();
 checkRawTokens();
 checkUndefinedTokens();
-checkUploadState();
 
 const counts = {
   ERROR: findings.filter((f) => f.level === 'ERROR').length,
@@ -699,6 +588,6 @@ if (AS_JSON) {
     }
     console.log('');
   }
-  if (!findings.length) console.log('네 층이 모두 정합합니다.\n');
+  if (!findings.length) console.log('세 층이 모두 정합합니다.\n');
 }
 process.exit(counts.ERROR > 0 ? 1 : 0);

@@ -18,7 +18,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 import ServiceBadgeGridCard from '../BadgeGridCard'
-import { BadgeGridCard as DsBadgeGridCard } from '@ds/components/patterns/BadgeGridCard'
 import { d } from '@/lib/i18n'
 
 const NAME = '한강 마스터'
@@ -29,11 +28,6 @@ const implementations = [
     label: '서비스',
     render: (props: Record<string, unknown>) => renderToStaticMarkup(<ServiceBadgeGridCard rarity="epic" {...props} />),
     isGrayscale: (html: string) => /class="[^"]*\bgrayscale\b/.test(html),
-  },
-  {
-    label: 'MODULAR',
-    render: (props: Record<string, unknown>) => renderToStaticMarkup(<DsBadgeGridCard rarity="epic" {...props} />),
-    isGrayscale: (html: string) => html.includes('filter:grayscale(1)'),
   },
 ]
 

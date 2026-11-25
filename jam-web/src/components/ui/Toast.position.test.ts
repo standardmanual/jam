@@ -36,11 +36,8 @@ describe('하단 기준선 토큰 단일 원천', () => {
     expect(tokens).toMatch(/--tabbar-height:\s*49px/)
   })
 
-  it('서비스·DS 탭바와 지도 버튼이 같은 토큰을 읽는다', () => {
+  it('서비스 탭바와 지도 버튼이 같은 토큰을 읽는다', () => {
     expect(read('./TabBar.tsx')).toContain("bottom: 'var(--tabbar-bottom)'")
-    expect(read('../../../design-system/components/navigation/TabBar.jsx')).toContain(
-      "bottom: 'var(--tabbar-bottom)'",
-    )
     expect(read('../map/MapView.tsx')).toContain('calc(var(--tabbar-bottom) + 49px + 18px)')
   })
 

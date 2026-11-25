@@ -1,12 +1,12 @@
 /**
- * 입력창(Input·Select·Textarea) 면·테두리·상태 레시피 (티켓 20261015_2133, 2회 버튼·입력창·내비게이션)
+ * 입력창(Input·Select) 면·테두리·상태 레시피 (티켓 20261015_2133, 2회 버튼·입력창·내비게이션)
  *
  * 입력창은 서비스에서 쓰지 않는 미도입 MODULAR 컴포넌트라(스토리북에서만 바뀐다) 서비스 쌍이 없다.
  * 서비스에서 같은 모양을 쓰는 `UserSearchBar`(흰 면 + 1px --field-border)와 레시피가 같은지가 기준이다.
  *
  * 확인하는 것
  * ① 면 --surface + 1px --field-border, 글자 --foreground. 옛 --background-secondary·--border 면/테두리가 없다
- * ② Input·Select는 캡슐(--field-radius), Textarea만 --radius-2xl이다
+ * ② Input·Select는 캡슐(--field-radius)이다
  * ③ 오류 --danger, 성공 --success. --rarity-* 색을 쓰지 않는다
  * ④ 상태가 바뀌어도 border는 1px 그대로이고 같은 색 inset 링 1px로 시각 2px을 만든다(두께가 변하면 글자가 1px 움직인다)
  * ⑤ Input의 `surface="inverse"`(흰색 반투명 테두리)가 사라졌다
@@ -21,7 +21,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 
 import { Input } from '@ds/components/forms/Input'
 import { Select } from '@ds/components/forms/Select'
-import { Textarea } from '@ds/components/forms/Textarea'
 
 const OPTIONS = [
   { value: 'running', label: '러닝' },
@@ -35,7 +34,6 @@ const FIELDS: Record<string, (state: FieldState) => string> = {
   Input: (state) => renderToStaticMarkup(<Input aria-label="입력" state={state} />),
   Select: (state) =>
     renderToStaticMarkup(<Select aria-label="선택" options={OPTIONS} value="running" onChange={() => {}} state={state} />),
-  Textarea: (state) => renderToStaticMarkup(<Textarea aria-label="내용" state={state} />),
 }
 
 describe('입력창 면과 기본 테두리', () => {
@@ -60,12 +58,6 @@ describe('입력창 모양', () => {
   it('Input·Select는 캡슐(--field-radius)이다', () => {
     expect(FIELDS.Input('default')).toContain('border-radius:var(--field-radius)')
     expect(FIELDS.Select('default')).toContain('border-radius:var(--field-radius)')
-  })
-
-  it('Textarea만 --radius-2xl이다(여러 줄은 캡슐이면 모서리가 글자를 먹는다)', () => {
-    const html = FIELDS.Textarea('default')
-    expect(html).toContain('border-radius:var(--radius-2xl)')
-    expect(html).not.toContain('--field-radius')
   })
 
   it('Input은 높이 44px 고정이다', () => {
