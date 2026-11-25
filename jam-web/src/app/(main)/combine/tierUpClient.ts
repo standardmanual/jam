@@ -7,7 +7,7 @@
  *
  * 굴림과 확률은 서버에서만 정한다. 이 파일에는 확률 숫자가 없다(UX 라이팅 §3.3) — 화면에는 확률 안내 링크도 두지 않는다(2026-11-10 사용자 지시, 푸터 링크로만 들어간다).
  */
-import { getRarityLabel } from '@ds/components/cards/RarityBadge'
+import { getRarityLabel } from '@/components/ui/RarityBadge'
 import { d, t } from '@/lib/i18n'
 import { TIER_UP_MATERIAL_COUNT, TIER_UP_MATERIAL_RARITIES, type TierUpMaterialRarity } from '@/lib/combine/tierUpOdds'
 import { isLockedItemBody } from '@/lib/inventory/locked-item-block'

@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Card } from '@ds/components/cards/Card'
-import { LabelChip } from '@ds/components/cards/LabelChip'
+import { Card } from '@/components/ui/Card'
+import { LabelChip } from '@/components/ui/LabelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { d, t } from '@/lib/i18n'
 import { formatMissionProgress } from '@/lib/missions/format'

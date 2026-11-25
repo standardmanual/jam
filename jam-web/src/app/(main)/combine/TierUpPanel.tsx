@@ -2,7 +2,7 @@
 
 import { MixerSlot } from '@ds/components/patterns/MixerSlot'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
 import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'

@@ -1,5 +1,5 @@
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import { LabelChip } from '@ds/components/cards/LabelChip'
+import { LabelChip } from '@/components/ui/LabelChip'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 

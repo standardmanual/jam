@@ -1,5 +1,31 @@
 import React from 'react';
 
+export type Rarity = 'common' | 'rare' | 'epic' | 'mystic';
+
+export interface RarityBadgeProps {
+  /**
+   * 등급. `null`은 "등급이 존재하지 않음"(무한레벨형, v5 티켓 20260905_0027)을 뜻하며
+   * 칩을 그리지 않는다 — `undefined`(미지정, 기본값 common으로 취급)와 의미가 다르다.
+   *
+   * 타입 밖의 값(오타·잘못된 캐스팅)은 **Common으로 폴백하지 않고** 아무것도 그리지
+   * 않으며 개발 빌드에서 `console.warn`을 남긴다 (티켓 20260905_0036).
+   */
+  rarity?: Rarity | null;
+  /**
+   * 칩 크기 (티켓 20260906_2140). `sm`(기본) = 8px 라벨 · 4/9 패딩 — **기존 렌더 그대로**라
+   * `size`를 넘기지 않는 서비스 호출부는 변화가 없다. `md`·`row` = 12px 라벨 · 줄높이 16px · 2/8 패딩(높이 20px) — 모든 칩의 기준인 ListRowChip과 같다(티켓 20261106_2322, 20261112_0010). `md`는 예전에 5/10 패딩(22px)이었다.
+   */
+  size?: 'sm' | 'md' | 'row';
+  /** `common` 칩 면 톤 — 기본 `'default'`(`--default-soft`), 회색 카드 면 위는 `'common'`(`--rarity-common` + `--rarity-common-foreground`). */
+  tone?: 'default' | 'common';
+  className?: string;
+  /**
+   * true이면 `common`도 칩(`Common`)으로 그린다. 기본 false — Common은 기본 등급이라 칩을 그리지 않는다(노이즈 축소, 티켓 20260827_024).
+   * 액티비티 배지 목록처럼 Common도 알려야 하는 화면만 켠다(2026-11-09 사용자 지시). 면은 레벨 칩과 같은 `--default-soft` + `--foreground`다(`--rarity-common` 토큰 값은 그대로).
+   */
+  showCommon?: boolean;
+}
+
 /**
  * RarityBadge — badge rarity pill.
  * rarity: 'common' | 'rare' | 'epic' | 'mystic'
@@ -39,9 +65,9 @@ const config = {
  * 등급이 없는 것과 등급을 모르는 것은 둘 다 «그리지 않음»이 맞고, 후자만 개발 빌드에서
  * 경고를 남긴다. 프로덕션에서는 경고 없이 조용히 생략한다(화면이 깨지지 않게).
  */
-function resolveRarity(rarity, where) {
+function resolveRarity(rarity: string | null | undefined, where: string): Rarity | null {
   if (rarity == null) return null;
-  if (Object.prototype.hasOwnProperty.call(config, rarity)) return rarity;
+  if (Object.prototype.hasOwnProperty.call(config, rarity)) return rarity as Rarity;
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') {
     console.warn(`[MODULAR] ${where}: 알 수 없는 등급 값 ${JSON.stringify(rarity)} — 아무것도 그리지 않습니다. 'common'|'rare'|'epic'|'mystic' 또는 null(등급 없음)을 넘기세요.`);
   }
@@ -54,7 +80,7 @@ function resolveRarity(rarity, where) {
  * 칩을 렌더하지 않지만(그리드/리스트 노이즈 축소, 20260827_024), 렌더링 없이 텍스트만
  * 필요한 곳(예: 스크린리더 라이브 리전, 20260904_1502)은 이 함수를 쓴다.
  */
-export function getRarityLabel(rarity = 'common') {
+export function getRarityLabel(rarity: Rarity | null = 'common'): string | null {
   // v5: 등급이 없는 배지(무한레벨형)는 라벨 자체가 없다 — null을 그대로 돌려준다.
   // 기본값 `= 'common'`은 undefined에만 걸리므로 명시적 null은 resolveRarity가 따로 잡는다.
   // 이 가드가 없으면 "Common"을 돌려준다(티켓 20260905_0027 개선 리뷰).
@@ -79,7 +105,7 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: 'var(--chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
-export function RarityBadge({ rarity = 'common', size = 'sm', tone = 'default', className = '', showCommon = false }) {
+export function RarityBadge({ rarity = 'common', size = 'sm', tone = 'default', className = '', showCommon = false }: RarityBadgeProps) {
   // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다(대신 `BadgeLevelChip`).
   // common과 같은 처리지만 이유가 다르다: common은 "노이즈 축소"(20260827_024),
   // null은 "등급이 존재하지 않음", 미지 값은 "등급을 모름"(개발 빌드에서 경고).

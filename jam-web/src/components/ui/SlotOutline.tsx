@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 /**
  * SlotOutline — 슬롯 칸의 «점선 외곽선». 티켓 20261112_1627 (컬렉션 슬롯·믹스 슬롯 캔버스 반영, 2회차).
@@ -42,12 +43,41 @@ const ALPHA_THRESHOLD = 128;
 const MIN_PIECE_RATIO = 0.005;
 const SIMPLIFY_EPSILON = 0.35;
 
+export interface SlotOutlineProps {
+  /** 윤곽을 추적할 이미지 주소 — 있는 그대로 쓴다. 서비스는 `/_next/image?url=…&w=256&q=75`(같은 출처)를 넘긴다 */
+  src?: string | null;
+  /** 있으면 `role="img"` + `aria-label`, 없으면 `aria-hidden` */
+  label?: string;
+  /** 좌표계 한 변이자 최대 폭(px). 기본 90 */
+  size?: number;
+  /** 이미지를 넣을 때 사방 여백. 사각형 대체의 안쪽 여백이기도 하다. 기본 4 */
+  inset?: number;
+  /** 추적 실패·주소 없음일 때: `'box'` = 둥근 사각형 점선(기본), `'none'` = 아무것도 그리지 않음 */
+  fallback?: 'box' | 'none';
+  className?: string;
+  style?: CSSProperties;
+}
+
+export interface TraceAlphaOutlineOptions {
+  /** 돌려주는 path의 좌표계 한 변. 기본 90 */
+  viewSize?: number;
+  /** 이 값 이상의 alpha를 채워진 픽셀로 본다. 기본 128 */
+  alphaThreshold?: number;
+  /** 전체 면적 대비 이 비율 미만의 조각은 버린다. 기본 0.005 */
+  minPieceRatio?: number;
+  /** Douglas-Peucker 허용 오차(viewSize 단위). 기본 0.35 */
+  epsilon?: number;
+}
+
+/** 좌표 한 점 */
+type Pt = [number, number];
+
 /**
  * 마칭 스퀘어 한 칸의 방향 있는 선분. 비트: 1=좌상, 2=우상, 4=우하, 8=좌하.
  * 선분은 [시작, 끝] 변 이름이고, 진행 방향의 오른쪽(화면 기준)에 채워진 쪽이 오게 잡았다.
  * 그래서 바깥 윤곽은 시계 방향(면적 양수), 구멍은 반시계 방향(면적 음수)이 된다.
  */
-const SEGMENTS = {
+const SEGMENTS: Record<number, [string, string][]> = {
   1: [['T', 'L']],
   2: [['R', 'T']],
   3: [['R', 'L']],
@@ -65,7 +95,7 @@ const SEGMENTS = {
 };
 
 /** 변 중점의 «두 배 좌표»(정수)를 돌려준다. 칸 (x, y)의 네 모서리 표본은 (x,y) (x+1,y) (x,y+1) (x+1,y+1)이다 */
-function edgeMid(edge, x, y) {
+function edgeMid(edge: string, x: number, y: number): Pt {
   if (edge === 'T') return [2 * x + 1, 2 * y];
   if (edge === 'R') return [2 * x + 2, 2 * y + 1];
   if (edge === 'B') return [2 * x + 1, 2 * y + 2];
@@ -73,7 +103,7 @@ function edgeMid(edge, x, y) {
 }
 
 /** 점 p에서 선분 a-b까지의 거리 (a === b이면 점까지의 거리) */
-function distToSegment(p, a, b) {
+function distToSegment(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const len2 = dx * dx + dy * dy;
@@ -84,14 +114,14 @@ function distToSegment(p, a, b) {
 }
 
 /** Douglas-Peucker. 첫 점과 끝 점은 항상 남는다 */
-function simplify(points, epsilon) {
+function simplify(points: Pt[], epsilon: number): Pt[] {
   if (points.length < 3) return points.slice();
   const keep = new Array(points.length).fill(false);
   keep[0] = true;
   keep[points.length - 1] = true;
-  const stack = [[0, points.length - 1]];
+  const stack: [number, number][] = [[0, points.length - 1]];
   while (stack.length) {
-    const [lo, hi] = stack.pop();
+    const [lo, hi] = stack.pop()!;
     let maxDist = 0;
     let idx = -1;
     for (let i = lo + 1; i < hi; i++) {
@@ -110,7 +140,7 @@ function simplify(points, epsilon) {
 }
 
 /** shoelace 부호 있는 면적 (화면 좌표 기준 시계 방향이 양수) */
-function signedArea(points) {
+function signedArea(points: Pt[]): number {
   let sum = 0;
   for (let i = 0; i < points.length; i++) {
     const [x1, y1] = points[i];
@@ -125,7 +155,12 @@ function signedArea(points) {
  * - `rgba`: 길이 width * height * 4. alpha가 `alphaThreshold` 이상인 픽셀을 «채워진 곳»으로 본다.
  * - 돌려주는 좌표계는 `0 0 viewSize viewSize`(소수 1자리). 채워진 픽셀이 없거나 남은 조각이 없으면 null.
  */
-export function traceAlphaOutline(rgba, width, height, options = {}) {
+export function traceAlphaOutline(
+  rgba: ArrayLike<number>,
+  width: number,
+  height: number,
+  options: TraceAlphaOutlineOptions = {},
+): string | null {
   const {
     viewSize = 90,
     alphaThreshold = ALPHA_THRESHOLD,
@@ -134,10 +169,10 @@ export function traceAlphaOutline(rgba, width, height, options = {}) {
   } = options;
   if (!rgba || width <= 0 || height <= 0) return null;
 
-  const filled = (x, y) => (x < 0 || y < 0 || x >= width || y >= height ? 0 : rgba[(y * width + x) * 4 + 3] >= alphaThreshold ? 1 : 0);
+  const filled = (x: number, y: number) => (x < 0 || y < 0 || x >= width || y >= height ? 0 : rgba[(y * width + x) * 4 + 3] >= alphaThreshold ? 1 : 0);
 
   // 방향 있는 선분을 모은다. 시작 변 중점의 키로 찾는다(변 중점마다 나가는 선분은 하나뿐이다)
-  const keyOf = (p) => (p[0] + 2) * (2 * height + 8) + (p[1] + 2);
+  const keyOf = (p: Pt) => (p[0] + 2) * (2 * height + 8) + (p[1] + 2);
   const segments = [];
   const byStart = new Map();
   for (let y = -1; y < height; y++) {
@@ -156,10 +191,10 @@ export function traceAlphaOutline(rgba, width, height, options = {}) {
 
   // 선분을 이어 닫힌 고리로 만든다. 두 배 좌표 → 표본 좌표 → 이미지 좌표(+0.5) → viewBox 좌표
   const scale = viewSize / width;
-  const loops = [];
+  const loops: Pt[][] = [];
   for (const first of segments) {
     if (first.used) continue;
-    const loop = [];
+    const loop: Pt[] = [];
     let seg = first;
     while (seg && !seg.used) {
       seg.used = true;
@@ -187,17 +222,17 @@ export function traceAlphaOutline(rgba, width, height, options = {}) {
     const simple = simplify(ring, epsilon);
     simple.pop();
     if (simple.length < 3) continue;
-    const fmt = (n) => String(Math.round(n * 10) / 10);
+    const fmt = (n: number) => String(Math.round(n * 10) / 10);
     parts.push(`M${simple.map((p) => `${fmt(p[0])} ${fmt(p[1])}`).join('L')}Z`);
   }
   return parts.length ? parts.join('') : null;
 }
 
 /** src + size + inset 별 추적 결과. 진행 중 요청은 합치고 실패(null)도 기억한다 */
-const traceCache = new Map();
+const traceCache = new Map<string, Promise<string | null>>();
 
-function loadAndTrace(src, size, inset) {
-  return new Promise((resolve) => {
+function loadAndTrace(src: string, size: number, inset: number): Promise<string | null> {
+  return new Promise<string | null>((resolve) => {
     if (typeof document === 'undefined' || typeof Image === 'undefined') {
       resolve(null);
       return;
@@ -233,7 +268,7 @@ function loadAndTrace(src, size, inset) {
 }
 
 /** 이미지 한 장의 윤곽 path를 돌려준다(null = 실패). 같은 src · size · inset은 한 번만 추적한다 */
-export function traceSlotOutlineImage(src, size = 90, inset = 4) {
+export function traceSlotOutlineImage(src: string, size = 90, inset = 4): Promise<string | null> {
   const key = `${src}|${size}|${inset}`;
   let promise = traceCache.get(key);
   if (!promise) {
@@ -244,7 +279,7 @@ export function traceSlotOutlineImage(src, size = 90, inset = 4) {
 }
 
 /** 시험용 — 캐시를 비운다 */
-export function clearSlotOutlineCache() {
+export function clearSlotOutlineCache(): void {
   traceCache.clear();
 }
 
@@ -268,9 +303,9 @@ export function SlotOutline({
   fallback = 'box',
   className = '',
   style = {},
-}) {
-  const ref = useRef(null);
-  const [result, setResult] = useState(null);
+}: SlotOutlineProps) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [result, setResult] = useState<{ key: string; path: string | null } | null>(null);
 
   useEffect(() => {
     if (!src) return undefined;
@@ -309,7 +344,7 @@ export function SlotOutline({
   else if (!settled) state = 'loading';
   else state = settled.path ? 'ready' : 'failed';
 
-  const stroke = {
+  const stroke: CSSProperties = {
     fill: 'none',
     stroke: 'var(--muted)',
     strokeWidth: STROKE_WIDTH,
@@ -332,7 +367,7 @@ export function SlotOutline({
       className={className}
       style={{ display: 'block', width: '100%', maxWidth: size, aspectRatio: '1 / 1', flexShrink: 0, ...style }}
     >
-      {state === 'ready' && <path className="ds-slot-outline-path" d={settled.path} vectorEffect="non-scaling-stroke" style={stroke} />}
+      {state === 'ready' && <path className="ds-slot-outline-path" d={settled!.path!} vectorEffect="non-scaling-stroke" style={stroke} />}
       {state === 'failed' && fallback === 'box' && (
         <rect
           className="ds-slot-outline-path"

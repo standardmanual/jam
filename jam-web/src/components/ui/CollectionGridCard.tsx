@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
 import { MagicBookIcon } from '@/components/ui/icons'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'

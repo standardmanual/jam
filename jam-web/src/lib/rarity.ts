@@ -10,7 +10,7 @@
  * v5의 nullable 전환으로 «등급 칩 대신 Lv.N 칩» 분기가 늘어나기 때문에 중복을 남기면
  * 20260813_003과 같은 누락 사고가 반복된다.
  * ⚠️ MODULAR(`design-system/`)은 서비스 코드를 import할 수 없어(자립형 카탈로그) 같은 파일을
- *    공유하지 못한다. DS 쪽 단일 소스는 `design-system/components/cards/RarityBadge.jsx`의
+ *    공유하지 못한다. DS 쪽 단일 소스는 `src/components/ui/RarityBadge.tsx`의
  *    `config` / `getRarityLabel()`이며, 두 소스는 같은 값을 유지해야 한다.
  */
 import { d } from '@/lib/i18n'

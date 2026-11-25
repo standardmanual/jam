@@ -1,5 +1,5 @@
 /**
- * MODULAR `CategorySticker`(`@ds/components/cards/CategorySticker`) 계약 테스트
+ * MODULAR `CategorySticker`(`@/components/ui/CategorySticker`) 계약 테스트
  * (티켓 20261122_2227). 시드 결정성·모양 범위·둘레 글자·로고 벡터·색 참조를 확인한다.
  */
 import { describe, it, expect } from 'vitest'
@@ -17,7 +17,7 @@ import {
   isSelfIntersecting,
   pebbleShape,
   waveShape,
-} from '@ds/components/cards/CategorySticker'
+} from '@/components/ui/CategorySticker'
 
 const LABELS = ['ACTIVITY', 'ITEM', 'MISSION', 'CHECK IN', 'COLLECTION', 'DROP', 'PICKUP']
 const SEEDS = Array.from({ length: 300 }, (_, i) => `seed-${i}`)

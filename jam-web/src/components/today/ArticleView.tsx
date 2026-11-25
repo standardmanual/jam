@@ -1,4 +1,4 @@
-import { LabelChip } from '@ds/components/cards/LabelChip'
+import { LabelChip } from '@/components/ui/LabelChip'
 import LocalDate from '@/components/LocalDate'
 import SafeImage from '@/components/SafeImage'
 import Button, { getButtonClassName } from '@/components/ui/Button'

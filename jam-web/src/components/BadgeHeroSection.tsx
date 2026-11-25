@@ -1,6 +1,6 @@
 import { cloneElement, isValidElement, type ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
-import { BadgeHeroSection as BadgeHeroCard } from '@ds/components/cards/BadgeHeroSection'
+import { BadgeHeroSection as BadgeHeroCard } from '@/components/ui/BadgeHeroSection'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { getBadgeBackgroundAnimation, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'

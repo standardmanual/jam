@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Card } from '@ds/components/cards/Card'
-import { LabelChip } from '@ds/components/cards/LabelChip'
+import { Card } from '@/components/ui/Card'
+import { LabelChip } from '@/components/ui/LabelChip'
 import Button from '@/components/ui/Button'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'

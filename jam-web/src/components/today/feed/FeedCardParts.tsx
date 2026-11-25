@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
-import { CategorySticker } from '@ds/components/cards/CategorySticker'
+import { CategorySticker } from '@/components/ui/CategorySticker'
 import type { FeedCardView } from '@/lib/today/cardView'
 import { chainInputOf, planFeedChips } from '@/lib/today/feedChipChain'
 import {

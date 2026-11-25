@@ -27,7 +27,22 @@ function listJsx(dir: string): string[] {
     .filter((f) => f.endsWith('.jsx'))
 }
 
-const FILES = listJsx(COMPONENTS_DIR)
+/**
+ * 티켓 20261126_0002: 카드류 8개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
+ * (`design-system/components` 기준 상대 경로로 `../../src/components/ui/<이름>.tsx`가 된다).
+ */
+const MOVED_TO_SERVICE_UI = [
+  'BadgeHeroSection',
+  'BadgeLevelChip',
+  'Card',
+  'CategorySticker',
+  'LabelChip',
+  'LockedTile',
+  'RarityBadge',
+  'SlotOutline',
+].map((name) => path.resolve(COMPONENTS_DIR, '../../src/components/ui', `${name}.tsx`))
+
+const FILES = [...listJsx(COMPONENTS_DIR), ...MOVED_TO_SERVICE_UI]
   .map((f) => path.relative(COMPONENTS_DIR, f))
   .sort()
 
@@ -127,11 +142,11 @@ describe('MODULAR 컴포넌트 직접 색 잔존', () => {
   it('jsx 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
     expect(FILES.length).toBeGreaterThan(20)
     expect(FILES).toContain('patterns/ItemSerialCode.jsx')
-    expect(FILES).toContain('cards/RarityBadge.jsx')
+    expect(FILES).toContain('../../src/components/ui/RarityBadge.tsx')
   })
 
   it('주석 제거가 이력 주석(RarityBadge의 옛 #fff)을 지우고 코드는 남긴다', () => {
-    const raw = readFileSync(path.join(COMPONENTS_DIR, 'cards/RarityBadge.jsx'), 'utf-8')
+    const raw = readFileSync(path.join(COMPONENTS_DIR, '../../src/components/ui/RarityBadge.tsx'), 'utf-8')
     expect(raw).toMatch(/#fff/)
     expect(stripComments(raw)).not.toMatch(/#fff/)
     const serial = load('patterns/ItemSerialCode.jsx')

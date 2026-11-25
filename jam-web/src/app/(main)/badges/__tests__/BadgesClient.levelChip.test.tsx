@@ -62,7 +62,7 @@ describe('BadgesClient 액티비티 탭 — 레벨형 배지 칩', () => {
   })
 
   it('다른 화면의 기본값은 그대로다 — RarityBadge는 showCommon 없이는 Common을 그리지 않는다', async () => {
-    const { RarityBadge } = await import('@ds/components/cards/RarityBadge')
+    const { RarityBadge } = await import('@/components/ui/RarityBadge')
     expect(renderToStaticMarkup(<RarityBadge rarity="common" size="md" />)).toBe('')
     expect(renderToStaticMarkup(<RarityBadge rarity="common" size="md" showCommon />)).toContain('Common')
   })

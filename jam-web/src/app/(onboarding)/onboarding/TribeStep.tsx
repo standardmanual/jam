@@ -2,7 +2,7 @@
 
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import { d } from '@/lib/i18n'
 import type { TribeRow } from '@/types/database'
 

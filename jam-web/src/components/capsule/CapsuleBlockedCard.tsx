@@ -3,7 +3,7 @@
 import { useId } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import { CAPSULE_GAUGE_HEIGHT_PX } from '@/components/capsule/CapsuleGauge'
 import { d, t } from '@/lib/i18n'
 

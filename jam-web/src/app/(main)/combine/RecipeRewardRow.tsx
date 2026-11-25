@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
-import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import { PointText } from '@ds/components/patterns/PointText'
 import { CoinIcon, ArrowDownIcon } from '@/components/ui/icons'
 import { formatKoreanDateTime } from '@/components/LocalDate'

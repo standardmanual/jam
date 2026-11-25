@@ -1,4 +1,19 @@
 import React from 'react';
+import type { ReactNode, CSSProperties, MouseEventHandler, HTMLAttributes } from 'react';
+
+export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'> {
+  /**
+   * 면 톤.
+   * - `default`: `--surface`(흰) + 1px `--border`. 그림자 없음.
+   * - `tint`: `--background-secondary`, 테두리 없음. 흰 카드 안 구획용.
+   * - `inverse`: `--background-inverse`(어두운 반전 면) + `--snow` 글자 + 면과 같은 색의 1px 테두리(default와 박스 크기를 맞춘다).
+   */
+  tone?: 'default' | 'tint' | 'inverse';
+  children?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  onClick?: MouseEventHandler<HTMLDivElement>;
+}
 
 /**
  * Card — surface container.
@@ -16,7 +31,7 @@ import React from 'react';
  *   - ...rest spread로 className, data-*, aria-*를 통과시킨다
  *   - 테두리를 그리지 않는다
  */
-export function Card({ tone = 'default', children, className = '', style = {}, onClick, ...rest }) {
+export function Card({ tone = 'default', children, className = '', style = {}, onClick, ...rest }: CardProps) {
   const interactive = Boolean(onClick);
 
   const backgrounds = {
@@ -43,7 +58,7 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
       onKeyDown={interactive ? (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onClick?.(e);
+          onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>); // 키보드 이벤트를 클릭 핸들러에 그대로 넘기는 기존 동작 유지(타입만 맞춘다)
         }
       } : undefined}
       style={{

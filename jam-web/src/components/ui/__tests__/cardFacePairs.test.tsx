@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import ServiceBadgeGridCard from '../BadgeGridCard'
 import ServiceCollectionGridCard from '../CollectionGridCard'
 import ServiceSlidingTabs from '../SlidingTabs'

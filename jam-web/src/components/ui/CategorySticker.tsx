@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import type { CSSProperties, SVGAttributes } from 'react';
 
 /**
  * CategorySticker — 홈피드 «분류 스티커». 티켓 20261122_2227(상위 20261122_2217 확정 결정 §4).
@@ -11,6 +12,61 @@ import React, { useId } from 'react';
  * 기하 수치(96×92 · 112×92 · 글자 선 15px·15px · 혹 4~8.5px · 테두리 2px · 로고 외곽선 1.6px)는
  * 장식 도형의 기하라 간격 토큰 대상이 아니고 아래 상수로 둔다.
  */
+
+/** 보색 짝 8개. 앞이 바탕, 뒤가 로고 글자 */
+export type CategoryStickerPair =
+  | 'yellow-purple'
+  | 'purple-yellow'
+  | 'green-pink'
+  | 'pink-green'
+  | 'sky-red'
+  | 'red-sky'
+  | 'blue-yellow'
+  | 'yellow-blue';
+
+export interface CategoryStickerProps extends Omit<SVGAttributes<SVGSVGElement>, 'children'> {
+  /** 모양. `pebble`(조약돌 96×92) · `wave`(물결 덩어리 112×92). 크기는 모양별로 고정이라 `size` prop이 없다 */
+  shape?: 'pebble' | 'wave';
+  /** 윤곽을 정하는 시드(카드 id 등). 같은 (shape, seed)는 늘 같은 모양이다 */
+  seed?: string | number;
+  /**
+   * 둘레에 되풀이할 분류 문구(ACTIVITY·ITEM·MISSION·CHECK IN·COLLECTION·DROP·PICKUP).
+   * 임의 문자열도 받고 길면 글자가 줄어든다. 비면 둘레 글자 없이 바탕과 로고만 그린다.
+   */
+  label?: string;
+  /** 색 짝 이름. 알 수 없는 이름은 타입이 막는다(첫 짝으로 대체하지 않는다) */
+  pair?: CategoryStickerPair;
+  /** 가운데 로고 글자 */
+  letter?: 'J' | 'a' | 'm';
+  /** 배치용 클래스만 연다 */
+  className?: string;
+  style?: CSSProperties;
+}
+
+export interface StickerShape {
+  shape: 'pebble' | 'wave';
+  width: number;
+  height: number;
+  points: [number, number][];
+  outlineD: string;
+  ringPoints: [number, number][];
+  ringD: string;
+  ringLength: number;
+  center: [number, number];
+  glyphHeight: number;
+  humps: { span: number; h: number }[] | null;
+}
+export interface RingText {
+  text: string;
+  repeat: number;
+  fontSize: number;
+  letterSpacing: number;
+  fits: boolean;
+  content: string;
+}
+
+/** 좌표 한 점 */
+type Pt = [number, number];
 
 /* ───────── 확정 사양 상수 ───────── */
 export const PEBBLE_SIZE = { width: 96, height: 92 };
@@ -27,8 +83,8 @@ const BORDER_WIDTH = 2;
 const GLYPH_OUTLINE = 1.6;
 const PEBBLE_GLYPH_HEIGHT = 28;
 const WAVE_GLYPH_HEIGHT = 26;
-export const WAVE_HUMP_COUNT = [7, 9];
-export const WAVE_HUMP_HEIGHT = [4, 8.5];
+export const WAVE_HUMP_COUNT: [number, number] = [7, 9];
+export const WAVE_HUMP_HEIGHT: [number, number] = [4, 8.5];
 const FONT_WEIGHT = 900;
 /** 글자가 둘레 글자 선 끝에 닿아 잘리지 않게 두는 여유 비율 */
 const RING_USABLE = 0.95;
@@ -36,7 +92,7 @@ const RING_USABLE = 0.95;
 const MAX_LETTER_SPACING_EM = 0.15;
 
 /** 보색 짝 8개. 앞이 바탕, 뒤가 로고 글자. 값은 hex가 아니라 var(--jam-*)로만 참조한다 */
-export const STICKER_COLOR_PAIRS = {
+export const STICKER_COLOR_PAIRS: Record<CategoryStickerPair, { base: string; glyph: string }> = {
   'yellow-purple': { base: 'var(--jam-yellow)', glyph: 'var(--jam-purple)' },
   'purple-yellow': { base: 'var(--jam-purple)', glyph: 'var(--jam-yellow)' },
   'green-pink': { base: 'var(--jam-green)', glyph: 'var(--jam-pink)' },
@@ -51,7 +107,7 @@ export const STICKER_COLOR_PAIRS = {
  * 로고 글자 — `design-system/assets/logo/jam-logo.svg`(viewBox 0 0 2610 865)의 세 path를 그대로 옮겼다.
  * 원본 순서는 J · m · a(둘째 path가 m, 셋째가 a)이고 bbox는 path 좌표에서 읽은 값이다.
  */
-export const LOGO_GLYPHS = {
+export const LOGO_GLYPHS: Record<'J' | 'a' | 'm', { bbox: [number, number, number, number]; d: string; evenodd?: boolean }> = {
   J: {
     bbox: [0, 0, 574.975, 865],
     d: 'M574.975 543.552C574.974 721.113 430.977 864.999 253.396 865H6.68984e-05V543.552H178.556C219.923 543.552 253.45 510.039 253.45 468.689L253.45 231.373L0 231.913L6.68984e-05 0H574.975V543.552Z',
@@ -68,10 +124,10 @@ export const LOGO_GLYPHS = {
 };
 
 /* ───────── 시드 ───────── */
-const r2 = (n) => Math.round(n * 100) / 100;
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /** 문자열·숫자 시드를 32비트 정수로(FNV-1a). 같은 입력은 어느 환경에서나 같은 값이다 */
-export function stickerSeedOf(seed) {
+export function stickerSeedOf(seed: string | number): number {
   const s = String(seed ?? '');
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -82,7 +138,7 @@ export function stickerSeedOf(seed) {
 }
 
 /** mulberry32 — 0 이상 1 미만 난수열 */
-export function stickerRandom(seed) {
+export function stickerRandom(seed: string | number): () => number {
   let a = stickerSeedOf(seed);
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -94,7 +150,7 @@ export function stickerRandom(seed) {
 
 /* ───────── 기하 도우미 ───────── */
 /** 닫힌 점열을 Catmull-Rom → 3차 베지어 path로 */
-function smoothClosedPath(pts) {
+function smoothClosedPath(pts: Pt[]): string {
   const n = pts.length;
   let d = `M${r2(pts[0][0])} ${r2(pts[0][1])}`;
   for (let i = 0; i < n; i++) {
@@ -109,11 +165,11 @@ function smoothClosedPath(pts) {
   return `${d}Z`;
 }
 
-function polylinePath(pts) {
+function polylinePath(pts: Pt[]): string {
   return `M${pts.map((p) => `${r2(p[0])} ${r2(p[1])}`).join('L')}Z`;
 }
 
-function perimeter(pts) {
+function perimeter(pts: Pt[]): number {
   let len = 0;
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i];
@@ -124,9 +180,9 @@ function perimeter(pts) {
 }
 
 /** 시계 방향(SVG y 아래) 점열의 안쪽 법선 방향으로 d만큼 들인 점열 */
-function insetPoints(pts, d) {
+function insetPoints(pts: Pt[], d: number): Pt[] {
   const n = pts.length;
-  return pts.map((p, i) => {
+  return pts.map((p, i): Pt => {
     const a = pts[(i - 2 + n) % n];
     const b = pts[(i + 2) % n];
     const tx = b[0] - a[0];
@@ -138,8 +194,8 @@ function insetPoints(pts, d) {
 }
 
 /** 선분 둘이 교차하는가(끝점 공유는 제외) */
-function segmentsCross(a, b, c, d) {
-  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
+  const o = (p: Pt, q: Pt, r: Pt) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
   const d1 = o(c, d, a);
   const d2 = o(c, d, b);
   const d3 = o(a, b, c);
@@ -148,7 +204,7 @@ function segmentsCross(a, b, c, d) {
 }
 
 /** 닫힌 점열이 자기 교차하는가 (시험·검증용 순수 함수) */
-export function isSelfIntersecting(pts) {
+export function isSelfIntersecting(pts: Pt[]): boolean {
   const n = pts.length;
   for (let i = 0; i < n; i++) {
     const a = pts[i];
@@ -161,7 +217,7 @@ export function isSelfIntersecting(pts) {
   return false;
 }
 
-function bounds(pts) {
+function bounds(pts: Pt[]) {
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
@@ -176,7 +232,7 @@ function bounds(pts) {
 }
 
 /** 점열을 위쪽 중앙에서 시작하도록 돌린다(둘레 글자가 윗줄 가운데서 읽히게) */
-function startAtTop(pts, cx, cy) {
+function startAtTop(pts: Pt[], cx: number, cy: number): Pt[] {
   let best = 0;
   let bestScore = Infinity;
   pts.forEach((p, i) => {
@@ -199,13 +255,13 @@ const WAVE_SAMPLES = 180;
  * 글자 선은 윤곽을 중심으로 줄이되 반지름을 이동평균해 매끈하게 만든 선이다(가장자리에서 15px 안쪽 안팎).
  * 티켓 20261124_2214(사용자 시안 «안 A» 확정).
  */
-export function pebbleShape(seed) {
+export function pebbleShape(seed: string | number): StickerShape {
   const { width, height } = PEBBLE_SIZE;
   const rnd = stickerRandom(`pebble:${seed}`);
   const exp = 2.1 + rnd() * 0.4; // 1.0이면 마름모, 2면 정타원, 클수록 네모에 가깝다
   const tilt = ((rnd() - 0.5) * 2 * 3 * Math.PI) / 180;
   const wob = [2, 3].map((k) => ({ a: 0.025 + rnd() * 0.025, p: rnd() * Math.PI * 2, k }));
-  const raw = [];
+  const raw: Pt[] = [];
   for (let i = 0; i < PEBBLE_POINTS; i++) {
     const t = (i / PEBBLE_POINTS) * Math.PI * 2 - Math.PI / 2; // 위에서 시작, 시계 방향
     const c = Math.cos(t);
@@ -219,7 +275,7 @@ export function pebbleShape(seed) {
   const half = BORDER_WIDTH / 2;
   const sx = (width - BORDER_WIDTH) / (b.x1 - b.x0);
   const sy = (height - BORDER_WIDTH) / (b.y1 - b.y0);
-  const pts = raw.map(([x, y]) => [r2(half + (x - b.x0) * sx), r2(half + (y - b.y0) * sy)]);
+  const pts = raw.map(([x, y]): Pt => [r2(half + (x - b.x0) * sx), r2(half + (y - b.y0) * sy)]);
   const cx = width / 2;
   const cy = height / 2;
   // 법선 방향으로 들이면 굴곡 안쪽에서 선이 겹치므로, 중심 기준으로 줄이고 반지름을 이동평균한다
@@ -230,7 +286,7 @@ export function pebbleShape(seed) {
     for (let j = -PEBBLE_RING_SMOOTH; j <= PEBBLE_RING_SMOOTH; j++) sum += radii[(i + j + n) % n];
     return sum / (2 * PEBBLE_RING_SMOOTH + 1);
   });
-  const ringAll = pts.map(([x, y], i) => {
+  const ringAll = pts.map(([x, y], i): Pt => {
     const ang = Math.atan2(y - cy, x - cx);
     const r = Math.max(8, smoothR[i] - PEBBLE_RING_INSET);
     return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
@@ -243,7 +299,7 @@ export function pebbleShape(seed) {
  * 물결 덩어리 — 기저 타원에 혹 7~9개(높이 4~8.5px, 폭·높이 불규칙, 폭 합 360도)를 붙인 구름형.
  * 글자 선은 혹을 뺀 기저 타원에서 15px 안쪽.
  */
-export function waveShape(seed) {
+export function waveShape(seed: string | number): StickerShape {
   const { width, height } = WAVE_SIZE;
   const rnd = stickerRandom(`wave:${seed}`);
   const [minN, maxN] = WAVE_HUMP_COUNT;
@@ -257,8 +313,8 @@ export function waveShape(seed) {
   const cx = width / 2;
   const cy = height / 2;
   const start = -Math.PI / 2 + rnd() * humps[0].span; // 혹 시작 위치도 시드마다 다르다
-  const base = (t) => [cx + rx * Math.cos(t), cy + ry * Math.sin(t)];
-  const pts = [];
+  const base = (t: number): Pt => [cx + rx * Math.cos(t), cy + ry * Math.sin(t)];
+  const pts: Pt[] = [];
   let edge = 0;
   humps.forEach((hump) => {
     const steps = Math.max(8, Math.round((WAVE_SAMPLES * hump.span) / (Math.PI * 2)));
@@ -275,14 +331,24 @@ export function waveShape(seed) {
     }
     edge += hump.span;
   });
-  const basePts = [];
+  const basePts: Pt[] = [];
   for (let i = 0; i < WAVE_SAMPLES; i++) basePts.push(base(-Math.PI / 2 + (i / WAVE_SAMPLES) * Math.PI * 2));
   const ringPts = startAtTop(insetPoints(basePts, WAVE_RING_INSET), cx, cy);
   return finishShape('wave', width, height, pts, polylinePath(pts), ringPts, WAVE_GLYPH_HEIGHT, humps);
 }
 
-function finishShape(shape, width, height, points, outlineD, ringPts, glyphHeight, humps, ringStep) {
-  const ringPoints = ringPts.map(([x, y]) => [r2(x), r2(y)]);
+function finishShape(
+  shape: 'pebble' | 'wave',
+  width: number,
+  height: number,
+  points: Pt[],
+  outlineD: string,
+  ringPts: Pt[],
+  glyphHeight: number,
+  humps: StickerShape['humps'],
+  ringStep?: number,
+): StickerShape {
+  const ringPoints = ringPts.map(([x, y]): Pt => [r2(x), r2(y)]);
   const step = ringStep ?? (ringPoints.length > 100 ? 5 : 3);
   const sparse = ringPoints.filter((_, i) => i % step === 0);
   return {
@@ -300,7 +366,7 @@ function finishShape(shape, width, height, points, outlineD, ringPts, glyphHeigh
   };
 }
 
-export function stickerShape(shape, seed) {
+export function stickerShape(shape: 'pebble' | 'wave', seed: string | number): StickerShape {
   return shape === 'wave' ? waveShape(seed) : pebbleShape(seed);
 }
 
@@ -309,24 +375,24 @@ export function stickerShape(shape, seed) {
  * 굵기 900 한 글자 폭(em). Noto Sans KR 900을 실제로 재서(2026-11-23) 4% 여유를 더한 값이다.
  * 예전 추정(평균 0.84em)은 실제보다 25% 넓어 둘레의 70~77%만 채우고 한쪽이 비었다
  */
-const CHAR_EM = {
+const CHAR_EM: Record<string, number> = {
   A: 0.69, B: 0.72, C: 0.69, D: 0.76, E: 0.66, F: 0.63, G: 0.76, H: 0.8, I: 0.37, J: 0.61, K: 0.74, L: 0.62, M: 0.91,
   N: 0.79, O: 0.82, P: 0.71, Q: 0.82, R: 0.74, S: 0.66, T: 0.67, U: 0.79, V: 0.67, W: 0.97, X: 0.68, Y: 0.63, Z: 0.64,
   ' ': 0.29, '·': 0.37,
 };
-function charEm(ch) {
+function charEm(ch: string): number {
   if (CHAR_EM[ch] !== undefined) return CHAR_EM[ch];
   if (/[가-힣]/.test(ch)) return 1.02;
   return 0.84;
 }
-const textEm = (s) => [...s].reduce((a, ch) => a + charEm(ch), 0);
+const textEm = (s: string) => [...s].reduce((a, ch) => a + charEm(ch), 0);
 
 /**
  * 둘레 글자 배치. «LABEL · »을 최소 두 번 되풀이해 한 바퀴(ringLength)를 채운다.
  * 기준 크기에서 두 번이 안 들어가면 글자를 줄이고(fits=false는 하한 7px 미달),
  * 남는 길이는 자간(letterSpacing)으로 나눠 채운다. 글자는 압축하지 않는다.
  */
-export function fitRingText(label, ringLength, baseSize) {
+export function fitRingText(label: string, ringLength: number, baseSize: number): RingText {
   const text = String(label ?? '').trim().toUpperCase();
   if (!text) return { text: '', repeat: 0, fontSize: baseSize, letterSpacing: 0, fits: true, content: '' };
   const unit = `${text} · `;
@@ -350,7 +416,7 @@ export function fitRingText(label, ringLength, baseSize) {
 }
 
 /* ───────── 컴포넌트 ───────── */
-const GLYPH_KEYS = ['J', 'a', 'm'];
+const GLYPH_KEYS: ('J' | 'a' | 'm')[] = ['J', 'a', 'm'];
 
 /**
  * 비인터랙티브 장식 SVG. `role="img"` + `aria-label`=분류 문구.
@@ -366,7 +432,7 @@ export function CategorySticker({
   className = '',
   style = {},
   ...rest
-}) {
+}: CategoryStickerProps) {
   const pathId = useId();
   const geo = stickerShape(shape, seed);
   const colors = STICKER_COLOR_PAIRS[pair];

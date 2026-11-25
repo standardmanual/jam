@@ -4,7 +4,7 @@ import { useState } from 'react'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { SHEET_VALUE_ROW_STYLE } from '@/components/ui/sheetClasses'
 import { ListRow } from '@/components/ui/ListRow'
-import { Card } from '@ds/components/cards/Card'
+import { Card } from '@/components/ui/Card'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 

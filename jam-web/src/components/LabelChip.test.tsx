@@ -1,5 +1,5 @@
 /**
- * MODULAR `LabelChip`(`@ds/components/cards/LabelChip`) 「픽셀 동일」 계약 테스트
+ * MODULAR `LabelChip`(`@/components/ui/LabelChip`) 「픽셀 동일」 계약 테스트
  * (티켓 20261001_1204, 상위 20260930_1453 b0).
  *
  * `design-system/components/**` 의 Story `play` 단언은 CI에서 실행되지 않는다(vitest의
@@ -19,7 +19,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { LabelChip } from '@ds/components/cards/LabelChip'
+import { LabelChip } from '@/components/ui/LabelChip'
 
 /** `style="a:b;c:d"` 속성을 {a:'b', c:'d'}로 푼다. 값 안의 `;`가 없는 단순 선언만 쓰므로 split으로 충분하다 */
 function readStyle(html: string): Record<string, string> {

@@ -7,7 +7,7 @@
  * 실행: cd jam-web && npx vitest run src/lib/today/__tests__/feedChipChain.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { STICKER_COLOR_PAIRS } from '@ds/components/cards/CategorySticker'
+import { STICKER_COLOR_PAIRS } from '@/components/ui/CategorySticker'
 import {
   EMPTY_CHAIN_STATE,
   featuresOf,

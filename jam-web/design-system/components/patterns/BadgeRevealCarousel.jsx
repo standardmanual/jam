@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
-import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
+import { RarityBadge, getRarityLabel } from '@/components/ui/RarityBadge';
+import { BadgeLevelChip } from '@/components/ui/BadgeLevelChip';
 import { IconButton } from '../buttons/IconButton.jsx';
 import { Button } from '../buttons/Button.jsx';
-import { LockedTile } from '../cards/LockedTile.jsx';
+import { LockedTile } from '@/components/ui/LockedTile';
 
 /**
  * BadgeRevealCarousel — 배지 획득 연출용 3D 코버플로우 캐러셀 (오버레이 포함 패턴).
