@@ -2,8 +2,9 @@
 id: "20261125_2122"
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-11-25
+closed: 2026-11-25
 parent: "20261125_1923"
 ---
 
@@ -74,3 +75,42 @@ MODULAR 컴포넌트 24개와 그 스토리, `IconCatalog`(6회차 스토리북 
 - 사용자가 쓰는 «JAM 화면 개선안 캔버스»(claude.ai 아티팩트)가 지운 파일과 무관한지 다시 확인한다.
 
 ## 완료 기록 *(작업 완료 후 작성)*
+
+### 구현 내용 요약
+- 삭제 목록 1~5를 모두 지웠다: 업로드 전용 파일 8종·`uploads/`·`*.prompt.md` 전부·루트 `.design-sync/`·`ds-manifest-sync.mjs`·
+  서비스가 안 쓰는 MODULAR 컴포넌트 13개(.jsx·.d.ts·.stories.tsx). `design-system/`에는 `assets`·`components`(서비스가 쓰는 24개 +
+  IconCatalog)·`foundations`·`styles.css`·`tokens`만 남았다.
+- 참조 정리: `ds-sync-check.mjs`는 매니페스트 대신 `components/*.jsx`를 직접 훑어 남은 짝(Button·TopNav)만 비교한다(매니페스트·매니페스트
+  토큰·업로드 노후 검사 제거). `package.json` scripts의 `ds:manifest` 줄, `eslint.config.mjs`의 support.js 무시 줄 삭제, pre-commit 경고
+  문구를 «세 층»으로 수정, `jam-ds` 스킬·`jam-designer` 정의에 중단 안내 한 줄씩.
+- 티켓 밖 연쇄 정리 2건(민지가 범위 안으로 판정): `gen-brand-assets.mjs`·시험에서 지운 `uploads/jam_logo.png` 대상 제거,
+  지운 ListRow 사본만 검사하던 `dsListRowStyleOnce.test.tsx` 삭제. 시험 10개에서 지운 사본 사례만 뺐다.
+- 서비스 비시험 코드 변경 0건.
+
+### 테스트 결과
+- [x] CI `verify` success (커밋 `494956bff`), 게이트(민지) PASS
+- [x] 카리나 머지 뒤 확인: `check-ui-rules` 통과, `ds:check` 종료 코드 0
+
+### 배포 정보
+- 배포일: (staging push 대기 — 사용자 요청 시)
+- 환경: staging
+- 커밋: `494956bff` (머지 `1a7feb3ca`)
+
+### 실행 지표
+
+| 실행 | 에이전트 | 전체 토큰 | 출력 토큰(아현 / 게이트) | 소요 | 도구 호출 |
+|---|---|---|---|---|---|
+| 1차 | 2 | 169,941 | 24,854 / 22,144 | 31분 15초 | 79 |
+| 합계 | 2 | 169,941 | 24,854 / 22,144 | 31분 15초 | 79 |
+
+### 주요 의사결정 / 핵심 메모
+- 후속 범위(카리나, 머지 뒤): claude.ai/design·MODULAR 사본을 전제로 한 티켓 4건(20260901_1854, 20261016_2220, 20261107_1814,
+  20261102_2247)을 «사용자 결정으로 중단»으로 닫았다. 사용자가 쓰는 «JAM 화면 개선안 캔버스»는 claude.ai 아티팩트 안의 자체 파일
+  (`project/*.dc.html`·`canvas.json`)로 이루어져 있어 저장소 파일 삭제의 영향을 받지 않는다.
+- 민지 참고: 서비스 컴포넌트 주석 몇 곳(`ListRow.tsx:8`, `ListCard.tsx:10`, `LoadMoreButton.tsx:7`, `BadgeGridCard.tsx:84`, `transitions.css:586`)이
+  지운 사본을 «원본»으로 안내한다 → 10회차. `jam2-token-migrate.mjs:46-47`의 지운 경로는 과거 일회성 스크립트라 그대로 둔다.
+- 민지 참고: 워크플로가 넘긴 기준 SHA(`8fdd96248`)가 실제 분기점(`70b15698b`)보다 앞서 검토 범위에 앞 회차 커밋이 섞였다. 기준 SHA를
+  `origin/staging`에서 잡기 때문이다(로컬 staging이 원격보다 앞선 상태) — 워크플로 개선 후보로 상위 티켓에 적는다.
+
+### 잔여 이슈
+- 없음

@@ -2,7 +2,7 @@
 id: 20260901_1854
 category: Infra
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-01
 closed:
 ---
@@ -129,3 +129,8 @@ DS v2 개편이 `tokens/*.css` 에만 반영되고 색인·Story·가이드라�
 - **L4 재업로드 미완** — `DesignSync` 가 design-system 인증을 요구하는데 이 세션이
   비대화형이라 `/design-login` 을 못 돌린다. 대화형 세션에서 1회 실행 후 재시도 필요
 - **Storybook 기동 검증 미완** — `node_modules` 가 없어 정적 검증만 했다
+
+## 중단 기록 (2026-11-25)
+
+- 사용자 결정으로 중단: claude.ai/design 업로드와 MODULAR 사본을 쓰지 않기로 했다(상위 티켓 20261125_1923, 사용자 «사용하지 않음, 그게 뭔지도 모름»).
+  관련 파일은 UI 소스 정리 3-1회차(20261125_2122)에서 지웠다. 이 티켓의 남은 작업은 하지 않는다.
