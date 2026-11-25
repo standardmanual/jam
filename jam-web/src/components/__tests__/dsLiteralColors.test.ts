@@ -1,7 +1,7 @@
 /**
- * MODULAR 디자인 시스템 컴포넌트에 다크 바탕을 전제로 직접 적은 색이 남지 않았는지 확인한다 (티켓 20261015_2134, 3회)
+ * 디자인 시스템 컴포넌트(서비스 정본 `src/components/ui/`)에 다크 바탕을 전제로 직접 적은 색이 남지 않았는지 확인한다 (티켓 20261015_2134, 3회)
  *
- * `design-system/components/**\/*.jsx`의 코드(주석 제외)에 리터럴 흰·검정, 옛 빨강, Base 직접 참조,
+ * `MOVED_TO_SERVICE_UI` 목록의 `src/components/ui/*.tsx` 코드(주석 제외)에 리터럴 흰·검정, 옛 빨강, Base 직접 참조,
  * 진행 상태 색(`--progress-short`·`--progress-done`·`--warning`·`--success`)을 쓴 글자색,
  * 불투명도로 만든 글자색이 다시 생기면 실패한다. 진행 상태 색은 선·링·점·막대 면 전용이다
  * (흰 면 위 2.07~2.19:1). 스토리 `play`는 CI에서 돌지 않으므로 이 파일이 유일한 자동 가드다.
@@ -12,24 +12,14 @@
  * 실행: cd jam-web && npx vitest run src/components/__tests__/dsLiteralColors.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-const COMPONENTS_DIR = path.resolve(__dirname, '../../../design-system/components')
-
-/** components 기준 상대 경로의 `.jsx` 파일 전부 */
-function listJsx(dir: string): string[] {
-  return readdirSync(dir)
-    .flatMap((name) => {
-      const full = path.join(dir, name)
-      return statSync(full).isDirectory() ? listJsx(full) : [full]
-    })
-    .filter((f) => f.endsWith('.jsx'))
-}
+const COMPONENTS_DIR = path.resolve(__dirname, '../ui')
 
 /**
  * 티켓 20261126_0002·0110·0217: 카드류 8개, 피드백·폼·패턴 11개, 내비·아이콘 버튼 4개를 서비스 정본 폴더(`src/components/ui/`)로 옮겼다. 옮겨도 같은 가드를 받도록 목록에 더한다
- * (`design-system/components` 기준 상대 경로로 `../../src/components/ui/<이름>.tsx`가 된다).
+ * (`src/components/ui` 기준 `<이름>.tsx`가 된다). `design-system/components/`는 티켓 20261126_0720에서 비었다.
  */
 const MOVED_TO_SERVICE_UI = [
   'BadgeHeroSection',
@@ -55,11 +45,9 @@ const MOVED_TO_SERVICE_UI = [
   'Accordion',
   'Carousel',
   'TopNavBar',
-].map((name) => path.resolve(COMPONENTS_DIR, '../../src/components/ui', `${name}.tsx`))
+].map((name) => `${name}.tsx`)
 
-const FILES = [...listJsx(COMPONENTS_DIR), ...MOVED_TO_SERVICE_UI]
-  .map((f) => path.relative(COMPONENTS_DIR, f))
-  .sort()
+const FILES = [...MOVED_TO_SERVICE_UI].sort()
 
 /** 주석을 지운다. 줄 번호가 밀리지 않게 블록 주석은 개행만 남긴다 */
 function stripComments(source: string): string {
@@ -85,12 +73,12 @@ const LITERAL_COLOR =
 /** 사유가 있는 예외 — 파일 경로와 줄 내용으로 가린다(줄 번호는 바뀌므로 쓰지 않는다) */
 const ALLOWED_LITERAL: { file: string; line: RegExp; reason: string }[] = [
   {
-    file: '../../src/components/ui/ItemSerialCode.tsx',
+    file: 'ItemSerialCode.tsx',
     line: /radial-gradient\(120% 90% at 22% 12%, rgba\(255,255,255,0\.19\)/,
     reason: '어두운 인장 면 자체의 재질(흰 하이라이트 19%) — 페이지 바탕에 따라 바뀌는 값이 아니고 위 글자는 --snow(최저 4.63:1)',
   },
   {
-    file: '../../src/components/ui/ItemSerialCode.tsx',
+    file: 'ItemSerialCode.tsx',
     line: /var\(--base-neutral-600\) 0%, var\(--base-neutral-800\) 100%/,
     reason: '인장 그라디언트 — 팔레트 단계 값이고 대응하는 역할 토큰이 없다',
   },
@@ -111,12 +99,12 @@ const TEXT_COLOR_KEY = /(?<![A-Za-z-])color\s*:\s*(?!'?inherit)/
 /** 사유가 있는 예외 — 비활성·장식 표현 */
 const ALLOWED_OPACITY: { file: string; snippet: RegExp; reason: string }[] = [
   {
-    file: '../../src/components/ui/MixerSlot.tsx',
+    file: 'MixerSlot.tsx',
     snippet: /fontSize:\s*20,\s*lineHeight:\s*1,\s*opacity:\s*0\.4/,
     reason: '잠긴 슬롯의 「+」 — 채울 후보가 없다는 비활성 표현이라 대비 대상이 아니다',
   },
   {
-    file: '../../src/components/ui/EmptyState.tsx',
+    file: 'EmptyState.tsx',
     snippet: /color:\s*'var\(--muted\)',\s*opacity:\s*0\.5/,
     reason: '장식 일러스트 아이콘 — 정보가 없다. 시각이 크게 바뀌는 연결 컴포넌트라 별도 판단 대상(티켓 20261015_2134 범위 밖 발견물)',
   },
@@ -154,17 +142,17 @@ function enclosingBlock(text: string, pos: number): string {
 }
 
 describe('MODULAR 컴포넌트 직접 색 잔존', () => {
-  it('jsx 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
+  it('검사 대상 파일을 하나 이상 찾았다(경로가 틀려 빈 목록으로 통과하지 않는다)', () => {
     expect(FILES.length).toBeGreaterThan(20)
-    expect(FILES).toContain('../../src/components/ui/ItemSerialCode.tsx')
-    expect(FILES).toContain('../../src/components/ui/RarityBadge.tsx')
+    expect(FILES).toContain('ItemSerialCode.tsx')
+    expect(FILES).toContain('RarityBadge.tsx')
   })
 
   it('주석 제거가 이력 주석(RarityBadge의 옛 #fff)을 지우고 코드는 남긴다', () => {
-    const raw = readFileSync(path.join(COMPONENTS_DIR, '../../src/components/ui/RarityBadge.tsx'), 'utf-8')
+    const raw = readFileSync(path.join(COMPONENTS_DIR, 'RarityBadge.tsx'), 'utf-8')
     expect(raw).toMatch(/#fff/)
     expect(stripComments(raw)).not.toMatch(/#fff/)
-    const serial = load('../../src/components/ui/ItemSerialCode.tsx')
+    const serial = load('ItemSerialCode.tsx')
     expect(serial).toMatch(/--base-neutral-600/)
   })
 
