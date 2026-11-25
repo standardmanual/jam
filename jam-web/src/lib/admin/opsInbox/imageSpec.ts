@@ -12,7 +12,7 @@ import { feedTypeUsesCoverImage } from '@/lib/today/feedConstants'
 import { getAllowedAssetHost, isAllowedAssetUrl, stripUrlControlChars } from '@/lib/asset-generator/presetValidate'
 
 /** 이미지 칸이 있는 종류 네 개와 항목 `resource`의 이미지 칸 이름. 카드는 `cover_image_url`, 미션·배지·컬렉션은 `image_url`이다. */
-export const IMAGE_KEY_BY_KIND = {
+const IMAGE_KEY_BY_KIND = {
   home_feed_card: 'cover_image_url',
   mission: 'image_url',
   jam_badge: 'image_url',

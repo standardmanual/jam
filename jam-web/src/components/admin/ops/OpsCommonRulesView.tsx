@@ -18,12 +18,12 @@ import { OpsTasteSignalList } from './OpsTasteSignalEditor'
  * 제목·본문·이름·이유는 사람이 쓴 글이라 텍스트 노드로만 그린다.
  */
 
-export const COMMON_RULES_FAILED_TITLE = '공통 규칙을 불러오지 못했어요'
-export const COMMON_SIGNALS_FAILED_TITLE = '공통 취향 신호를 불러오지 못했어요'
-export const COMMON_RULES_EMPTY_TEXT = '아직 공통 규칙이 없어요'
-export const COMMON_SIGNALS_EMPTY_TEXT = '정리된 취향 신호가 없어요'
-export const RULE_EXPAND_LABEL = '전체 보기'
-export const RULE_COLLAPSE_LABEL = '접기'
+const COMMON_RULES_FAILED_TITLE = '공통 규칙을 불러오지 못했어요'
+const COMMON_SIGNALS_FAILED_TITLE = '공통 취향 신호를 불러오지 못했어요'
+const COMMON_RULES_EMPTY_TEXT = '아직 공통 규칙이 없어요'
+const COMMON_SIGNALS_EMPTY_TEXT = '정리된 취향 신호가 없어요'
+const RULE_EXPAND_LABEL = '전체 보기'
+const RULE_COLLAPSE_LABEL = '접기'
 
 /** 본문이 이만큼 길거나 줄이 이만큼 많으면 3줄로 줄이고 [전체 보기]를 둔다(렌더 폭을 재지 않고 글자 수로 가늠한다). */
 const LONG_BODY_CHARS = 140

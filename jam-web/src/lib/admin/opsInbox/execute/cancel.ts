@@ -51,7 +51,7 @@ const MESSAGES = {
 // ── 결과 ─────────────────────────────────────────────────────────────────────────────────────────
 
 /** 막는 항목 한 건. `reason`은 화면에 그대로 나가는 쉬운 문장이다. */
-export interface CancelBlocker {
+interface CancelBlocker {
   id: string
   reason: string
 }

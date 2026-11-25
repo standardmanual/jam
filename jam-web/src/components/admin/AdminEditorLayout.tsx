@@ -94,7 +94,7 @@ export function RailCard({ title, children, className }: { title?: string; child
   )
 }
 
-export type SectionTone = 'ok' | 'bad' | 'set' | 'idle'
+type SectionTone = 'ok' | 'bad' | 'set' | 'idle'
 export interface SectionStatus {
   tone: SectionTone
   text: string
@@ -131,12 +131,12 @@ export function SectionStatusBadge({ status }: { status: SectionStatus }) {
  * 배지 화면은 `namespace: 'badge'`를 써서 기존 `badge-section-${id}` 문자열과 완전히 같다
  * (하위 호환 — `BadgeEditorLayout.tsx` 참고).
  */
-export function sectionDomId(namespace: string, id: string): string {
+function sectionDomId(namespace: string, id: string): string {
   return `${namespace}-section-${id}`
 }
 
 /** 섹션 제목 요소의 DOM id — 목차로 이동한 뒤 포커스를 둔다 */
-export function sectionHeadingId(namespace: string, id: string): string {
+function sectionHeadingId(namespace: string, id: string): string {
   return `${namespace}-section-${id}-heading`
 }
 

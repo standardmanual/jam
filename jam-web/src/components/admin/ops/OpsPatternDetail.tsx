@@ -34,7 +34,7 @@ import { OpsTasteSignalList } from './OpsTasteSignalEditor'
  * 수정한 사람은 어디에도 보이지 않는다.
  */
 
-export const PATTERN_SECTION_NAMESPACE = 'pattern'
+const PATTERN_SECTION_NAMESPACE = 'pattern'
 
 export const PATTERN_DETAIL_SECTIONS = [
   { id: 'summary', label: '요약', description: '이 패턴이 무엇이고 유저가 무엇을 겪는지 적어요' },
@@ -49,8 +49,8 @@ export const PATTERN_DETAIL_SECTIONS = [
 
 export type PatternSectionId = (typeof PATTERN_DETAIL_SECTIONS)[number]['id']
 
-export const PATTERN_RESULT_TEXT = '결과와 기록에서 봐요'
-export const PATTERN_DETAIL_BACK_LABEL = '패턴'
+const PATTERN_RESULT_TEXT = '결과와 기록에서 봐요'
+const PATTERN_DETAIL_BACK_LABEL = '패턴'
 
 const SECTION_BY_ID = Object.fromEntries(PATTERN_DETAIL_SECTIONS.map((section) => [section.id, section])) as Record<
   PatternSectionId,
@@ -107,7 +107,7 @@ export function OpsPatternDetailHeader({
   )
 }
 
-export const PATTERN_EDIT_LABEL = '수정하기'
+const PATTERN_EDIT_LABEL = '수정하기'
 
 /** 머리의 쓰기 버튼: [수정하기](고치기 화면 링크) [상태 바꾸기 ▾](상태별 항목과 확인창). */
 export function OpsPatternDetailActions({ pattern }: { pattern: Pick<OpsPatternRecord, 'patternNo' | 'status' | 'pauseReason' | 'updatedAt'> }) {
@@ -178,7 +178,7 @@ export function OpsPatternSummarySection({ pattern }: { pattern: Pick<OpsPattern
 }
 
 /** 손잡이 5줄. 조건·장소·시간·보상은 「열 수 있는 값 | 닫은 값」, 트라이브는 「규칙 | 예시」다. 좁은 폭에서는 두 칸이 위아래로 쌓인다. */
-export function OpsPatternKnobs({ knobs }: { knobs: unknown }) {
+function OpsPatternKnobs({ knobs }: { knobs: unknown }) {
   const lines = readKnobLines(knobs)
   return (
     <ul className="@container divide-y divide-border rounded-lg border border-border">
@@ -207,7 +207,7 @@ export function OpsPatternKnobsSection({ knobs }: { knobs: unknown }) {
 }
 
 /** 샘플: 번호 · 이름 · 역할 · 구현. 40rem 미만에서는 카드 줄이다. `samples`가 배열이 아니거나 비었으면 「적지 않았어요」 한 줄이다. */
-export function OpsPatternSamples({ samples }: { samples: unknown }) {
+function OpsPatternSamples({ samples }: { samples: unknown }) {
   const lines = readSampleLines(samples)
   if (lines === null || lines.length === 0) return <p className={MUTED_CLASS}>{PATTERN_FIELD_MISSING_TEXT}</p>
   return (
@@ -258,10 +258,10 @@ export function OpsPatternSamplesSection({ samples }: { samples: unknown }) {
   )
 }
 
-export const PATTERN_ANGLES_EMPTY_TEXT = '샘플 각도가 없어요'
+const PATTERN_ANGLES_EMPTY_TEXT = '샘플 각도가 없어요'
 
 /** 샘플 각도: 종류별 묶음(소개·유도·…), 줄마다 제목 · 설명 · 필요한 재료 이름표. `angles`가 배열이 아니면 「적지 않았어요」, 비었으면 「샘플 각도가 없어요」 한 줄이다. */
-export function OpsPatternAngles({ angles }: { angles: unknown }) {
+function OpsPatternAngles({ angles }: { angles: unknown }) {
   const lines = readAngleLines(angles)
   if (lines === null) return <p className={MUTED_CLASS}>{PATTERN_FIELD_MISSING_TEXT}</p>
   if (lines.length === 0) return <p className={MUTED_CLASS}>{PATTERN_ANGLES_EMPTY_TEXT}</p>

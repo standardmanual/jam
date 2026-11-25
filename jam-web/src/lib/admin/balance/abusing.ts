@@ -43,8 +43,6 @@ export const ABUSING_BALANCE_KEYS = [
   'poi_block_hours',
 ] as const satisfies readonly (keyof AbusingPolicy)[]
 
-export type AbusingBalanceKey = (typeof ABUSING_BALANCE_KEYS)[number]
-
 const MOVE_GROUP = '이동 감지'
 const VEHICLE_GROUP = '차량'
 const TRANSIT_GROUP = '교통수단'

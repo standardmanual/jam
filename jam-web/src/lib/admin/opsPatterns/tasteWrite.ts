@@ -38,15 +38,15 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 
 const LOG = '[admin/ops-patterns]'
 
-export const TASTE_SAVE_FAILED_MESSAGE = '취향 신호를 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+const TASTE_SAVE_FAILED_MESSAGE = '취향 신호를 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 export const TASTE_NOT_FOUND_MESSAGE = '찾을 수 없는 취향 신호예요.'
 export const TASTE_UPDATE_CONFLICT_MESSAGE = '그사이 다른 곳에서 이 취향 신호를 고쳤어요. 최신 값을 불러와 주세요.'
-export const TASTE_EXPECTED_UPDATED_AT_MESSAGE = '취향 신호의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
-export const COMMON_RULE_SAVE_FAILED_MESSAGE = '공통 규칙을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+const TASTE_EXPECTED_UPDATED_AT_MESSAGE = '취향 신호의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
+const COMMON_RULE_SAVE_FAILED_MESSAGE = '공통 규칙을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 export const COMMON_RULE_NOT_FOUND_MESSAGE = '찾을 수 없는 공통 규칙이에요.'
 export const COMMON_RULE_UPDATE_CONFLICT_MESSAGE = '그사이 다른 곳에서 이 공통 규칙을 고쳤어요. 최신 값을 불러와 주세요.'
-export const COMMON_RULE_EXPECTED_UPDATED_AT_MESSAGE = '공통 규칙의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
-export const TASTE_FIELDS_INVALID_MESSAGE = '입력한 내용을 확인해 주세요.'
+const COMMON_RULE_EXPECTED_UPDATED_AT_MESSAGE = '공통 규칙의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
+const TASTE_FIELDS_INVALID_MESSAGE = '입력한 내용을 확인해 주세요.'
 export const REJECTIONS_LOAD_FAILED_MESSAGE = '반려 기록을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 export const REJECTION_OFFSET_INVALID_MESSAGE = '건너뛸 개수는 0 이상의 정수여야 해요.'
 
@@ -242,7 +242,7 @@ export async function saveOpsCommonRule(
 // ── 근거 후보: 이 패턴 항목의 반려 기록 ─────────────────────────────────────────────────────────
 
 /** 근거 후보가 읽는 칸. `actor` 원문은 행위자 종류를 가르려고만 읽고 응답에는 싣지 않는다. 항목 `original`·`edited`는 항목 이름을 만들 때만 쓴다. */
-export const OPS_REJECTION_COLUMNS =
+const OPS_REJECTION_COLUMNS =
   'id, created_at, actor, bundle_id, item_id, reason, ops_bundles!inner(is_sample), ops_bundle_items!inner(item_key, kind, pattern_no, original, edited)'
 
 export interface OpsPatternRejectionRecord {
@@ -274,7 +274,7 @@ interface RejectionItemEmbed {
   edited: Json | null
 }
 
-export interface OpsRejectionRow {
+interface OpsRejectionRow {
   id: string
   created_at: string
   actor: string
@@ -285,7 +285,7 @@ export interface OpsRejectionRow {
 }
 
 /** 행에 다른 칸(`actor` 원문·`diff`·`slack_result` 포함)이 섞여 들어와도 응답 칸만 골라 싣는다. */
-export function toRejectionRecord(row: OpsRejectionRow): OpsPatternRejectionRecord {
+function toRejectionRecord(row: OpsRejectionRow): OpsPatternRejectionRecord {
   const item = first(row.ops_bundle_items)
   return {
     id: row.id,

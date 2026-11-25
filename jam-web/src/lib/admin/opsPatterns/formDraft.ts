@@ -38,7 +38,7 @@ export interface PatternDraftCardShape {
 }
 
 /** 손잡이 한 종류의 두 칸. 순서는 `OPS_PATTERN_KNOB_VALUE_KEYS`와 같다(열 수 있는 값·닫은 값, 트라이브는 규칙·예시). */
-export type PatternDraftKnob = [string, string]
+type PatternDraftKnob = [string, string]
 
 /** 샘플 각도 한 줄(티켓 20261102_1600). */
 export interface PatternDraftAngle {
@@ -160,7 +160,7 @@ export function inputFromDraft(draft: PatternDraft): unknown {
 
 // ── 바뀐 칸 ─────────────────────────────────────────────────────────────────────────────────────
 
-export const FIELD_LABEL = {
+const FIELD_LABEL = {
   name: '이름',
   topic: '주제',
   principle: '작동 원리',
@@ -173,7 +173,7 @@ export const FIELD_LABEL = {
 } as const
 
 /** 손잡이 칸 이름: 「손잡이 · 장소」. */
-export function knobFieldLabel(key: OpsPatternKnobKey): string {
+function knobFieldLabel(key: OpsPatternKnobKey): string {
   return `손잡이 · ${OPS_PATTERN_KNOB_LABELS[key]}`
 }
 

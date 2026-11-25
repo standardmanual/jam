@@ -15,7 +15,7 @@ import { renderPresetToPngBlob } from '@/lib/admin/opsInbox/imageRender.client'
 import type { OpsItemRecord } from '@/lib/admin/opsInbox/query'
 import { postItemImage } from './imageClient'
 
-export const IMAGE_FAILED_TOAST = '승인은 유지했어요. 이미지를 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.'
+const IMAGE_FAILED_TOAST = '승인은 유지했어요. 이미지를 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.'
 
 export const IMAGE_FAILED_AFTER_SCHEDULE_TOAST = (failed: number): string =>
   `예약은 유지했어요. 이미지 ${failed}건을 만들지 못해 「이미지 제작 필요」로 남겨 뒀어요.`
@@ -28,7 +28,7 @@ export function failedToastOf(failed: number, beforeApproval: boolean): string {
   return beforeApproval ? IMAGE_FAILED_BEFORE_APPROVAL_TOAST : IMAGE_FAILED_AFTER_SCHEDULE_TOAST(failed)
 }
 
-export interface StartManyOptions {
+interface StartManyOptions {
   /** 승인 전(기획을 열 때) 호출이면 true. 실패 알림 문구만 바뀐다. */
   beforeApproval?: boolean
 }
@@ -49,7 +49,7 @@ interface Options {
   onDone?: () => void
 }
 
-export function newSeed(): number {
+function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
 }
 

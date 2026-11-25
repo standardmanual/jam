@@ -12,7 +12,7 @@ import type { Database } from '@/types/database.generated'
 import type { EndResult, ExecuteServiceClient } from './handlers'
 
 /** 핸들러 `end`가 돌려주는 실패의 사유. 사용자에게 보이는 문장이 아니라 결정 기록·로그용이다(화면 문장은 `end.ts`가 정한다). */
-export const END_MESSAGES = {
+const END_MESSAGES = {
   failed: '자원의 종료 시각을 바꾸지 못했어요',
   changed: '그사이 자원의 종료 시각이 바뀌어 종료하지 못했어요',
   notPublished: '아직 공개되지 않은 자원이라 종료할 수 없어요',

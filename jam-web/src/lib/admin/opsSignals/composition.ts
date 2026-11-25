@@ -100,10 +100,10 @@ export interface SignalBundleInput {
 const KNOWN_STATUSES: ReadonlySet<string> = new Set(OPS_ITEM_STATUSES)
 
 /** 멈춘 상태: 반려·취소·실패. 날짜 구성에 세지 않는다(가정 15). */
-export const OPS_STOPPED_ITEM_STATUSES: readonly string[] = ['rejected', 'cancelled', 'failed']
+const OPS_STOPPED_ITEM_STATUSES: readonly string[] = ['rejected', 'cancelled', 'failed']
 
 /** 승인 전 상태: 도착·검토중·승인됨·준비중(A8). */
-export const OPS_PRE_APPROVAL_STATUSES: readonly string[] = ['arrived', 'reviewing', 'approved', 'preparing']
+const OPS_PRE_APPROVAL_STATUSES: readonly string[] = ['arrived', 'reviewing', 'approved', 'preparing']
 
 /** 「이미지 제작 필요」를 보이는 상태: 승인됨·준비중·예약됨. 도착·검토중은 아직 만들 때가 아니고, 승인하고 예약하면 곧바로 예약됨이라 예약됨도 만든다(티켓 20261026_2034). */
 export const OPS_IMAGE_PRODUCTION_STATUSES: readonly string[] = ['approved', 'preparing', 'scheduled']
@@ -132,7 +132,7 @@ export function hasItemCopy(item: ViewableItem): boolean {
  * 이미지가 있는가. 제출 형식에 이미지 칸이 따로 없어(`image_spec`은 만들라는 지시일 뿐이다) `resource`의 키 이름이 자원
  * 테이블의 컬럼 이름과 같다는 규칙(PRD §5.2)에 따라 `resource.cover_image_url`을 읽는다.
  */
-export function hasItemImage(item: ViewableItem): boolean {
+function hasItemImage(item: ViewableItem): boolean {
   const cover = asRecord(itemField(item, 'resource'))?.cover_image_url
   return typeof cover === 'string' && cover.trim() !== ''
 }
@@ -241,7 +241,7 @@ export interface CompositionBundleItem {
   tribeId: string | null | OpsFieldUnknown
 }
 
-export interface CompositionMission {
+interface CompositionMission {
   id: string
   title: string
   startsAt: string
@@ -272,7 +272,7 @@ export function isAllAudienceCard(card: Pick<CompositionCard, 'exposureTags'>): 
  * 대표 카드 정렬(A9). 실제 카드는 지금 정렬(`sort_order` 오름차순 → `starts_at` 내림차순), 운영 묶음 카드는 `resource.sort_order`를
  * 같은 줄에 놓고 값이 없으면 실제 카드 뒤에 제출 순서로 둔다. 모두 같으면 ID로 순서를 고정한다.
  */
-export function compareCompositionCards(a: CompositionCard, b: CompositionCard): number {
+function compareCompositionCards(a: CompositionCard, b: CompositionCard): number {
   const aMissing = a.sortOrder === null
   const bMissing = b.sortOrder === null
   if (aMissing !== bMissing) return aMissing ? 1 : -1

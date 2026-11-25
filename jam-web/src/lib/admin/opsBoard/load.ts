@@ -23,7 +23,7 @@ const LOOKBACK_DAYS = 35
 const ERROR_LABEL = 'ops-board'
 
 /** 읽다 실패할 수 있는 출처 이름. */
-export type BoardSourceName = 'bundles' | 'items' | 'routine_starts'
+type BoardSourceName = 'bundles' | 'items' | 'routine_starts'
 
 export interface WeekFlowInputs {
   bundles: BoardBundleInput[]

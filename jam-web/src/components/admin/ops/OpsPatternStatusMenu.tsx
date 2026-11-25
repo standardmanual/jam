@@ -99,11 +99,10 @@ export function statusActionsFor(status: OpsPatternStatus): PatternStatusAction[
   return ACTIONS_BY_STATUS[status].map((key) => PATTERN_STATUS_ACTIONS[key])
 }
 
-export const STATUS_MENU_LABEL = '상태 바꾸기'
+const STATUS_MENU_LABEL = '상태 바꾸기'
 export const STATUS_CONFLICT_TEXT = '그사이 상태가 바뀌었어요'
-export const STATUS_RELOAD_LABEL = '새로 읽기'
-export const PAUSE_REASON_LABEL = '쉬는 이유'
-export const PAUSE_REASON_REQUIRED_TEXT = '쉬는 이유를 적어 주세요.'
+const STATUS_RELOAD_LABEL = '새로 읽기'
+const PAUSE_REASON_LABEL = '쉬는 이유'
 
 const { pauseReasonMax } = OPS_PATTERN_LIMITS
 

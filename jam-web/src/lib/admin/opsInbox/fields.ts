@@ -52,7 +52,7 @@ export interface OpsExcludedItem {
 }
 
 /** 패턴 제안 항목이 제안하는 패턴의 샘플 하나. 이름은 앞뒤 공백을 뗐고 `impl`은 빈 값일 수 있다. */
-export interface OpsPatternProposalSample {
+interface OpsPatternProposalSample {
   no: number
   name: string
   role: OpsPatternSampleRole
@@ -60,13 +60,13 @@ export interface OpsPatternProposalSample {
 }
 
 /** 패턴 제안이 쓰는 카드 유형 하나(JSON 키 이름은 DB 호환을 위해 `shape` 그대로). `note`는 빈 값일 수 있다. */
-export interface OpsPatternProposalCardShape {
+interface OpsPatternProposalCardShape {
   shape: FeedType
   note: string
 }
 
 /** 손잡이 5종. 조건·장소·시간·보상은 `{ open, closed }`, 트라이브는 `{ rule, example }`이고 값은 모두 앞뒤 공백을 뗀 비어 있지 않은 문자열이다. */
-export interface OpsPatternProposalKnobs {
+interface OpsPatternProposalKnobs {
   condition: { open: string; closed: string }
   place: { open: string; closed: string }
   time: { open: string; closed: string }

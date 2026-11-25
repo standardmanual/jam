@@ -9,8 +9,8 @@ import type { BalanceChange, BalanceFieldDef, BalanceSnapshot, BalanceValues, Ba
 import { INTEGER_MAX } from './types'
 
 /** 등급 확률 네 칸의 합계 기준과 허용 오차 — DB 제약(`jam_policy_sync_rarity_sum_100` 등)과 같다. */
-export const RARITY_SUM_TARGET = 100
-export const RARITY_SUM_TOLERANCE = 0.001
+const RARITY_SUM_TARGET = 100
+const RARITY_SUM_TOLERANCE = 0.001
 
 /** 소수 자릿수 허용 오차(부동소수 곱셈 오차를 넘기기 위한 값). */
 const DECIMAL_EPSILON = 1e-7

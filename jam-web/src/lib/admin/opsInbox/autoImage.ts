@@ -10,7 +10,7 @@ import { readOpsItemColorPending } from './fields'
 import type { OpsItemRecord } from './query'
 
 /** 기획 단계에서 미리 만들 수 있는 항목 상태. */
-export const AUTO_IMAGE_STATUSES: readonly string[] = ['arrived', 'reviewing']
+const AUTO_IMAGE_STATUSES: readonly string[] = ['arrived', 'reviewing']
 
 interface PickOptions {
   /** 시험 묶음이면 아무것도 고르지 않는다(시험 묶음은 이미지를 저장하지 않는다). */

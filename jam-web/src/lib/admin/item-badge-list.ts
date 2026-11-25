@@ -29,7 +29,7 @@ function isRarity(value: string | undefined): value is BadgeRarity {
 }
 
 const ITEM_BADGE_LIST_SORTS = ['name_asc', 'name_desc'] as const
-export type ItemBadgeListSort = (typeof ITEM_BADGE_LIST_SORTS)[number]
+type ItemBadgeListSort = (typeof ITEM_BADGE_LIST_SORTS)[number]
 
 function isItemBadgeListSort(value: string | undefined): value is ItemBadgeListSort {
   return !!value && (ITEM_BADGE_LIST_SORTS as readonly string[]).includes(value)
@@ -44,7 +44,7 @@ export interface ItemBadgeListParams {
   sort: ItemBadgeListSort
 }
 
-export const ITEM_BADGE_DEFAULT_SORT: ItemBadgeListSort = 'name_asc'
+const ITEM_BADGE_DEFAULT_SORT: ItemBadgeListSort = 'name_asc'
 
 /** URL(또는 API 쿼리) 파라미터 → 타입이 있는 목록 조건. 세 곳이 전부 이 함수를 거친다.
  *  알 수 없는 등급 값은 "전체"로 본다. */
@@ -58,7 +58,7 @@ export function parseItemBadgeListParams(raw: Record<string, string | undefined>
   }
 }
 
-export interface ItemBadgeListQueryResult<T> {
+interface ItemBadgeListQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

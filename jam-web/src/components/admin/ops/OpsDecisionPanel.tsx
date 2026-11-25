@@ -22,11 +22,11 @@ import { OpsHomeFeedPreviewRow } from './preview/OpsHomeFeedPreviewRow'
 
 const TEXT_CLASS = 'break-keep wrap-break-word'
 
-export const HIGHLIGHT_TITLE = '이번 기획의 핵심'
-export const NEEDS_CHECK_TITLE = '확인이 필요한 항목'
-export const NEEDS_CHECK_LABEL = '확인 필요'
-export const NEW_MISSION_LABEL = '새 미션'
-export const NOTHING_CHOSEN_TEXT = '고른 항목이 없어요'
+const HIGHLIGHT_TITLE = '이번 기획의 핵심'
+const NEEDS_CHECK_TITLE = '확인이 필요한 항목'
+const NEEDS_CHECK_LABEL = '확인 필요'
+const NEW_MISSION_LABEL = '새 미션'
+const NOTHING_CHOSEN_TEXT = '고른 항목이 없어요'
 
 interface OpsDecisionPanelProps {
   items: readonly OpsItemRecord[]

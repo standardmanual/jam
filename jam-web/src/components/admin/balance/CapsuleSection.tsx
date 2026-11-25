@@ -12,7 +12,7 @@ import { BalanceSectionBody } from './BalanceSectionBody'
 
 export const SHARED_VALUES_NOTICE_PREFIX = 'Common 연속 보정과 잠긴 채 나올 확률은 동기화와 같은 값이에요. 값을 바꾸려면 '
 export const SHARED_VALUES_NOTICE_LINK = '동기화 구역'
-export const SHARED_VALUES_NOTICE_SUFFIX = '에서 바꿔 주세요.'
+const SHARED_VALUES_NOTICE_SUFFIX = '에서 바꿔 주세요.'
 
 export function SharedValuesNotice() {
   return (

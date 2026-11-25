@@ -8,7 +8,7 @@ import { stageOfItemStatus } from '@/lib/admin/opsInbox/bundleStatus'
 import { weekStartOfRecord } from '@/lib/admin/opsBoard/weekFlow'
 import type { BoardBundleInput } from '@/lib/admin/opsBoard/types'
 
-export const BOARD_INBOX_PATH = '/admin/ops-inbox'
+const BOARD_INBOX_PATH = '/admin/ops-inbox'
 
 function needsAction(bundle: BoardBundleInput): boolean {
   return bundle.items.some((item) => {

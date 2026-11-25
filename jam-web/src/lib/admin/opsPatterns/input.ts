@@ -21,21 +21,21 @@ import {
 
 // ── 입력 모양 ───────────────────────────────────────────────────────────────────────────────────
 
-export interface OpsPatternInputSample {
+interface OpsPatternInputSample {
   no: number
   name: string
   role: OpsPatternSampleRole
   impl: string
 }
 
-export interface OpsPatternInputCardShape {
+interface OpsPatternInputCardShape {
   /** 카드 유형(`FEED_TYPES` 8가지). DB 칸 이름(`card_shapes`)·JSON 키(`shape`)는 호환을 위해 그대로다(티켓 20261122_1239). */
   shape: FeedType
   note: string
 }
 
 /** 조건·장소·시간·보상 손잡이는 열린 값·닫은 값, 트라이브는 규칙·예시. 칸은 비워 둘 수 있다. */
-export interface OpsPatternInputKnobs {
+interface OpsPatternInputKnobs {
   condition: { open: string; closed: string }
   place: { open: string; closed: string }
   time: { open: string; closed: string }
@@ -44,7 +44,7 @@ export interface OpsPatternInputKnobs {
 }
 
 /** 주제 패턴의 샘플 각도 한 개(티켓 20261102_1600). `needs`는 윤진이 그 각도를 기획하려면 읽어야 하는 재료다. */
-export interface OpsPatternInputAngle {
+interface OpsPatternInputAngle {
   type: OpsPatternAngleType
   title: string
   note: string
@@ -285,7 +285,7 @@ export function validateOpsPatternInput(raw: unknown): { ok: true; value: OpsPat
 // ── 취향 신호·공통 규칙 (티켓 20261008_1712 ⑩b-1, ⑩b-2 화면이 같은 검사를 쓴다) ─────────────────────────────
 
 export const TASTE_EVIDENCE_INVALID_MESSAGE = '이 패턴의 반려 기록만 근거로 붙일 수 있어요.'
-export const TASTE_BASIS_REVERT_MESSAGE = '확정한 취향 신호는 추정으로 되돌릴 수 없어요.'
+const TASTE_BASIS_REVERT_MESSAGE = '확정한 취향 신호는 추정으로 되돌릴 수 없어요.'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** `ops_pattern_common_rules.rule_no`는 INTEGER다. */

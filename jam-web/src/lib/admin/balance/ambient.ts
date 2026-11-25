@@ -42,7 +42,7 @@ export const AMBIENT_BALANCE_KEYS = [
   'rarity_mystic',
 ] as const
 
-export type AmbientBalanceKey = (typeof AMBIENT_BALANCE_KEYS)[number]
+type AmbientBalanceKey = (typeof AMBIENT_BALANCE_KEYS)[number]
 
 /** 등급 비율 네 칸. 합이 100(%)이어야 한다. 확률 안내 페이지가 읽는 칸(`AMBIENT_COLUMNS`)과 같다. */
 export const AMBIENT_RARITY_KEYS = ['rarity_common', 'rarity_rare', 'rarity_epic', 'rarity_mystic'] as const

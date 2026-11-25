@@ -48,7 +48,7 @@ const MESSAGES = {
 // ── 결과 ─────────────────────────────────────────────────────────────────────────────────────────
 
 /** 미리 보기가 알리는 게재 중 항목 한 건. `label`은 「종류 · 공개 시각(KST)」이다. */
-export interface EndPointedItem {
+interface EndPointedItem {
   id: string
   kind: string | null
   label: string
@@ -58,7 +58,7 @@ export interface EndPointedItem {
  * 영향 유저 수. 미션은 `participants`·`inProgressUsers`, 컬렉션은 `fillingUsers`이고, 숫자가 없는 종류(카드·배지·레시피)와 시험 묶음은 빈 객체다.
  * 세기가 실패하면 `null`이다(미리 보기는 막지 않는다).
  */
-export type EndImpact = { participants?: number; inProgressUsers?: number; fillingUsers?: number } | null
+type EndImpact = { participants?: number; inProgressUsers?: number; fillingUsers?: number } | null
 
 export interface EndPreviewSuccess {
   ok: true

@@ -74,7 +74,7 @@ import {
 } from './shapeStudioConfig'
 
 /** 3D 모드 전용 섹션이 쓰는 값과 핸들러(티켓 20261103_1734). 상태는 에셋 페이지가 들고 있는다. */
-export interface Logo3DPanelBinding {
+interface Logo3DPanelBinding {
   state: Logo3DSceneState
   error: string | null
   warnings: string[]

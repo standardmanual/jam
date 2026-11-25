@@ -33,7 +33,7 @@ export function latestStamp(stamps: readonly string[]): string {
   return best
 }
 
-export type RowFailure = Exclude<BalanceWriteResult, { ok: true }>
+type RowFailure = Exclude<BalanceWriteResult, { ok: true }>
 
 /** 행 하나를 갱신한 결과. 성공하면 갱신된 행의 수정 시각이다. */
 export type RowOutcome = { ok: true; stamp: string } | RowFailure

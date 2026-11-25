@@ -27,41 +27,41 @@ import { OpsStatusBadge } from './OpsStatusBadge'
  * 이름·쉬는 이유는 사람이 쓴 글이라 텍스트 노드로만 그린다.
  */
 
-export const PATTERN_EMPTY_TEXT = '아직 패턴이 없어요'
-export const PATTERN_FILTER_EMPTY_TEXT = '이 조건의 패턴이 없어요'
-export const PATTERN_FILTER_CLEAR_LABEL = '전체 보기'
-export const PATTERN_USAGE_FAILED_TEXT = '사용 기록을 읽지 못했어요'
-export const PATTERN_NEVER_USED_TEXT = '쓴 적 없어요'
-export const PATTERN_USAGE_NOTE = '최근 4주 사용은 시험 묶음을 세지 않아요. 조합 뽑기와 같은 기준이에요'
-export const PATTERN_UNKNOWN_TEXT = '모름'
-export const PATTERN_MISSING_TEXT = '–'
+const PATTERN_EMPTY_TEXT = '아직 패턴이 없어요'
+const PATTERN_FILTER_EMPTY_TEXT = '이 조건의 패턴이 없어요'
+const PATTERN_FILTER_CLEAR_LABEL = '전체 보기'
+const PATTERN_USAGE_FAILED_TEXT = '사용 기록을 읽지 못했어요'
+const PATTERN_NEVER_USED_TEXT = '쓴 적 없어요'
+const PATTERN_USAGE_NOTE = '최근 4주 사용은 시험 묶음을 세지 않아요. 조합 뽑기와 같은 기준이에요'
+const PATTERN_UNKNOWN_TEXT = '모름'
+const PATTERN_MISSING_TEXT = '–'
 
 const NUMBER_CLASS = 'text-right tabular-nums'
 
-export function usesText(row: Pick<PatternListRow, 'uses'>): string {
+function usesText(row: Pick<PatternListRow, 'uses'>): string {
   return row.uses === null ? PATTERN_MISSING_TEXT : `${row.uses}회`
 }
 
 /** 마지막 사용: 사용 기록을 못 읽었으면 「–」, 한 번도 안 썼으면 「쓴 적 없어요」, 아니면 KST 날짜(예: 10/1(수))다. */
-export function lastUsedText(row: Pick<PatternListRow, 'uses' | 'lastUsedAt'>): string {
+function lastUsedText(row: Pick<PatternListRow, 'uses' | 'lastUsedAt'>): string {
   if (row.uses === null) return PATTERN_MISSING_TEXT
   if (row.lastUsedAt === null) return PATTERN_NEVER_USED_TEXT
   return formatKstDay(row.lastUsedAt) ?? PATTERN_MISSING_TEXT
 }
 
 /** 샘플 각도 수: 주제가 없는 원리형은 「–」, 주제형은 개수, 배열이 깨졌으면 「모름」이다. */
-export function angleCountText(row: Pick<PatternListRow, 'topic' | 'angleCount'>): string {
+function angleCountText(row: Pick<PatternListRow, 'topic' | 'angleCount'>): string {
   if (row.angleCount === null) return PATTERN_UNKNOWN_TEXT
   if (row.topic === null && row.angleCount === 0) return PATTERN_MISSING_TEXT
   return String(row.angleCount)
 }
 
-export function sampleCountText(row: Pick<PatternListRow, 'sampleCount'>): string {
+function sampleCountText(row: Pick<PatternListRow, 'sampleCount'>): string {
   return row.sampleCount === null ? PATTERN_UNKNOWN_TEXT : String(row.sampleCount)
 }
 
 /** 취향 신호: 못 읽었으면 「–」, 있는 것만 「추정 3 · 확정 1」로 잇고, 하나도 없으면 「없어요」다. */
-export function tasteSignalText(row: Pick<PatternListRow, 'estimateCount' | 'confirmedCount'>): string {
+function tasteSignalText(row: Pick<PatternListRow, 'estimateCount' | 'confirmedCount'>): string {
   if (row.estimateCount === null || row.confirmedCount === null) return PATTERN_MISSING_TEXT
   const parts: string[] = []
   if (row.estimateCount > 0) parts.push(`추정 ${row.estimateCount}`)

@@ -34,9 +34,9 @@ import type { OpsWorkspaceContext } from './OpsBundleWorkspace'
  * 초안을 연 뒤 다른 곳에서 이 항목이 바뀌었으면(수정 시각이 달라졌으면) 저장을 막고 다시 열도록 안내한다.
  */
 
-export const OPS_CANNOT_EDIT_HINT = '고칠 수 없어요'
-export const OPS_SCHEDULED_COPY_HINT = '공개 시각 전까지 문안만 고칠 수 있어요.'
-export const OPS_SCHEDULED_IMAGE_TEXT_NOTICE = '카드 이미지 속 글자는 여기서 바뀌지 않아요'
+const OPS_CANNOT_EDIT_HINT = '고칠 수 없어요'
+const OPS_SCHEDULED_COPY_HINT = '공개 시각 전까지 문안만 고칠 수 있어요.'
+const OPS_SCHEDULED_IMAGE_TEXT_NOTICE = '카드 이미지 속 글자는 여기서 바뀌지 않아요'
 export const OPS_EDIT_STALE_MESSAGE = '수정하는 사이 다른 곳에서 이 항목이 바뀌었어요. 취소하고 다시 수정해 주세요.'
 
 function ChangedChip() {

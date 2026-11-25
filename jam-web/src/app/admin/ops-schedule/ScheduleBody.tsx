@@ -37,15 +37,15 @@ import { OpsScheduleBoard } from './OpsScheduleBoard'
  * 항목·날짜 서랍(티켓 20261006_1537 ③-b)은 보기 래퍼(`OpsScheduleBoard`)가 그린다. 못 읽은 재료(`sourceErrors`)를 함께 넘겨 날짜 서랍이 「대표 카드가 없어요」·「항목이 없어요」로 단정하지 않게 한다.
  */
 
-export const SCHEDULE_LOAD_FAILED_TITLE = '일정을 불러오지 못했어요'
-export const SCHEDULE_PARTIAL_FAILED_TITLE = '일부 일정을 불러오지 못했어요'
-export const SCHEDULE_PARTIAL_FAILED_DESCRIPTION = '서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요'
+const SCHEDULE_LOAD_FAILED_TITLE = '일정을 불러오지 못했어요'
+const SCHEDULE_PARTIAL_FAILED_TITLE = '일부 일정을 불러오지 못했어요'
+const SCHEDULE_PARTIAL_FAILED_DESCRIPTION = '서버에 문제가 있었을 수 있어요. 새로 고쳐 다시 불러와 주세요'
 export const SCHEDULE_EMPTY_TITLE = '이 기간에는 올라온 항목이 없어요'
-export const SCHEDULE_TO_TODAY_LABEL = '오늘로 이동'
-export const SCHEDULE_FILTER_EMPTY_TITLE = '이 조건에 맞는 항목이 없어요'
-export const SCHEDULE_FILTER_CLEAR_LABEL = '거르기 지우기'
+const SCHEDULE_TO_TODAY_LABEL = '오늘로 이동'
+const SCHEDULE_FILTER_EMPTY_TITLE = '이 조건에 맞는 항목이 없어요'
+const SCHEDULE_FILTER_CLEAR_LABEL = '거르기 지우기'
 /** 트라이브·패턴으로 거르면 옛 카드·미션(트라이브·패턴이 없는 실제 자원)이 빠진다는 안내(가정 6). */
-export const SCHEDULE_FILTER_LEGACY_NOTICE = '트라이브·패턴으로 거르면 운영툴로 받은 항목만 보여요. 옛 카드와 미션은 빠져요'
+const SCHEDULE_FILTER_LEGACY_NOTICE = '트라이브·패턴으로 거르면 운영툴로 받은 항목만 보여요. 옛 카드와 미션은 빠져요'
 
 /** 못 읽은 재료마다의 안내 문장. 카드를 못 읽었을 때 「미편성」으로 단정하지 않는다. */
 export const SCHEDULE_SOURCE_NOTICES: Record<ScheduleSource, string> = {
@@ -62,7 +62,7 @@ export const SCHEDULE_SOURCE_NOTICES: Record<ScheduleSource, string> = {
 const NOTICE_ORDER: readonly ScheduleSource[] = ['cards', 'missions', 'bundles', 'signals', 'metrics', 'dropSchedules', 'itemBooks', 'rules']
 
 /** 카드·미션·운영 항목을 모두 못 읽었는가(달력에 그릴 내용이 없다). 신호·노출 수는 내용이 아니다. */
-export function allContentFailed(sourceErrors: ScheduleSourceErrors): boolean {
+function allContentFailed(sourceErrors: ScheduleSourceErrors): boolean {
   return Boolean(sourceErrors.cards && sourceErrors.missions && sourceErrors.bundles)
 }
 

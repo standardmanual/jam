@@ -14,7 +14,7 @@ import type { BadgeCondition } from '@/types/database'
 /** 계열 묶기에 쓰는 배지 + 숨김 여부 */
 export type OpsBadgeInput = FamilyBadge & { is_hidden: boolean }
 
-export interface OpsBadgeTier {
+interface OpsBadgeTier {
   /** 이 단계 배지 행의 UUID. 윤진이 `badge_spotlight` 카드의 `card.badge_ids`에 넣는다 (티켓 20261102_2254) */
   badgeId: string
   tier: string

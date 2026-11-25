@@ -46,7 +46,7 @@ function stringRecord(value: unknown): Record<string, string> {
 /**
  * 실패 문장. 409는 그 사이 다른 곳에서 처리했다는 뜻이라 화면을 새로 불러왔다고 덧붙인다(호출한 쪽이 `router.refresh()`를 한다).
  */
-export function decisionFailureMessage(status: number, error: string): string {
+function decisionFailureMessage(status: number, error: string): string {
   return status === 409 ? `${error} 화면을 새로 불러왔어요.` : error
 }
 

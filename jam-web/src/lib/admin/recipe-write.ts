@@ -32,7 +32,7 @@ import { findBundleViolation, groupItemBadgeBundles, type BundleBadgeInput } fro
 import { isUuid } from '@/lib/admin/uuid'
 import type { CombinationRecipeRow, CombineRecipeGradeMode } from '@/types/database'
 
-export { recipeReleaseState, type RecipeReleaseState } from '@/lib/combine/visibility'
+export { recipeReleaseState,  } from '@/lib/combine/visibility'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 

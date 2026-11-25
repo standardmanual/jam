@@ -21,7 +21,7 @@ export const OPS_ITEM_KIND_LABELS: Record<string, string> = {
   pattern_proposal: '패턴 제안',
 }
 
-export const OPS_KIND_UNKNOWN_LABEL = '종류 확인 필요'
+const OPS_KIND_UNKNOWN_LABEL = '종류 확인 필요'
 
 /** 허용값 밖이거나 비어 있으면 「종류 확인 필요」다. */
 export function kindLabel(kind: string | null | undefined): string {

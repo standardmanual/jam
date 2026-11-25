@@ -54,8 +54,8 @@ const ERROR_LABEL = 'ops-inbox'
 
 // ── 목록 조건 ────────────────────────────────────────────────────────────────────────────────────
 
-export const OPS_INBOX_SORT_KEYS = ['received_at', 'week', 'items'] as const
-export type OpsInboxSortKey = (typeof OPS_INBOX_SORT_KEYS)[number]
+const OPS_INBOX_SORT_KEYS = ['received_at', 'week', 'items'] as const
+type OpsInboxSortKey = (typeof OPS_INBOX_SORT_KEYS)[number]
 
 export interface OpsInboxParams {
   tab: OpsInboxTab
@@ -250,7 +250,7 @@ export async function listOpsBundles(params: OpsInboxParams): Promise<OpsBundleL
 
 // ── 상세 ─────────────────────────────────────────────────────────────────────────────────────────
 
-export interface OpsBundleHeader {
+interface OpsBundleHeader {
   id: string
   /** 제출자가 정한 묶음 식별자. 자기 신고라 제목으로 쓰지 않는다. */
   bundleId: string
@@ -405,7 +405,7 @@ function latestApprovalTimes(decisions: readonly OpsDecisionRecord[]): Map<strin
  * 묶음의 밸런스를 평가한다. **던지지 않는다** — 규칙이나 서비스 상태를 읽지 못하는 등 어떤 실패도 `status: 'failed'`로 돌려주어
  * 기획 상세가 그대로 열리고 승인·반려가 막히지 않는다. 읽기만 한다(`select`).
  */
-export async function evaluateOpsBundleBalance(
+async function evaluateOpsBundleBalance(
   supabase: ReturnType<typeof createServiceClient>,
   bundleDbId: string,
   // `createdResource`는 화면 항목(`OpsItemRecord`)에 싣지 않는 칸이라 평가 호출부가 따로 붙인다(R7이 이미 만든 배지를 두 번 세지 않는 데 쓴다).

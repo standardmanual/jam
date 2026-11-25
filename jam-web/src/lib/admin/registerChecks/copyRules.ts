@@ -11,9 +11,9 @@
 
 export type CopyField = 'title' | 'subtitle' | 'description'
 /** 문구를 쓰는 대상 — 카드(`card.`)와 미션(`mission.`)은 같은 규칙 목록을 쓰지만 일부 규칙은 한쪽에만 적용한다. */
-export type CopySubject = 'card' | 'mission'
+type CopySubject = 'card' | 'mission'
 
-export interface CopyRule {
+interface CopyRule {
   /** 규칙 식별자(시험·로그용). */
   id: string
   /** 규칙을 적용하는 칸. 없으면 제목·부제·설명 모두. */
@@ -31,7 +31,7 @@ function bannedTerm(id: string, pattern: RegExp, term: string, instead: string):
   return { id, pattern, message: `「${term}」은 카피에 쓰지 않아요. ${instead}` }
 }
 
-export const COPY_RULES: readonly CopyRule[] = [
+const COPY_RULES: readonly CopyRule[] = [
   {
     id: 'recommend-seyo',
     // 「해 주세요」(앞이 `주`)는 요청 문장이라 제외한다.

@@ -24,10 +24,10 @@ export const BADGEPOINTS_SECTION_ID = 'badgepoints'
 /** 이 구역이 편집하는 `badge_point_policy` 칸. 화면 순서와 같고 `BadgePointPolicy`의 키 전부다. */
 export const BADGEPOINTS_BALANCE_KEYS = BADGE_POINT_POLICY_KEYS
 
-export type BadgePointsBalanceKey = (typeof BADGEPOINTS_BALANCE_KEYS)[number]
+type BadgePointsBalanceKey = (typeof BADGEPOINTS_BALANCE_KEYS)[number]
 
-export const RARITY_POINTS_GROUP = '등급별 포인트'
-export const LEVELED_POINTS_GROUP = '레벨형'
+const RARITY_POINTS_GROUP = '등급별 포인트'
+const LEVELED_POINTS_GROUP = '레벨형'
 
 type BadgePointsFieldInit = Pick<BalanceFieldDef, 'label' | 'group' | 'hint'> & { key: BadgePointsBalanceKey }
 

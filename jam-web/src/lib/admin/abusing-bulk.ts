@@ -29,9 +29,9 @@ export interface PoiBlockBulkRow {
   blocked_until: string
 }
 
-export const SKIP_ALREADY_RELEASED = '이미 해제됐어요'
-export const SKIP_ALREADY_LONGER = '이미 더 오래 가요'
-export const SKIP_CHANGED_MEANWHILE = '그 사이 상태가 바뀌어 연장하지 못했어요'
+const SKIP_ALREADY_RELEASED = '이미 해제됐어요'
+const SKIP_ALREADY_LONGER = '이미 더 오래 가요'
+const SKIP_CHANGED_MEANWHILE = '그 사이 상태가 바뀌어 연장하지 못했어요'
 
 function missingSkips(ids: string[], present: Set<string>): BulkSkip[] {
   return ids.filter((id) => !present.has(id)).map((id) => ({ id, reason: SKIP_ALREADY_RELEASED }))

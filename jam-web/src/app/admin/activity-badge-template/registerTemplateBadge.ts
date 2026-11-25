@@ -8,7 +8,7 @@ import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 import type { StudioSearchBadge } from './BadgePicker'
 import { renderTemplateBadge } from './renderTemplateBadge'
 
-export const REGISTER_LONG_SIDE_PX = 1024
+const REGISTER_LONG_SIDE_PX = 1024
 const REGISTER_FAIL = '이미지를 등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const SLOT_LABEL = { name: '이름', value: '값' } as const
 

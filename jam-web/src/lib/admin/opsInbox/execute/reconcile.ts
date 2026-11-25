@@ -83,7 +83,7 @@ type RecordAction = typeof OPS_DECISION_ACTION_CANCEL | typeof OPS_DECISION_ACTI
 type TimeDiff = { item: string | null; resource: string | null }
 
 /** `external_change`의 `diff`. 다른 칸만 담는다. 시각은 ISO 문자열이고 비활성은 항목이 켜 둔 것(true)과 자원이 꺼진 것(false)이다. */
-export type ExternalDiff = { starts_at?: TimeDiff; ends_at?: TimeDiff; is_active?: { item: true; resource: false } }
+type ExternalDiff = { starts_at?: TimeDiff; ends_at?: TimeDiff; is_active?: { item: true; resource: false } }
 
 /** 판정 재료 한 건: 항목과, 항목마다 결정 기록에서 읽은 두 값. */
 export interface ReconcileItem {
@@ -97,7 +97,7 @@ export interface ReconcileItem {
 }
 
 /** 상태를 바꾸는 판정 한 건. */
-export interface ReconcileTransition {
+interface ReconcileTransition {
   item: ExecuteItem
   isSample: boolean
   from: TargetStatus
@@ -111,7 +111,7 @@ export interface ReconcileTransition {
 }
 
 /** `external_change`로 남길 판정 한 건. */
-export interface PlannedExternalChange {
+interface PlannedExternalChange {
   item: ExecuteItem
   isSample: boolean
   diff: ExternalDiff
@@ -294,7 +294,7 @@ export function planReconcile(items: readonly ReconcileItem[], observations: Rea
 // ── 결과 ─────────────────────────────────────────────────────────────────────────────────────────
 
 /** 실제로 바뀐 항목 한 건. */
-export interface ReconcileChange {
+interface ReconcileChange {
   itemId: string
   bundleId: string
   /** 「종류 · 공개 시각(KST)」. 슬랙 글의 항목 이름이다. */
@@ -309,7 +309,7 @@ export interface ReconcileChange {
 }
 
 /** `external_change`로 남긴 항목 한 건. */
-export interface ReconcileExternalChange {
+interface ReconcileExternalChange {
   itemId: string
   bundleId: string
   itemLabel: string

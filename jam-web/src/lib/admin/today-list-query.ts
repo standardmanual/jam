@@ -81,7 +81,7 @@ export function parseTodayListParams(
   }
 }
 
-export interface TodayListQueryResult<T> {
+interface TodayListQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

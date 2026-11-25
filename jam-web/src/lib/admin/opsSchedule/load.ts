@@ -40,10 +40,10 @@ import { weeklyCards, type WeeklyCardInput } from '@/lib/admin/weeklyCards'
 import type { WeeklyMissionInput } from '@/lib/admin/weeklyMissions'
 
 /** 읽지 못한 재료 이름. `metrics`는 카드 노출·열람 수(못 읽으면 그 줄만 비고 화면은 그대로다). */
-export type ScheduleWeekSource = 'cards' | 'missions' | 'bundles' | 'signals' | 'metrics'
+type ScheduleWeekSource = 'cards' | 'missions' | 'bundles' | 'signals' | 'metrics'
 
 /** 타임라인만 읽는 재료(티켓 20261006_1538 ③-c): 드랍 일정·컬렉션과 컬렉션 준비 기간 규칙(R4). 규칙을 못 읽으면 28일로 그리고 그 사실을 알린다. */
-export type ScheduleTimelineSource = 'dropSchedules' | 'itemBooks' | 'rules'
+type ScheduleTimelineSource = 'dropSchedules' | 'itemBooks' | 'rules'
 
 export type ScheduleSource = ScheduleWeekSource | ScheduleTimelineSource
 

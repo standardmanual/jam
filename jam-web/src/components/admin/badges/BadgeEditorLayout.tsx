@@ -16,7 +16,6 @@ import {
   EditorShell,
   SectionCard,
   SectionNav,
-  scrollToSection,
   type SectionCardProps,
   type SectionNavProps,
 } from '@/components/admin/AdminEditorLayout'
@@ -37,11 +36,6 @@ export const BadgeEditorShell = EditorShell
 /** 섹션 카드 — 제목·한 줄 설명·상태 배지를 머리에 두고, 목차 이동 대상이 된다 */
 export function BadgeSectionCard(props: Omit<SectionCardProps<BadgeSectionId>, 'namespace'>) {
   return <SectionCard namespace="badge" {...props} />
-}
-
-/** 섹션으로 스크롤하고 제목에 포커스를 둔다 — 모션 감소 설정이면 즉시 이동 */
-export function scrollToBadgeSection(id: BadgeSectionId) {
-  scrollToSection('badge', id)
 }
 
 /** 레일의 섹션 목차 — 상태를 보여 주고 누르면 해당 섹션으로 이동한다 */

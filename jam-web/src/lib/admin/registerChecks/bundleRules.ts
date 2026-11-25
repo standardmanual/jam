@@ -15,7 +15,7 @@ export const AGENT_IMAGE_SOURCE = 'agent-generator'
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
+const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
 
 // 한 줄 텍스트(작성자·제목 등) 검사. 이 값들은 등록 기록 SQL(registration.sql)의 `--` 주석에도 들어가고
 // 그 파일은 마이그레이션 폴더에 커밋되어 다시 실행될 수 있다. 줄바꿈이 섞이면 뒷부분이 주석 밖의 실행 가능한

@@ -19,7 +19,7 @@ import { OpsTrendSparkline } from './OpsTrendSparkline'
 
 export const TREND_RADAR_EMPTY = '최근 14일에 읽은 트렌드가 없어요'
 
-export const OUTCOME_VIEW: Record<OpsTrendOutcome, { label: string; tone: Tone; dot: string }> = {
+const OUTCOME_VIEW: Record<OpsTrendOutcome, { label: string; tone: Tone; dot: string }> = {
   used: { label: '반영', tone: 'neutral', dot: 'bg-primary' },
   held: { label: '보류', tone: 'warning', dot: 'bg-amber-500' },
   excluded: { label: '자동 제외', tone: 'muted', dot: 'bg-muted-foreground' },

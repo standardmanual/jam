@@ -65,14 +65,14 @@ export function signalAnchorId(signal: string): string {
   return `signal-${signal}`
 }
 
-export const READONLY_TIME_TEXT = {
+const READONLY_TIME_TEXT = {
   unset: '아직 정해지지 않았어요',
   unreadable: '시각을 읽을 수 없어요',
 } as const
 
 // ── 칸 정의표 ───────────────────────────────────────────────────────────────────────────────────
 
-export type ThresholdFieldKind = 'integer' | 'multiplier' | 'weekday' | 'readonly_time'
+type ThresholdFieldKind = 'integer' | 'multiplier' | 'weekday' | 'readonly_time'
 
 export interface ThresholdFieldSpec {
   key: OpsSignalThresholdKey
@@ -341,15 +341,6 @@ export function readStoredThresholdValue(
   if (typeof value !== 'number') return { ok: false }
   return checkThresholdInput(key, value) === null ? { ok: true, value } : { ok: false }
 }
-
-/** 맞물린 칸 쌍의 키. 서버가 요청에 없는 칸을 저장된 값·기본값으로 채워 함께 확인한다. */
-export const INTERLOCKED_THRESHOLD_KEYS: readonly OpsSignalThresholdKey[] = [
-  'minLiveCards',
-  'maxLiveCards',
-  'monotonyWindowDays',
-  'monotonySamePatternCount',
-  'monotonySameShapeDays',
-]
 
 /**
  * 맞물린 값의 확인(칸 하나씩이 아니라 함께 봐야 하는 것). 관련 칸 모두에 오류를 낸다.

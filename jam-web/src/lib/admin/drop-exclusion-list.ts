@@ -33,7 +33,7 @@ const SORTS_BY_TAB: Record<ExclusionTab, readonly string[]> = {
 }
 const DEFAULT_SORT = 'name_asc'
 
-export type ExclusionStatus = 'excluded' | 'included' | 'all'
+type ExclusionStatus = 'excluded' | 'included' | 'all'
 
 export interface DropExclusionParams {
   tab: ExclusionTab
@@ -68,7 +68,7 @@ const SORT_COLUMN: Record<string, readonly [string, boolean]> = {
   rarity_desc: ['rarity', false],
 }
 
-export interface ExclusionQueryResult<T> {
+interface ExclusionQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

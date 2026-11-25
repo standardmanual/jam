@@ -7,7 +7,7 @@ import { formatKstYmdHm } from '@/lib/admin/kst-format'
  * 밸런스 설정 구역의 «최근 변경» 목록 (티켓 20261022_1132 1회). 저장 한 번이 한 줄이다: 누가 · 언제(KST), 바꾼 칸의 «이전 → 새 값», 메모.
  * 바꾼 사람은 표시 이름만 보인다(어드민 ID·이메일은 읽기 결과에 없다). 서버·클라이언트 어디서나 쓰는 순수 부분이다. 문장은 모두 React 텍스트 노드다.
  */
-export const HISTORY_TITLE = '최근 변경'
+const HISTORY_TITLE = '최근 변경'
 export const HISTORY_EMPTY_MESSAGE = '아직 바꾼 기록이 없어요.'
 export const HISTORY_FAILED_MESSAGE = '최근 변경을 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'
 export const DISCLOSURE_CHIP_LABEL = '확률 안내에 반영된 칸 포함'

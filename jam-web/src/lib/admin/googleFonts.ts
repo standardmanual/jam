@@ -39,40 +39,6 @@ export function searchGoogleFonts(query: string, limit = 50): GoogleFontCatalogE
   return [...startsWith, ...includes].slice(0, limit)
 }
 
-/** 구글 폰트 `css2` 공개 스타일시트 URL을 만든다(고정 굵기 400). API 키가 필요 없는 공개 엔드포인트다. */
-export function buildGoogleFontCssUrl(family: string): string {
-  const familyParam = family.trim().replace(/\s+/g, '+')
-  return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(familyParam).replace(/%2B/g, '+')}:wght@400&display=swap`
-}
-
-const LOADED_FONT_LINK_ATTR = 'data-shader-lab-google-font'
-
-/**
- * 이 구글 폰트의 `<link rel="stylesheet">`가 이미 `document.head`에 있으면 그대로 두고,
- * 없으면 새로 추가한다(중복 로드 방지). 클라이언트 컴포넌트에서만
- * 호출된다 — 서버에서 호출돼도 `document`가 없으면 조용히 넘어간다.
- */
-export function ensureGoogleFontLoaded(family: string): void {
-  if (typeof document === 'undefined') return
-  const attrValue = family.replace(/"/g, '\\"')
-  const existing = document.head.querySelector(`link[${LOADED_FONT_LINK_ATTR}="${attrValue}"]`)
-  if (existing) return
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = buildGoogleFontCssUrl(family)
-  link.setAttribute(LOADED_FONT_LINK_ATTR, family)
-  document.head.appendChild(link)
-}
-
-/**
- * 슬롯의 CSS 커스텀 프로퍼티를 이 구글 폰트로 런타임에 덮어쓴다 — `globals.css`가 서비스 서체
- * (`--font-family-base`)를 정적으로 정하는 것과 같은 원리의 동적 버전.
- */
-export function applyGoogleFontToSlot(cssVariable: string, family: string): void {
-  if (typeof document === 'undefined') return
-  document.documentElement.style.setProperty(cssVariable, `"${family}"`)
-}
-
 /**
  * 이 구글 폰트(굵기 400 고정 — `GOOGLE_FONT_SLOT_WEIGHT`)가 브라우저에 실제로 다운로드·파싱
  * 완료될 때까지 기다린다(티켓 20260916_2118). `ensureGoogleFontLoaded`는 `<link>`만 삽입하고

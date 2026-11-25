@@ -87,8 +87,6 @@ export const MISSION_ENGINE_DELEGATED_KEYS = [
   'avg_cadence',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
-export type MissionEngineDelegatedKey = (typeof MISSION_ENGINE_DELEGATED_KEYS)[number]
-
 /**
  * 판정에는 위임되지만(정본 `ENGINE_DELEGATED_CONDITION_KEY_LIST`) 이 폼에 입력 칸이 아직 없는 위임 키.
  * 폼을 열어 저장해도 값이 사라지지 않게 원본(`initCondition`)을 그대로 보존한다.
@@ -414,22 +412,22 @@ export function selectOptionsWithCurrent(
 }
 
 /** `jam_period_earned` 입력값 → `condition_json` 값(1 이상의 정수 칸이라 정수로 읽는다). 비어 있으면 undefined */
-export function readJamPeriodEarned(raw: string): number | undefined {
+function readJamPeriodEarned(raw: string): number | undefined {
   return int(raw)
 }
 
 /** `condition_json`의 `jam_period_earned` → 입력값. `readJamPeriodEarned`의 역방향 */
-export function writeJamPeriodEarned(value: unknown): string {
+function writeJamPeriodEarned(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
 }
 
 /** `sync_count` 입력값 → `condition_json` 값(1 이상의 정수 칸이라 정수로 읽는다). 비어 있으면 undefined */
-export function readSyncCount(raw: string): number | undefined {
+function readSyncCount(raw: string): number | undefined {
   return int(raw)
 }
 
 /** `condition_json`의 `sync_count` → 입력값. `readSyncCount`의 역방향 */
-export function writeSyncCount(value: unknown): string {
+function writeSyncCount(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
 }
 
@@ -722,7 +720,7 @@ const SIMPLE_TYPE_INTEGER_INPUTS: Partial<Record<MissionType, MissionDirectInteg
  * 연속 주 수(`weeklyStreak`) 등 레지스트리가 아는 칸은 여기 없다 — 레지스트리의 정수 칸 목록이 맡는다.
  * 주간·월간 최소 횟수는 연속 주·개월 수를 채워야 읽히고(화면에서도 그때만 켜진다), 부분집합 최소 횟수는 둘 중 하나가 있어야 읽힌다.
  */
-export const MISSION_DIRECT_INTEGER_INPUTS: readonly MissionDirectIntegerInput[] = [
+const MISSION_DIRECT_INTEGER_INPUTS: readonly MissionDirectIntegerInput[] = [
   { field: 'weeklyStreakMinCount', label: '주간 최소 활동 횟수', readsWhen: (f) => filled(f.weeklyStreak) },
   { field: 'monthlyStreak', label: '연속 개월 수' },
   { field: 'monthlyStreakMinCount', label: '월간 최소 활동 횟수', readsWhen: (f) => filled(f.monthlyStreak) },

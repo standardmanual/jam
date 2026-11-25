@@ -10,7 +10,7 @@
 import type { ExecuteServiceClient, UpdateCopyResult } from './handlers'
 
 /** 핸들러 `updateCopy`가 돌려주는 실패의 사유. 화면에 보이는 문장은 `decide.ts`가 정한다. */
-export const COPY_MESSAGES = {
+const COPY_MESSAGES = {
   failed: '자원의 문안을 바꾸지 못했어요',
   published: '공개 시각이 지나 문안을 고칠 수 없어요',
   missing: '예약된 자원을 찾을 수 없어요',

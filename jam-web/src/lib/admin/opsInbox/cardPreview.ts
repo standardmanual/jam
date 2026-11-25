@@ -226,7 +226,7 @@ export function previewViewOf(
 }
 
 /** 레시피 슬롯 한 칸. 후보는 이름을 못 읽으면 폴백 문구가 들어간다. */
-export interface RecipeSlotPreview {
+interface RecipeSlotPreview {
   typeLabel: string
   candidates: OpsPreviewBadge[]
 }

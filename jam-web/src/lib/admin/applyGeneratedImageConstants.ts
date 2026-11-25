@@ -11,5 +11,3 @@
 
 export const APPLY_GENERATED_IMAGE_BUCKET = 'images'
 export const MAX_APPLY_IMAGE_BYTES = 5 * 1024 * 1024
-
-export type ApplyGeneratedImageTable = 'badges' | 'missions' | 'item_books'

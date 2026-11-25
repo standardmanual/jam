@@ -78,7 +78,7 @@ const MESSAGES = {
 
 // ── 결과 ─────────────────────────────────────────────────────────────────────────────────────────
 
-export interface ItemReason {
+interface ItemReason {
   id: string
   /** 화면·결정 기록·슬랙에 그대로 나가는 쉬운 문장. */
   reason: string

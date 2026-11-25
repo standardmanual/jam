@@ -39,7 +39,7 @@ export interface CalendarCellItem {
 }
 
 /** 칸 머리의 신호 칩: 그날 가장 높은 수준 하나와 건수(칩을 쌓지 않는다, 티켓 20261006_1536) */
-export interface CalendarDaySignal {
+interface CalendarDaySignal {
   level: OpsSignalLevel
   count: number
 }

@@ -35,7 +35,7 @@ export const SYNC_BALANCE_KEYS = [
   'locked_roll_probability',
 ] as const satisfies readonly (keyof JamPolicy)[]
 
-export type SyncBalanceKey = (typeof SYNC_BALANCE_KEYS)[number]
+type SyncBalanceKey = (typeof SYNC_BALANCE_KEYS)[number]
 
 /** 등급 확률 네 칸. 합이 100이어야 한다. */
 export const SYNC_RARITY_KEYS = ['sync_rarity_common', 'sync_rarity_rare', 'sync_rarity_epic', 'sync_rarity_mystic'] as const

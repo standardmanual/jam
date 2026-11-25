@@ -27,8 +27,7 @@ export type PathKey = (typeof PATH_KEYS)[number]
 export const COLLECTION_PATHS_PAGE_SIZE = 10
 
 /** 밸런스 지표 화면의 탭 — 기본은 지표 */
-export const DASHBOARD_TABS = ['metrics', 'paths'] as const
-export type DashboardTab = (typeof DASHBOARD_TABS)[number]
+export type DashboardTab = 'metrics' | 'paths'
 
 /** `?tab=` 값을 읽는다. `paths`만 획득 경로이고 없거나 모르는 값은 지표다 */
 export function parseDashboardTab(raw: string | undefined): DashboardTab {
@@ -48,7 +47,7 @@ export interface PathNames {
   items: ReadonlyMap<string, string>
 }
 
-export interface ClosedPath {
+interface ClosedPath {
   path: PathKey
   /** 닫힌 까닭 — 계산이 정한 사유 상수 그대로(문구는 화면의 `PathReasonLabels`가 만든다) */
   reasons: ItemPathReason[]

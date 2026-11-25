@@ -131,7 +131,7 @@ export interface OpsBundleWorkspaceProps {
   trendFilter?: TrendFilter | null
 }
 
-export const OPS_TRANSITION_FAILED_MESSAGE =
+const OPS_TRANSITION_FAILED_MESSAGE =
   '검토중으로 바꾸지 못했어요. 화면은 그대로 볼 수 있고, 새로 고치면 다시 시도해요.'
 
 const DRAWER_PARAM = 'drawer'

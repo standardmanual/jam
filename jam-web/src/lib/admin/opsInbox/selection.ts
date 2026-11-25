@@ -7,7 +7,7 @@
  */
 import { groupItemsByDay } from '@/lib/admin/opsInbox/itemView'
 
-export interface CheckOverride {
+interface CheckOverride {
   checked: boolean
   /** 체크를 바꿀 때 본 항목의 수정 시각. 항목의 수정 시각이 달라지면 이 기억은 버린다. */
   updatedAt: string

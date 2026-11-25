@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/admin/ui/card'
 import type { PolicyItem, PolicyType } from '@/lib/admin/policyDashboard/types'
 import { DevRequestButton, type OpenDevRequest } from './DevRequestButton'
 
-export const POLICY_TYPE_LABEL: Record<PolicyType, string> = {
+const POLICY_TYPE_LABEL: Record<PolicyType, string> = {
   admin_link: '설정값',
   code_constant: '코드 고정',
   ticket_decision: '티켓 결정',
@@ -24,7 +24,7 @@ export const POLICY_TYPE_LABEL: Record<PolicyType, string> = {
 export const LIVE_VALUE_MISSING_TEXT = '값을 읽지 못했어요'
 
 /** 설정값 정책의 현재 값 글자. 읽은 값이 없으면 `null` */
-export function liveValueText(policy: PolicyItem, liveValues: Readonly<Record<string, unknown>>): string | null {
+function liveValueText(policy: PolicyItem, liveValues: Readonly<Record<string, unknown>>): string | null {
   const link = policy.adminLink
   if (policy.type !== 'admin_link' || link === undefined || link.liveField === undefined) return null
   const value = liveValues[link.liveField]

@@ -42,27 +42,27 @@ export const PATTERN_NAME_MAX = nameMax
 export const PATTERN_TOPIC_MAX = topicMax
 export const PATTERN_LONG_TEXT_MAX = longTextMax
 
-export const REQUIRED_MARK_LABEL = '필수'
-export const MENU_ADD_LABEL = '더하기'
-export const MENU_INPUT_LABEL = '쓰는 메뉴 이름'
-export const MENU_LIMIT_NOTE = `메뉴는 ${menusMaxCount}개까지 넣을 수 있어요`
-export const SAMPLES_LIMIT_NOTE = `샘플은 ${samplesMaxCount}개까지 넣을 수 있어요`
-export const ANGLES_LIMIT_NOTE = `샘플 각도는 ${anglesMaxCount}개까지 넣을 수 있어요`
-export const ANGLE_ADD_LABEL = '샘플 각도 더하기'
-export const CARD_SHAPE_ADD_LABEL = '카드 유형 더하기'
-export const SAMPLE_ADD_LABEL = '샘플 더하기'
-export const ROW_REMOVE_LABEL = '지우기'
-export const SELECT_PLACEHOLDER = '골라 주세요'
+const REQUIRED_MARK_LABEL = '필수'
+const MENU_ADD_LABEL = '더하기'
+const MENU_INPUT_LABEL = '쓰는 메뉴 이름'
+const MENU_LIMIT_NOTE = `메뉴는 ${menusMaxCount}개까지 넣을 수 있어요`
+const SAMPLES_LIMIT_NOTE = `샘플은 ${samplesMaxCount}개까지 넣을 수 있어요`
+const ANGLES_LIMIT_NOTE = `샘플 각도는 ${anglesMaxCount}개까지 넣을 수 있어요`
+const ANGLE_ADD_LABEL = '샘플 각도 더하기'
+const CARD_SHAPE_ADD_LABEL = '카드 유형 더하기'
+const SAMPLE_ADD_LABEL = '샘플 더하기'
+const ROW_REMOVE_LABEL = '지우기'
+const SELECT_PLACEHOLDER = '골라 주세요'
 
 /** 글자 수를 보여 줄 문턱(상한의 80%). */
 const COUNT_SHOW_RATIO = 0.8
 
-export function errorIdOf(path: string): string {
+function errorIdOf(path: string): string {
   return `${fieldDomId(path)}-error`
 }
 
 /** 입력 칸에 붙는 접근성 속성: 칸 id, 오류가 있으면 `aria-invalid`와 오류 문장 연결. */
-export function fieldA11y(path: string, error: string | undefined) {
+function fieldA11y(path: string, error: string | undefined) {
   return {
     id: fieldDomId(path),
     'aria-invalid': error ? (true as const) : undefined,
@@ -73,7 +73,7 @@ export function fieldA11y(path: string, error: string | undefined) {
 const INVALID_CLASS = 'border-destructive focus-visible:ring-destructive'
 
 /** 칸 아래 붉은 오류 문장. 없으면 아무것도 그리지 않는다. */
-export function FieldError({ path, error }: { path: string; error: string | undefined }) {
+function FieldError({ path, error }: { path: string; error: string | undefined }) {
   if (!error) return null
   return (
     <p id={errorIdOf(path)} className="text-sm font-medium text-destructive break-words">
@@ -154,7 +154,7 @@ interface PatternSelectProps<T extends string> {
 }
 
 /** 값을 고르는 칸. 아직 고르지 않았으면 「골라 주세요」가 보인다. */
-export function PatternSelect<T extends string>({ path, label, value, options, onChange, error, required }: PatternSelectProps<T>) {
+function PatternSelect<T extends string>({ path, label, value, options, onChange, error, required }: PatternSelectProps<T>) {
   const container = useAdminPortalContainer()
   const a11y = fieldA11y(path, error)
   const selected = options.find((option) => option.value === value)

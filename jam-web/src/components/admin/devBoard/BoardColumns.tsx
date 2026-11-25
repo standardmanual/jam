@@ -13,9 +13,9 @@ import { BOARD_COLUMN_KEYS } from '@/lib/admin/devBoard/types'
 import { BOARD_COLUMN_TITLES } from '@/lib/admin/devBoard/view'
 import { BoardCardItem } from './BoardCardItem'
 
-export const ESTIMATED_NOTE = 'main에 티켓 색인이 없어 닫은 날짜로 가렸어요'
+const ESTIMATED_NOTE = 'main에 티켓 색인이 없어 닫은 날짜로 가렸어요'
 
-export function undatedNote(count: number): string {
+function undatedNote(count: number): string {
   return `닫은 날짜가 없는 완료 티켓 ${count}건은 이 칸에 넣지 않았어요`
 }
 

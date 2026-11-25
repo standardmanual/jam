@@ -140,18 +140,11 @@ export function studioStageProps(studio: {
 
 export const ROTATION_RANGE = { min: -180, max: 180, step: 1 } as const
 export const ZOOM_RANGE = { min: 30, max: 300, step: 1 } as const
-export const BG_ANGLE_RANGE = { min: -180, max: 180, step: 1 } as const
 export const TEXT_MAX_LENGTH = 24
 
 export const FONT_WEIGHT_OPTIONS: readonly number[] = [100, 200, 300, 400, 500, 600, 700, 800, 900]
 
 export const RATIO_OPTIONS: readonly CanvasRatio[] = ['1:1', '4:5', '9:16', '16:9']
-
-export const BACKGROUND_MODE_OPTIONS: readonly { value: BackgroundMode; label: string }[] = [
-  { value: 'gradient', label: 'Gradient' },
-  { value: 'solid', label: 'Solid' },
-  { value: 'transparent', label: 'Transparent' },
-]
 
 /** 모드별로 쓰는 배경 입력. 쓰지 않는 입력은 화면에서 비활성이다. */
 export function backgroundInputsFor(mode: BackgroundMode): { bgA: boolean; bgB: boolean; bgAngle: boolean } {
@@ -174,7 +167,7 @@ export function stageSizeFor(ratio: CanvasRatio): { width: number; height: numbe
 
 /** 정확한 등각 투영의 고도: atan(1/√2) ≈ 35.264° */
 export const ISOMETRIC_ELEVATION_DEG = (Math.atan(1 / Math.SQRT2) * 180) / Math.PI
-export const ISOMETRIC_AZIMUTH_DEG = 45
+const ISOMETRIC_AZIMUTH_DEG = 45
 
 export type CameraPose = {
   kind: 'perspective' | 'orthographic'
@@ -203,7 +196,7 @@ export function isometricCameraPose(): CameraPose {
 }
 
 /** 원근 시점: 정면에서 본다. 보는 각도는 로고 회전으로 정한다. */
-export function perspectiveCameraPose(): CameraPose {
+function perspectiveCameraPose(): CameraPose {
   return { kind: 'perspective', azimuthDeg: 0, elevationDeg: 0, direction: directionOf(0, 0) }
 }
 
@@ -246,12 +239,12 @@ export function wrapDegrees(value: number): number {
   return Object.is(wrapped, -0) ? 0 : wrapped
 }
 
-export function clampZoom(value: number): number {
+function clampZoom(value: number): number {
   return Math.min(ZOOM_RANGE.max, Math.max(ZOOM_RANGE.min, value))
 }
 
 /** 마우스 드래그(px)를 회전각으로 바꾼다. 가로 드래그는 y축, 세로 드래그는 x축을 돌린다. */
-export const DRAG_DEGREES_PER_PIXEL = 0.5
+const DRAG_DEGREES_PER_PIXEL = 0.5
 
 export function applyDragRotation(
   rot: { rotX: number; rotY: number },
@@ -329,8 +322,6 @@ export function composeBackground(
 }
 
 // ───── 그레인 ─────
-
-export const GRAIN_RANGE = { min: 0, max: 20 } as const
 
 /** 그레인 한 알의 크기(px). 에셋 셰이더(`ShapeStudioViewport`의 `uGrainPx`)와 같은 규칙이다. */
 export function grainCellPx(height: number): number {

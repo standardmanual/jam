@@ -23,7 +23,7 @@ export const UNKNOWN_ITEM_NAME = '이름을 모르는 아이템 배지'
 export const NO_COLLECTIONS_TEXT = '아직 공개된 컬렉션이 없어요'
 export const NO_ITEMS_TEXT = '이 컬렉션에는 아이템 배지가 없어요'
 export const NO_OPEN_PATH_TEXT = '열린 길이 없어요'
-export const NO_CLOSED_PATH_TEXT = '닫힌 길이 없어요'
+const NO_CLOSED_PATH_TEXT = '닫힌 길이 없어요'
 
 export interface CollectionPathsProps {
   views: readonly CollectionPathView[]

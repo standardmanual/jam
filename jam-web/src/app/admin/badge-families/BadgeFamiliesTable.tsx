@@ -45,7 +45,7 @@ const SELECT_ALL_CAP = 1000
 const HEADER_SORTS = ['name', 'count'] as const
 
 /** 계열 상세 경로 — 계열 키에 `:` 등이 들어가므로 인코딩한다 */
-export function familyDetailHref(key: string): string {
+function familyDetailHref(key: string): string {
   return `/admin/badge-families/${encodeURIComponent(key)}`
 }
 

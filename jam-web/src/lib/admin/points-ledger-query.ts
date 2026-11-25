@@ -14,7 +14,7 @@ import { HIGH_VALUE_THRESHOLD, adminReasonLabel } from '@/lib/points/reasons'
 export type PointReason = PointTransactionRow['reason']
 
 /** 사유 코드 → 표시 라벨. 운영자 지급·회수는 `admin_reason_label`로 다시 세분한다({@link ledgerReasonLabel}) */
-export const REASON_KIND: Record<PointReason, string> = {
+const REASON_KIND: Record<PointReason, string> = {
   badge_point_reward: '배지 보상',
   mission_point_reward: '미션 보상',
   admin_grant: '운영자 지급',
@@ -103,7 +103,7 @@ function startOfDayKst(date: string, addDays = 0): string {
   return new Date(Date.parse(`${date}T00:00:00+09:00`) + addDays * DAY_MS).toISOString()
 }
 
-export interface LedgerListQueryResult<T> {
+interface LedgerListQueryResult<T> {
   data: T[] | null
   count: number | null
   error: { message: string } | null

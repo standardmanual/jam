@@ -44,9 +44,9 @@ export const OPS_DECISION_CURSOR_INVALID_MESSAGE = '이어 읽기 값(cursor)이
 /** 쪽당 건수. 기간에 이보다 많으면 `nextCursor`로 이어 읽는다. */
 export const OPS_DECISION_PAGE_SIZE = 200
 /** 기간을 안 주면 읽는 기본 길이(일). 최근 4주. */
-export const OPS_DECISION_DEFAULT_DAYS = 28
+const OPS_DECISION_DEFAULT_DAYS = 28
 /** 기간 상한(일). */
-export const OPS_DECISION_MAX_DAYS = 92
+const OPS_DECISION_MAX_DAYS = 92
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const KST_OFFSET = '+09:00'
@@ -75,7 +75,7 @@ export const OPS_DECISION_AGGREGATE_COLUMNS = 'id, action, item_id, ops_bundles!
 
 // 행위자 종류와 `actor` 원문 변환은 결정 기록 문장과 함께 `line.ts`가 정본이다(S1·S3·S4가 같은 문장을 쓴다).
 export { classifyActor }
-export type { OpsActorType }
+
 
 export interface OpsDecisionRecord {
   id: string
@@ -140,7 +140,7 @@ export interface OpsPatternDecisionCount {
   actions: Record<string, number>
 }
 
-export interface OpsDecisionRange {
+interface OpsDecisionRange {
   since: string
   until: string
 }
@@ -182,7 +182,7 @@ export function toDecisionRecord(row: OpsDecisionRow): OpsDecisionRecord {
 
 // ── 쿼리 읽기 ────────────────────────────────────────────────────────────────────────────────────
 
-export interface OpsDecisionCursor {
+interface OpsDecisionCursor {
   /** DB가 준 `created_at` 문자열 그대로(마이크로초가 잘리지 않게 다시 파싱하지 않는다). */
   createdAt: string
   id: string

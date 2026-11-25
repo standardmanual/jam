@@ -15,7 +15,7 @@ import type { CanvasFactory, CanvasLike, FontLoader, ImageLoader, ImageSourceLik
 import type { AssetPreset } from '@/lib/asset-generator/types'
 
 /** 글꼴·이미지 한 건을 기다리는 최대 시간(ms) */
-export const RENDER_LOAD_TIMEOUT_MS = 15_000
+const RENDER_LOAD_TIMEOUT_MS = 15_000
 
 /** 브랜드 글자 'J' 원천(어드민 화면 `AssetGeneratorViewport.tsx`의 BRAND_LETTERS.J와 같은 값). */
 const BRAND_J = {
@@ -45,7 +45,7 @@ function createRawCanvas(width: number, height: number): HTMLCanvasElement {
   return canvas
 }
 
-export const browserCanvasFactory: CanvasFactory = (width, height) => createRawCanvas(width, height) as unknown as CanvasLike
+const browserCanvasFactory: CanvasFactory = (width, height) => createRawCanvas(width, height) as unknown as CanvasLike
 
 function loadHtmlImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -58,7 +58,7 @@ function loadHtmlImage(src: string): Promise<HTMLImageElement> {
 }
 
 /** 이미지 레이어 원본을 원본 해상도 그대로 캔버스로 읽는다(알파 자르기·축소 없음). */
-export const browserImageLoader: ImageLoader = async (input) => {
+const browserImageLoader: ImageLoader = async (input) => {
   let url: string
   let revoke = false
   if ('url' in input) {
@@ -78,11 +78,11 @@ export const browserImageLoader: ImageLoader = async (input) => {
 }
 
 /** 글꼴 로더 — 어드민 화면의 `loadFontInBrowser`에 시간 제한을 건다. */
-export const browserFontLoader: FontLoader = (font) =>
+const browserFontLoader: FontLoader = (font) =>
   withTimeout(loadFontInBrowser(font), RENDER_LOAD_TIMEOUT_MS, `"${font.family}" 폰트를 불러오는 데 시간이 너무 오래 걸렸어요.`)
 
 /** 알파 바운딩 박스로 잘라낸 캔버스를 돌려준다. 불투명 픽셀이 없으면 null(어드민 화면·서버와 같은 알고리즘, 임계값 8). */
-export function cropToAlphaBounds(source: HTMLCanvasElement): HTMLCanvasElement | null {
+function cropToAlphaBounds(source: HTMLCanvasElement): HTMLCanvasElement | null {
   const w = source.width
   const h = source.height
   const data = source.getContext('2d')!.getImageData(0, 0, w, h).data
@@ -123,7 +123,7 @@ async function loadBrandBase(): Promise<CanvasLike | null> {
   }
 }
 
-export const browserRenderDeps: RenderPresetDeps = {
+const browserRenderDeps: RenderPresetDeps = {
   canvasFactory: browserCanvasFactory,
   imageLoader: browserImageLoader,
   fontLoader: browserFontLoader,

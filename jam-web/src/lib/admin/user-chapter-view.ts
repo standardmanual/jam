@@ -19,14 +19,14 @@ import { logQueryError } from '@/lib/admin/queryError'
 
 export type ViewSection<T> = { ok: true; value: T } | { ok: false }
 
-export interface UserChapterCurrent {
+interface UserChapterCurrent {
   /** 지금 챕터. 챕터가 없는 유저(퀘스트 전, 행이 없거나 NULL)는 null */
   chapterNo: number | null
   /** 누적 점수. 챕터가 없어도 쌓인 점수가 있을 수 있다 */
   totalScore: number
 }
 
-export interface UserChapterUp {
+interface UserChapterUp {
   chapterNo: number
   /** 오른 시각(ISO) */
   reachedAt: string

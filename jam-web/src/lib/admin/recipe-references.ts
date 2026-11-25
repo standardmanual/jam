@@ -34,26 +34,6 @@ import type { RecipeDeletionCandidate } from './recipe-bulk'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type RecipeReferenceKey = 'today_cards_recipe_id'
-
-export interface RecipeReferenceSource {
-  key: RecipeReferenceKey
-  label: string
-  location: string
-  blocksDelete: boolean
-  cascades: boolean
-}
-
-export const RECIPE_REFERENCE_SOURCES: RecipeReferenceSource[] = [
-  {
-    key: 'today_cards_recipe_id',
-    label: '레시피 공개 카드',
-    location: 'today_cards.recipe_id',
-    blocksDelete: false,
-    cascades: false,
-  },
-]
-
 export interface RecipeReferenceReport {
   blockingTotal: number
   cascadeTotal: number
@@ -92,7 +72,7 @@ export async function collectRecipeReferences(
   return { blockingTotal: 0, cascadeTotal: 0, total: 0, noticeTotal: cardCount, error: null }
 }
 
-export interface RecipeDeletionLookupCandidate extends RecipeDeletionCandidate {
+interface RecipeDeletionLookupCandidate extends RecipeDeletionCandidate {
   /**
    * 이 레시피를 가리키는 안내용 참조 수(홈 카드, `noticeTotal`). 막는 참조가 있어 한 건씩 다시 센 경우에만
    * 수가 있다. 전체를 한 번에 센 경우는 레시피별로 나눌 수 없어 `null`이다 — 0장과 다르므로 읽는 쪽은

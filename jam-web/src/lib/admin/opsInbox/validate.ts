@@ -80,7 +80,7 @@ export interface OpsValidationContext {
   poiCategorySlugs?: ReadonlySet<string>
 }
 
-export interface ValidatedOpsBundle {
+interface ValidatedOpsBundle {
   bundle_id: string
   author: string
   week: string | null
@@ -121,7 +121,7 @@ export interface OpsBundleValidation {
 }
 
 // ── world_review 규칙: registerHomeFeedBundle.mjs와 같은 규칙·같은 문장 ─────────────────────────
-export const WORLD_REVIEW_FIELDS = ['world_related', 'winter_reviewed', 'reason'] as const
+const WORLD_REVIEW_FIELDS = ['world_related', 'winter_reviewed', 'reason'] as const
 
 // registerBundle.mjs의 CONTROL_OR_LINE_BREAK와 같다.
 const CONTROL_OR_LINE_BREAK = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/
@@ -228,7 +228,7 @@ export function validateExposureTags(value: unknown, path: string): string[] {
  * 홈피드 카드가 옛 `shape`·`resource.layout_type`을 적어 오면 오류가 아니라 경고다(읽지 않고 저장하지 않는다, 티켓 20261122_1153). 홈피드 카드의 `resource`에 개편 칸(`feed_type`·`chips` 등)이
  * 하나라도 있으면 5-1의 `validateFeedCardColumns`로 값을 보고, 오류는 반환값에, 경고는 `warningsOut`에 담는다(막지 않는다).
  */
-export function validateOpsCardFields(
+function validateOpsCardFields(
   raw: Record<string, unknown>,
   path: string,
   ctx: OpsValidationContext = {},

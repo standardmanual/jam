@@ -23,7 +23,7 @@ import {
  * - `NoticeCard`: 구역 조회 실패·빈 상태 안내 카드(아이콘은 구역마다 다르다)
  */
 
-export const FLASH_MS = 1200
+const FLASH_MS = 1200
 
 export function UnsavedChip() {
   return (

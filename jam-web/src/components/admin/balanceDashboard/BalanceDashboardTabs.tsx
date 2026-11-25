@@ -8,9 +8,9 @@ import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import type { DashboardTab } from '@/lib/admin/itemPaths/pathView'
 
-export const DASHBOARD_PATH = '/admin/balance/dashboard'
+const DASHBOARD_PATH = '/admin/balance/dashboard'
 
-export const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
+const DASHBOARD_TAB_LABELS: Record<DashboardTab, string> = {
   metrics: '지표',
   paths: '컬렉션별 획득 경로',
 }

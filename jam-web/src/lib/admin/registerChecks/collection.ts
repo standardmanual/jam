@@ -17,7 +17,7 @@ export interface CollectionDbCheckInput {
 }
 
 /** 완성 보상 배지로 쓸 수 있는 배지 종류. 완성 보상 지급(`issueItemBookRewardBadges`)이 활동 배지를 전제한다(티켓 20261004_2039 가정 6). */
-export const COLLECTION_REWARD_BADGE_TYPE = 'activity'
+const COLLECTION_REWARD_BADGE_TYPE = 'activity'
 
 /**
  * DB를 읽어야 알 수 있는 검사를 돌린다(읽기 전용). `supabase`가 null이면 «건너뜀»으로 표시한다.

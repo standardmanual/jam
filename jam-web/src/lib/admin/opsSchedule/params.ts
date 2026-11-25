@@ -18,12 +18,12 @@ import { readIncludeSample, type SearchParamsSource } from '@/lib/admin/opsHome/
 import { OPS_PATTERN_NO_PATTERN } from '@/lib/admin/opsPatterns/constants'
 import { normalizeDateParam, shiftDateStr, todayKstDateString } from '@/lib/admin/today-calendar'
 
-export const SCHEDULE_VIEWS = ['week', 'month', 'timeline'] as const
+const SCHEDULE_VIEWS = ['week', 'month', 'timeline'] as const
 export type ScheduleView = (typeof SCHEDULE_VIEWS)[number]
-export const SCHEDULE_DEFAULT_VIEW: ScheduleView = 'week'
+const SCHEDULE_DEFAULT_VIEW: ScheduleView = 'week'
 
 /** 서랍 종류: 항목 서랍(`item`)·날짜 서랍(`day`). */
-export const SCHEDULE_DRAWERS = ['item', 'day'] as const
+const SCHEDULE_DRAWERS = ['item', 'day'] as const
 export type ScheduleDrawerKind = (typeof SCHEDULE_DRAWERS)[number]
 
 /** 타임라인 창의 길이(일, 6주)와 한 번에 움직이는 간격(일, 4주). */

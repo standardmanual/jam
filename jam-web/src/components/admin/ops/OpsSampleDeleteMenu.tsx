@@ -18,7 +18,7 @@ import { useAdminPortalContainer } from '@/components/admin/data-table/use-admin
  * 성공하면 받은 기획함으로 돌아가 토스트를 띄운다. 실패는 창 안 인라인이고 창은 유지한다.
  */
 
-export const OPS_SAMPLE_DELETE_PHRASE = '시험 묶음 삭제'
+const OPS_SAMPLE_DELETE_PHRASE = '시험 묶음 삭제'
 const DELETE_FAILED = '지우지 못했어요. 잠시 뒤 다시 눌러 주세요.'
 
 interface OpsSampleDeleteMenuProps {

@@ -340,7 +340,7 @@ export const COLOR_RULE_REASON: Record<ColorRuleName, string> = {
 }
 
 /** 글자가 들어가는 박스에 짙은 초록 박스를 골랐을 때의 이유 문구(`boxAllowedFor`). 검정 글자 대비가 3.9라서다(티켓 20261122_2224 결정 4). */
-export const DEEP_GREEN_TEXT_BOX_REASON = '짙은 그린 박스는 검정 글자의 대비가 모자라서 글자가 들어가는 박스에는 맞지 않아요'
+const DEEP_GREEN_TEXT_BOX_REASON = '짙은 그린 박스는 검정 글자의 대비가 모자라서 글자가 들어가는 박스에는 맞지 않아요'
 
 /**
  * 고른 색 조합이 통합 팔레트 규칙에 걸리면 경고 문구를 돌려준다. 막지 않고 알리기만 한다(PRD «수동 지정»).
@@ -739,7 +739,7 @@ export const FEED_CARD_BUNDLE_KEYS = FEED_CARD_COLUMN_KEYS.filter(
   (key): key is Exclude<FeedCardColumnKey, 'feed_seed'> => key !== 'feed_seed',
 )
 
-export type FeedCardBundleKey = (typeof FEED_CARD_BUNDLE_KEYS)[number]
+type FeedCardBundleKey = (typeof FEED_CARD_BUNDLE_KEYS)[number]
 
 /** 묶음이 등록 때 싣는 새 칸. 14개 키가 모두 있고, 적지 않은 칸은 `null`(«자동»)이다. */
 export type FeedCardBundleColumns = Omit<FeedCardColumns, 'feed_seed'>
@@ -760,7 +760,7 @@ export function isFeedTypeWritten(resource: Readonly<Record<string, unknown>> | 
 }
 
 /** 오류·경고가 가리키는 `resource` 키와 문장. 문장은 `validateFeedCardColumns`의 문장 그대로다. */
-export interface FeedCardBundleIssue {
+interface FeedCardBundleIssue {
   key: FeedCardBundleKey
   message: string
 }

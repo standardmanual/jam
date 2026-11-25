@@ -269,7 +269,6 @@ export function makeState(sp: ShapePreset, gr: GradientPreset): ShapeStudioState
 }
 
 export const INITIAL_STATE: ShapeStudioState = makeState(SHAPE_PRESETS[1], GRADIENT_PRESETS[0])
-export const DEFAULT_STATE: ShapeStudioState = INITIAL_STATE
 
 export const VERTEX_SHADER = 'attribute vec2 position;void main(){gl_Position=vec4(position,0.,1.);}'
 
@@ -474,7 +473,7 @@ export type ComputedGeometry = {
   glyph?: boolean
 }
 
-export function glyphDims(
+function glyphDims(
   k: string,
   glyphsMap: Record<string, GlyphDefinition> = BUILTIN_GLYPHS
 ): { w: number; h: number } {

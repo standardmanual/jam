@@ -31,7 +31,7 @@ interface SourceRow {
   created_at: string
 }
 
-export interface TrendSource {
+interface TrendSource {
   id: string
   no: number
   name: string

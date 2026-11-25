@@ -10,7 +10,7 @@ import type { DeployLabel, DeployStatus } from '@/lib/admin/devBoard/types'
 import { formatKstDateTime, shortSha } from '@/lib/admin/devBoard/view'
 
 /** 값을 읽지 못했을 때 쓰는 글자 */
-export const UNKNOWN_TEXT = '확인 안 됨'
+const UNKNOWN_TEXT = '확인 안 됨'
 
 const LABEL_SYMBOL: Record<DeployLabel, string> = {
   동결: '■',

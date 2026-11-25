@@ -22,14 +22,7 @@ import { OPS_PATTERN_COLUMNS, OPS_PATTERN_NOT_FOUND_MESSAGE, getOpsPattern, load
 
 // 입력 모양과 검사는 서버 의존이 없는 `input.ts`로 옮겼다(티켓 20261008_1617). 기존 import 경로가 그대로 되도록 다시 내보낸다.
 export { validateOpsPatternInput } from './input'
-export type {
-  OpsPatternFieldErrors,
-  OpsPatternInput,
-  OpsPatternInputAngle,
-  OpsPatternInputCardShape,
-  OpsPatternInputKnobs,
-  OpsPatternInputSample,
-} from './input'
+export type { OpsPatternInput } from './input'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -41,7 +34,7 @@ export const PATTERN_ORIGIN_CONFLICT_MESSAGE = '이 제안으로 이미 만든 �
 export const PATTERN_UPDATE_CONFLICT_MESSAGE = '그사이 다른 곳에서 이 패턴을 고쳤어요. 최신 내용을 불러와 주세요.'
 export const PATTERN_STATUS_CONFLICT_MESSAGE = '그사이 상태가 바뀌었어요. 최신 내용을 불러와 주세요.'
 export const PATTERN_FIELDS_INVALID_MESSAGE = '입력한 내용을 확인해 주세요.'
-export const PATTERN_EXPECTED_UPDATED_AT_MESSAGE = '패턴의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
+const PATTERN_EXPECTED_UPDATED_AT_MESSAGE = '패턴의 수정 시각이 필요해요. 화면을 새로 고쳐 주세요.'
 export const PATTERN_MIXED_PATCH_MESSAGE = '상태 바꾸기와 내용 고치기는 따로 저장해 주세요.'
 
 export type OpsPatternWriteOutcome =

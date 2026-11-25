@@ -58,7 +58,7 @@ const DAY_MS = 24 * 3600_000
 const PATTERN_PROPOSAL_KIND = 'pattern_proposal'
 
 /** 칸 항목의 출처: 운영 항목(받은 기획함)·옛 카드(실제 카드만)·옛 미션(실제 미션만). */
-export type ScheduleItemOrigin = 'ops' | 'card' | 'mission'
+type ScheduleItemOrigin = 'ops' | 'card' | 'mission'
 
 export interface ScheduleItem {
   /** 같은 칸 안에서 겹치지 않는 키(React key). */
@@ -90,7 +90,7 @@ export interface ScheduleItem {
 }
 
 /** 자동 실행 한 줄(크론·예약 루틴). */
-export interface ScheduleAutomationItem {
+interface ScheduleAutomationItem {
   id: string
   time: string
   label: string
@@ -119,7 +119,7 @@ export interface ScheduleDay {
 }
 
 /** 날짜 서랍이 보이는 대표 카드. 카드 자체는 칸 항목이 아닐 수도 있다(장기 카드는 칸 항목이 아니다). */
-export interface ScheduleRepresentative {
+interface ScheduleRepresentative {
   title: string
   /** 칸 항목과 같은 서랍 키: 운영 항목(합친 카드 포함)은 항목 ID, 실제 카드는 `card:<ID>`. 날짜 서랍에서 이 키가 그날 항목 안에 있으면 눌러 항목 서랍을 연다. */
   drawerKey: string

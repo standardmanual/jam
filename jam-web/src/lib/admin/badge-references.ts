@@ -313,7 +313,7 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
 export const BADGE_REFERENCE_SOURCE_BY_KEY = new Map(BADGE_REFERENCE_SOURCES.map((s) => [s.key, s]))
 
 /** 참조 정리 화면이 「개별 해제」로 다룰 수 있는 행 하나 */
-export interface BadgeReferenceRowRef {
+interface BadgeReferenceRowRef {
   sourceKey: BadgeReferenceKey
   rowId: string
   /** 사람이 알아볼 이름(미션 제목·카드 제목 등) */

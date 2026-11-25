@@ -67,7 +67,7 @@ export function conditionControlDomId(field: string): string {
 }
 
 /** 조건 그룹(<details>)의 DOM id */
-export function conditionGroupDomId(section: ConditionFormSection): string {
+function conditionGroupDomId(section: ConditionFormSection): string {
   return `cond-group-${section}`
 }
 

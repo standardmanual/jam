@@ -9,13 +9,13 @@ import type { OpsPatternStatus } from './constants'
 import type { OpsPatternUsageCount } from './draw'
 import type { OpsPatternRecord, OpsTasteSignalRecord } from './read'
 
-export const PATTERN_VIEWS = ['patterns', 'common'] as const
+const PATTERN_VIEWS = ['patterns', 'common'] as const
 export type PatternView = (typeof PATTERN_VIEWS)[number]
-export const DEFAULT_PATTERN_VIEW: PatternView = 'patterns'
+const DEFAULT_PATTERN_VIEW: PatternView = 'patterns'
 
 export const PATTERN_STATUS_FILTERS = ['all', 'active', 'paused', 'archived'] as const
 export type PatternStatusFilter = (typeof PATTERN_STATUS_FILTERS)[number]
-export const DEFAULT_PATTERN_STATUS_FILTER: PatternStatusFilter = 'all'
+const DEFAULT_PATTERN_STATUS_FILTER: PatternStatusFilter = 'all'
 
 export const PATTERN_STATUS_FILTER_LABELS: Record<PatternStatusFilter, string> = {
   all: '전체',
@@ -27,7 +27,7 @@ export const PATTERN_STATUS_FILTER_LABELS: Record<PatternStatusFilter, string> =
 /** 목록 위의 «전체·원리형·주제형» 거름(티켓 20261102_1600). 원리형은 `topic`이 없는 패턴, 주제형은 있는 패턴이다. */
 export const PATTERN_KIND_FILTERS = ['all', 'principle', 'topic'] as const
 export type PatternKindFilter = (typeof PATTERN_KIND_FILTERS)[number]
-export const DEFAULT_PATTERN_KIND_FILTER: PatternKindFilter = 'all'
+const DEFAULT_PATTERN_KIND_FILTER: PatternKindFilter = 'all'
 
 export const PATTERN_KIND_FILTER_LABELS: Record<PatternKindFilter, string> = {
   all: '전체',

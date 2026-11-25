@@ -60,7 +60,7 @@ export const SCREEN_STATE_STYLES: Record<ScreenState, StateStyle> = {
 }
 
 /** 상태 점. 장식이라 화면 읽기에서 뺀다(뜻은 옆의 글자가 말한다). */
-export function StateDot({ state, className }: { state: ScreenState; className?: string }) {
+function StateDot({ state, className }: { state: ScreenState; className?: string }) {
   const style = SCREEN_STATE_STYLES[state]
   return (
     <span

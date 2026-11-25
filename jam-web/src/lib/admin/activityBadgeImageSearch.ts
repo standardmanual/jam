@@ -22,8 +22,8 @@ const RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
  * 배지 종류 필터. 판정 기준은 `badgeKind.ts`의 `isLeveledBadge`(= `rarity IS NULL`)이며
  * 여기서는 그 판정을 «요청 값»으로 받을 뿐 다시 선언하지 않는다.
  */
-export const ACTIVITY_BADGE_IMAGE_SEARCH_KINDS = ['graded', 'leveled'] as const
-export type ActivityBadgeImageSearchKind = (typeof ACTIVITY_BADGE_IMAGE_SEARCH_KINDS)[number]
+const ACTIVITY_BADGE_IMAGE_SEARCH_KINDS = ['graded', 'leveled'] as const
+type ActivityBadgeImageSearchKind = (typeof ACTIVITY_BADGE_IMAGE_SEARCH_KINDS)[number]
 
 export interface ActivityBadgeImageSearchParams {
   q: string

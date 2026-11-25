@@ -89,9 +89,9 @@ export interface StopSignalCheckOptions {
 }
 
 /** 글을 올린 결과. `none`은 새로 걸린 것이 없어 올리지 않았다는 뜻이고, `not_configured`는 슬랙 값이 없어 건너뛰었다는 뜻이다. */
-export type StopSignalPostState = 'sent' | 'none' | 'not_configured' | 'failed'
+type StopSignalPostState = 'sent' | 'none' | 'not_configured' | 'failed'
 
-export interface StopSignalCounts {
+interface StopSignalCounts {
   missedSchedule: number
   routineFailed: number
 }

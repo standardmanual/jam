@@ -31,7 +31,7 @@ const LOG = '[ops-inbox/badge-preview]'
 /** 센 유저가 이 수에 닿으면 멈춘다. */
 export const BADGE_PREVIEW_MAX_USERS = 500
 /** 이 시간(밀리초)이 지나면 다음 덩어리를 세지 않는다. 라우트의 `maxDuration` 60초 안에서 마지막 덩어리가 끝날 여유를 남긴다. */
-export const BADGE_PREVIEW_TIME_BUDGET_MS = 40_000
+const BADGE_PREVIEW_TIME_BUDGET_MS = 40_000
 /** 한 번에 세는 유저 수. */
 export const BADGE_PREVIEW_CHUNK = 20
 
@@ -43,9 +43,9 @@ const MISSION_REWARD_FIELD = 'reward_badge_ids'
 
 const JAM_ACTION_KEYS: ReadonlySet<string> = new Set<string>(JAM_ACTION_CONDITION_KEYS)
 
-export type BadgePreviewStatus = 'counted' | 'collectionReward' | 'missionReward' | 'notCountable' | 'formatInvalid' | 'failed'
+type BadgePreviewStatus = 'counted' | 'collectionReward' | 'missionReward' | 'notCountable' | 'formatInvalid' | 'failed'
 
-export interface BadgePreviewLine {
+interface BadgePreviewLine {
   /** 운영 항목 ID. */
   itemId: string
   status: BadgePreviewStatus
@@ -71,7 +71,7 @@ export interface BundleBadgePreview {
 type LinkedIdsFor = (byId: ReadonlyMap<string, ExecuteItem>, group: PrecheckGroup, item: ExecuteItem, resourceIds: ReadonlyMap<string, string>) => ExecuteOutcome<ExecuteLinkedIds>
 type PointedByOf = (byId: ReadonlyMap<string, ExecuteItem>, group: PrecheckGroup, item: ExecuteItem) => PointedByEntry[]
 
-export interface BadgePreviewDeps {
+interface BadgePreviewDeps {
   /** 0 이상 1 미만. 유저 순서를 섞는다. */
   random: () => number
   /** 지금 시각(밀리초). 시간 예산을 잰다. */
@@ -104,7 +104,7 @@ async function loadAllUserIds(service: ExecuteServiceClient): Promise<string[]> 
  * `prepare`가 만든 `badges` insert 값을 판정이 읽는 `BadgeRow`로 채운다. 판정이 읽지 않는 칸(배경·이미지 제작 칸 등)은 DB 기본값과 같은 값이다.
  * 공개 전 배지라 `deleted_at`은 비어 있다.
  */
-export function toPreviewBadgeRow(payload: JamBadgeRegisterPayload, createdAt: string): BadgeRow {
+function toPreviewBadgeRow(payload: JamBadgeRegisterPayload, createdAt: string): BadgeRow {
   return {
     id: payload.id,
     name: payload.name,

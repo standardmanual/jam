@@ -24,18 +24,18 @@ export const USER_SELECT_ALL_CAP = 1000
 
 const READ_CHUNK_SIZE = 200
 
-export const USER_LIST_COLUMNS =
+const USER_LIST_COLUMNS =
   'id, email, username, display_name, created_at, is_admin, onboarding_completed_at, tribe:tribe_id(name), suspensions:user_suspensions(suspended_at, lifted_at)'
 
-import { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS, type UserListSort } from './user-list-options'
+import { DEFAULT_USER_LIST_SORT, type UserListSort } from './user-list-options'
 
-export { DEFAULT_USER_LIST_SORT, USER_LIST_SORT_OPTIONS }
+export { DEFAULT_USER_LIST_SORT }
 export type { UserListSort }
 
 const SORT_VALUES = new Set<string>(['createdAt_desc', 'createdAt_asc', 'username_asc', 'username_desc'])
 
-export type OnboardingFilter = 'done' | 'pending'
-export type BanFilter = 'banned' | 'clean'
+type OnboardingFilter = 'done' | 'pending'
+type BanFilter = 'banned' | 'clean'
 
 export interface UserListParams {
   q: string

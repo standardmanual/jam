@@ -46,8 +46,8 @@ export const SERVICE_JAM_RULE_KINDS = [
 
 export type ServiceJamRuleKind = (typeof SERVICE_JAM_RULE_KINDS)[number]
 
-export const SERVICE_JAM_DAILY_CAP_KEY = 'service_jam_daily_cap'
-export const SERVICE_JAM_WEEKLY_CAP_KEY = 'service_jam_weekly_cap'
+const SERVICE_JAM_DAILY_CAP_KEY = 'service_jam_daily_cap'
+const SERVICE_JAM_WEEKLY_CAP_KEY = 'service_jam_weekly_cap'
 export const SERVICE_JAM_CAP_KEYS = [SERVICE_JAM_DAILY_CAP_KEY, SERVICE_JAM_WEEKLY_CAP_KEY] as const
 
 /**
@@ -71,7 +71,7 @@ export const SERVICE_JAM_DEFAULT_CAPS: Readonly<Record<(typeof SERVICE_JAM_CAP_K
 }
 
 /** 칸 라벨과 «받는 잼» 안내에 쓰는 활동 이름·때. */
-export const SERVICE_JAM_LABELS: Readonly<Record<ServiceJamRuleKind, { label: string; phrase: string }>> = {
+const SERVICE_JAM_LABELS: Readonly<Record<ServiceJamRuleKind, { label: string; phrase: string }>> = {
   locked_unlock: { label: '잠긴 아이템 배지 열기', phrase: '잠긴 아이템 배지를 1개 열 때마다' },
   badge_earned: { label: '배지 받기', phrase: '배지를 1개 받을 때마다' },
   combine_success: { label: '믹스 성공', phrase: '믹스에 1번 성공할 때마다(등급 올리기 포함)' },
@@ -81,8 +81,8 @@ export const SERVICE_JAM_LABELS: Readonly<Record<ServiceJamRuleKind, { label: st
   pickup: { label: '픽업', phrase: '1번 픽업할 때마다' },
 }
 
-export const SERVICE_JAM_RULE_GROUP = '활동 종류별 잼'
-export const SERVICE_JAM_CAP_GROUP = '받을 수 있는 양의 상한'
+const SERVICE_JAM_RULE_GROUP = '활동 종류별 잼'
+const SERVICE_JAM_CAP_GROUP = '받을 수 있는 양의 상한'
 
 /** 상한 0의 뜻. 챕터 구역의 «주간 상한 0 = 상한 없음»과 반대라서 칸 안내와 구역 설명이 같은 문장을 쓴다. */
 export const SERVICE_JAM_CAP_ZERO_MEANING = '0이면 «상한 없음»이 아니라 서비스 활동으로 받는 잼이 없어요.'
@@ -153,9 +153,9 @@ export const SERVICE_JAM_RULE_SELECT = 'kind, amount, updated_at'
 export const SERVICE_JAM_POLICY_SELECT = 'service_jam_daily_cap, service_jam_weekly_cap, updated_at'
 
 /** 경고(막지는 않는다). 칸 하나가 0이면 서비스 활동으로 받는 잼이 모두 멈춘다. */
-export const SERVICE_JAM_DAILY_ZERO_WARNING =
+const SERVICE_JAM_DAILY_ZERO_WARNING =
   '하루 상한이 0이라 서비스 활동으로 받는 잼이 모두 멈춰요. 의도한 설정이면 그대로 저장할 수 있어요.'
-export const SERVICE_JAM_WEEKLY_ZERO_WARNING =
+const SERVICE_JAM_WEEKLY_ZERO_WARNING =
   '주간 상한이 0이라 서비스 활동으로 받는 잼이 모두 멈춰요. 의도한 설정이면 그대로 저장할 수 있어요.'
 export const SERVICE_JAM_ALL_RULES_ZERO_WARNING =
   '종류별 잼이 모두 0이라 서비스 활동으로 받는 잼이 없어요. 나오게 하려면 하나를 1 이상으로 바꿔 주세요. 의도한 설정이면 그대로 저장할 수 있어요.'

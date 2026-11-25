@@ -45,17 +45,7 @@ export const BADGE_TYPE_SEGMENTS: readonly { value: BadgeType; description: stri
 
 export type BadgeSectionId = 'class' | 'basic' | 'cond' | 'link' | 'reward' | 'design'
 
-export const BADGE_SECTION_ORDER: readonly BadgeSectionId[] = ['class', 'basic', 'cond', 'link', 'reward', 'design']
-
-/** 섹션 카드의 DOM id — 목차 링크·저장 시 이동이 이 id로 찾아간다 */
-export function badgeSectionDomId(id: BadgeSectionId): string {
-  return `badge-section-${id}`
-}
-
-/** 섹션 제목 요소의 DOM id — 목차로 이동한 뒤 포커스를 둔다 */
-export function badgeSectionHeadingId(id: BadgeSectionId): string {
-  return `badge-section-${id}-heading`
-}
+const BADGE_SECTION_ORDER: readonly BadgeSectionId[] = ['class', 'basic', 'cond', 'link', 'reward', 'design']
 
 export interface BadgeSectionContext {
   type: BadgeType
@@ -122,7 +112,7 @@ export function badgeSectionDescription(id: BadgeSectionId, ctx: BadgeSectionCon
  * 섹션 머리·목차에 붙는 상태.
  * - `ok`: 필수 입력을 다 채움 · `bad`: 필수 입력이 빠짐 · `set`: 선택 입력을 N개 채움 · `idle`: 비어 있음
  */
-export type BadgeSectionTone = 'ok' | 'bad' | 'set' | 'idle'
+type BadgeSectionTone = 'ok' | 'bad' | 'set' | 'idle'
 export interface BadgeSectionStatus {
   tone: BadgeSectionTone
   text: string

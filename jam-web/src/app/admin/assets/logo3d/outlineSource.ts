@@ -19,7 +19,7 @@ export const FONT_PARSE_ERROR =
   '글자 윤곽을 만들지 못했어요. 폰트 파일을 읽을 수 없어요. 다른 폰트나 굵기를 골라 주세요.'
 export const EMPTY_TEXT_ERROR = '글자 윤곽을 만들지 못했어요. 글자열이 비어 있어요. 로고로 만들 글자를 입력해 주세요.'
 export const SVG_TOO_LARGE_ERROR = 'SVG를 읽지 못했어요. 파일이 5MB보다 커요. 더 가벼운 SVG로 다시 올려 주세요.'
-export const SVG_READ_ERROR = 'SVG를 읽지 못했어요. 파일을 열 수 없어요. 파일을 확인하고 다시 올려 주세요.'
+const SVG_READ_ERROR = 'SVG를 읽지 못했어요. 파일을 열 수 없어요. 파일을 확인하고 다시 올려 주세요.'
 
 /** 입력(폰트·SVG)마다 따로 둔다. 실패하면 `outline`은 이전 값을 그대로 두고 `error`만 채운다. */
 export type InputResult = { outline: LogoOutline | null; warnings: string[]; error: string | null }

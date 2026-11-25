@@ -24,7 +24,7 @@ export const BULK_ACTION_LABEL: Record<BulkAction, string> = {
 }
 
 /** 확인 문구에 들어가는 짧은 낱말 — 어드민이 손으로 타이핑한다 */
-export const BULK_ACTION_WORD: Record<BulkAction, string> = {
+const BULK_ACTION_WORD: Record<BulkAction, string> = {
   deactivate: '폐기',
   restore: '되살리기',
   purge_earns: '이력삭제',
@@ -50,15 +50,6 @@ export interface BulkTargetFilter {
   familyKey: string | null
 }
 
-export const EMPTY_BULK_FILTER: BulkTargetFilter = {
-  type: null,
-  activityType: null,
-  rarity: null,
-  status: 'active',
-  q: null,
-  familyKey: null,
-}
-
 /** 대상 목록에 보여주는 배지 한 건 */
 export interface BulkTargetBadge {
   id: string
@@ -70,7 +61,7 @@ export interface BulkTargetBadge {
   deleted_at: string | null
 }
 
-export interface BulkSkip {
+interface BulkSkip {
   badgeId: string
   name: string
   reason: string
@@ -99,7 +90,7 @@ export interface BulkPlan {
 }
 
 /** 획득 이력 삭제가 실제로 지우는 자리 — 여기 없는 참조는 남는다 */
-export const PURGE_EARN_SOURCE_KEYS = ['user_activity_badges', 'user_checkin_badge_earns'] as const
+const PURGE_EARN_SOURCE_KEYS = ['user_activity_badges', 'user_checkin_badge_earns'] as const
 
 /**
  * 작업별 «영향 건수». 확인 문구에 대상 건수와 함께 들어간다(티켓 안전장치).
@@ -167,7 +158,7 @@ export function buildBulkPlan(
  * `node:crypto`를 쓰지 않는 이유: 이 파일을 어드민 화면(클라이언트 컴포넌트)도 import한다.
  * 토큰은 비밀이 아니라 **「이 계획을 봤다」는 표식**이라 충돌 저항성만 있으면 된다.
  */
-export function bulkPlanToken(plan: Omit<BulkPlan, 'token'>): string {
+function bulkPlanToken(plan: Omit<BulkPlan, 'token'>): string {
   const canonical = JSON.stringify([
     plan.action,
     [...plan.actionableIds].sort(),

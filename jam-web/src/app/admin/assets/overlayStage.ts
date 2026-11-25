@@ -39,7 +39,7 @@ export function createRawCanvas(width: number, height: number): HTMLCanvasElemen
   return canvas
 }
 
-export const IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE = 2048
+const IMAGE_LAYER_SVG_FALLBACK_LONG_SIDE = 2048
 export const makeCanvas: CanvasFactory = (width, height) => toCanvasLike(createRawCanvas(width, height))
 
 export function normalizeSvgMarkup(text: string, fallbackLongSide = 512): string {
@@ -97,7 +97,7 @@ function loadImageLayerFromBlob(blob: Blob): Promise<HTMLCanvasElement> {
   })
 }
 
-export async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
+async function loadImageLayerAsset(url: string): Promise<HTMLCanvasElement> {
   const response = await fetch(url)
   const blob = await response.blob()
   const isSvg = blob.type === 'image/svg+xml' || blob.type === 'image/svg'

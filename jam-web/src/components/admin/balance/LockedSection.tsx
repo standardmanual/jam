@@ -13,7 +13,7 @@ import { BalanceSectionBody } from './BalanceSectionBody'
 
 export const LOCKED_ROLL_NOTICE_PREFIX = '잠길 확률은 동기화와 같은 값이에요. 값을 바꾸려면 '
 export const LOCKED_ROLL_NOTICE_LINK = '동기화 구역'
-export const LOCKED_ROLL_NOTICE_SUFFIX = '에서 바꿔 주세요.'
+const LOCKED_ROLL_NOTICE_SUFFIX = '에서 바꿔 주세요.'
 
 export const LOCKED_POINTS_NOTICE =
   '여는 포인트는 아이템 배지가 유저에게 배정될 때 그 아이템 배지에 고정돼요. 값을 바꿔도 이미 배정된 아이템 배지의 여는 포인트는 그대로예요. 0으로 두면 포인트를 쓰지 않고 열려요. 퀘스트 전 유저가 처음 받는 잠긴 아이템 배지는 이 값과 상관없이 포인트 없이 열려요.'

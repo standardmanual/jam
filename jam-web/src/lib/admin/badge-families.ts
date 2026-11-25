@@ -58,7 +58,7 @@ export type FamilyBadge = Pick<
 const USAGE_METRIC_DISPLAY_KEYS: readonly ConditionKey[] = USAGE_METRIC_CONDITION_KEYS
 
 /** 계열 안 배지들의 종류 구성. `mixed`는 카탈로그 오류 신호다(같은 키에 등급형·레벨형 혼재) */
-export type FamilyKind = 'graded' | 'leveled' | 'mixed'
+type FamilyKind = 'graded' | 'leveled' | 'mixed'
 
 export interface BadgeFamily {
   /**
@@ -203,7 +203,7 @@ export function groupBadgesIntoFamilies(badges: FamilyBadge[]): BadgeFamily[] {
 }
 
 /** 종목 탭 순서 → 표시 순서(0은 맨 뒤) → 이름. 배지 트리 화면과 같은 기준이다 */
-export function compareFamilies(a: BadgeFamily, b: BadgeFamily): number {
+function compareFamilies(a: BadgeFamily, b: BadgeFamily): number {
   const rank = (t: ActivityType | null) => {
     const i = t ? TREE_ACTIVITY_ORDER.indexOf(t) : -1
     return i < 0 ? TREE_ACTIVITY_ORDER.length : i
@@ -409,7 +409,7 @@ export function nextFamilySlot(family: BadgeFamily): FamilySlot | null {
 }
 
 /** 축 하나의 «직전 값 → 다음 값» */
-export interface AxisStep {
+interface AxisStep {
   key: ConditionKey
   label: string
   unit: string | null
@@ -435,7 +435,7 @@ export interface NextLevelDraft {
 }
 
 /** 조건 필드 메타의 범위·정밀도에 맞춰 값을 다듬는다 */
-export function roundAxisValue(key: ConditionKey, value: number): number {
+function roundAxisValue(key: ConditionKey, value: number): number {
   const meta: AnyConditionFieldMeta | undefined = getConditionField(key)
   let out = value
   if (!Number.isFinite(out)) return 0
@@ -537,7 +537,7 @@ export interface RecalculationSpec {
   manualValues?: (number | null)[]
 }
 
-export interface RecalculationChange {
+interface RecalculationChange {
   badgeId: string
   slotLabel: string
   before: number
@@ -545,7 +545,7 @@ export interface RecalculationChange {
   changed: boolean
 }
 
-export interface RecalculationSkip {
+interface RecalculationSkip {
   badgeId: string
   slotLabel: string
   reason: string
@@ -625,7 +625,7 @@ export function buildRecalculationPlan(family: BadgeFamily, spec: RecalculationS
  * `node:crypto`를 쓰지 않는 이유: 이 파일은 어드민 화면(클라이언트 컴포넌트)도 import한다.
  * 토큰은 비밀이 아니라 **「이 계획을 봤다」는 표식**이라 충돌 저항성만 있으면 된다.
  */
-export function recalculationPlanToken(plan: Omit<RecalculationPlan, 'token'>): string {
+function recalculationPlanToken(plan: Omit<RecalculationPlan, 'token'>): string {
   const canonical = JSON.stringify([
     plan.familyKey,
     plan.axis,

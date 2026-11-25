@@ -15,7 +15,7 @@ import { useListParams, useUrlSorting } from '@/components/admin/data-table/use-
 import { ABUSING_SELECT_ALL_CAP, type PoiBlockRow } from '@/lib/admin/abusing-list'
 import { useSanctionBulk } from './useSanctionBulk'
 
-export type { PoiBlockRow }
+
 
 interface PoiBlockTableProps {
   poiBlocks: PoiBlockRow[]

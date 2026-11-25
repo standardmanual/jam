@@ -57,7 +57,7 @@ export const IMAGE_COLOR_PAIRS: readonly ImageColorPair[] = [
 ]
 
 /** 한 계열이 색 칸에서 차지할 수 있는 비율 상한(대상이 4개 이상인 묶음에서 지킨다). */
-export const IMAGE_COLOR_FAMILY_MAX_SHARE = 0.25
+const IMAGE_COLOR_FAMILY_MAX_SHARE = 0.25
 
 /** 이 묶음에서 한 계열이 가질 수 있는 색 칸 수의 상한(올림). 대상 `count`개면 색 칸은 `2 * count`다. */
 export function imageColorFamilyCap(count: number): number {

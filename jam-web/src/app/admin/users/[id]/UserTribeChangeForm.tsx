@@ -13,12 +13,12 @@ import {
   AlertDialogFooter,
 } from '@/components/admin/ui/alert-dialog'
 
-export interface TribeChangeTribeOption {
+interface TribeChangeTribeOption {
   id: string
   name: string
 }
 
-export interface TribeChangeReasonOption {
+interface TribeChangeReasonOption {
   value: string
   label: string
 }

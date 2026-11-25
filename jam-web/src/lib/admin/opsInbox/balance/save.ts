@@ -28,8 +28,8 @@ type ServiceClient = ReturnType<typeof createServiceClient>
 const LOG = '[admin/ops-rules]'
 
 export const RULE_CONFLICT_MESSAGE = '그사이 다른 곳에서 이 규칙이 바뀌었어요. 최신 값을 불러온 뒤 다시 바꿔 주세요.'
-export const RULE_NOT_FOUND_MESSAGE = '찾을 수 없는 규칙이에요.'
-export const RULE_SAVE_FAILED_MESSAGE = '규칙을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+const RULE_NOT_FOUND_MESSAGE = '찾을 수 없는 규칙이에요.'
+const RULE_SAVE_FAILED_MESSAGE = '규칙을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 export const RULE_LOAD_FAILED_MESSAGE = '규칙을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.'
 
 export type OpsRuleGroup = (typeof OPS_RULE_GROUPS)[number]

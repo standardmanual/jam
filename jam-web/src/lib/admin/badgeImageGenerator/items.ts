@@ -7,8 +7,8 @@ export type ServiceClient = ReturnType<typeof createServiceClient>
 
 export type ItemImageStatus = 'none' | 'candidates' | 'applied'
 
-export const RECENT_GENERATIONS_PER_ITEM = 10
-export const MAX_BOOK_SEARCH_RESULTS = 30
+const RECENT_GENERATIONS_PER_ITEM = 10
+const MAX_BOOK_SEARCH_RESULTS = 30
 
 export function sha256Hex(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -19,7 +19,7 @@ export function itemSlug(itemName: string): string {
   return sha256Hex(itemName).slice(0, 12)
 }
 
-export function computeItemStatus(imageUrl: string | null, hasUnappliedGeneration: boolean): ItemImageStatus {
+function computeItemStatus(imageUrl: string | null, hasUnappliedGeneration: boolean): ItemImageStatus {
   if (imageUrl) return 'applied'
   return hasUnappliedGeneration ? 'candidates' : 'none'
 }
@@ -54,7 +54,7 @@ export async function searchBooks(supabase: ServiceClient, q: string): Promise<B
   return books.filter((b) => withDescription.has(b.id)).slice(0, MAX_BOOK_SEARCH_RESULTS)
 }
 
-export interface ItemGenerationSummary {
+interface ItemGenerationSummary {
   id: string
   preset_id: string | null
   preset_version: number

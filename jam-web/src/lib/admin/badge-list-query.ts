@@ -35,7 +35,7 @@ export const BADGE_LIST_COLUMNS =
   'id, name, description, type, rarity, image_url, image_source, condition_json, activity_types, patch_available, patch_price_krw, tribe_id, deleted_at, is_hidden, branch_key'
 
 /** 계열순·레벨순 메모리 비교에만 필요한 추가 컬럼(티켓 20260905_0032 C-2) */
-export const BADGE_SORT_COLUMNS = 'level, family_key, sort_order, created_at'
+const BADGE_SORT_COLUMNS = 'level, family_key, sort_order, created_at'
 
 /** "필터 결과 전체 선택" 상한(상위 티켓 §6 결정 1) */
 export const SELECT_ALL_CAP = 1000
@@ -105,7 +105,7 @@ async function fetchAllRows<T>(query: RangeQuery<T>): Promise<T[]> {
 }
 
 /** Supabase 쿼리 빌더가 구조적으로 그대로 들어맞는 최소 인터페이스(`poi-list-query.ts`와 동일 관례) */
-export interface BadgeListQuery<T> {
+interface BadgeListQuery<T> {
   is(column: string, value: null): BadgeListQuery<T>
   not(column: string, operator: string, value: unknown): BadgeListQuery<T>
   eq(column: string, value: string): BadgeListQuery<T>

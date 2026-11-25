@@ -4,7 +4,7 @@
  *
  * 링크는 같은 쪽의 `#구역 ID`로 간다(스크롤만 한다. 상태를 바꾸지 않는다).
  */
-export interface OpsSettingsNavSection {
+interface OpsSettingsNavSection {
   id: string
   label: string
 }

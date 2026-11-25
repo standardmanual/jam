@@ -70,8 +70,8 @@ export function parseTierRewardKey(key: string): TierName | null {
 
 export const COLLECTION_TIER_KEYS: readonly string[] = TIER_ORDER.map(tierRewardKey)
 
-export const TIER_REWARD_GROUP = '컬렉션 등급별 완성 포인트'
-export const COMBINE_GROUP = '믹스'
+const TIER_REWARD_GROUP = '컬렉션 등급별 완성 포인트'
+const COMBINE_GROUP = '믹스'
 
 const TIER_LABEL: Readonly<Record<TierName, string>> = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
 

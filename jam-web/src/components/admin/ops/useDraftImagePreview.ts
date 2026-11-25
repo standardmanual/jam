@@ -14,9 +14,9 @@ import { renderPresetToPngBlob, type RenderPresetToPngArgs } from '@/lib/admin/o
 
 export const DRAFT_IMAGE_DEBOUNCE_MS = 400
 
-export type DraftImageStatus = 'rendering' | 'ready' | 'failed'
+type DraftImageStatus = 'rendering' | 'ready' | 'failed'
 
-export interface DraftImageState {
+interface DraftImageState {
   status: DraftImageStatus
   /** `ready`일 때만 있는 blob 주소 */
   url: string | null

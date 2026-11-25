@@ -45,7 +45,7 @@ export const FLOW_COLUMNS: readonly FlowColumn[] = [
   { key: 'result', label: '결과', owner: '카즈하', emphasis: false },
 ]
 
-export type FlowPhase = 'done' | 'current' | 'upcoming'
+type FlowPhase = 'done' | 'current' | 'upcoming'
 
 export interface FlowColumnState {
   key: FlowColumnKey

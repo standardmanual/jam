@@ -42,7 +42,7 @@ export type ValueUnit =
  */
 export type InsufficientReason = 'sample' | 'period'
 
-export interface ReadyMeasurement {
+interface ReadyMeasurement {
   status: 'ready'
   value: number
   sample: number
