@@ -7,7 +7,7 @@ import { extractBadgeColorsFromUrl, pickBadgeColors } from './badgeColorExtract.
  *
  * 알고리즘은 `badgeColorExtract.core.mjs` 한 곳에 있고(일괄 계산 스크립트와 공유), 여기서는 서버 전용으로
  * 재수출한다. `badges.bg_colors`에 저장하는 값 — 원색(보정 전) 최대 3개, 밝기 높은 순 hex 배열.
- * 색 보정은 화면 쪽 표(`badgeAura.ts`)가 한다.
+ * 화면에서는 이 값을 쓰지 않는다(Aura 제거, 티켓 20261125_1649).
  */
 
 export { pickBadgeColors }

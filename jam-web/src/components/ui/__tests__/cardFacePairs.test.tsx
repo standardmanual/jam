@@ -87,14 +87,15 @@ describe('MODULAR Card — 면과 글자색 쌍', () => {
 describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
   const props = { name: '배지', rarity: 'rare' as const }
 
-  it('서비스: 면은 항상 bg-card-bg이고 선택은 블랙 2px 링(ring-2 ring-foreground)이다(티켓 20261107_2246)', () => {
+  it('서비스: 면은 항상 bg-background-secondary이고 선택은 블랙 2px 링(ring-2 ring-foreground)이다(티켓 20261107_2246)', () => {
     const base = renderToStaticMarkup(<ServiceBadgeGridCard {...props} />)
-    expect(base).toContain('bg-card-bg')
+    expect(base).toContain('bg-background-secondary')
+    expect(base).not.toContain('bg-card-bg')
     expect(base).not.toContain('border-border')
     expect(base).not.toContain('ring-2')
 
     const selected = renderToStaticMarkup(<ServiceBadgeGridCard {...props} selected />)
-    expect(selected).toContain('bg-card-bg')
+    expect(selected).toContain('bg-background-secondary')
     expect(selected).toContain('ring-2 ring-foreground')
     expect(selected).not.toContain('bg-accent-soft')
     expect(selected).not.toContain('border-border')

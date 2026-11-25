@@ -62,7 +62,7 @@ describe('BadgesClient 체크인 탭 — 방문 횟수 칩', () => {
     expect(chip).toContain('font-size:var(--text-xs)')
     expect(chip).toContain('padding:var(--chip-padding)')
     expect(chip).toContain('line-height:var(--text-xs--line-height)')
-    expect(chip).toContain('var(--default-soft)')
+    expect(chip).toContain('var(--rarity-common)')
   })
 
   it('보조기술에는 «N번 방문했어요»로 읽힌다', () => {

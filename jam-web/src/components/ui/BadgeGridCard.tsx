@@ -1,7 +1,6 @@
 'use client'
 
 import SafeImage from '@/components/SafeImage'
-import BadgeAuraBackground from '@/components/BadgeAuraBackground'
 import VisitCountChip from '@/components/ui/VisitCountChip'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
@@ -9,11 +8,13 @@ import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { LockedTile } from '@ds/components/cards/LockedTile'
 import { SlotOutline } from '@ds/components/cards/SlotOutline'
 import { BADGE_CARD_DISPLAY_WIDTH, slotOutlineTraceSrc } from '@/lib/imageSrc'
-import { resolveAuraColors } from '@/lib/badgeAura'
 import { MedalIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
+
+/** 회색 면 위에서 Lv 칩이 묻히지 않도록 Common 등급 칩 색을 입힌다. DS 원본 기본색은 그대로다(티켓 20261125_1649) */
+const COMMON_CHIP_STYLE = { background: 'var(--rarity-common)', color: 'var(--rarity-common-foreground)' } as const
 
 export interface BadgeGridCardProps {
   /** 배지 이름. `locked`이면 그리지 않는다(가린 이름이 대신 나온다) — 그래서 `locked`일 때는 생략해도 된다 */
@@ -120,13 +121,7 @@ export interface BadgeGridCardProps {
    * 만료·방문 횟수·children·미발견·외곽선 표현은 그리지 않는다. 기본 false라 다른 화면은 마크업이 그대로다.
    */
   compact?: boolean
-  /**
-   * 썸네일 면에 깔 Aura 배경의 색 — `badges.bg_colors` 값 그대로(티켓 20261119_1654). 없거나 null이면 지금 모습 그대로다.
-   * `locked`·`undiscovered`에는 깔지 않는다(이미지를 가리는 칸). 어드민 미리보기는 넘기지 않는다.
-   * 글로우의 블러·여유·안쪽 빛은 면 크기에 비례한다(`badgeAura.ts`의 `auraGlowMetrics`).
-   * 일반 카드(compact 아님)의 썸네일은 글로우 유무와 상관없이 카드 여백(p-3)과 같은 두께로 안쪽에 앉는다. 폭은 칸 폭에서 좌우 여백을 뺀 값이다(티켓 20261120_1136).
-   * `earned={false}`면 면의 `grayscale opacity-40`이 그라데이션까지 먹고, `outlined` 점선은 면의 형제라 영향이 없다.
-   */
+  /** @deprecated Aura 그라데이션을 걷어 쓰지 않는다(티켓 20261125_1649). 호출부 정리는 후속 티켓 20261125_1650 */
   bgColors?: string[] | null
   className?: string
   /** 희귀도 배지 아래 추가 콘텐츠 (만료일, 슬롯 버튼 등). */
@@ -165,7 +160,6 @@ export default function BadgeGridCard({
   showCommonChip = false,
   chipGray = false,
   compact = false,
-  bgColors = null,
   className = '',
   children,
 }: BadgeGridCardProps) {
@@ -174,8 +168,8 @@ export default function BadgeGridCard({
   const containerCls = [
     // compact는 여백과 면을 분기로 한쪽만 넣는다(클래스 순서에 기대지 않는다)
     compact ? BASE_COMPACT : BASE,
-    // 면은 항상 --card-bg이고, 선택은 블랙 2px 링(box-shadow라 레이아웃을 밀지 않는다)으로 말한다. 새 색을 만들지 않는다(티켓 20261107_2246).
-    compact ? 'bg-background-secondary' : 'bg-card-bg',
+    // 면은 일반·compact 모두 회색 단색(--background-secondary)이고, 선택은 블랙 2px 링(box-shadow라 레이아웃을 밀지 않는다)으로 말한다(티켓 20261125_1649).
+    'bg-background-secondary',
     selected && 'ring-2 ring-foreground',
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
@@ -190,17 +184,11 @@ export default function BadgeGridCard({
   // 점선이 추적할 주소. w=256, q=75 — 폭 90 이미지가 이미 받는 변환본이라 새 변환본이 생기지 않는다(`slotOutlineTraceSrc`)
   const outlineSrc = slotOutlineTraceSrc(imageUrl)
 
-  // Aura는 면(일반·compact)이 같이 쓰므로 색 판정은 한 번만 한다. 잠긴 칸·미발견 칸은 면 자체를 그리지 않으니 색도 계산하지 않는다
-  const aura = !locked && !undiscovered ? resolveAuraColors(bgColors) : null
-  // Aura는 면 안의 `absolute z-0` 면이라 이미지·대체 아이콘이 그 위로 올라와야 한다(비위치 요소는 z-0 위치 요소 아래에 그려진다)
-  const aboveAura = aura ? 'relative z-10 ' : ''
-
   // 일반 카드의 썸네일은 카드 가장자리에서 6px 안쪽 면이다(시안은 카드 폭의 약 5%, 사용자 지시 2026-11-20, 티켓 20261120_1143).
   // 카드 여백(p-3 = 12)보다 6px 키워 위·좌·우 6px만 남기고, 이름·칩 줄의 여백(12)은 그대로 둔다. 모서리 둥글기는 그대로 rounded-2xl이다.
   // 글로우 없는 카드·잠김·미발견 칸도 같은 크기라 한 그리드 안에서 어긋나지 않는다. compact는 별도 고정 규격(여백 4)이라 이 분기에 들어오지 않는다
   const thumbnailCls = [
-    aura && 'relative',
-    'w-full aspect-square rounded-2xl overflow-hidden',
+    'w-full aspect-square rounded-2xl overflow-hidden bg-background-secondary',
     'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
@@ -214,7 +202,7 @@ export default function BadgeGridCard({
   // 칩이 실제로 그려지는지: Lv 칩은 항상, 등급 칩은 등급이 있고 Common이 아닐 때(`showCommonChip`이면 Common도)
   const hasChip = level != null || (rarity != null && (rarity !== 'common' || showCommonChip))
   const chip = level != null
-    ? <BadgeLevelChip level={level} size="md" className={chipClass} />
+    ? <BadgeLevelChip level={level} size="md" className={chipClass} style={COMMON_CHIP_STYLE} />
     : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} showCommon={showCommonChip} />
 
   if (compact) {
@@ -226,10 +214,8 @@ export default function BadgeGridCard({
             <LockedTile size={72} style={{ width: '100%', borderRadius: 'var(--radius-xl)' }} />
           ) : (
             <div
-              className={`${aura ? 'relative ' : ''}w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-surface ${thumbDimmed ? 'grayscale opacity-40' : ''}`}
+              className={`w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-background-secondary ${thumbDimmed ? 'grayscale opacity-40' : ''}`}
             >
-              {/* 일반 카드와 같은 파스텔 메시다(티켓 20261120_1405). 메시는 폭에 비례하는 블러가 없어 컨테이너 타입이 필요 없다 */}
-              {aura && <BadgeAuraBackground colors={aura} variant="mesh" seed={name} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
@@ -237,8 +223,8 @@ export default function BadgeGridCard({
                 height={72}
                 eager={eager}
                 variantWidth={BADGE_CARD_DISPLAY_WIDTH}
-                className={`${aboveAura}w-full h-full object-contain p-1`}
-                fallback={<MedalIcon className={`${aboveAura}w-6 h-6 text-muted`} />}
+                className="w-full h-full object-contain p-1"
+                fallback={<MedalIcon className="w-6 h-6 text-muted" />}
               />
             </div>
           )}
@@ -289,7 +275,6 @@ export default function BadgeGridCard({
         ) : (
           <>
             <div className={thumbnailCls}>
-              {aura && <BadgeAuraBackground colors={aura} variant="mesh" seed={name} gray={thumbDimmed} />}
               <SafeImage
                 src={imageUrl}
                 alt={name}
@@ -297,8 +282,8 @@ export default function BadgeGridCard({
                 height={90}
                 eager={eager}
                 // 면이 커져도 그림이 면에서 차지하는 비율(약 91%)과 점선 윤곽(`SlotOutline`의 inset 4/90)이 그대로 맞도록 여백을 비율로 준다
-                className={`${aboveAura}w-full h-full object-contain p-[4.4%]`}
-                fallback={<MedalIcon className={`${aboveAura}w-12 h-12 text-muted`} />}
+                className="w-full h-full object-contain p-[4.4%]"
+                fallback={<MedalIcon className="w-12 h-12 text-muted" />}
               />
             </div>
             {outlined && (
@@ -328,7 +313,7 @@ export default function BadgeGridCard({
         )}
         {!undiscovered && chip}
         {/* 방문 횟수 칩 — 2회 이상일 때만 그린다(`VisitCountChip`, 상세 히어로 카드와 같은 부품) */}
-        {!undiscovered && <VisitCountChip count={visitCount} />}
+        {!undiscovered && <VisitCountChip count={visitCount} tone="common" />}
       </div>
       {children && <div className="w-full mt-1">{children}</div>}
     </>

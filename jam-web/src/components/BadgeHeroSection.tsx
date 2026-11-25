@@ -1,12 +1,12 @@
-import type { ReactNode } from 'react'
+import { cloneElement, isValidElement, type ReactNode } from 'react'
 import SafeImage from '@/components/SafeImage'
 import { BadgeHeroSection as BadgeHeroCard } from '@ds/components/cards/BadgeHeroSection'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { getBadgeBackgroundAnimation, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
-import BadgeAuraBackground from '@/components/BadgeAuraBackground'
-import { AURA_GLOW_BASE_COLOR, resolveAuraColors } from '@/lib/badgeAura'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
+import VisitCountChip from '@/components/ui/VisitCountChip'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 // [20260917_1303] 마침표 기준 줄바꿈 로직을 공용 유틸로 추출 — 같은 문장 나누기를 쓰는 다른 화면과
 // 로직을 공유한다(코드 중복 방지). 컬렉션 상세의 옛 히어로(`ItemBookHeroSection`)는 티켓 20261124_2254에서 삭제됐다.
@@ -52,8 +52,7 @@ interface BadgeHeroSectionProps {
      */
     level?: number | null
     /**
-     * 이미지 대표색(밝기 높은 순 hex 최대 3개, 티켓 20261119_1650). **선택**이다 — 어드민 미리보기·dev 샘플처럼 색을 안 넘기는 호출부는 지금 모습 그대로다.
-     * 배경 테마가 없고 NULL이 아닐 때만 Aura 배경을 깐다(NULL=흰 카드, `[]`=청회색 대체색). — 티켓 20261119_1653
+     * @deprecated Aura 그라데이션을 걷어 쓰지 않는다(티켓 20261125_1649). 호출부 정리는 후속 티켓 20261125_1650
      */
     bg_colors?: string[] | null
   }
@@ -108,11 +107,10 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 배경(블롭·테마)이 깔린 카드는 글자가 어두운 면 위에 놓이므로 --snow, 배경이 없는 흰 카드는
   // 새 글자색(--foreground·--muted)이다. 설명에는 muted 단계가 없어 배경 위에서는 둘 다 --snow다
   // (티켓 20261015_2134). 테마 판정 두 가지(전체 배경 `themed`, 카드 안 블롭 `backgroundAnimation`)가 모두 DS의 `onMedia`다.
-  // [20261119_1653] Aura는 기존 배경 테마(전체 배경·카드 안 블롭·어드민 강제 themed)가 하나도 없을 때만, `bg_colors`가 NULL이 아닐 때만 깐다.
-  // 배경 테마가 있으면 `bg_colors`는 읽지도 않는다. 새 판정을 만들지 않고 위 판정을 그대로 따른다.
+  // [20261125_1649] 배경 테마(전체 배경·카드 안 블롭·어드민 강제 themed)가 하나도 없으면 카드 면을 회색 단색(--background-secondary)으로 칠한다.
+  // 테마가 있으면 현행 그대로다. 회색 면에서는 Lv 칩·방문 횟수 칩이 묻히지 않도록 Common 등급 칩 색을 입힌다.
   const hasTheme = Boolean(backgroundAnimation || themed || getBadgeBackgroundAnimation(badge))
-  const auraColors = hasTheme ? null : resolveAuraColors(badge.bg_colors)
-  // [20261120] 상세 히어로는 연한 파스텔 «메시» 면(그리드 카드와 같은 배경, 같은 배지 이름 시드라 목록과 모양이 같다)이라 글자는 항상 어두운 색이다(옛 띠 방식의 밝기 판정은 쓰지 않는다).
+  const greyFace = !hasTheme
   const onMedia = Boolean(backgroundAnimation || themed)
 
   // 대표 이미지: 호출부가 슬롯을 주면 그대로, 없으면 badge.image_url(SafeImage) → 없으면 MedalIcon.
@@ -137,26 +135,32 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
     )
 
+  // DS 히어로는 Lv 칩 색을 받지 않으므로(DS 원본은 건드리지 않는다) 회색 면에서는 Lv 칩을 chipExtra 쪽에서 직접 그린다
+  const levelOnGrey = greyFace && badge.level != null
+  const extra = greyFace && isValidElement<{ tone?: string }>(chipExtra) && chipExtra.type === VisitCountChip ? cloneElement(chipExtra, { tone: 'common' }) : chipExtra
+  const resolvedChipExtra = levelOnGrey ? (
+    <>
+      <BadgeLevelChip level={badge.level} size="md" style={{ background: 'var(--rarity-common)', color: 'var(--rarity-common-foreground)' }} />
+      {extra}
+    </>
+  ) : extra
+
   return (
     <BadgeHeroCard
       size={size}
       name={badge.name}
       rarity={badge.rarity}
-      level={badge.level}
+      level={levelOnGrey ? undefined : badge.level}
       // [20260917_1211] 설명을 마침표(문장 종결) 기준으로 나눠 각 문장을 별도 줄로 그린다. 나누기는 서비스 유틸 몫이라 여기서 한다.
       descriptionLines={badge.description ? splitDescriptionSentences(badge.description) : undefined}
       descriptionNode={descriptionNode}
       titleNode={titleNode}
-      chipExtra={chipExtra}
+      chipExtra={resolvedChipExtra}
       imageSlot={resolvedImage}
       // [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(DS가 z-0 자리를 내준다). 첫 페인트 폴백 색은 파라미터에서 미리 깐다.
-      // [20261119_1653] Aura 배경은 같은 슬롯에 들어간다(블롭과 동시에 켜지지 않는다). 바탕색은 인라인이라 카드 면(`bg-card-bg`)을 이긴다.
-      backgroundSlot={
-        backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : auraColors ? <BadgeAuraBackground colors={auraColors} variant="mesh" seed={badge.name} gray={!hasEarned} /> : undefined
-      }
-      backgroundColor={backgroundAnimation?.bgColor ?? (auraColors ? AURA_GLOW_BASE_COLOR : undefined)}
+      backgroundSlot={backgroundAnimation ? <BlobAnimationBackground params={backgroundAnimation} /> : undefined}
+      backgroundColor={backgroundAnimation?.bgColor ?? (greyFace ? 'var(--background-secondary)' : undefined)}
       onMedia={onMedia}
-      strongText={Boolean(auraColors)}
       textStyle={cardTextStyle}
     />
   )

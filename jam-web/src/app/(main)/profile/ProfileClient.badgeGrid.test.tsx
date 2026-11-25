@@ -63,14 +63,14 @@ describe('친구 프로필 배지 그리드의 칩 표현', () => {
   it('체크인 배지는 방문 횟수를 이름 아래 칩으로 그리고 모서리 필은 그리지 않는다', () => {
     const html = render([earned('c1', { poi_name: '한남역', visit_count: 5 })])
     expect(html).toContain('×5')
-    expect(html).toContain('var(--default-soft)')
+    expect(html).toContain('var(--rarity-common)')
     expect(hasCornerPill(html)).toBe(false)
   })
 
   it('체크인 배지가 1회 방문이면 횟수 칩이 없다', () => {
     const html = render([earned('c1', { poi_name: '한남역', visit_count: 1 })])
     expect(html).not.toContain('×1')
-    expect(html).not.toContain('var(--default-soft)')
+    expect(html).not.toContain('var(--rarity-common)')
   })
 
   it('체크인 배지는 Common이어도 등급 칩을 그리지 않는다', () => {

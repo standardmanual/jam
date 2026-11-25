@@ -195,12 +195,13 @@ describe('BadgeDetailSheet 흰 카드 구조 (티켓 20261112_1629)', () => {
   })
 })
 
-describe('BadgeDetailSheet Aura 배경 (티켓 20261119_1653)', () => {
+describe('BadgeDetailSheet Aura 제거 (티켓 20261125_1649)', () => {
   const colors = ['#e0e8ff', '#7090e0', '#203a8a']
 
-  it('열린 개체에 대표색이 있으면 히어로 카드에 Aura가 깔린다', () => {
+  it('열린 개체에 대표색이 있어도 Aura 없이 회색 단색 카드다', () => {
     const html = render({ ...base, badge_bg_colors: colors })
-    expect(html).toContain('badge-aura-background')
+    expect(html).not.toContain('badge-aura-background')
+    expect(html).toContain('var(--background-secondary)')
   })
 
   it('대표색이 없거나 NULL이면 Aura 없는 흰 카드다', () => {
