@@ -21,5 +21,12 @@
     "design-system/**/*.{js,jsx,ts,tsx}",
     "scripts/**/*.{mjs,js,ts}"
   ],
-  "ignore": ["public/**", "scripts/asset-generator/**", "scripts/badge-image-gen/**", "scripts/recraft/**","scripts/jam2-content/**"]
+  "ignore": [
+    "public/**",
+    "scripts/asset-generator/**",
+    "scripts/badge-image-gen/**",
+    "scripts/recraft/**",
+    "scripts/jam2-content/**"
+  ],
+  "ignoreDependencies": ["tailwindcss", "tw-animate-css"]
 }

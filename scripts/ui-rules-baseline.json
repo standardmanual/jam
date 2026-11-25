@@ -1,0 +1,206 @@
+{
+  "jam-web/src/app/(auth)/login/page.tsx": {
+    "arbitrary": 5,
+    "color-literal": 4,
+    "raw-element": 1
+  },
+  "jam-web/src/app/(legal)/layout.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/SuspensionBanner.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/TodayStatusStrip.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/UserSearchBar.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/badges/BadgesClient.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/badges/[id]/BadgeShareButton.tsx": {
+    "arbitrary": 5
+  },
+  "jam-web/src/app/(main)/badges/[id]/BadgeTicket.module.css": {
+    "color-literal": 7
+  },
+  "jam-web/src/app/(main)/badges/[id]/ItemEarnHistory.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/badges/[id]/PoiEarnHistory.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/badges/[id]/ShareActionButtons.tsx": {
+    "raw-element": 1
+  },
+  "jam-web/src/app/(main)/badges/[id]/TicketPhoto.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/collections/[id]/SlotActionPill.tsx": {
+    "raw-element": 1
+  },
+  "jam-web/src/app/(main)/collections/[id]/UnslotAllSheet.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/collections/[id]/page.tsx": {
+    "color-literal": 2,
+    "inline-visual": 7
+  },
+  "jam-web/src/app/(main)/combine/CombineClient.tsx": {
+    "arbitrary": 2,
+    "raw-element": 1
+  },
+  "jam-web/src/app/(main)/combine/PendingResultsSheet.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/combine/RecipeRewardRow.tsx": {
+    "raw-element": 1
+  },
+  "jam-web/src/app/(main)/combine/TierUpPanel.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/drops/DropsClient.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/inventory/[itemId]/LockedItemDetail.tsx": {
+    "arbitrary": 5
+  },
+  "jam-web/src/app/(main)/layout.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(main)/missions/MissionsListClient.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/app/(main)/missions/[id]/MissionDetailClient.tsx": {
+    "arbitrary": 20
+  },
+  "jam-web/src/app/(main)/missions/[id]/status/MissionStatusClient.tsx": {
+    "arbitrary": 1,
+    "inline-visual": 1
+  },
+  "jam-web/src/app/(main)/notifications/NotificationsClient.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/philosophy/page.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(main)/profile/ProfileClient.tsx": {
+    "raw-element": 1
+  },
+  "jam-web/src/app/(main)/profile/edit/page.tsx": {
+    "raw-element": 3
+  },
+  "jam-web/src/app/(main)/voc/VocPagination.tsx": {
+    "raw-element": 3
+  },
+  "jam-web/src/app/(main)/voc/page.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/app/(onboarding)/layout.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/app/(onboarding)/onboarding/page.tsx": {
+    "arbitrary": 6,
+    "raw-element": 2
+  },
+  "jam-web/src/components/BadgeHeroSection.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/components/BadgeRevealOverlay.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/components/NavigationLoader.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/TierUpRevealOverlay.tsx": {
+    "color-literal": 2,
+    "inline-visual": 1
+  },
+  "jam-web/src/components/capsule/CapsuleGauge.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/components/capsule/CapsuleWidget.tsx": {
+    "raw-element": 1
+  },
+  "jam-web/src/components/inventory/InventoryGrid.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/components/inventory/ItemCandidateRow.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/components/map/MapView.tsx": {
+    "color-literal": 3,
+    "raw-element": 1
+  },
+  "jam-web/src/components/ranking/RankingListRow.tsx": {
+    "inline-visual": 4
+  },
+  "jam-web/src/components/strava/PendingItemsPickOverlay.tsx": {
+    "inline-visual": 3
+  },
+  "jam-web/src/components/today/CardFrame.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/today/FeedStamp.tsx": {
+    "inline-visual": 1
+  },
+  "jam-web/src/components/today/feed/FeedCardParts.tsx": {
+    "arbitrary": 3
+  },
+  "jam-web/src/components/today/feed/FeedFullImageCard.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/today/feed/FeedGalleryListCard.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/today/feed/feedStoryFixtures.tsx": {
+    "color-literal": 4
+  },
+  "jam-web/src/components/transitions.css": {
+    "arbitrary": 1,
+    "color-literal": 4
+  },
+  "jam-web/src/components/ui/BadgeGridCard.tsx": {
+    "arbitrary": 13
+  },
+  "jam-web/src/components/ui/BottomSheet.tsx": {
+    "arbitrary": 3
+  },
+  "jam-web/src/components/ui/Button.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/ui/CollectionGridCard.tsx": {
+    "arbitrary": 3
+  },
+  "jam-web/src/components/ui/Footer.tsx": {
+    "arbitrary": 12
+  },
+  "jam-web/src/components/ui/FooterLogo.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/ui/ListRow.tsx": {
+    "inline-visual": 2
+  },
+  "jam-web/src/components/ui/ProgressCountBar.tsx": {
+    "inline-visual": 3
+  },
+  "jam-web/src/components/ui/SlotCircleButton.tsx": {
+    "arbitrary": 2
+  },
+  "jam-web/src/components/ui/SyncIconButton.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/ui/TabBar.tsx": {
+    "arbitrary": 3
+  },
+  "jam-web/src/components/ui/Toast.tsx": {
+    "arbitrary": 7
+  },
+  "jam-web/src/components/ui/TopNav.tsx": {
+    "arbitrary": 1
+  },
+  "jam-web/src/components/ui/sheetClasses.ts": {
+    "arbitrary": 1
+  }
+}
