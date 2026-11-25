@@ -18,7 +18,7 @@
 //         --write-baseline                                      현재 개수로 기준선을 다시 쓴다
 //         --json                                                결과를 JSON으로 낸다
 //         --root <dir> --baseline <file>                        시험용
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -306,6 +306,9 @@ function main() {
   return 0
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// 실행 판정은 양쪽 경로를 실제 경로(심볼릭 링크 해제)·NFC로 맞춰 비교한다. 그냥 비교하면 링크 경로나 한글 정규화
+// 차이(NFC/NFD)로 main이 돌지 않고 검사 없이 종료 코드 0이 된다 (티켓 20261125_2050 민지 주의 발견물).
+const canon = (p) => { try { return realpathSync(p).normalize('NFC') } catch { return path.resolve(p).normalize('NFC') } }
+if (process.argv[1] && canon(process.argv[1]) === canon(fileURLToPath(import.meta.url))) {
   process.exit(main())
 }

@@ -14,7 +14,7 @@
 // 사용법: node scripts/check-spacing.mjs                  검사 (0 = 통과, 1 = 위반 발견)
 //         node scripts/check-spacing.mjs --write-baseline  현재 개수로 기준선을 다시 쓴다
 //         --root <dir> --baseline <file>                   시험용: 검사 루트와 기준선 경로를 바꾼다
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -155,6 +155,8 @@ function main() {
   return 0
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// 실행 판정은 실제 경로·NFC로 맞춰 비교한다(링크·한글 정규화 차이로 검사 없이 통과하는 것을 막음, 티켓 20261125_2050).
+const canon = (p) => { try { return realpathSync(p).normalize('NFC') } catch { return path.resolve(p).normalize('NFC') } }
+if (process.argv[1] && canon(process.argv[1]) === canon(fileURLToPath(import.meta.url))) {
   process.exit(main())
 }
