@@ -193,7 +193,7 @@ export function TabBar({ active = 'today', onChange, username, inverted = false 
       /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator.
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
          최소 여백 10px로 재조정. */
-      bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
+      bottom: 'var(--tabbar-bottom)', /* 20261125_1840: 식은 tokens/spacing.css의 --tabbar-bottom */
       // 높이 49px·가로 388px·좌우 패딩 4px은 Figma 실측값(위 상수 주석 참고).
       width: 'calc(100% - 42px)', maxWidth: 388, height: 49,
       // 완전 라운드 — nav는 자기 높이의 절반(24.5px), 필은 자기 높이의 절반(20.5px)으로

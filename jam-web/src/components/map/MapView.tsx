@@ -110,12 +110,11 @@ const LOCATE_MAX_AGE_MS = 10_000
 const LOCATE_REFINE_MIN_DEGREES = 0.00003
 
 /**
- * "내 위치" 버튼의 하단 위치 — 탭바(하단 위치 공식은 TabBar.jsx와 같다, 높이 49px) 윗면에서
+ * "내 위치" 버튼의 하단 위치 — 탭바(하단 위치는 DS 토큰 `--tabbar-bottom`, 높이 49px) 윗면에서
  * 18px 띄운다. 이전에는 안전 영역 + 96px로 고정돼 탭바와 37px 떨어져 있었고(375~430px 폭 실측),
- * 그 간격의 절반으로 줄였다. 탭바 위치 공식을 그대로 따르므로 홈 인디케이터가 있는 기기에서도 간격이 같다.
+ * 그 간격의 절반으로 줄였다. 탭바 위치 토큰을 그대로 따르므로 홈 인디케이터가 있는 기기에서도 간격이 같다.
  */
-const LOCATE_BUTTON_BOTTOM =
-  'calc(max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px)) + 49px + 18px)'
+const LOCATE_BUTTON_BOTTOM = 'calc(var(--tabbar-bottom) + 49px + 18px)'
 
 type MapsReadyCallback = () => void
 /**

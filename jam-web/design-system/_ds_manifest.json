@@ -1240,6 +1240,18 @@
       "kind": "other",
       "definedIn": "tokens/materials.css",
       "annotation": "other"
+    },
+    {
+      "name": "--tabbar-bottom",
+      "value": "max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--toast-bottom",
+      "value": "var(--tabbar-bottom)",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
     }
   ],
   "themes": [],
