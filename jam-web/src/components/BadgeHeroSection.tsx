@@ -111,7 +111,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 테마가 있으면 현행 그대로다. 회색 면에서는 Lv 칩·방문 횟수 칩이 묻히지 않도록 Common 등급 칩 색을 입힌다.
   const hasTheme = Boolean(backgroundAnimation || themed || getBadgeBackgroundAnimation(badge))
   const greyFace = !hasTheme
-    const onMedia = Boolean(backgroundAnimation || themed)
+  const onMedia = Boolean(backgroundAnimation || themed)
 
   // 대표 이미지: 호출부가 슬롯을 주면 그대로, 없으면 badge.image_url(SafeImage) → 없으면 MedalIcon.
   // 이미지 크기 규칙(200/176)이 DS가 아니라 여기 있는 이유는 슬롯을 통째로 바꿔도 크기 규칙이 숨지 않게 하기 위해서다.
