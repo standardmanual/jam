@@ -17,7 +17,7 @@ import { createNotification } from '@/lib/notifications'
 import { createServiceClient } from '@/lib/supabase/server'
 
 /** 알림 단계. 남은 칸이 2~3개면 3, 0~1개면 1이다 */
-export type SlotAlertStage = 3 | 1
+type SlotAlertStage = 3 | 1
 
 /** `inventory_slot_alert_step` 응답에서 읽은 값. `free`는 지금 실제 남은 칸(0~3)이다 */
 export interface SlotAlertStep {

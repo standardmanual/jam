@@ -34,7 +34,7 @@ import {
 } from './warning'
 
 /** 알림함 한 페이지 크기 */
-export const NOTIFICATIONS_PAGE_SIZE = 20
+const NOTIFICATIONS_PAGE_SIZE = 20
 
 export interface NotificationPage {
   items: NotificationView[]
@@ -157,7 +157,7 @@ export async function listNotificationViews(
  * 유저 조인은 페이지 단위 일괄 조회 1회(N+1 금지), 경고 상태 조회는 **해당 종류가
  * 이 페이지에 실제로 있을 때만** 수행한다.
  */
-export async function hydrateNotifications(
+async function hydrateNotifications(
   userId: string,
   rows: NotificationRow[]
 ): Promise<NotificationView[]> {

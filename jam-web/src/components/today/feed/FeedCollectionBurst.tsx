@@ -30,7 +30,7 @@ export interface FeedBurstBadge {
   delayMs: number
 }
 
-export type FeedBurstPhase = 'static' | 'collected' | 'spread'
+type FeedBurstPhase = 'static' | 'collected' | 'spread'
 
 /** `animate`가 거짓이면 전환이 없다(첫 «모인 모습»을 건 순간과 동작 줄이기). */
 export interface FeedBurstView {

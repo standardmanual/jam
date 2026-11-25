@@ -155,8 +155,7 @@ export function nextImageWidthFor(displayWidth: number, dpr: number): number {
  * 192처럼 next 기본 sizes(deviceSizes + imageSizes)에 없는 값은 `/_next/image`가 400을 돌려준다.
  * 최적화할 수 없는 src는 그대로 돌려준다(CORS가 막히면 추적이 실패해 사각형 점선으로 떨어진다). 주소가 없으면 null.
  */
-export const SLOT_OUTLINE_TRACE_WIDTH = 256
-export const SLOT_OUTLINE_TRACE_QUALITY = 75
+const SLOT_OUTLINE_TRACE_WIDTH = 256
 
 export function slotOutlineTraceSrc(src: string | null | undefined): string | null {
   return optimizedImageUrl(src, SLOT_OUTLINE_TRACE_WIDTH)

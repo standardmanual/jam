@@ -25,10 +25,10 @@ import { RETAINED_KINDS, type RetainedKind } from './retention'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export type DeleteAccountFailureCode = 'admin_account' | 'not_found' | 'prepare_failed' | 'delete_failed'
+type DeleteAccountFailureCode = 'admin_account' | 'not_found' | 'prepare_failed' | 'delete_failed'
 
 /** 준비 RPC가 돌려주는 건수 요약. 두 번째 호출부터는 모두 0이다 */
-export interface AccountDeletionSummary {
+interface AccountDeletionSummary {
   /** 보관 표로 복사한 건수(종류별) */
   retained: Record<RetainedKind, number>
   /** 이름 칸을 비운 이력 행 수 */

@@ -22,7 +22,7 @@ const TITLE_MAX_H = 540;
 const LEAD = 0.86;
 const inkW = (m: InkMetrics) => m.left + m.right;
 
-export interface TitleLine {
+interface TitleLine {
   text: string;
   /** textAlign left로 그릴 시작 x(잉크 폭 기준 가운데 정렬) */
   x: number;

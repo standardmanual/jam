@@ -39,7 +39,7 @@ export type MyChapterResult =
     }
   | { ok: false }
 
-export interface PublicChapterTribe {
+interface PublicChapterTribe {
   id: string
   name: string
 }

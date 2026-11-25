@@ -8,7 +8,7 @@ import { isDirectStaticBadgeSrc, isOptimizableImageSrc, optimizedImageUrl } from
 export const WARM_IMAGE_WIDTHS = [96, 256, 384, 640] as const
 
 /** 요청 한 번의 시간 제한(밀리초) */
-export const WARM_REQUEST_TIMEOUT_MS = 8000
+const WARM_REQUEST_TIMEOUT_MS = 8000
 
 export interface WarmImageVariantResult {
   width: number

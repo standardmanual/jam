@@ -50,7 +50,7 @@ export type ScheduleExcludeReason =
   | 'collection_drop_excluded'
 
 /** 결과 JSON(`ambient_drop_schedules.result`)에 그대로 실리므로 interface가 아니라 type으로 둔다 */
-export type ScheduleExcluded = {
+type ScheduleExcluded = {
   id: string
   reason: ScheduleExcludeReason
 }

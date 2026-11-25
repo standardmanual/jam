@@ -31,7 +31,7 @@ export type ActivityRecapFragment = NotificationPayloadMap['activity_recap']
  * 배열 필드는 전부 누적한다 — 얕은 병합으로 두면 나중에 온 조각이 앞의 목록을 통째로
  * 덮어써 "배지만 있고 아이템이 사라진" 결산이 된다 (DATA_MODEL §6).
  */
-export const RECAP_APPEND_KEYS = [
+const RECAP_APPEND_KEYS = [
   'activity_ids',
   'activity_badges',
   'checkin_badges',
@@ -39,7 +39,7 @@ export const RECAP_APPEND_KEYS = [
 ] as const
 
 /** 포인트는 종류가 아니라 문장 꼬리의 부속이라 합산한다 */
-export const RECAP_SUM_KEYS = ['points'] as const
+const RECAP_SUM_KEYS = ['points'] as const
 
 function isEmpty(fragment: ActivityRecapFragment): boolean {
   return (

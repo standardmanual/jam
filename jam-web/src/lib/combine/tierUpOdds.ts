@@ -22,9 +22,9 @@ export function isTierUpMaterialRarity(rarity: unknown): rarity is TierUpMateria
 }
 
 /** 낮은 등급부터 높은 등급 순서. 재료 등급의 «바로 위 등급»을 찾을 때 쓴다 */
-export const RARITY_ASCENDING: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+const RARITY_ASCENDING: readonly BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
-export const rarityRank = (rarity: BadgeRarity): number => RARITY_ASCENDING.indexOf(rarity)
+const rarityRank = (rarity: BadgeRarity): number => RARITY_ASCENDING.indexOf(rarity)
 
 /**
  * 재료 등급별 결과 등급 확률. 같은 등급이 `1 - 윗등급 확률`, 바로 위 등급이 `윗등급 확률`이다(`combine_policy.tier_up_probability`, 0~1).

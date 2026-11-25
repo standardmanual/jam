@@ -36,7 +36,7 @@ export interface TierSlotInput {
   rarity: string | null
 }
 
-export interface NameTierRow {
+interface NameTierRow {
   name: string
   /** 등급별 배지 수 */
   counts: Record<TierName, number>

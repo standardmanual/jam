@@ -18,7 +18,7 @@ import { familyKeyOf } from '@/lib/badge-engine/badgeKind'
 import type { BadgeCondition } from '@/types/database'
 
 /** 미션 보상으로 줄 수 있는 배지 유형. 체크인 배지는 보상이 아니다(운영 로직 13.2절 «보상은 액티비티 배지, 포인트, 아이템 배지») */
-export const MISSION_REWARD_BADGE_TYPES = ['activity', 'item'] as const
+const MISSION_REWARD_BADGE_TYPES = ['activity', 'item'] as const
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -161,7 +161,7 @@ export async function validateGatedBadge(
 
 // ── 사용처 조회 (숨김으로 바꾸는 저장을 막는다) ─────────────────────────────────────────
 
-export type BadgeUsageKind = 'mission_reward' | 'mission_gate_badge' | 'prerequisite' | 'cross_gate'
+type BadgeUsageKind = 'mission_reward' | 'mission_gate_badge' | 'prerequisite' | 'cross_gate'
 
 export interface BadgeUsage {
   kind: BadgeUsageKind

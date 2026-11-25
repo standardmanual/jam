@@ -8,7 +8,7 @@ import { formatKoreanDateTime } from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
-export interface RecipeRewardBadge {
+interface RecipeRewardBadge {
   id: string
   name: string
   image_url: string | null

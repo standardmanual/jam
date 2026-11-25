@@ -37,7 +37,7 @@ export type GradientDirection = 'h' | 'v' | 'r';
 export type LetterKey = 'J' | 'A' | 'M';
 
 /** 리본 레이어의 원천 그래픽: 브랜드 글자 또는 업로드한 PNG/SVG. */
-export type RibbonSource = { kind: 'letter'; letter: LetterKey } | { kind: 'upload'; assetUrl: string };
+type RibbonSource = { kind: 'letter'; letter: LetterKey } | { kind: 'upload'; assetUrl: string };
 
 /**
  * 리본 레이어 (기본 레이어, PRD §4.1).
@@ -132,8 +132,6 @@ export interface TextLayerConfig {
   /** 0~100 */
   opacityPct: number;
 }
-
-export type Layer = RibbonLayerConfig | ImageLayerConfig | TextLayerConfig;
 
 /**
  * 오버레이 레이어(이미지·텍스트, 재작업 20260924_2158): 리본 위에 얹는 순서 있는 레이어

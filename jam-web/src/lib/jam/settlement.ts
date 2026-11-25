@@ -55,7 +55,7 @@ export function jamIntensityOf(input: JamIntensityInput): JamIntensity | null {
 }
 
 /** 강도 구간의 배율 */
-export function intensityMultiplier(intensity: JamIntensity, policy: JamPolicy): number {
+function intensityMultiplier(intensity: JamIntensity, policy: JamPolicy): number {
   switch (intensity) {
     case 'light':
       return policy.intensity_light

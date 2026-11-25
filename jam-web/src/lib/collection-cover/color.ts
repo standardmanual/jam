@@ -136,7 +136,7 @@ export function oklchToRgb(L: number, C: number, h: number): Rgb {
 export const coverSeed = (collectionId: string, rerolls: number): string => `${collectionId}#${rerolls}`;
 
 /** 문자열 시드 난수(0 이상 1 미만) */
-export function rng(str: string): () => number {
+function rng(str: string): () => number {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);

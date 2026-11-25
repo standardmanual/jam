@@ -70,7 +70,7 @@ export function repeatCountOf(badge: Pick<BadgeRow, 'condition_json'>): number |
  * 자동 상승 반복은 숫자만»으로 갈랐다. 등급이 없으면(= 레벨형) 계열 안 순서를 `level`이
  * 이미 결정하므로 반복 카운터가 아니라 레벨 레일을 타야 한다.
  */
-export function isRepeatableBadge(badge: Pick<BadgeRow, 'rarity' | 'condition_json'>): boolean {
+function isRepeatableBadge(badge: Pick<BadgeRow, 'rarity' | 'condition_json'>): boolean {
   return badge.rarity != null && repeatCountOf(badge) != null
 }
 

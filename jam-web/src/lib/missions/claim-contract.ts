@@ -8,7 +8,7 @@
  */
 
 /** 지급 함수의 실패 코드 */
-export type GrantItemRewardsErrorCode = 'mission_not_found' | 'inventory_not_found'
+type GrantItemRewardsErrorCode = 'mission_not_found' | 'inventory_not_found'
 
 export type GrantItemRewardsResult =
   | {

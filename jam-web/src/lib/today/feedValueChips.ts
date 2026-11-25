@@ -90,7 +90,7 @@ export const FEED_CHIP_TEXT_MAX_LENGTH = 12
 const HOUR_MS = 60 * 60 * 1000
 const DAY_MS = 24 * HOUR_MS
 /** 종료까지 이 기간 이내일 때만 남은 기간 칩을 만든다(PRD: «종료 7일 이내»). */
-export const REMAINING_CHIP_WINDOW_MS = 7 * DAY_MS
+const REMAINING_CHIP_WINDOW_MS = 7 * DAY_MS
 
 function isPositive(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0

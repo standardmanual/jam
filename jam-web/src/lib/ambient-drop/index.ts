@@ -289,4 +289,4 @@ export async function logAmbientBatchResult(result: object, error?: string): Pro
   await logEngineDecision('drop', 'ambient_batch_result', null, { ...(result as Record<string, unknown>), error })
 }
 
-export type { AmbientDropConfig }
+

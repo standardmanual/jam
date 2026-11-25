@@ -77,7 +77,7 @@ export const CATALOG_REEVALUATION_TRIGGER = 'catalog_reevaluation'
  */
 export const MAX_TARGET_USERS_PER_CALL = 500
 
-export interface ReevaluateUserResult {
+interface ReevaluateUserResult {
   userId: string
   /** 이번 호출로 (또는 dry-run이면 «만약 실행했다면») 발급될 배지 id */
   earnedBadgeIds: string[]
@@ -278,7 +278,7 @@ export async function reevaluateUsersForCatalog(
 // 열릴 예정 배지 미리보기 (티켓 20261001_2203, 상위 20260930_1450)
 // ═══════════════════════════════════════════════════════════════════════
 
-export interface UpcomingBadgePreviewItem {
+interface UpcomingBadgePreviewItem {
   badgeId: string
   name: string
   /** null이면 이미 열려 있거나 처음부터 제한이 없는 배지(`badgeIds`로 명시한 경우만 나온다) */

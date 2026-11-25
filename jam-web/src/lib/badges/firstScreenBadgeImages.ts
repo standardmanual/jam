@@ -6,7 +6,7 @@ import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
 import { buildActivityBadgeList, queryEarnedActivityBadges } from '@/lib/badges/activityBadgeList'
 
 /** 한 번에 돌려주는 주소 수의 상한 — 인벤토리 30칸 + 배지함 12칸 */
-export const WARMUP_MAX_URLS = 42
+const WARMUP_MAX_URLS = 42
 
 type InventoryRow = {
   inventory_items: Array<{

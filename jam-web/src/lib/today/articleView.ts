@@ -12,7 +12,7 @@ import { d } from '@/lib/i18n'
 import { resolveArticleCtaTarget } from './targetHref'
 
 /** 기사 화면 본문 끝 CTA. `href`가 없으면 그리는 쪽이 링크가 아닌 정적 필로 그린다(미리보기). */
-export interface ArticleViewCta {
+interface ArticleViewCta {
   label: string
   href?: string
 }

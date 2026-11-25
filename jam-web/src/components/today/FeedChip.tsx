@@ -29,7 +29,7 @@ import {
 export type FeedChipColor = FeedColorKey | 'black'
 export type FeedChipSize = 'lg' | 'sm'
 
-export type FeedChipVariant = 'inline' | 'corner'
+type FeedChipVariant = 'inline' | 'corner'
 
 const SIZE_CLASS: Record<FeedChipVariant, Record<FeedChipSize, string>> = {
   inline: { lg: 'px-4 text-lg font-bold', sm: 'px-3 text-sm font-bold' },

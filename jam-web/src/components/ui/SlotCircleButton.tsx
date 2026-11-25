@@ -18,8 +18,8 @@ import { MinusIcon, PlusIcon } from '@/components/ui/icons'
  *   눌리는 44px 영역만 카드 링크 위에 얹힌다. `dense`(믹스 4열, 카드 `p-2`)이면 틀의 안쪽 여백을 8px로 줄인다.
  *   기본값 `corner`는 이전과 같다(«−»는 계속 우상단).
  */
-export type SlotCircleIcon = 'minus' | 'plus'
-export type SlotCirclePosition = 'corner' | 'center'
+type SlotCircleIcon = 'minus' | 'plus'
+type SlotCirclePosition = 'corner' | 'center'
 
 interface SlotCircleButtonProps {
   icon: SlotCircleIcon

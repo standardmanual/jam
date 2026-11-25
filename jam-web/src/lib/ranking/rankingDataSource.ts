@@ -29,7 +29,7 @@ import type {
   RankingModeRow,
 } from '@/types/database'
 
-export interface RankingBoardEntry {
+interface RankingBoardEntry {
   userId: string
   displayName: string
   username: string | null

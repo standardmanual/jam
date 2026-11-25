@@ -50,7 +50,7 @@ const DAY_MS = 24 * HOUR_MS
 const REMAINING_WINDOW_MS = 7 * DAY_MS
 
 /** 필수 정보 줄은 최대 2개다(확정 설계 2절). */
-export const MAX_FACTS = 2
+const MAX_FACTS = 2
 
 /** `buildFacts`가 자원별로 읽는 값. 줄에 쓸 값이 없으면(생략·null) 그 줄을 만들지 않는다. */
 export interface CardFactValues {
@@ -180,7 +180,7 @@ export function buildFacts(resource: CardResource, values: CardFactValues, now: 
  * 템플릿은 GA `today_card_click`의 `template_type`으로 보낸다(전환 전 옛 렌더러와 같은 값을 보내려고 실었다, 티켓 20261001_1458).
  * 그려진 유형(`feedType`)은 GA `today_card_click`의 `shape` 파라미터 값이 된다 — 파라미터 이름은 그대로이고 값이 옛 모양 이름에서 새 유형 이름으로 바뀐다(티켓 20261122_1101).
  */
-export interface CardViewTracking {
+interface CardViewTracking {
   cardId: string
   contentTypeId: string | null
   templateType: TodayCardTemplateType

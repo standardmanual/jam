@@ -12,11 +12,11 @@ export type ShareToast = (message: string, type?: ToastType) => void
 /** 공유·저장 파일명 접미사 */
 const FILENAME_SUFFIX = 'badge'
 
-export function shareFileName(badgeName: string): string {
+function shareFileName(badgeName: string): string {
   return `${badgeName}-${FILENAME_SUFFIX}.png`
 }
 
-export function makeShareFile(blob: Blob, badgeName: string): File {
+function makeShareFile(blob: Blob, badgeName: string): File {
   return new File([blob], shareFileName(badgeName), { type: 'image/png' })
 }
 
@@ -38,7 +38,7 @@ export function canShareFile(blob: Blob, badgeName: string): boolean {
  * iPadOS 13+는 데스크톱 Safari와 동일한 UA 문자열을 쓰므로 UA 정규식만으로는 iPad를 못 잡는다 —
  * `MacIntel` + 멀티터치 여부로 보정한다(데스크톱 Mac은 마우스 전용이라 maxTouchPoints가 0~1).
  */
-export function isIOS(): boolean {
+function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false
   if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1

@@ -29,7 +29,7 @@ import { loadScheduleTargets, type ScheduleTargets } from './scheduleTargets'
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 /** 매시 cron 한 번에 예약을 처리하는 시간 예산(ms). Vercel 함수 제한(`maxDuration` 60초)보다 짧게 잡는다 — 임시값 */
-export const AMBIENT_SCHEDULE_RUN_BUDGET_MS = 40_000
+const AMBIENT_SCHEDULE_RUN_BUDGET_MS = 40_000
 
 export interface AmbientSpecRunOptions {
   /** 이번 실행의 기준 시각 — 대상 판정(노출 중·유효기간)의 「지금」이다 */
@@ -57,7 +57,7 @@ export interface AmbientSpecRunOutcome {
 }
 
 /** 예약 행의 `result` 칸에 남기는 요약 */
-export type ScheduleResultSummary = {
+type ScheduleResultSummary = {
   requested: number
   spawned: number
   failed: number
@@ -82,7 +82,7 @@ function requestedCount(spec: AmbientDropScheduleSpec): number {
 
 const NO_EXCLUDED: ScheduleTargets['excluded'] = { pois: [], badges: [], collections: [] }
 
-export function summarizeSpecRun(outcome: AmbientSpecRunOutcome): ScheduleResultSummary {
+function summarizeSpecRun(outcome: AmbientSpecRunOutcome): ScheduleResultSummary {
   return {
     requested: outcome.requested,
     spawned: outcome.spawned,

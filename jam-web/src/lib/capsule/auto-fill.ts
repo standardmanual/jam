@@ -47,7 +47,7 @@ export interface CapsuleAutoFillOptions {
   skipRiseBadgeEvaluation?: boolean
 }
 
-export type CapsuleAutoFillStop =
+type CapsuleAutoFillStop =
   /** 지갑 잼을 다 써서 지금 캡슐이 가득 차지 못했다(정상 종료) */
   | 'wallet_empty'
   /** 대기 보상이 있어 더 채우거나 열지 않는다(방금 저장했거나 이미 있었다). 지갑 잼은 그대로 남는다 */

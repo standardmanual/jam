@@ -6,7 +6,7 @@
  */
 
 /** 못 여는 까닭. 다 채우지 못했거나(`not_full`), 인벤토리 빈칸이 나올 수 있는 최대 개수보다 적다(`no_free_slots`). */
-export type CapsuleNotOpenableReason = 'not_full' | 'no_free_slots'
+type CapsuleNotOpenableReason = 'not_full' | 'no_free_slots'
 
 /** 아이템 배지 등급 — 이 파일은 아무것도 가져오지 않아 `BadgeRarity`를 가져오지 않고 같은 값을 적는다 */
 export type CapsuleRarity = 'common' | 'rare' | 'epic' | 'mystic'
@@ -98,7 +98,7 @@ export interface CapsuleErrorResponse {
 }
 
 /** 열린 채 나온 개체 — 이름·그림·등급·일련번호를 싣는다 */
-export interface CapsuleOpenedOpenItem {
+interface CapsuleOpenedOpenItem {
   locked: false
   inventoryItemId: string
   badgeId: string
@@ -109,7 +109,7 @@ export interface CapsuleOpenedOpenItem {
 }
 
 /** 잠긴 채 나온 개체 — 운영 로직 7.3절에 따라 이름·그림·일련번호 없이 등급과 여는 데 필요한 양만 싣는다 */
-export interface CapsuleOpenedLockedItem {
+interface CapsuleOpenedLockedItem {
   locked: true
   inventoryItemId: string
   rarity: CapsuleRarity

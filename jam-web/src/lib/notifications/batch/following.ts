@@ -24,7 +24,7 @@
 import { scopedGroupKey } from '@/lib/notifications/groupKey'
 import type { BadgeRarity } from '@/types/database'
 import {
-  FOLLOWING_WINDOW_MS,
+  DAY_MS,
   fetchAllRows,
   fetchAllRowsIn,
   type BatchContext,
@@ -63,7 +63,7 @@ export const FOLLOWING_DAILY_CAP = 2
  *
  * 사다리가 길어져도(무한레벨) 이 절대 기준은 그대로 유효하다 — 위 칸일수록 더 희소하다.
  */
-export const FOLLOWING_LEVEL_THRESHOLD = 6
+const FOLLOWING_LEVEL_THRESHOLD = 6
 
 /** ⑥ 안에서만 쓰는 정렬 우선순위 (낮을수록 먼저). PRD §9의 "희귀도 단독" 해석 */
 const FOLLOWING_PRIORITY = {
@@ -251,7 +251,7 @@ function toDraft(c: FollowingCandidate, today: string, more = 0): NotificationDr
  */
 export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt, today } = ctx
-  const since = new Date(startedAt.getTime() - FOLLOWING_WINDOW_MS).toISOString()
+  const since = new Date(startedAt.getTime() - DAY_MS).toISOString()
 
   const follows = await fetchAllRows<{ follower_id: string; following_id: string }>(
     'user_follows',

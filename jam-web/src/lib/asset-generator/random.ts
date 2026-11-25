@@ -23,12 +23,12 @@ export function mulberry32(seed: number): RandomSource {
 }
 
 /** [a, b) 구간의 실수. rnd를 주지 않으면 Math.random을 쓴다(전체 랜덤 버튼과 동일한 비결정적 동작). */
-export function randRange(a: number, b: number, rnd: RandomSource = Math.random): number {
+function randRange(a: number, b: number, rnd: RandomSource = Math.random): number {
   return a + rnd() * (b - a);
 }
 
 /** [a, b] 구간을 step 단위로 끊은 정수 중 하나. */
-export function randInt(a: number, b: number, step = 1, rnd: RandomSource = Math.random): number {
+function randInt(a: number, b: number, step = 1, rnd: RandomSource = Math.random): number {
   return a + Math.floor(rnd() * (Math.floor((b - a) / step) + 1)) * step;
 }
 
@@ -57,7 +57,7 @@ function hexToRgb(hex: string): [number, number, number] {
  * 배경(=시작 색)과 끝 색이 충분히 구분되는 조합이 나올 때까지 몇 번 다시 뽑는다.
  * 반환: [배경색, 끝색]
  */
-export function randomPalette(rnd: RandomSource = Math.random): [string, string] {
+function randomPalette(rnd: RandomSource = Math.random): [string, string] {
   let best: [string, string] | null = null;
   let bestDist = -1;
   for (let i = 0; i < 12; i++) {
@@ -103,7 +103,7 @@ const GRADIENT_DIRECTIONS: readonly GradientDirection[] = ['h', 'v', 'r'];
  * 전체 랜덤 규칙 (프로토타입 randomBtn 클릭 처리, 626줄과 값 범위 동일).
  * 수동 경로 전체 랜덤 버튼과 자동 경로(§8, 프리셋 대상 유형의 랜덤 규칙)가 함께 쓴다.
  */
-export function randomizeRibbonConfig(rnd: RandomSource = Math.random): RandomRibbonValues {
+function randomizeRibbonConfig(rnd: RandomSource = Math.random): RandomRibbonValues {
   const [bg, end] = randomPalette(rnd);
   return {
     backgroundColor: bg,

@@ -3,7 +3,7 @@
 
 const BATCH_SIZE = 6
 
-export function loadOne(src: string): Promise<void> {
+function loadOne(src: string): Promise<void> {
   return new Promise((resolve) => {
     const img = new Image()
     img.fetchPriority = 'low'

@@ -89,7 +89,7 @@ function pointToSegmentDistanceMeters(
  * @param poiLng POI 경도
  * @param radiusMeters POI 반경 (미터)
  */
-export function isRouteNearPoi(
+function isRouteNearPoi(
   route: Array<[number, number]>,
   poiLat: number,
   poiLng: number,

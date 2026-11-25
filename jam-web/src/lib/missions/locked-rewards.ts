@@ -22,7 +22,7 @@ export interface RewardBadgeSourceRow {
 }
 
 /** 화면에 이름·그림을 보여도 되는 열린 보상 배지 */
-export type OpenRewardBadge<R extends RewardBadgeSourceRow = RewardBadgeSourceRow> = Pick<R, 'id' | 'name' | 'image_url' | 'rarity'>
+type OpenRewardBadge<R extends RewardBadgeSourceRow = RewardBadgeSourceRow> = Pick<R, 'id' | 'name' | 'image_url' | 'rarity'>
 
 export interface SplitRewardBadgesResult<R extends RewardBadgeSourceRow = RewardBadgeSourceRow> {
   /** 열린 보상 행 — 이름·그림·id·등급만 싣는다(숨김·잠김 칸은 싣지 않는다) */

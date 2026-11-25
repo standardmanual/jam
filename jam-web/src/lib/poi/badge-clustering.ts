@@ -33,7 +33,7 @@ export interface PoiBadgeCluster {
  *
  * 예) zoom 13 → 약 0.044°(≈4.9km), zoom 10 → 약 0.352°, zoom 6 → 5.625°
  */
-export function gridCellSizeForZoom(zoom: number): number {
+function gridCellSizeForZoom(zoom: number): number {
   const safeZoom = Number.isFinite(zoom) ? zoom : CLUSTER_ZOOM_THRESHOLD
   // 줌 범위를 벗어난 비정상 값이 들어와도 Math.pow가 폭주하지 않도록 클램프
   const clampedZoom = Math.min(22, Math.max(0, safeZoom))

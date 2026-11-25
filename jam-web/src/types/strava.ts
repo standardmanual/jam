@@ -4,47 +4,12 @@
  * 주의: any 사용 금지 — 모든 필드 명시적으로 정의
  */
 
-// =========================================
-// Strava OAuth 토큰 응답
-// =========================================
-export interface StravaTokenResponse {
-  token_type: string
-  expires_at: number   // Unix timestamp
-  expires_in: number   // 초 단위
-  refresh_token: string
-  access_token: string
-  athlete: StravaAthlete
-}
-
 export interface StravaRefreshResponse {
   token_type: string
   access_token: string
   expires_at: number
   expires_in: number
   refresh_token: string
-}
-
-// =========================================
-// Strava 운동선수 (Athlete) 정보
-// =========================================
-export interface StravaAthlete {
-  id: number
-  username: string | null
-  resource_state: 1 | 2 | 3
-  firstname: string
-  lastname: string
-  city: string | null
-  state: string | null
-  country: string | null
-  sex: 'M' | 'F' | null
-  premium: boolean
-  created_at: string  // ISO 8601
-  updated_at: string  // ISO 8601
-  badge_type_id: number
-  profile_medium: string  // URL
-  profile: string         // URL
-  friend: null
-  follower: null
 }
 
 // =========================================
@@ -115,7 +80,7 @@ export interface StravaSummaryActivity {
  * 단일 활동 상세 응답의 구간 분할(1km / 1mile 단위).
  * 목록(Summary) 응답에는 **오지 않는다** — 상세 조회에서만 채워진다.
  */
-export interface StravaSplit {
+interface StravaSplit {
   distance: number            // 미터
   elapsed_time: number        // 초
   elevation_difference: number | null  // 미터
@@ -126,37 +91,8 @@ export interface StravaSplit {
   pace_zone?: number
 }
 
-/**
- * `GET /activities/{id}` 응답 (Detailed). Summary의 모든 필드를 포함하고 상세 전용 필드가 더 붙는다.
- *
- * `getActivityById()`가 이 엔드포인트를 호출하면서도 반환 타입을 `StravaSummaryActivity`로
- * 잘못 좁혀 두고 있었다(티켓 20260905_0029). 그 탓에 상세 전용 필드가 타입에 아예 존재하지
- * 않아 컴파일 단계에서 접근이 막혔다.
- *
- * ⚠️ `splits_metric`은 선언만 해 둔다 — **수집·저장하지 않는다.** 활동 1건당 상세 호출이
- * 1회 더 들어 백필 비용이 러닝만 697회다. `negative_split` 조건은 별도 티켓으로 분리됐고
- * 그때까지 레지스트리에서 `evaluation: 'pending'`으로 남아 fail-closed가 막는다.
- */
-export interface StravaDetailedActivity extends Omit<StravaSummaryActivity, 'resource_state'> {
-  resource_state: 3
-  description: string | null
-  calories?: number
-  /** 1km 단위 구간 분할 — `negative_split` 조건의 원천 (현재 미수집) */
-  splits_metric?: StravaSplit[]
-  /** 1mile 단위 구간 분할 */
-  splits_standard?: StravaSplit[]
-  /** 기록 기기명. 목록 응답에는 없다 */
-  device_name?: string | null
-  embed_token?: string
-  photos?: unknown
-  gear?: unknown
-  laps?: unknown[]
-  best_efforts?: unknown[]
-  segment_efforts?: unknown[]
-}
-
 // Strava 활동 타입 (JAM!에서 사용하는 주요 타입)
-export type StravaActivityType =
+type StravaActivityType =
   | 'Ride'
   | 'Run'
   | 'Walk'
@@ -174,7 +110,7 @@ export type StravaActivityType =
 //       트레일 러닝 구분은 sport_type을 우선 참조해야 하므로 getJamActivityType()를 사용할 것.
 // 가상 종목(VirtualRide·VirtualRun 등)은 인정 활동이 아니라 두 표에 넣지 않는다(티켓 20261017_1421,
 // 운영 로직 3.3절) — 판정은 getJamActivityType()이 `isVirtualStravaActivity`로 먼저 거른다.
-export const STRAVA_TYPE_TO_JAM: Record<string, string> = {
+const STRAVA_TYPE_TO_JAM: Record<string, string> = {
   Ride: 'cycling',
   EBikeRide: 'cycling',
   Run: 'running',
@@ -185,7 +121,7 @@ export const STRAVA_TYPE_TO_JAM: Record<string, string> = {
 // JAM! 활동 종류 ↔ Strava sport_type 매핑 (더 세분화된 필드, type보다 우선)
 // 전기자전거(EBikeRide)·전기 산악자전거(EMountainBikeRide)는 지금은 자전거 값으로 매핑한다.
 // 자전거와 따로 두고 «가벼움»으로 계산하는 일은 JAM 2.0 잼 강도 티켓(2-3)이 정한다.
-export const STRAVA_SPORT_TYPE_TO_JAM: Record<string, string> = {
+const STRAVA_SPORT_TYPE_TO_JAM: Record<string, string> = {
   TrailRun: 'trail_running',
   TrailRunning: 'trail_running',
   Run: 'running',
@@ -227,23 +163,10 @@ export function getJamActivityType(activity: {
 // =========================================
 // Strava 맵 (요약 폴리라인)
 // =========================================
-export interface StravaMap {
+interface StravaMap {
   id: string
   summary_polyline: string | null
   resource_state: number
-}
-
-// =========================================
-// Strava Webhook 이벤트 (Phase 2+ 준비)
-// =========================================
-export interface StravaWebhookEvent {
-  object_type: 'activity' | 'athlete'
-  object_id: number
-  aspect_type: 'create' | 'update' | 'delete'
-  updates: Record<string, string>
-  owner_id: number
-  subscription_id: number
-  event_time: number  // Unix timestamp
 }
 
 // =========================================

@@ -82,7 +82,7 @@ export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefCont
 }
 
 /** 기사 본문 CTA 버튼이 어떤 대상으로 이어지는지 — 라벨 선택에 쓴다 */
-export type ArticleCtaKind = 'collection' | 'mission' | 'direct'
+type ArticleCtaKind = 'collection' | 'mission' | 'direct'
 
 export interface ArticleCtaTarget {
   href: string

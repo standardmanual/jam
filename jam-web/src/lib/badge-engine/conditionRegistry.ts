@@ -40,7 +40,7 @@ import { formatPaceSecPerKm } from '@/types/strava'
  * - `filter`: 후보 활동군을 좁히기만 한다. 단독으로는 판정에 관여하지 않는다
  * - `meta`: 발급 판정에 관여하지 않는 표시·안내용 메타데이터
  */
-export type ConditionRole = 'measurable' | 'filter' | 'meta'
+type ConditionRole = 'measurable' | 'filter' | 'meta'
 
 /**
  * 이 필드를 **누가 평가하는가**. 셋을 구분하는 이유는 `boolean` 하나가 세 가지 뜻을
@@ -62,10 +62,10 @@ export type ConditionRole = 'measurable' | 'filter' | 'meta'
  *   `route`도 여기다 — 타입·스키마·DB CHECK에만 있고 엔진에 참조가 0건이다(실측 2026-09-05).
  *   쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다
  */
-export type ConditionEvaluation = 'engine' | 'external' | 'pending'
+type ConditionEvaluation = 'engine' | 'external' | 'pending'
 
 /** 어드민 입력 UI의 컨트롤 종류 */
-export type ConditionInputType =
+type ConditionInputType =
   | 'number' // 소수 허용 수치
   | 'integer' // 정수 수치
   | 'boolean' // 체크박스
@@ -81,7 +81,7 @@ export type ConditionInputType =
  * 진행률·«아쉬움 줄» 표시가 부등호 방향을 뒤집는 근거다(`badgeProgress.ts`의 LOWER_IS_BETTER).
  * 임계값 비교가 아닌 필터·패턴 필드는 `null`.
  */
-export type ConditionDirection = 'higher' | 'lower' | null
+type ConditionDirection = 'higher' | 'lower' | null
 
 /** 어드민 조건 빌더 폼의 원시 입력값 묶음(문자열/체크박스) */
 export type ConditionFormValues = Record<string, string | boolean>
@@ -197,7 +197,7 @@ export const CONDITION_FORM_SECTION_DESCRIPTION: Record<ConditionFormSection, st
  * 어드민 폼이 렌더 시점에 그 값을 그대로 읽는다(레지스트리 안에서도 값을 두 번 적지 않는다).
  * 단위는 라벨 괄호가 아니라 **입력칸 안쪽 오른쪽 접미사**로 그린다(티켓 20260911_0901).
  */
-export interface ConditionFormControl {
+interface ConditionFormControl {
   /** `ConditionFormFields`의 state 키 */
   field: string
   kind: 'number' | 'text' | 'time' | 'checkbox' | 'select'
@@ -398,7 +398,7 @@ function field<K extends keyof BadgeCondition>(meta: ConditionFieldMeta<K>): Con
 // ── 표시 헬퍼 ────────────────────────────────────────────────────────────
 
 /** 계절 값의 압축 표기 — BadgeDetail·BadgesTable에 각각 복제돼 있던 것을 여기로 모았다 */
-export const SEASON_SHORT: Record<string, string> = {
+const SEASON_SHORT: Record<string, string> = {
   spring: '봄',
   summer: '여름',
   fall: '가을',
@@ -407,7 +407,7 @@ export const SEASON_SHORT: Record<string, string> = {
 }
 
 /** 요일 값의 1글자 표기 — 자리가 좁은 어드민 목록 전용 */
-export const DAY_OF_WEEK_SHORT: Record<string, string> = {
+const DAY_OF_WEEK_SHORT: Record<string, string> = {
   sunday: '일',
   monday: '월',
   tuesday: '화',
@@ -2601,11 +2601,6 @@ export const MEASURABLE_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIEL
   (f) => f.role === 'measurable'
 ).map((f) => f.key)
 
-/** 후보 활동군을 좁히기만 하는 필터 전용 필드 — 단독으로는 pass/fail을 만들지 않는다 */
-export const FILTER_ONLY_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter(
-  (f) => f.role === 'filter'
-).map((f) => f.key)
-
 /** 발급 판정에 관여하지 않는 메타데이터 필드 */
 export const CONDITION_META_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter((f) => f.role === 'meta').map(
   (f) => f.key
@@ -2713,11 +2708,6 @@ export function conditionFormEntriesOf(section: ConditionFormSection): Condition
     .sort((a, b) => (a.order === b.order ? a.index - b.index : a.order - b.order))
     .map((x) => x.entry)
 }
-
-/** 입력이 하나라도 있는 섹션만, 선언 순서대로 */
-export const CONDITION_FORM_SECTIONS_IN_USE: readonly ConditionFormSection[] = CONDITION_FORM_SECTIONS.filter(
-  (s) => CONDITION_FORM_ENTRIES.some((e) => e.section === s)
-)
 
 /**
  * 조건 키가 속한 폼 그룹. 어드민 조건 폼의 요약 칩·배지 상세의 그룹별 표시가 쓴다.
@@ -2844,7 +2834,7 @@ export type BlockingConditionKeys = {
  * 이미 발급된 배지가 미발급으로 뒤집힐 수 있다(선행 티켓 20260905_0028이 못 박은 경계).
  * 새로 평가가 열리는 필드만 처음부터 강제한다 — 실적이 0건이라 회귀가 없다.
  */
-export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
+const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   'rest_after_streak',
   'rest_after_long',
   'return_gap_days',

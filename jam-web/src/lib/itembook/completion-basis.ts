@@ -69,7 +69,7 @@ export interface CompletionBadgeInput {
   deleted_at?: string | null
 }
 
-export interface TierCompletion {
+interface TierCompletion {
   /** 그 등급의 분모 배지 id (드랍 제외 적용, 전부 제외이면 등록 배지 전체) */
   denomIds: string[]
   /** 분모 배지 중 채운 id */

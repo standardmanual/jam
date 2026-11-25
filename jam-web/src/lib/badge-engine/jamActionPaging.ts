@@ -10,9 +10,9 @@
  */
 
 /** 한 페이지 행 수 — PostgREST 기본 응답 상한(1,000행)과 같다 (`itembook/checker.ts`의 페이징과 같은 선례) */
-export const PAGE_SIZE = 1000
+const PAGE_SIZE = 1000
 /** 이 페이지 수를 넘겨 행이 더 있으면 오류 — 한 유저의 대상 행이 이만큼 쌓이면 RPC로 옮길 때다 */
-export const MAX_PAGES = 30
+const MAX_PAGES = 30
 
 export type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message?: string } | null }>
 

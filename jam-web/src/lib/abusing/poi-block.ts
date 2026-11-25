@@ -73,7 +73,7 @@ export async function unblockPoi(userId: string, poiId: string): Promise<void> {
   }
 }
 
-export type PoiBlockRecord = Database['public']['Tables']['poi_blocks']['Row']
+type PoiBlockRecord = Database['public']['Tables']['poi_blocks']['Row']
 
 export interface ReleasePoiBlocksResult {
   released: PoiBlockRecord[]

@@ -15,7 +15,7 @@
 import type { NormalizedActivity } from '@/types/strava'
 import { DEFAULT_POLICY, effectiveVehicleSpeedFilterKmh, type AbusingPolicy } from './policy'
 
-export type VehicleFilterReason = 'speed' | 'transit_ratio' | 'walk_avg'
+type VehicleFilterReason = 'speed' | 'transit_ratio' | 'walk_avg'
 
 export interface VehicleJudgement {
   filtered: boolean

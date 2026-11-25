@@ -41,7 +41,7 @@ export interface ClaimPendingOptions {
 }
 
 /** 받은 보류 하나 */
-export interface ClaimedCapsule {
+interface ClaimedCapsule {
   /** 지운 보류 줄의 id */
   pendingId: string
   /** 열기 기록 id(`capsule_opens.id`) */
@@ -52,7 +52,7 @@ export interface ClaimedCapsule {
   items: CapsuleOpenedItem[]
 }
 
-export type ClaimPendingStop =
+type ClaimPendingStop =
   /** 받을 수 있는 보류를 모두 받았다(받을 보류가 처음부터 없었던 경우 포함) */
   | 'none'
   /** 인벤토리 빈칸이 모자라 멈췄다. 못 받은 보상은 보류로 남는다 */

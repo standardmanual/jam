@@ -16,7 +16,7 @@ import type { BadgeRarity } from '@/types/database'
 // (장착 시트는 행 클릭이 곧 API 호출, 드랍 시트는 행 클릭이 로컬 선택일 뿐이다).
 
 /** 일련번호 표시 포맷 — 서비스 전역 공통(4자리 prefix + 6자리 zero-pad). */
-export function formatSerial(item: { serial_prefix: string | null; serial_number: number }): string {
+function formatSerial(item: { serial_prefix: string | null; serial_number: number }): string {
   return `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
 }
 
@@ -27,26 +27,11 @@ export function formatSerial(item: { serial_prefix: string | null; serial_number
  * 병합하지 않고 이 파일 안에서 독립적으로 둔다 — 병합 시 한쪽을 고치면 다른 쪽 회귀
  * 위험이 생긴다(20260908_0040 회귀 확인 포인트).
  */
-export function isExpiringSoon(expiresAt: string | null | undefined): boolean {
+function isExpiringSoon(expiresAt: string | null | undefined): boolean {
   if (!expiresAt) return false
   const diff = new Date(expiresAt).getTime() - Date.now()
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
-
-/**
- * 선택 시트 행의 `ItemSerialCode` 높이(px). **행 폭 안에 들어가는지가 이 값의 제약이다.**
- *
- * 값의 근거(티켓 20261107_1946, 320px 뷰포트에서 `offsetWidth` 실측. 글꼴은 Noto Sans KR 대신 시스템 글꼴 폴백):
- *   - `ItemSerialCode` 총 폭 = height × 약 5.31 → height 40이면 212.4px, height 28이면 약 149px
- *   - 시트 좌우 패딩은 24씩이라 행 폭은 272px. `ListRow`의 본문 폭(번호가 쓸 수 있는 폭)은 상태마다 다르다
- *       기본 238 / 선택(체크 아이콘이 32px 차지) 206 / 선택 + «처리 중» trail 159
- *     옛 `ListRowCard`는 238 / 238 / 187이었다(선택 + «처리 중»은 40에서도 24.9px 넘쳤다)
- *   - 가장 좁은 상태(선택 + «처리 중», 159px)에 들어가야 하므로 28로 낮췄다(약 149px, 10px 여유).
- *     행을 고르는 순간 번호 크기가 바뀌면 안 되므로 상태와 상관없이 한 값을 쓴다
- *   - 40 아래는 `ItemSerialCode`의 자간 보간 하한(fontSize 20 = height 40)을 벗어나 자간이 +8%로 고정된다.
- *     캘리브레이션 범위 밖이라는 뜻이며, 글자 크기는 14px이다
- */
-export const SELECT_SERIAL_HEIGHT_PX = 28
 
 export interface ItemCandidate {
   id: string

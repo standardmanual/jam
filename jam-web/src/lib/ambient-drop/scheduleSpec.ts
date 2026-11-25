@@ -50,11 +50,11 @@ export const DROP_SCHEDULE_RESOURCE_KEYS = [
   'total_count',
 ] as const
 
-export type AmbientDropPoiSpec =
+type AmbientDropPoiSpec =
   | { poiMode: 'list'; poiIds: string[]; perPoiCount: number }
   | { poiMode: 'category'; poiCategory: string | null; totalCount: number }
 
-export type AmbientDropItemSpec =
+type AmbientDropItemSpec =
   | { itemMode: 'items'; badgeIds: string[] }
   | { itemMode: 'collections'; collectionIds: string[] }
 
@@ -144,7 +144,7 @@ export function parseScheduledAt(
 }
 
 /** KST로 옮겼을 때 분·초·밀리초가 0인가. KST는 UTC+9 고정이라 시각 경계가 UTC 정시와 같다 */
-export function isKstHour(at: Date): boolean {
+function isKstHour(at: Date): boolean {
   return (at.getTime() + KST_OFFSET_MS) % HOUR_MS === 0
 }
 

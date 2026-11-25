@@ -32,7 +32,7 @@ import { fetchPendingPayload, isExactChoice, submitChoice, toggleChoice, type Pi
  * `@/components/ui/Toast`·`next/navigation`뿐이다. `@/lib/supabase/server`·`next/headers`·`lib/strava/pending-items.ts`를 가져오지 않는다.
  */
 
-export type { PickResult }
+
 
 interface Props {
   open: boolean

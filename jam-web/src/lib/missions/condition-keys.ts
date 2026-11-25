@@ -180,7 +180,7 @@ export const ENGINE_DELEGATED_DB_CONDITION_KEY_LIST = [
   'checkin_badge_count',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
-export type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number]
+type EngineDelegatedDbConditionKey = (typeof ENGINE_DELEGATED_DB_CONDITION_KEY_LIST)[number]
 
 /**
  * DB를 읽어 세는 **미션 전용** 키 (티켓 20261019_1445 3-A) — `engine_condition` 전용.
@@ -199,7 +199,7 @@ export const MISSION_ONLY_DB_CONDITION_KEY_LIST = [
   'sync_count',
 ] as const satisfies readonly MissionOnlyConditionKey[]
 
-export type MissionOnlyDbConditionKey = (typeof MISSION_ONLY_DB_CONDITION_KEY_LIST)[number]
+type MissionOnlyDbConditionKey = (typeof MISSION_ONLY_DB_CONDITION_KEY_LIST)[number]
 
 /** DB를 읽어 세는 모든 키 = 배지 조건과 이름이 같은 DB 키 + 미션 전용 DB 키. 읽기 표(`dbMetrics.ts`)·판정(`engineCondition.ts`)이 이 합집합을 쓴다 */
 export const MISSION_DB_CONDITION_KEY_LIST = [
@@ -724,14 +724,14 @@ export const SYNC_COUNT_RANGE = { min: 1, max: 1000, step: 1 } as const
 const JAM_PERIOD_EARNED_LABEL = { label: '기간 동안 모은 잼', unit: '잼' } as const
 const SYNC_COUNT_LABEL = { label: '동기화 횟수', unit: '회' } as const
 
-export function rangeText(min: number | undefined, max: number | undefined, unit: string): string {
+function rangeText(min: number | undefined, max: number | undefined, unit: string): string {
   if (min !== undefined && max !== undefined) return `${min}~${max}${unit}`
   if (min !== undefined) return `${min}${unit} 이상`
   return `${max}${unit} 이하`
 }
 
 /** 범위를 검사할 값 하나 — 라벨·단위·허용 범위와 입력된 값. `integerOnly`면 소수도 막는다 */
-export interface RangeSubject {
+interface RangeSubject {
   value: unknown
   label: string
   unit: string
@@ -741,7 +741,7 @@ export interface RangeSubject {
 }
 
 /** 범위 검사 대상을 입력된 조건에서 뽑는다. 수치 위임 키 9개는 레지스트리 정의, DB 기록 키는 레지스트리(19개 중 17개)·객체형 안쪽 `count`·미션 전용 정의를 따른다 */
-export function rangeSubjects(record: Record<string, unknown>): RangeSubject[] {
+function rangeSubjects(record: Record<string, unknown>): RangeSubject[] {
   const subjects: RangeSubject[] = []
   for (const key of MISSION_RANGE_CHECKED_KEYS) {
     const meta = getConditionField(key)

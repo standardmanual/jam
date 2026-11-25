@@ -98,7 +98,7 @@ export interface ResolvedCollection {
   item_badges?: { name: string; image_url: string }[]
 }
 
-export { COLLECTION_BURST_BADGE_LIMIT }
+
 
 /**
  * 레시피 공개 카드(`recipe_reveal`)의 표시 데이터에 필요한 레시피 값 (티켓 20261006_1217, 1500 ⑫ 사용자 결정 Q3).
@@ -109,7 +109,7 @@ export { COLLECTION_BURST_BADGE_LIMIT }
  */
 export type ResolvedRecipe = ResolvedScheduledRecipe | ResolvedReleasedRecipe
 
-export interface ResolvedScheduledRecipe {
+interface ResolvedScheduledRecipe {
   state: 'scheduled'
   /** 재료 수 = 슬롯 수 */
   ingredient_count: number
@@ -117,7 +117,7 @@ export interface ResolvedScheduledRecipe {
   release_at: string
 }
 
-export interface ResolvedReleasedRecipe {
+interface ResolvedReleasedRecipe {
   state: 'released'
   /** 재료 수 = 슬롯 수. 후보가 전부 삭제돼 타일을 못 그린 슬롯도 센다 */
   ingredient_count: number
@@ -382,7 +382,7 @@ const MISSION_CONDITION_NUMBER_KEYS = ['distance_km', 'count', 'streak_days', 'd
  * 숫자가 아니거나 0 이하인 값, 문자가 아닌 종목은 버리고, 남는 칸이 없으면 null이다(체크인 미션의 `poi_id`처럼 값이 없는 조건).
  * 나머지 칸(장소·판정 옵션 등)은 카드에 싣지 않는다.
  */
-export function pickMissionConditionValues(raw: unknown): MissionConditionValues | null {
+function pickMissionConditionValues(raw: unknown): MissionConditionValues | null {
   if (!raw || typeof raw !== 'object') return null
   const source = raw as Record<string, unknown>
   const picked: Record<string, unknown> = {}

@@ -8,16 +8,16 @@ import type { SpecialDay } from './holidays'
 export type SpecialDayTag = 'holiday_today' | 'seasonal_today' | 'anniversary_today'
 
 /** 쉬는 날이지만 holiday_today에서 뺀다 (이름에 포함되면 제외) */
-export const HOLIDAY_EXCLUDED_NAMES: readonly string[] = ['전국동시지방선거', '제헌절']
+const HOLIDAY_EXCLUDED_NAMES: readonly string[] = ['전국동시지방선거', '제헌절']
 
 /** seasonal_today: 24절기 8개 + 잡절 3개 (잡절은 계절 풍습이라 이 태그에 합쳤다) */
-export const SEASONAL_ALLOWED_NAMES: readonly string[] = [
+const SEASONAL_ALLOWED_NAMES: readonly string[] = [
   '입춘', '경칩', '대서', '입추', '처서', '입동', '대설', '동지',
   '정월대보름', '말복', '칠석',
 ]
 
 /** anniversary_today: 기념일 10개 (공백을 없앤 표기로 비교한다) */
-export const ANNIVERSARY_ALLOWED_NAMES: readonly string[] = [
+const ANNIVERSARY_ALLOWED_NAMES: readonly string[] = [
   '식목일', '근로자의날', '어린이날', '어버이날', '부부의날',
   '환경의날', '섬의날', '푸른하늘의날', '청년의날', '스포츠의날',
 ]

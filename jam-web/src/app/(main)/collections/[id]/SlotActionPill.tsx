@@ -11,7 +11,7 @@ import type { MouseEvent, ReactNode } from 'react'
  * 색 클래스를 호출부에서 덮어쓰지 않는다. tone으로 안 풀리는 요구는 tone을 늘린다.
  * `--default` 면은 흰 카드(--surface) 위 전제다. Card tone=tint 위에 두면 같은 색이라 알약이 사라진다.
  */
-export type SlotActionPillTone = 'accent' | 'neutral'
+type SlotActionPillTone = 'accent' | 'neutral'
 
 const TONE_CLASS: Record<SlotActionPillTone, string> = {
   accent: 'bg-accent text-accent-foreground',

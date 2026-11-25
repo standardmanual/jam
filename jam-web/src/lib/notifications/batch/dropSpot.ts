@@ -25,7 +25,7 @@ import {
 } from './shared'
 
 /** 집계 창 — 지난 7일(KST 날짜 기준) */
-export const DROP_SPOT_WINDOW_DAYS = 7
+const DROP_SPOT_WINDOW_DAYS = 7
 
 export interface DropSpotInput {
   /** 내 활성 드랍이 있는 (드랍한 사람, POI) 쌍 */

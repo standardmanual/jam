@@ -24,22 +24,11 @@ var AssetGeneratorCore = (() => {
   // jam-web/src/lib/asset-generator/index.ts
   var index_exports = {};
   __export(index_exports, {
-    CENTER_MARGIN: () => CENTER_MARGIN,
-    CENTER_MIN: () => CENTER_MIN,
-    HARMONICS: () => HARMONICS,
-    IRR_HI: () => IRR_HI,
-    IRR_LO: () => IRR_LO,
-    LOOP_CHANCE: () => LOOP_CHANCE,
-    LOOP_WIDTH_MAX: () => LOOP_WIDTH_MAX,
-    LOOP_WIDTH_MIN: () => LOOP_WIDTH_MIN,
-    OUT_FRACTION: () => OUT_FRACTION,
     PATH_SAMPLE_POINTS: () => PATH_SAMPLE_POINTS,
     PRESET_TARGET_TYPES: () => PRESET_TARGET_TYPES,
     PRESET_TARGET_TYPE_LABELS: () => PRESET_TARGET_TYPE_LABELS,
-    RADIUS_MIN: () => RADIUS_MIN,
     buildPath: () => buildPath,
     buildStamp: () => buildStamp,
-    candidateStats: () => candidateStats,
     choice: () => choice,
     deriveRibbonFromSeed: () => deriveRibbonFromSeed,
     deserializePresetLayers: () => deserializePresetLayers,
@@ -51,20 +40,14 @@ var AssetGeneratorCore = (() => {
     getLayerKeys: () => getLayerKeys,
     irrValue: () => irrValue,
     isPresetTargetType: () => isPresetTargetType,
-    makeCandidate: () => makeCandidate,
     mulberry32: () => mulberry32,
     parseLayerKey: () => parseLayerKey,
     pickCandidate: () => pickCandidate,
     posAt: () => posAt,
-    randInt: () => randInt,
-    randRange: () => randRange,
-    randomPalette: () => randomPalette,
-    randomizeRibbonConfig: () => randomizeRibbonConfig,
     sampleFitted: () => sampleFitted,
     serializePresetLayers: () => serializePresetLayers,
     toAssetPreset: () => toAssetPreset,
-    toAssetPresetSummary: () => toAssetPresetSummary,
-    unitCurve: () => unitCurve
+    toAssetPresetSummary: () => toAssetPresetSummary
   });
 
   // jam-web/src/lib/asset-generator/layerKeys.ts

@@ -14,8 +14,7 @@ import type { TodayListItem } from '@/types/database'
 import { resolveFeedType, usableListItems } from './feedType'
 import type { RenderedFeedType } from './feedLook'
 
-export const TODAY_CARD_EVENT_TYPES = ['impression', 'click', 'followup'] as const
-export type TodayCardEventType = (typeof TODAY_CARD_EVENT_TYPES)[number]
+export type TodayCardEventType = 'impression' | 'click' | 'followup'
 
 // API가 실제로 받는 이벤트 유형. `followup`(후속 행동)은 UI가 보내지 않아 수집하지 않기로
 // 했다(2026-09-24 사용자 결정, 티켓 20260924_0810). DB CHECK 제약(TODAY_CARD_EVENT_TYPES 전체)은

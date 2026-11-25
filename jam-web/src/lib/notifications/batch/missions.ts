@@ -33,7 +33,7 @@ import {
 export const MISSION_DEADLINE_DAYS = 2
 
 /** 종료 결과(#24) 소급 창 — 이보다 오래 전에 끝난 미션은 이제 와서 알릴 이유가 없다 */
-export const MISSION_ENDED_LOOKBACK_DAYS = 2
+const MISSION_ENDED_LOOKBACK_DAYS = 2
 
 export interface BatchMission {
   id: string
@@ -45,7 +45,7 @@ export interface BatchMission {
   ends_at: string | null
 }
 
-export interface MissionParticipation {
+interface MissionParticipation {
   userId: string
   missionId: string
   progressValue: number

@@ -14,7 +14,7 @@ export type TicketColorKey = (typeof TICKET_COLOR_KEYS)[number]
  * 홈 카드가 상세로 넘기는 색 키. 티켓색 일곱 개와 짙은 초록(이어받을 때 `green`으로 접는다)만 허용한다.
  * 흰색·옛 키는 «모르는 값»이라 넘기지도 읽지도 않는다.
  */
-export type TicketInheritKey = TicketColorKey | 'green-deep'
+type TicketInheritKey = TicketColorKey | 'green-deep'
 const INHERIT_KEYS: readonly string[] = FEED_COLOR_KEYS.filter((key) => key !== 'white')
 
 /** 미획득 실루엣 색(키별 hex). 사진 자리 바탕(티켓색 70%+흰색 30%)과 3:1 이상 구분되는 같은 색상의 어두운 색이다 — 시험이 고정한다. 노랑만 오렌지로 돌렸다. */
@@ -67,7 +67,7 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/
 const DEG = 180 / Math.PI
 
 /** 컬렉션 표지 배경색보다 티켓을 어둡게 하는 OKLCH 명도 차(사용자 확정 0.10) */
-export const COVER_TICKET_L_DELTA = 0.1
+const COVER_TICKET_L_DELTA = 0.1
 /** 티켓색 명도 하한 — 아주 어두운 표지도 검정 덩어리가 되지 않게 한다 */
 const COVER_TICKET_L_MIN = 0.2
 /** 카드 바탕에 섞는 티켓색 기본 비율(%)과 보조 바탕 비율. 배지 상세와 같은 값이다 */

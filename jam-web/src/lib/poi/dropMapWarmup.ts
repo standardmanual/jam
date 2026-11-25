@@ -6,9 +6,9 @@ import { warmImageSrcs } from '@/lib/warmImages'
 import type { NearbyPoi } from '@/types/drops'
 
 /** 한 번에 고르는 지점 수 */
-export const WARMUP_POI_PER_RUN = 3
+const WARMUP_POI_PER_RUN = 3
 /** 지도 화면이 떠 있는 동안 미리 부르는 지점의 합계 상한 */
-export const WARMUP_POI_TOTAL_LIMIT = 9
+const WARMUP_POI_TOTAL_LIMIT = 9
 
 type NetworkInformationLike = { saveData?: boolean }
 

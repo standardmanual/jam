@@ -31,7 +31,7 @@ export const EXACT_MATCH_RADIUS_BY_CATEGORY: Record<string, number> = {
 // 등록하지 않은 카테고리는 기존과 동일하게 기본값(500m, 지도 탐색용)이 적용된다. 이 세
 // 카테고리에 체크인 배지를 연동하는 시점에 반드시 재검토할 것 — 그때까지는 무해하다.
 
-export const DEFAULT_POI_RADIUS_METERS = 500
+const DEFAULT_POI_RADIUS_METERS = 500
 
 /** 카테고리에 정확 매칭 정책이 있으면 그 값을, 없으면 요청값(또는 기본값)을 그대로 반환 */
 export function resolvePoiRadiusMeters(category: string, requestedRadiusMeters?: number): number {

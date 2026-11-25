@@ -8,9 +8,9 @@
  * 시트는 열리자마자 주소에서 `strava` 값을 지워 새로고침해도 다시 열리지 않게 한다. 다른 값(`connected`·`error`)은 이 시트가 건드리지 않는다.
  */
 
-export const STRAVA_PARAM = 'strava'
-export const STRAVA_DUPLICATE_VALUE = 'duplicate'
-export const STRAVA_DUPLICATE_BLOCKED_VALUE = 'duplicate_blocked'
+const STRAVA_PARAM = 'strava'
+const STRAVA_DUPLICATE_VALUE = 'duplicate'
+const STRAVA_DUPLICATE_BLOCKED_VALUE = 'duplicate_blocked'
 
 /** 시트의 모양: offer는 «그래도 연결하기»를 주는 모양, blocked는 문의로만 안내하는 모양 */
 export type StravaDuplicateMode = 'offer' | 'blocked'

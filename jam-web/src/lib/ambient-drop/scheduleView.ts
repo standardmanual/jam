@@ -288,7 +288,7 @@ export function bookExposure(
 }
 
 /** 실행 이력의 건너뜀·실패 사유 코드를 짧은 한글로 */
-export const SKIP_REASON_SHORT: Record<string, string> = {
+const SKIP_REASON_SHORT: Record<string, string> = {
   auto_disabled: '자동 배포 꺼짐',
   no_eligible_collection: '노출 중인 컬렉션 없음',
   no_eligible_poi: '드랍할 장소 없음',

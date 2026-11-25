@@ -218,7 +218,7 @@ function sharesActivityType(a: readonly ActivityType[] | null, b: readonly Activ
  * `requireMissionReward`가 true면 보유 배지가 실제 미션 보상 배지여야 한다 — 일반 배지를
  * 가리킨 `gate_mission_badge`가 조용히 통과하는 것을 막는다.
  */
-export function familyGateSatisfied(
+function familyGateSatisfied(
   familyKey: string,
   req: Pick<NormalizedGateRequirement, 'minRarityTier' | 'minLevel'>,
   ownedDefs: readonly OwnedBadgeDef[],

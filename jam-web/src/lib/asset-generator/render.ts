@@ -17,7 +17,7 @@ export interface ImageSourceLike {
   readonly height: number;
 }
 
-export interface CanvasGradientLike {
+interface CanvasGradientLike {
   addColorStop(offset: number, color: string): void;
 }
 

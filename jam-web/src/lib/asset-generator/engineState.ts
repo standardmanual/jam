@@ -15,8 +15,8 @@
 import { DEFAULT_LOGO3D_PARAMS, type Logo3DParams } from '@/lib/logo-3d/types';
 import { isAllowedAssetUrl, isStoredAssetUrl, getAllowedAssetHost } from './presetValidate';
 
-export const ENGINE_STATE_MODES = ['3d'] as const;
-export type EngineStateMode = (typeof ENGINE_STATE_MODES)[number];
+const ENGINE_STATE_MODES = ['3d'] as const;
+type EngineStateMode = (typeof ENGINE_STATE_MODES)[number];
 export const ENGINE_STATE_VERSION = 1;
 /** `engineState` JSON 크기 상한(바이트). */
 export const MAX_ENGINE_STATE_BYTES = 32 * 1024;
@@ -30,7 +30,7 @@ export const ENGINE_STATE_TOO_LARGE_MESSAGE =
 export const ENGINE_STATE_UNSUPPORTED_MESSAGE =
   '프리셋을 저장하지 못했어요. 이 서버가 모르는 모드나 버전의 설정이에요. 화면을 새로 고친 뒤 다시 저장해 주세요.';
 
-export type Logo3DEngineState = {
+type Logo3DEngineState = {
   source: 'font' | 'svg';
   fontFamily: string;
   fontWeight: number;

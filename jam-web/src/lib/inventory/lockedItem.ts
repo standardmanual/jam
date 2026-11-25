@@ -17,7 +17,7 @@ import { LOCKED_ITEM_NOT_ALLOWED_CODE } from './locked-item-block'
 export { LOCKED_ITEM_NOT_ALLOWED_CODE }
 
 /** 마이그레이션 231 트리거가 올리는 오류 메시지 — 장착과 드랍 */
-export const LOCKED_ITEM_TRIGGER_MESSAGES = ['locked_item_cannot_be_slotted', 'locked_item_cannot_be_dropped'] as const
+const LOCKED_ITEM_TRIGGER_MESSAGES = ['locked_item_cannot_be_slotted', 'locked_item_cannot_be_dropped'] as const
 
 /** DB 오류가 잠긴 개체 거부 트리거에서 온 것인가 */
 export function isLockedItemTriggerError(error: { message?: string | null } | null | undefined): boolean {

@@ -23,7 +23,7 @@ import { splitDescriptionSentences } from '@/lib/splitDescriptionSentences'
  * `size`로 바뀌는 것은 바깥 여백·카드 안쪽 여백·이미지 크기뿐이고 카드 마크업은 한 벌이다.
  */
 /** `page`: 배지 상세 페이지(기본). `sheet`: 시트 안 — 바깥 여백은 호출부가 정하고, 카드 안쪽 여백 24 16, 이미지 176 */
-export type BadgeHeroSize = 'page' | 'sheet'
+type BadgeHeroSize = 'page' | 'sheet'
 
 /** 기본 대표 이미지 상자 크기. 바깥·안쪽 여백은 DS가 `size`로 정한다 */
 const SIZE_STYLE = {

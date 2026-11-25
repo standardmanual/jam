@@ -33,7 +33,7 @@ import {
   type TimeBand,
 } from './timeBands'
 
-export { TIME_BANDS }
+
 export type { TimeBand }
 
 // ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
@@ -84,7 +84,7 @@ export function kstMonthOf(a: NormalizedActivity): number {
   return kstMonthOfStart(a.startDate)
 }
 /** 활동의 KST 요일(0=일 ~ 6=토) */
-export function kstDayOfWeekOf(a: NormalizedActivity): number {
+function kstDayOfWeekOf(a: NormalizedActivity): number {
   return kstDayOfWeekOfStart(a.startDate)
 }
 /** KST 주말(토·일) 활동인지 */
@@ -275,25 +275,6 @@ export const REST_CONDITION_KEYS = [
   'interval_days',
 ] as const
 export type RestConditionKey = (typeof REST_CONDITION_KEYS)[number]
-
-/**
- * 활동이 선행되지 않아도 성립하는 «순수 공백» 조건.
- *
- * `rest_after_streak`(연속 활동 뒤) · `rest_after_long`(장거리 활동 뒤)은 활동이 선행되어야
- * 성립하므로 역인센티브가 없다. 이 둘에는 그 안전장치가 없다.
- *
- * ## §4 「순수 공백 기반(「겨울잠」)만 쿨다운 90일」은 **카탈로그 설계 지침이다**
- * (2026-09-05 스펙 소유자 확정)
- *
- * 「공백만으로 주는 배지는 90일 이상으로 잡아라」는 **시딩 규칙**이지 엔진이 강제할 값이
- * 아니다. 초안은 엔진에서 90일 미만을 「휴식 조건 설정 오류」로 막았는데 두 가지가 어긋났다:
- *  1. `conditionRegistry.ts`가 이 필드들을 `min: 1, max: 365`로 선언한다 — **조건 필드 메타의
- *     단일 출처**가 유효 범위에 대해 엔진과 다른 말을 하게 된다
- *  2. 그 경로의 경고 로그는 «배지 × 유저 × 싱크»마다 찍혀 오설정 1건이 로그 폭주가 된다
- *
- * 그래서 엔진은 값을 강제하지 않는다. 하한 준수는 티켓 20260905_0035(카탈로그 시딩)의 몫이다.
- */
-export const REST_PURE_GAP_KEYS: readonly RestConditionKey[] = ['return_gap_days', 'interval_days']
 
 /** 조건에 실제로 들어 있는 휴식 조건 키. 선언 순서를 그대로 따른다 */
 export function restConditionKeysIn(condition: BadgeCondition | null | undefined): RestConditionKey[] {
@@ -624,7 +605,7 @@ export function evaluateRestConditions(
 // `max_pace_sec_per_km`(페이스, 값이 작을수록 갱신). `PersonalRecordMetric` 타입엔 그 외에도
 // 더 있지만 카탈로그에 값이 없다 — 지원을 넓히려면 `personalRecordMetricValue`·
 // `PERSONAL_RECORD_METRIC_DIRECTION`의 분기와 이 상수를 함께 늘린다.
-export const SUPPORTED_PERSONAL_RECORD_METRICS = [
+const SUPPORTED_PERSONAL_RECORD_METRICS = [
   'single_distance_km',
   'duration_minutes',
   'max_elevation_m',

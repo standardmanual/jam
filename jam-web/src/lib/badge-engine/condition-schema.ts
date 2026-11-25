@@ -21,9 +21,9 @@
  */
 export {
   ALL_CONDITION_KEYS,
-  CONDITION_FIELD_KEYS,
-  CONDITION_META_KEYS,
-  FILTER_ONLY_CONDITION_KEYS,
+  
+  
+  
   MEASURABLE_CONDITION_KEYS,
-  type AssertAllConditionKeysCovered,
+  
 } from './conditionRegistry'
