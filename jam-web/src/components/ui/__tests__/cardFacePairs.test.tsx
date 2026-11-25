@@ -129,32 +129,36 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
     const html = renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)
     expect(html).toContain('rounded-2xl p-3 bg-card-bg')
     expect(html).not.toContain('bg-jam-green')
+    expect(html).toContain('var(--capsule-fill)')
   })
 
-  it('MODULAR: 같은 면이고, 진행 바 트랙이 어두운 캡슐 트랙(--capsule-track)·채움이 --jam-green이다(티켓 20261114_1502)', () => {
+  it('MODULAR: 같은 면이고, 진행 바 트랙이 어두운 캡슐 트랙(--capsule-track)·채움이 홈 캡슐 게이지와 같은 --capsule-fill이다(티켓 20261114_1502 → 20261125_1113)', () => {
     const html = renderToStaticMarkup(<DsCollectionGridCard {...props} />)
     expect(html).toContain(CARD_FACE)
     expect(html).not.toContain(BORDER)
     expect(html).toContain('padding:var(--spacing-12)')
     expect(html).toContain('background:var(--capsule-track)')
-    expect(html).toContain('background:var(--jam-green)')
+    expect(html).toContain('background:var(--capsule-fill)')
+    expect(html).not.toContain('background:var(--jam-green)')
     expect(html).not.toContain('rgba(255,255,255')
     expect(html).not.toContain('rgba(255, 255, 255')
   })
 
-  it('완성 카드: 서비스는 bg-jam-green 면, MODULAR는 background:var(--jam-green) 면이다(미완성은 --card-bg 그대로)', () => {
+  it('완성 카드: 서비스는 bg-accent(검정) 면, MODULAR는 background:var(--accent) 면이다(미완성은 --card-bg 그대로, 티켓 20261125_1113)', () => {
     const service = renderToStaticMarkup(<ServiceCollectionGridCard {...props} collected={10} completed />)
-    expect(service).toContain('rounded-2xl p-3 bg-jam-green')
+    expect(service).toContain('rounded-2xl p-3 bg-accent')
     expect(service).not.toContain('bg-card-bg')
-    // 그린 면 위에 그림자·외곽선·흰 글자를 더하지 않는다
+    expect(service).not.toContain('bg-jam-green')
+    // 검정 면 위에 그림자·외곽선을 더하지 않고, 글자는 --accent-foreground다
     expect(service).not.toMatch(/shadow|border(?!-radius)/)
-    expect(service).toContain('text-foreground')
+    expect(service).toContain('text-accent-foreground')
     expect(service).not.toContain('text-white')
 
     const ds = renderToStaticMarkup(<DsCollectionGridCard {...props} collected={10} completed />)
-    expect(ds).toMatch(/^<div class="[^"]*" style="[^"]*background:var\(--jam-green\)/)
+    expect(ds).toMatch(/^<div class="[^"]*" style="[^"]*background:var\(--accent\)/)
     expect(ds).not.toContain('background:var(--card-bg)')
-    expect(ds).toContain('color:var(--foreground)')
+    expect(ds).not.toContain('background:var(--jam-green)')
+    expect(ds).toContain('color:var(--accent-foreground)')
     expect(ds).not.toMatch(/box-shadow|border:/)
   })
 

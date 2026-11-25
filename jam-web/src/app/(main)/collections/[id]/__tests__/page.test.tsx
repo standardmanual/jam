@@ -242,7 +242,7 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(gridProps?.tierFixed).toBe(true)
   })
 
-  // 컬렉션 이름 위의 등급 칩(2026-11-25 사용자 지시): 지금 장착한 배지의 등급, Common은 그리지 않는다
+  // 컬렉션 이름 위의 등급 칩(2026-11-25 사용자 지시): 지금 장착한 배지의 등급, Common도 그린다
   function titleChipHtml(html: string) {
     return html.match(/titleTop[^"]*">(.*?)<h1/)?.[1] ?? ''
   }
@@ -256,13 +256,13 @@ describe('컬렉션 상세 페이지 — 4등급 컬렉션의 칸', () => {
     expect(titleChipHtml(html)).toContain('Rare')
   })
 
-  it('Common을 장착했으면 이름 위에 칩을 그리지 않는다', async () => {
+  it('Common을 장착했으면 이름 위에 Common 칩을 그린다', async () => {
     state.tables.badges = fullBookRows()
     state.tables.user_item_book_slots = [slotRow('이름1-common')]
 
     const html = renderToStaticMarkup(await callPage())
 
-    expect(titleChipHtml(html)).toBe('')
+    expect(titleChipHtml(html)).toContain('Common')
   })
 
   it('아무것도 장착하지 않았으면 등급이 없어 이름 위에 칩이 없다', async () => {
@@ -436,10 +436,14 @@ describe('컬렉션 상세 페이지 — 모두 빼기에 내려보내는 값', 
     const { gridProps } = await renderGrid()
 
     expect(gridProps?.completed).toBe(true)
-    // 완성하면 진행 바 자리에 초록 완성 알림이 온다(글자 상자 아래, 티켓 20261124_2253)
+    // 완성하면 진행 바 자리에 검정 완성 알림이 온다(글자 상자 아래, 티켓 20261124_2253). «완성» 칩은 없다(2026-11-25 사용자 지시)
     const tree = await callPage()
     expect(findElements(tree, (el) => el.type === ProgressCountBar)).toHaveLength(0)
-    expect(renderToStaticMarkup(tree)).toContain(d.itembooks.completedTitle)
+    const html = renderToStaticMarkup(tree)
+    expect(html).toContain(d.itembooks.completedTitle)
+    expect(html).toMatch(/bg-accent[^"]*"[^>]*><p[^>]*>컬렉션 완성!/)
+    expect(html).not.toContain('bg-jam-green')
+    expect(html).not.toContain(`>${d.itembooks.completed}<`)
   })
 
   it('tier_mode가 꺼진 컬렉션은 개수만 있고 tierFixed는 꺼져 있다', async () => {

@@ -2,10 +2,8 @@
 
 import Link from 'next/link'
 import SafeImage from '@/components/SafeImage'
-import { d } from '@/lib/i18n'
 import { MagicBookIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
-import { ListRowChip } from '@/components/ui/ListRow'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
@@ -17,13 +15,12 @@ export interface CollectionGridCardProps {
   collected: number
   /** 전체 슬롯 수 */
   total: number
-  /** 완성 여부 — 카드 면이 강조색 그린이 되고, 진행 바·숫자 자리에 «완성» 칩이 온다 */
+  /** 완성 여부 — 카드 면이 검정이 되고, 진행 바·숫자 자리에 등급 칩(`rarities`)이 온다 */
   completed?: boolean
-  /** 컬렉션 등급 하나(옛 전제: 컬렉션 하나는 등급 하나). `rarities`가 없을 때만 쓴다 */
-  rarity?: BadgeRarity
   /**
-   * 카드 왼쪽 위에 칩으로 그릴 등급들(낮은 등급부터 넘긴다). Common은 그리지 않는다. 컬렉션이 4등급이라 하나로 대표할 수 없어
-   * 배지 목록은 «내가 장착한 배지의 등급»을 넘긴다(티켓 20261117_1856). 넘기면 `rarity`는 무시한다.
+   * 완성 카드의 맨 아래 행에 칩으로 그릴 등급들(낮은 등급부터 넘긴다). 컬렉션이 4등급이라 하나로 대표할 수 없어
+   * 배지 목록은 «내가 장착한 배지의 등급»을 넘긴다(티켓 20261117_1856). Common도 그린다(2026-11-25 사용자 지시).
+   * 완성하지 않은 카드는 이 값을 그리지 않는다.
    */
   rarities?: BadgeRarity[]
   /** 진행 바와 「수집/전체」 숫자를 숨긴다. 전체 슬롯 수를 아직 모르는 운영툴 미리보기용이다. 기본은 끔. */
@@ -35,10 +32,11 @@ export interface CollectionGridCardProps {
 }
 
 // 카드 면 레시피(티켓 20261107_2246): BadgeGridCard와 같은 면 — --card-bg + 반경 16 + 안쪽 여백 12, 외곽선·그림자 없음.
-// 완성한 카드는 면만 강조색 그린(--jam-green)이다(2026-11-14 사용자 지시, 티켓 20261114_1502). 그림자·외곽선은 더하지 않는다.
+// 완성한 카드는 면만 검정(--accent)이고 글자는 --accent-foreground다(2026-11-25 사용자 지시, 티켓 20261125_1113. 이전 면은 강조색 그린, 티켓 20261114_1502).
+// 그림자·외곽선은 더하지 않는다.
 const BASE = 'flex flex-col gap-2 rounded-2xl p-3'
 const FACE_DEFAULT = 'bg-card-bg'
-const FACE_COMPLETED = 'bg-jam-green'
+const FACE_COMPLETED = 'bg-accent'
 
 export default function CollectionGridCard({
   name,
@@ -46,15 +44,13 @@ export default function CollectionGridCard({
   collected,
   total,
   completed = false,
-  rarity,
-  rarities,
+  rarities = [],
   hideProgress = false,
   href,
   onClick,
   className = '',
   children,
 }: CollectionGridCardProps) {
-  const chipRarities = (rarities ?? (rarity ? [rarity] : [])).filter((r) => r !== 'common')
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0
   // 눌림은 공용 `.jam-press`(0.98배·80ms, 동작 줄이기 설정에서는 없음)다. 링크도 버튼도 아닌 카드에는 붙이지 않는다.
   const cls = [BASE, completed ? FACE_COMPLETED : FACE_DEFAULT, (href || onClick) && 'jam-press', className].filter(Boolean).join(' ')
@@ -72,34 +68,26 @@ export default function CollectionGridCard({
           alt={name}
           className="object-contain"
           sizes="50vw"
-          fallback={<MagicBookIcon className={`w-10 h-10 ${completed ? 'text-foreground' : 'text-muted'}`} />}
+          fallback={<MagicBookIcon className={`w-10 h-10 ${completed ? 'text-accent-foreground' : 'text-muted'}`} />}
         />
-        {/* 태그 행: 등급 칩들(선택). 컬렉션이 담은 등급을 낮은 순서로 나열하고 Common은 그리지 않는다. 완성 칩은 맨 아래 행으로 옮겼다(티켓 20261114_1502).
-            좁은 폭(320px 2열)에서도 칩이 잘리지 않게 줄바꿈하고, 오른쪽 여백을 남긴다. */}
-        {chipRarities.length > 0 && (
-          <div className="absolute top-2 left-2 right-2 flex flex-wrap items-center gap-1">
-            {chipRarities.map((r) => (
-              <RarityBadge key={r} rarity={r} size="md" />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* 타이틀 */}
-      <p className="text-[15px] font-bold text-foreground leading-[18px] truncate">{name}</p>
+      <p className={`text-[15px] font-bold leading-[18px] truncate ${completed ? 'text-accent-foreground' : 'text-foreground'}`}>{name}</p>
 
       {/* 맨 아래 한 행 — 높이는 칩 높이(20px)로 맞춰 완성·미완성 카드의 높이가 같다.
-          완성: 바·숫자 없이 «완성» 칩 하나(왼쪽 정렬, 이름과 같은 시작선). 칩은 `ListRowChip` 규격에 색만 accent 면이다
-          (등급 칩 `RarityBadge`와 같은 크기, 2026-11-11 사용자 지시, 티켓 20261112_0010).
+          완성: 바·숫자 없이 등급 칩들(왼쪽 정렬, 이름과 같은 시작선, 낮은 등급부터, Common 포함). «완성» 칩은 없앴다 — 검정 면이 완성을 알린다
+          (2026-11-25 사용자 지시, 티켓 20261125_1113). 썸네일 위에는 등급 칩을 얹지 않는다.
           미완성: 진행 바 + 「수집/전체」 숫자. */}
       {(completed || !hideProgress) && (
-        <div className="flex items-center gap-2 min-h-5">
+        <div className={`flex items-center min-h-5 ${completed ? 'flex-wrap gap-1' : 'gap-2'}`}>
           {completed ? (
-            <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>{d.itembooks.completed}</ListRowChip>
+            rarities.map((r) => <RarityBadge key={r} rarity={r} size="md" showCommon />)
           ) : (
             <>
-              {/* 캡슐 모양 바(어두운 트랙·강조색 그린 채움) — 컬렉션 상세·인벤토리의 바와 같다(티켓 20261114_1502) */}
-              <ProgressBar shape="capsule" percent={pct} height={16} color="var(--jam-green)" />
+              {/* 캡슐 모양 바 — 어두운 트랙과 채움색이 홈 캡슐 게이지와 같다(채움 `--capsule-fill`, 2026-11-25 사용자 지시, 티켓 20261125_1113).
+                  모양은 티켓 20261114_1502. 컬렉션 상세·인벤토리의 바는 강조색 그린 채움 그대로다. */}
+              <ProgressBar shape="capsule" percent={pct} height={16} color="var(--capsule-fill)" />
               <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
                 {collected}/{total}
               </span>

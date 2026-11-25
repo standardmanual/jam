@@ -16,7 +16,6 @@ import SafeImage from '@/components/SafeImage'
 import TopNav from '@/components/ui/TopNav'
 import { PinIcon, MagicBookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { ListRowChip } from '@/components/ui/ListRow'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import CollectionTicketPhoto from './CollectionTicketPhoto'
 import BadgeTicket, { TicketTone } from '../../badges/[id]/BadgeTicket'
@@ -283,36 +282,31 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         photo={<CollectionTicketPhoto name={book.name} imageUrl={book.image_url} />}
         afterPhoto={
           <>
-            {/* 컬렉션 이름 위의 등급 칩 — 지금 장착한 배지의 등급(컬렉션 등급)이다. Common은 `RarityBadge`가 그리지 않고,
-                등급이 아직 정해지지 않았거나 4등급 컬렉션이 아니면 `collectionTier`가 null이라 칩이 없다(2026-11-25 사용자 지시). */}
+            {/* 컬렉션 이름 위의 등급 칩 — 지금 장착한 배지의 등급(컬렉션 등급)이고 Common도 그린다(2026-11-25 사용자 지시).
+                등급이 아직 정해지지 않았거나 4등급 컬렉션이 아니면 `collectionTier`가 null이라 칩이 없다. */}
             <TicketTitleBoxesView
-              chip={collectionTier ? <RarityBadge rarity={collectionTier as BadgeRarity} size="md" /> : undefined}
+              chip={collectionTier ? <RarityBadge rarity={collectionTier as BadgeRarity} size="md" showCommon /> : undefined}
               name={book.name}
               description={book.description}
             />
-            {/* 진행 표시 — 글자 상자 아래, 지금 모양 그대로(티켓 20261124_2253). 완성이면 진행 바 대신 초록 완성 알림(티켓 20261114_1643).
-                알림 카드는 밝은 초록 면이라 짙은 티켓에서도 글자는 #171717이다(ink). 진행 바의 «n/N»은 티켓 글자색을 따른다. */}
+            {/* 진행 표시 — 글자 상자 아래, 지금 모양 그대로(티켓 20261124_2253). 완성이면 진행 바 대신 검정 완성 알림(티켓 20261114_1643, 면 색은 2026-11-25 사용자 지시로 초록에서 검정으로).
+                알림 카드는 검정 면이라 어떤 티켓색에서도 글자는 `--accent-foreground`(흰색 계열)이고 «완성» 칩은 없다. 진행 바의 «n/N»은 티켓 글자색을 따른다. */}
             <div className="relative z-10 px-4 pb-6">
               {isCompleted ? (
-                <TicketTone tone="ink">
-                  <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-jam-green p-5 text-center">
-                    <ListRowChip style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                      {d.itembooks.completed}
-                    </ListRowChip>
-                    <p
-                      className="font-bold break-keep wrap-break-word text-balance"
-                      style={{ color: 'var(--foreground)', fontSize: '22px' }}
-                    >
-                      {d.itembooks.completedTitle}
-                    </p>
-                    <p
-                      className="break-keep wrap-break-word"
-                      style={{ color: 'var(--foreground)', opacity: 0.7, fontSize: '14px' }}
-                    >
-                      {d.itembooks.completedBody}
-                    </p>
-                  </div>
-                </TicketTone>
+                <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-accent p-5 text-center">
+                  <p
+                    className="font-bold break-keep wrap-break-word text-balance"
+                    style={{ color: 'var(--accent-foreground)', fontSize: '22px' }}
+                  >
+                    {d.itembooks.completedTitle}
+                  </p>
+                  <p
+                    className="break-keep wrap-break-word"
+                    style={{ color: 'var(--accent-foreground)', opacity: 0.7, fontSize: '14px' }}
+                  >
+                    {d.itembooks.completedBody}
+                  </p>
+                </div>
               ) : (
                 <ProgressCountBar percent={progressPercent} current={slottedCount} total={totalBadgeCount} />
               )}

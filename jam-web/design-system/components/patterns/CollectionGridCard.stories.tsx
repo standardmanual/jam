@@ -7,11 +7,11 @@ const meta: Meta<typeof CollectionGridCard> = {
   component: CollectionGridCard,
   parameters: {
     layout: 'centered',
-    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 썸네일 좌상단에 등급 태그. 완성 카드는 면이 강조색 그린이고 바·숫자 자리에 완성 칩이 온다.' } },
+    docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 타이틀 → [프로그레스바 | 카운트]. 진행 바 채움색은 홈 캡슐 게이지와 같은 --capsule-fill이다. 완성 카드는 면이 검정이고 바·숫자 자리에 등급 칩이 온다.' } },
   },
   argTypes: {
     completed: { control: 'boolean' },
-    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
+    rarities: { control: 'object' },
     hideProgress: { control: 'boolean' },
     collected: { control: { type: 'number', min: 0 } },
     total: { control: { type: 'number', min: 1 } },
@@ -25,7 +25,7 @@ const SAMPLE_IMAGE = '/ds-assets/uploads/jam_logo.png';
 
 /**
  * 크림 캔버스 위 카드 면(JAM 2.0 라이트, 티켓 20261015_2133) — BadgeGridCard와 같은 면(흰 면 + 1px --border + 안쪽 여백 12).
- * 진행 바는 캡슐 모양(어두운 트랙 --capsule-track + 그린 채움)이라 크림·흰 면 위에서도 보인다. 완성 카드는 그린 면.
+ * 진행 바는 캡슐 모양(어두운 트랙 --capsule-track + 캡슐 게이지와 같은 --capsule-fill 채움)이라 크림·흰 면 위에서도 보인다. 완성 카드는 검정 면에 등급 칩.
  */
 export const OnCreamCanvas: Story = {
   name: '크림 캔버스 위 — 카드 면과 진행 바',
@@ -37,39 +37,38 @@ export const OnCreamCanvas: Story = {
         display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
       }}
     >
-      <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
+      <CollectionGridCard name="한강 러너 컬렉션" imageUrl={SAMPLE_IMAGE} collected={5} total={10} />
       <CollectionGridCard name="이미지 없는 컬렉션" collected={0} total={10} />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mystic" />
-      <CollectionGridCard name="이미지 없는 완성 컬렉션" collected={10} total={10} completed />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['common', 'rare', 'mystic']} />
+      <CollectionGridCard name="이미지 없는 완성 컬렉션" collected={10} total={10} completed rarities={['common']} />
     </div>
   ),
 };
 
 export const InProgress: Story = {
-  name: '수집 중 (5/10) — Rare',
+  name: '수집 중 (5/10)',
   args: {
     name: '한강 러너 컬렉션',
     imageUrl: SAMPLE_IMAGE,
     collected: 5,
     total: 10,
-    rarity: 'rare',
   },
 };
 
 export const Completed: Story = {
-  name: '완성됨 — Epic',
+  name: '완성됨',
   args: {
     name: '한강 러너 컬렉션',
     imageUrl: SAMPLE_IMAGE,
     collected: 10,
     total: 10,
     completed: true,
-    rarity: 'epic',
+    rarities: ['common', 'rare', 'epic'],
   },
 };
 
 export const CompletedNoRarity: Story = {
-  name: '완성됨 — 등급 없음',
+  name: '완성됨 — 등급 칩 없음',
   args: {
     name: '한강 러너 컬렉션',
     imageUrl: SAMPLE_IMAGE,
@@ -80,36 +79,22 @@ export const CompletedNoRarity: Story = {
 };
 
 export const Empty: Story = {
-  name: '시작 전 (0/10) — Common',
+  name: '시작 전 (0/10)',
   args: {
     name: '도시 탐험가 컬렉션',
     imageUrl: SAMPLE_IMAGE,
     collected: 0,
     total: 10,
-    rarity: 'common',
   },
 };
 
 export const AlmostDone: Story = {
-  name: '거의 완성 (9/10) — Mystic',
+  name: '거의 완성 (9/10)',
   args: {
     name: '마라톤 챌린저',
     imageUrl: SAMPLE_IMAGE,
     collected: 9,
     total: 10,
-    rarity: 'mystic',
-  },
-};
-
-export const EquippedRarities: Story = {
-  name: '장착한 등급 칩 여러 개 — Common은 그리지 않음',
-  parameters: { docs: { description: { story: '`rarities`에 장착한 배지의 등급을 낮은 순서로 넘기면 왼쪽 위에 칩으로 나열해요. Common은 그리지 않고, Common뿐이면 칩 행도 없어요(티켓 20261117_1856).' } } },
-  args: {
-    name: '노을 헌터의 기록',
-    imageUrl: SAMPLE_IMAGE,
-    collected: 4,
-    total: 36,
-    rarities: ['common', 'rare', 'mystic'],
   },
 };
 
@@ -120,7 +105,6 @@ export const NoImage: Story = {
     imageUrl: null,
     collected: 3,
     total: 8,
-    rarity: 'rare',
   },
 };
 
@@ -142,14 +126,15 @@ export const HideProgress: Story = {
 };
 
 export const HideProgressCompleted: Story = {
-  name: '진행 표시 숨김이어도 완성 칩은 남음',
-  parameters: { docs: { description: { story: '완성 카드는 hideProgress를 켜도 «완성» 칩 행이 그대로 보여요.' } } },
+  name: '진행 표시 숨김이어도 등급 칩은 남음',
+  parameters: { docs: { description: { story: '완성 카드는 hideProgress를 켜도 등급 칩 행이 그대로 보여요.' } } },
   args: {
     name: '한강 러너 컬렉션',
     imageUrl: SAMPLE_IMAGE,
     collected: 10,
     total: 10,
     completed: true,
+    rarities: ['epic'],
     hideProgress: true,
   },
 };
@@ -158,10 +143,10 @@ export const Grid: Story = {
   name: '그리드 레이아웃 (4종)',
   render: () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 160px)', gap: 'var(--spacing-16)' }}>
-      <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} rarity="common" />
-      <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
-      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} rarity="epic" />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mystic" />
+      <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} />
+      <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} />
+      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarities={['common', 'rare', 'mystic']} />
     </div>
   ),
 };
