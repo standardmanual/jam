@@ -203,6 +203,14 @@ function checkinInfo(item: ActivityFeedRow): { poiName: string; visitCount: numb
 }
 
 /**
+ * badge_earned 이벤트가 체크인 배지 획득인가. 프로필 배지 그리드가 내 배지 목록과 같은 표현으로 가르는 판정이다:
+ * 체크인은 이름 아래 «×방문 횟수» 칩, 그 밖의 배지는 횟수를 그리지 않는다(티켓 20261125_1530).
+ */
+export function isCheckinEarn(item: ActivityFeedRow): boolean {
+  return checkinInfo(item) !== null
+}
+
+/**
  * 카드 썸네일에 붙일 «획득 횟수». 2 이상일 때만 값이 나온다(1회는 표시하지 않는다).
  *
  * 체크인은 기존대로 `visit_count`가 우선이다 — 체크인 반복은 `user_checkin_badge_earns`에

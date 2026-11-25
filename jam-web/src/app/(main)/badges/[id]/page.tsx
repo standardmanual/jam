@@ -522,6 +522,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                         imageUrl={p.image_url}
                         bgColors={p.bg_colors}
                         rarity={p.rarity as BadgeRarity}
+                        // 내 배지 목록의 활동 배지와 같이 Common도 등급 칩으로 알린다(2026-11-25 사용자 지시, 티켓 20261125_1530)
+                        showCommonChip
                         href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
                         earned={p.owned}
                       />

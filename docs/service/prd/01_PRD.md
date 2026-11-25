@@ -158,6 +158,8 @@ code:
   ├── [username] — 본인/타인 동일 컴포넌트. 기본뷰(탭 쿼리 없음) = Strava 상태(본인만)
   │     + 통합 활동 피드(본인) / 배지 그리드(타인). 탭 쿼리(?tab=followers|following|points,
   │     구 해시 #followers·#following·#points 호환, 티켓 20261125_1136) = 팔로워/팔로잉/포인트 목록
+  │     타인 배지 그리드의 칩은 내 배지 목록과 같다(티켓 20261125_1530): 체크인은 이름 아래 «×방문 횟수» 칩(1회 없음, Common 칩 없음),
+  │     활동 배지는 Common 포함 등급 칩(레벨형은 Lv.N 칩)이고 반복 획득 횟수는 그리지 않는다
   ├── [username]/followers, /following
   └── profile/edit — username 변경, 아바타 업로드, 탈퇴하기(확인 문구 입력 뒤 계정 삭제, 운영 로직 17장)
 

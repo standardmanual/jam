@@ -23,7 +23,7 @@ import {
   MedalIcon,
 } from '@/components/ui/icons'
 import type { UserRow, ActivityFeedRow, BadgeRarity } from '@/types/database'
-import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget } from '../FeedSection'
+import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget, isCheckinEarn } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import CapsuleWidget from '@/components/capsule/CapsuleWidget'
@@ -167,14 +167,11 @@ export default function ProfileClient({
   // 목록 내 팔로우: 요청 중인 userId Set으로 경쟁 조건 방지
   const [listFollowingSet, setListFollowingSet] = useState<Set<string>>(new Set())
 
-  // 갤러리는 배지 **종류**의 진열장이라 badge_id당 한 칸이다. 다만 20260905_0038 B 이전에는
-  // 중복 행을 세지도 않고 버려서 「몇 번 획득했는지」가 화면에서 완전히 사라졌다 —
-  // 이제 칸은 하나로 유지하되 횟수는 카드의 ×N으로 보존한다.
+  // 갤러리는 배지 **종류**의 진열장이라 badge_id당 한 칸이다.
   //
-  // 횟수의 출처는 두 갈래다(피드 카드와 같은 규칙 — `earnCountOf`가 단일 판정처다):
-  //   - 반복형 활동 배지: `metadata.earn_count` (hydrate가 렌더 직전에 실어준 최신 회차)
-  //   - 체크인 배지: `metadata.visit_count`
-  // 둘 다 없으면 접힌 행 수로 폴백한다(과거 데이터 방어).
+  // 횟수는 체크인 배지만 센다. 내 배지 목록이 체크인 탭에서만 «×방문 횟수» 칩을 이름 아래에 그리고
+  // 활동 배지에는 횟수를 그리지 않으므로, 친구 프로필도 같은 표현을 쓴다(2026-11-25 사용자 지시, 티켓 20261125_1530).
+  // 체크인 횟수의 출처는 `metadata.visit_count`(`earnCountOf`가 단일 판정처)이고, 없으면 접힌 행 수로 폴백한다(과거 데이터 방어).
   //
   // 가상화는 넣지 않는다 — 갤러리의 원본은 프로필이 가져온 피드 윈도우(limit 150)라
   // 카드 수 상한이 150장(3열 = 50행)이다. 배지 카탈로그가 630종이어도 여기 그려지는 건
@@ -206,13 +203,14 @@ export default function ProfileClient({
       }
       indexById.set(badgeId, result.length)
       rowsById.set(badgeId, 1)
-      result.push({ item, count: earnCountOf(item), level: badgeLevelOf(item) })
+      result.push({ item, count: isCheckinEarn(item) ? earnCountOf(item) : null, level: badgeLevelOf(item) })
     }
     for (const [badgeId, rows] of rowsById) {
       if (rows < 2) continue
       const idx = indexById.get(badgeId)
       if (idx == null) continue
       const entry = result[idx]
+      if (!isCheckinEarn(entry.item)) continue
       if (entry.count == null || entry.count < rows) entry.count = rows
     }
     return result
@@ -422,6 +420,7 @@ export default function ProfileClient({
       <div className="grid grid-cols-3 gap-2">
         {badgeItems.map(({ item, count, level }) => {
           const meta = item.metadata as Record<string, string>
+          const checkin = isCheckinEarn(item)
           return (
             <BadgeGridCard
               key={item.id}
@@ -432,7 +431,10 @@ export default function ProfileClient({
               bgColors={(item.metadata as Record<string, unknown>).badge_bg_colors as string[] | null | undefined}
               rarity={(meta.rarity as BadgeRarity | null) ?? null}
               level={level}
-              count={count}
+              // 내 배지 목록과 같은 표현이다(티켓 20261125_1530): 체크인은 이름 아래 «×방문 횟수» 칩이고 Common 칩은 없다.
+              // 활동 배지는 Common도 등급 칩으로 알리고 횟수는 그리지 않는다
+              visitCount={checkin ? count : null}
+              showCommonChip={!checkin}
             />
           )
         })}
