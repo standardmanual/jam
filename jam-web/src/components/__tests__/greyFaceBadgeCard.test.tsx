@@ -34,6 +34,15 @@ describe('BadgeGridCard 회색 면', () => {
     const html = renderToStaticMarkup(<BadgeGridCard name="체크인" rarity={null} level={3} visitCount={4} imageUrl="https://example.com/b.png" />)
     expect(html.split(COMMON_BG).length - 1).toBe(2)
   })
+
+  it('Common 등급 칩도 회색 면 위에서 Common 색 클래스로 덮이고, 다른 등급 칩은 원래 색이다', () => {
+    const common = renderToStaticMarkup(<BadgeGridCard name="새벽의 러너" rarity="common" showCommonChip imageUrl="https://example.com/b.png" />)
+    expect(common).toContain('bg-[var(--rarity-common)]!')
+    expect(common).toContain('text-[color:var(--rarity-common-foreground)]!')
+    const rare = renderToStaticMarkup(<BadgeGridCard name="버티컬" rarity="rare" imageUrl="https://example.com/b.png" />)
+    expect(rare).not.toContain('--rarity-common')
+    expect(rare).toContain('var(--rarity-rare)')
+  })
 })
 
 describe('VisitCountChip tone', () => {

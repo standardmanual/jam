@@ -15,6 +15,11 @@ import type { ReactNode } from 'react'
 
 /** 회색 면 위에서 Lv 칩이 묻히지 않도록 Common 등급 칩 색을 입힌다. DS 원본 기본색은 그대로다(티켓 20261125_1649) */
 const COMMON_CHIP_STYLE = { background: 'var(--rarity-common)', color: 'var(--rarity-common-foreground)' } as const
+/**
+ * Common 등급 칩도 회색 면 위에서는 Lv·방문 칩과 같은 Common 색(면 `--rarity-common`·글자 `--rarity-common-foreground`)이다(사용자 확정 2026-11-25).
+ * DS `RarityBadge`의 common 면은 `--default-soft`(카드 면과 같은 회색)이고 style prop이 없어, 인라인 색을 `!important` 클래스로 덮는다. DS 원본은 그대로다
+ */
+const COMMON_RARITY_OVERRIDE = 'bg-[var(--rarity-common)]! text-[color:var(--rarity-common-foreground)]!'
 
 export interface BadgeGridCardProps {
   /** 배지 이름. `locked`이면 그리지 않는다(가린 이름이 대신 나온다) — 그래서 `locked`일 때는 생략해도 된다 */
@@ -203,7 +208,7 @@ export default function BadgeGridCard({
   const hasChip = level != null || (rarity != null && (rarity !== 'common' || showCommonChip))
   const chip = level != null
     ? <BadgeLevelChip level={level} size="md" className={chipClass} style={COMMON_CHIP_STYLE} />
-    : <RarityBadge rarity={rarity ?? undefined} size="md" className={chipClass} showCommon={showCommonChip} />
+    : <RarityBadge rarity={rarity ?? undefined} size="md" className={[chipClass, rarity === 'common' ? COMMON_RARITY_OVERRIDE : ''].filter(Boolean).join(' ')} showCommon={showCommonChip} />
 
   if (compact) {
     const compactContent = (
