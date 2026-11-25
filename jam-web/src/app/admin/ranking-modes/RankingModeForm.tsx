@@ -10,6 +10,7 @@
  */
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
@@ -333,7 +334,7 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
         <Button type="submit" disabled={loading}>
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '랭킹 규칙 등록'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.push('/admin/ranking-modes')}>
+        <Button type="button" variant="outline" onClick={() => goBackOrPush(router, '/admin/ranking-modes')}>
           취소
         </Button>
         {isEdit && (

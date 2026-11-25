@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import type { ReactNode } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
@@ -73,10 +74,10 @@ const BACK_LINK_CLASS =
 /** 「← 패턴」 되돌아가기 링크. 패턴을 못 읽은 화면도 쓴다. */
 export function PatternBackLink() {
   return (
-    <Link href={patternListHref()} className={BACK_LINK_CLASS}>
+    <AdminBackLink fallbackHref={patternListHref()} className={BACK_LINK_CLASS}>
       <IconArrowLeft className="size-3.5" aria-hidden="true" />
       {PATTERN_DETAIL_BACK_LABEL}
-    </Link>
+    </AdminBackLink>
   )
 }
 

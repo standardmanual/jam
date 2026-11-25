@@ -5,6 +5,7 @@
  * 실시간 DB 설정값을 함께 읽어 표시하기만 한다. 값을 바꾸는 항목은 카드의 «밸런스 설정에서 바꾸기»
  * 링크로 해당 설정 화면에 보낸다 — 변경 이력·동시 수정 검사·확률 확인창을 설정 화면이 지키기 때문이다(티켓 20261022_1717).
  */
+import { Suspense } from 'react'
 import { POLICIES_DATA } from '@/lib/admin/policyDashboard/policiesData'
 import { PolicyDashboardClient } from '@/components/admin/policyDashboard/PolicyDashboardClient'
 import { loadPolicyLiveValues } from '@/lib/admin/policyDashboard/liveValues'
@@ -23,11 +24,13 @@ export default async function PolicyDashboardPage() {
         </p>
       </div>
 
-      <PolicyDashboardClient
-        initialPolicies={POLICIES_DATA}
-        initialLiveValues={liveValues}
-        updatedAt={new Date().toISOString()}
-      />
+      <Suspense>
+        <PolicyDashboardClient
+          initialPolicies={POLICIES_DATA}
+          initialLiveValues={liveValues}
+          updatedAt={new Date().toISOString()}
+        />
+      </Suspense>
     </div>
   )
 }

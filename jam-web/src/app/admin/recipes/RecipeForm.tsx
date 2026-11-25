@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import type {
   BadgeRow,
   CombinationRecipeRow,
@@ -728,9 +728,9 @@ export default function RecipeForm({
         >
           {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
         </button>
-        <Link href="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/recipes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           취소
-        </Link>
+        </AdminBackLink>
         {canCancelRelease && (
           <button
             onClick={handleCancelRelease}

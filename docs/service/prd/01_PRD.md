@@ -125,7 +125,8 @@ code:
         전환은 history를 쌓지 않고(replace) 모르는 값은 기본값 (티켓 20261110_1217)
 
 [배지] badges
-  ├── 활동 / 아이템 / POI 3개 탭
+  ├── 액티비티 / 체크인 / 컬렉션 3개 탭 — 쿼리: ?tab=checkin|collection (기본 activity는 쿼리 없음, replace, 구 주소 ?tab=poi·#collection·#checkin·#poi 호환, 티켓 20261125_1136)
+  │     필터 쿼리: ?activity=&rarity=(액티비티 탭), ?category=&sort=(체크인 탭, 기본값은 생략)
   └── badges/[id] — 상세 (조건, 선행배지, POI 위치, 아이템은 시리얼+획득이력)
         쿼리: ?u={username} 타인 기준 열람 · ?item={inventory_item_id} 아이템배지 개체 지목
         (?item이 무효하면 notFound가 아니라 조용히 폴백 — 링크 공유 시 깨지지 않게)
@@ -145,7 +146,7 @@ code:
 [드랍] drops — 네이버 지도, 주변 POI·드랍 아이템, 드랍/픽업
 
 [미션] missions
-  ├── 진행중/참가중/종료 탭 — 쿼리: ?tab=joined|ended (기본 진행중은 쿼리 없음, replace, 모르는 값은 기본값)
+  ├── 진행중/참가중/종료 탭 — 쿼리: ?tab=joined|ended &sort=oldest|ending_soon &activity={종목} (기본값은 쿼리 없음, replace, 모르는 값은 기본값)
   └── missions/[id] — 상세, 참가/완료 상태
 
 [VOC] voc — CS 게시판. 쿼리: ?sort=answered (기본 최신순은 쿼리 없음) &page={번호} (기본 1쪽은 쿼리 없음).
@@ -154,9 +155,9 @@ code:
 [포인트] points — 잔액 + 내역(커서 페이지네이션)
 
 [프로필] profile → /[username]으로 라우팅 (username 없으면 /onboarding)
-  ├── [username] — 본인/타인 동일 컴포넌트. 기본뷰(해시 없음) = Strava 상태(본인만)
-  │     + 통합 활동 피드(본인/타인 공통, 대상 유저 기준). 해시 탭(#badge/#collections/
-  │     #followers/#following) = 배지/컬렉션/팔로워/팔로잉 그리드
+  ├── [username] — 본인/타인 동일 컴포넌트. 기본뷰(탭 쿼리 없음) = Strava 상태(본인만)
+  │     + 통합 활동 피드(본인) / 배지 그리드(타인). 탭 쿼리(?tab=followers|following|points,
+  │     구 해시 #followers·#following·#points 호환, 티켓 20261125_1136) = 팔로워/팔로잉/포인트 목록
   ├── [username]/followers, /following
   └── profile/edit — username 변경, 아바타 업로드, 탈퇴하기(확인 문구 입력 뒤 계정 삭제, 운영 로직 17장)
 

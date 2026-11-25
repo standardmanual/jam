@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { createServiceClient } from '@/lib/supabase/server'
 import MissionForm from '../MissionForm'
 import { loadMissionFormPoiCategories } from '../missionFormPoiCategories'
@@ -13,9 +13,9 @@ export default async function NewMissionPage() {
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 미션
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">미션 등록</h1>
       </div>
       <MissionForm badgeLabels={[]} tribes={tribes} poiCategories={poiCategories} />

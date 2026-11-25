@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import BadgeForm from '../BadgeForm'
 import type { TribeRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
 import { getJamPolicy } from '@/lib/jam/policy'
@@ -32,9 +32,9 @@ export default async function NewBadgePage() {
         pointPolicy={pointPolicy}
         header={
           <div>
-            <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+            <AdminBackLink fallbackHref="/admin/badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
               ← 배지
-            </Link>
+            </AdminBackLink>
             <h1 className="text-2xl font-bold mt-2">배지 등록</h1>
           </div>
         }

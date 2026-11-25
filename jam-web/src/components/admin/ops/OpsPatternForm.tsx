@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/admin/ui/alert'
@@ -230,7 +231,7 @@ export function OpsPatternForm(props: OpsPatternFormProps) {
   const leave = () => {
     setDone(true)
     setCancelOpen(false)
-    router.push(cancelHref)
+    goBackOrPush(router, cancelHref)
   }
 
   const reload = () => {

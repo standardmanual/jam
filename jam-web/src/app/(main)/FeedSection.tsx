@@ -15,7 +15,7 @@ import LoadMoreButton from '@/components/ui/LoadMoreButton'
 import { Card } from '@ds/components/cards/Card'
 import { ListRow, ListRowChip } from '@/components/ui/ListRow'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import { buildQueryHref, readEnumParam } from '@/lib/urlQueryState'
+import { buildQueryHref, readEnumParam, replaceUrlQuery } from '@/lib/urlQueryState'
 import {
   MedalIcon,
   MagicBookIcon,
@@ -617,11 +617,20 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  // 필터는 ?feed=에서 읽어 시작한다(알 수 없는 값은 전체). 프로필의 ?u= 등 다른 쿼리는 전환 때 그대로 보존한다.
-  const [activeFilter, setActiveFilter] = useState<FilterTab>(() =>
-    readEnumParam(searchParams, FEED_FILTER_QUERY_KEY, FILTER_KEYS, DEFAULT_FILTER),
-  )
+  const searchKey = searchParams.toString()
+  const queryFilter = readEnumParam(searchParams, FEED_FILTER_QUERY_KEY, FILTER_KEYS, DEFAULT_FILTER)
+  // 필터는 ?feed=에서 읽어 시작하고(알 수 없는 값은 전체), 뒤로가기·URL 변경 시에도 searchParams와 동기화한다.
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey)
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(() => queryFilter)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  if (prevSearchKey !== searchKey) {
+    setPrevSearchKey(searchKey)
+    if (activeFilter !== queryFilter) {
+      setActiveFilter(queryFilter)
+      setVisibleCount(PAGE_SIZE)
+    }
+  }
 
   // 필터 → 묶음 순서를 지킨다. 묶음은 표현 계층이라 필터 결과 안에서만 성립한다.
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
@@ -633,10 +642,9 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
   const handleFilterChange = (tab: FilterTab) => {
     setActiveFilter(tab)
     setVisibleCount(PAGE_SIZE) // 탭 전환 시 페이지네이션 초기화
-    // history를 쌓지 않고(replace) 새로고침·링크 공유·상세에서 돌아올 때 같은 필터가 유지되게 한다
-    router.replace(
+    // history를 쌓지 않고(replaceUrlQuery) 서버 재요청 없이 새로고침·링크 공유·상세에서 돌아올 때 같은 필터를 유지한다
+    replaceUrlQuery(
       buildQueryHref(pathname, searchParams, { [FEED_FILTER_QUERY_KEY]: tab === DEFAULT_FILTER ? null : tab }, window.location.hash),
-      { scroll: false },
     )
   }
 

@@ -12,8 +12,8 @@ import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
  * 20260824_021: 알림함 착지용 쿼리 파라미터.
  * - `?tab=activity|checkin|collection` — 소식 #1·#4의 착지 탭 (구 값 `poi`도 계속 받는다 — 20260826_004)
  *
- * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리로도 탭을 전달해야
- * 하므로 쿼리도 초기값으로 받는다(이후 탭 전환은 기존대로 hash를 쓴다).
+ * 탭 상태는 쿼리(`?tab=checkin|collection`, 기본 `activity`는 쿼리 없음)가 정본이며,
+ * 구 해시 주소(`#collection`·`#checkin`·`#poi`)도 클라이언트 마운트 시 쿼리로 정규화한다 (티켓 20261125_1136).
  *
  * ⚠️ `tab`의 타입을 `string`으로 좁히지 말 것 — `?tab=a&tab=b`처럼 같은 키가 두 번 오면
  * Next가 배열을 넘긴다. 지금은 `BadgesClient`의 `normalizeTab`이 배열을 우연히 걸러

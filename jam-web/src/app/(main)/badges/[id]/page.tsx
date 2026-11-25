@@ -311,7 +311,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <div className="min-h-dvh text-foreground bg-background">
         <TopNav
           title={d.common.back}
-          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : '/inventory'}
         />
 
         <BadgeTicket
@@ -419,7 +419,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <div className="min-h-dvh text-foreground bg-background">
         <TopNav
           title={d.common.back}
-          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : '/badges?tab=checkin'}
         />
 
         <BadgeTicket
@@ -490,7 +490,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     <div className="min-h-dvh text-foreground bg-background">
       <TopNav
         title={d.common.back}
-        backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+        backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : '/badges'}
       />
 
       <BadgeTicket

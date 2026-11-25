@@ -3,6 +3,7 @@
  * (티켓 20260905_0032 B-1 · B-3)
  */
 import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { notFound } from 'next/navigation'
 import { fetchActivityFamilyBadges } from '@/lib/admin/badge-families-query'
 import { groupBadgesIntoFamilies, proposeFamilyKey } from '@/lib/admin/badge-families'
@@ -25,9 +26,9 @@ export default async function AdminBadgeFamilyDetailPage({ params }: AdminBadgeF
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="flex flex-col gap-1">
-        <Link href="/admin/badge-families" className="text-sm text-muted-foreground underline underline-offset-4">
+        <AdminBackLink fallbackHref="/admin/badge-families" className="text-sm text-muted-foreground underline underline-offset-4">
           ← 계열 관리
-        </Link>
+        </AdminBackLink>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <h1 className="text-2xl md:text-3xl font-bold">{family.name}</h1>
           {/* 계열 단위 폐기는 일괄 작업 도구가 맡는다(티켓 20260905_0034) — 이 화면은

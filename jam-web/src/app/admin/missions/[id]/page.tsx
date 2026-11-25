@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { createServiceClient } from '@/lib/supabase/server'
 import { readAllowedTribeIds } from '@/lib/admin/mission-tribes'
 import type { MissionRow } from '@/types/database'
@@ -54,9 +54,9 @@ export default async function EditMissionPage({ params }: { params: Promise<{ id
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 미션
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">미션 수정</h1>
       </div>
       <MissionForm

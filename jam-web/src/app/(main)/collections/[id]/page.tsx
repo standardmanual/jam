@@ -78,7 +78,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
   const backHref =
     from === 'badge' && itemId ? `/inventory/${itemId}` :
-    from === 'badges' ? '/badges#collection' :
+    from === 'badges' ? '/badges?tab=collection' :
     subjectUsername ? `/${subjectUsername}` :
     null
 
@@ -273,7 +273,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
   return (
     <div className="min-h-dvh text-foreground bg-background pb-6">
-      <TopNav title={book.name} backHref={backHref ?? '/badges#collection'} />
+      <TopNav title={book.name} backHref={backHref ?? '/badges?tab=collection'} />
 
       <BadgeTicket
         color={ticketColor}

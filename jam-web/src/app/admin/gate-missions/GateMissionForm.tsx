@@ -9,7 +9,7 @@
  */
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import type { BadgeRarity, MissionGateStage, MissionRow, MissionVisibilityRule } from '@/types/database'
 import { MISSION_GATE_STAGES } from '@/types/database'
 import {
@@ -722,9 +722,9 @@ export default function GateMissionForm({ mission, existingAxes, families, rewar
         <Button onClick={handleSave} disabled={saving}>
           {saving ? '저장 중...' : '저장'}
         </Button>
-        <Link href="/admin/gate-missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/gate-missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           취소
-        </Link>
+        </AdminBackLink>
       </div>
     </div>
   )

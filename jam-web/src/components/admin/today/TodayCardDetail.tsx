@@ -10,6 +10,7 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { toast } from 'sonner'
 import { Button } from '@/components/admin/ui/button'
 import SafeImage from '@/components/SafeImage'
@@ -290,9 +291,9 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
       <TodayEditorShell
         header={
           <div>
-            <Link href={`/admin/today?date=${returnDate}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+            <AdminBackLink fallbackHref={`/admin/today?date=${returnDate}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
               ← 투데이
-            </Link>
+            </AdminBackLink>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold">{card.title}</h1>
               {!card.is_active && (

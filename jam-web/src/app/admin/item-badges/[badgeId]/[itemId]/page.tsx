@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import SafeImage from '@/components/SafeImage'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, CustodyEventRow, InventoryItemRow, InventoryRow, PoiDropSource } from '@/types/database'
@@ -123,12 +124,12 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div>
-        <Link
-          href={`/admin/item-badges/${item.badge_id}`}
+        <AdminBackLink
+          fallbackHref={`/admin/item-badges/${item.badge_id}`}
           className="text-muted-foreground hover:text-foreground text-sm transition-colors"
         >
           ← 배지별 발급 일련번호 목록
-        </Link>
+        </AdminBackLink>
       </div>
 
       {/* 헤더: 배지 도안 + 일련번호 + 현재 상태 */}

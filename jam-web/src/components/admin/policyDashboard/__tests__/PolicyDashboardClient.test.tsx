@@ -5,8 +5,15 @@
  * - 숫자 입력칸·«값 변경» 버튼 같은 직접 수정 컨트롤은 어디에도 없다
  * - 읽어 보여 줄 칸이 없는 카드(여러 칸)는 실측값 줄 없이 링크만 둔다. 검색창과 유형 탭은 그대로 있다
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+
+const nav = vi.hoisted(() => ({ query: '' }))
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/admin/policy-dashboard',
+  useSearchParams: () => new URLSearchParams(nav.query),
+}))
+
 import { POLICIES_DATA } from '@/lib/admin/policyDashboard/policiesData'
 import { PolicyDashboardClient } from '../PolicyDashboardClient'
 
@@ -25,6 +32,10 @@ const html = (liveValues: Record<string, unknown> = { intensity_light: 7, vehicl
   ).replace(/<!-- -->/g, '')
 
 describe('PolicyDashboardClient — 값 읽기와 설정 화면 링크', () => {
+  beforeEach(() => {
+    nav.query = ''
+  })
+
   it('고른 정책이 모두 카드로 그려진다', () => {
     expect(policies).toHaveLength(PICKED_IDS.length)
     const out = html()
@@ -106,5 +117,20 @@ describe('PolicyDashboardClient — 값 읽기와 설정 화면 링크', () => {
     for (const c of ['break-keep', 'wrap-break-word', 'whitespace-nowrap']) {
       expect(tag, c).toContain(c)
     }
+  })
+
+  it('?tab=code_constant 쿼리로 열면 해당 유형 정책만 걸러 보인다 (티켓 20261125_1136)', () => {
+    nav.query = 'tab=code_constant'
+    const out = html()
+    const codePolicy = policies.find((p) => p.type === 'code_constant')!
+    const adminPolicy = policies.find((p) => p.type === 'admin_link')!
+    expect(out).toContain(codePolicy.title)
+    expect(out).not.toContain(adminPolicy.title)
+  })
+
+  it('알 수 없는 ?tab= 값은 전체 탭으로 폴백한다', () => {
+    nav.query = 'tab=unknown'
+    const out = html()
+    for (const p of policies) expect(out).toContain(p.title)
   })
 })

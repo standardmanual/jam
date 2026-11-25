@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
@@ -272,7 +273,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/poi')}
+          onClick={() => goBackOrPush(router, '/admin/poi')}
           className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소

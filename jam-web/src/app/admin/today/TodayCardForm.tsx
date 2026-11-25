@@ -14,6 +14,7 @@
  */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
@@ -955,7 +956,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '카드 등록'}
         </Button>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => router.push(`/admin/today?date=${returnDate}`)}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => goBackOrPush(router, `/admin/today?date=${returnDate}`)}>
             취소
           </Button>
           {isEdit && (

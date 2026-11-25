@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { NavigationLoader } from "@/components/NavigationLoader";
+import { AppHistoryTracker } from "@/components/AppHistoryTracker";
 import { d } from "@/lib/i18n";
 
 const geistSans = Geist({
@@ -42,6 +43,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <AppHistoryTracker />
         <NavigationLoader />
         {children}
       </body>

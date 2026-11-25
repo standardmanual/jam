@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import CategoryManager from '../CategoryManager'
 import type { PoiCategoryRow } from '@/types/database'
 import { logQueryError, throwOnQueryError } from '@/lib/admin/queryError'
@@ -29,9 +29,9 @@ export default async function AdminPoiCategoriesPage() {
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/poi" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/poi" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 장소 목록
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">장소 카테고리 관리</h1>
         <p className="text-muted-foreground text-sm mt-1">
           &quot;파이프라인 연동&quot;을 켠 카테고리는 드랍/픽업 지도의 자동검색 대상이 됩니다 — 티어·키워드가 실제 검색 동작을 바꿉니다.

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser, isAdminAccount } from '@/lib/admin/auth'
 import { DataTablePagination } from '@/components/admin/data-table/data-table-pagination'
@@ -102,9 +102,9 @@ export default async function AdminUserDetailPage({ params, searchParams }: Prop
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/users" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/users" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 유저 목록
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">{user.username ?? '(닉네임 없음)'}</h1>
         <p className="text-muted-foreground text-sm mt-1">
           {user.email} · 가입 {formatDateTime(user.created_at)}

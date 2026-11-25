@@ -13,7 +13,7 @@
  * 제목은 기획 제목(`bundle.title`)이고, 없으면(옛 묶음) 대상 주차다. 제목이 있으면 그 아래 한 줄에 주차와 기간을 보인다
  * (티켓 20261026_2024). `author`·`bundle_id`·`item_key`는 제출자가 정한 값(자기 신고)이라 제목으로 쓰지 않는다.
  */
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
@@ -47,13 +47,13 @@ export default async function OpsBundleDetailPage({ params, searchParams }: OpsB
     <div className="w-full p-4 md:p-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link
-            href="/admin/ops-inbox"
+          <AdminBackLink
+            fallbackHref="/admin/ops-inbox"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             <IconArrowLeft className="size-4" aria-hidden="true" />
             운영플랜
-          </Link>
+          </AdminBackLink>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className="text-2xl font-bold break-keep wrap-break-word">{title ?? weekText}</h1>
             {bundle.isSample && <OpsStatusBadge type="sample" />}

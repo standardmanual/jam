@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import TribeForm from '../TribeForm'
 import AdjacencyEditor from './AdjacencyEditor'
 import type { TribeRow, TribeAdjacencyRow } from '@/types/database'
@@ -23,9 +23,9 @@ export default async function EditTribePage({ params }: { params: Promise<{ id: 
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/tribes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/tribes" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 트라이브
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">트라이브 수정</h1>
       </div>
       <TribeForm tribe={data as TribeRow} />

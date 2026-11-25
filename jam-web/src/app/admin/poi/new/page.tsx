@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import PoiForm from '../PoiForm'
 import type { PoiCategoryRow } from '@/types/database'
 
@@ -13,9 +13,9 @@ export default async function NewPoiPage() {
   return (
     <div className="w-full p-4 md:p-8 space-y-6">
       <div className="mb-6">
-        <Link href="/admin/poi" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/poi" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 체크인
-        </Link>
+        </AdminBackLink>
         <h1 className="text-2xl font-bold mt-2">장소 등록</h1>
         <p className="text-sm text-muted-foreground mt-1">
           등록된 장소는 검토 큐에서 확인하고 활성화할 수 있어요

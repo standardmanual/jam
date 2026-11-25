@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import { IconX } from '@tabler/icons-react'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, TribeRow, ItemBookRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
@@ -1381,7 +1382,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, loc
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '배지 등록'}
         </Button>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => router.push('/admin/badges')}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => goBackOrPush(router, '/admin/badges')}>
             취소
           </Button>
           {isEdit && (

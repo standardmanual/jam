@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { AdminBackLink } from '@/components/admin/AdminBackLink'
 import type { MissionRow, MissionType } from '@/types/database'
 import { checkMissionCondition, usesNightCondition } from '@/lib/missions/condition-keys'
 import { MISSION_SCOPE_LABEL, type MissionScope } from '@/lib/admin/mission-tribes'
@@ -578,9 +578,9 @@ export default function MissionForm({ mission, badgeLabels, poiLabel, tribes, po
           className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm">
           {saving ? '저장 중...' : '저장'}
         </button>
-        <Link href="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <AdminBackLink fallbackHref="/admin/missions" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           취소
-        </Link>
+        </AdminBackLink>
       </div>
     </div>
   )

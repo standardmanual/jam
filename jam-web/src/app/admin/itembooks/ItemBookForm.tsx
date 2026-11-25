@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { goBackOrPush } from '@/lib/appHistory'
 import SafeImage from '@/components/SafeImage'
 import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
@@ -445,7 +446,7 @@ export default function ItemBookForm({
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/itembooks')}
+          onClick={() => goBackOrPush(router, '/admin/itembooks')}
           className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
