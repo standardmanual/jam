@@ -139,8 +139,16 @@ else
   rm -f "$LOG_PREFIX.spacing"
 fi
 
+# 서비스 화면 소스에 DS 밖 값(임의값 클래스·색 리터럴·인라인 시각 style·원시 폼 요소)이 늘었는지 기준선과 견준다
+# (티켓 20261125_2012, UI 소스 정리 2-1회차). 기준선은 scripts/ui-rules-baseline.json.
+if ! ( cd "$REPO_ROOT" && node scripts/check-ui-rules.mjs ) >"$LOG_PREFIX.ui-rules" 2>&1; then
+  FAILED+=("ui-rules")
+else
+  rm -f "$LOG_PREFIX.ui-rules"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing"
+  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
