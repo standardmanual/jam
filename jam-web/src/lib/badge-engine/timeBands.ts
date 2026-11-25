@@ -15,26 +15,8 @@
  */
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 
-export interface TimeBandDef {
-  name: TimeBand
-  /** 시작 시(포함, 0~23) */
-  startHour: number
-  /** 끝 시(미포함). 밤만 자정을 걸쳐 startHour > endHour */
-  endHour: number
-}
-
 export const TIME_BANDS = ['새벽', '오전', '점심', '오후', '저녁', '밤'] as const
 export type TimeBand = (typeof TIME_BANDS)[number]
-
-/** 새벽 5~7, 오전 7~11, 점심 11~14, 오후 14~18, 저녁 18~22, 밤 22~5시 — 시작 포함·끝 미포함 */
-export const TIME_BAND_DEFS: readonly TimeBandDef[] = [
-  { name: '새벽', startHour: 5, endHour: 7 },
-  { name: '오전', startHour: 7, endHour: 11 },
-  { name: '점심', startHour: 11, endHour: 14 },
-  { name: '오후', startHour: 14, endHour: 18 },
-  { name: '저녁', startHour: 18, endHour: 22 },
-  { name: '밤', startHour: 22, endHour: 5 },
-]
 
 /** 시(0~23)가 속하는 시간대. 구간은 시작 포함·끝 미포함, 밤만 자정을 걸친다 */
 export function timeBandOfHour(hour: number): TimeBand {

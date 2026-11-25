@@ -124,13 +124,13 @@ export type ColorRuleName = 'same' | 'image' | 'table'
  * 항목은 색 키 이름으로 적고 hex를 읽지 않는다. 같은 색끼리도 표의 한 항목이다(`chipExclusionRule`이 먼저 본다).
  */
 /** 순서와 무관하게 함께 쓰지 않는 두 색: 빨강과 초록·짙은 초록. */
-export const CHIP_EXCLUSION_MUTUAL: ReadonlyArray<readonly [string, string]> = [
+const CHIP_EXCLUSION_MUTUAL: ReadonlyArray<readonly [string, string]> = [
   ['red', 'green'],
   ['red', 'green-deep'],
 ]
 
 /** 방향이 있는 항목 [칩 색, 면 색]: 노랑 위 흰 칩, 분홍 위 보라 칩. 반대(흰 면 위 노랑 칩)는 막지 않는다. */
-export const CHIP_EXCLUSION_DIRECTED: ReadonlyArray<readonly [string, string]> = [
+const CHIP_EXCLUSION_DIRECTED: ReadonlyArray<readonly [string, string]> = [
   ['white', 'yellow'],
   ['purple', 'pink'],
 ]

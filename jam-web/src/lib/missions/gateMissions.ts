@@ -75,7 +75,7 @@ export const GATE_STAGE_LABEL: Record<MissionGateStage, string> = {
  * **이 목록 하나**를 기준으로 삼는다 — 갈리면 "정합성 검사는 정상인데 화면은 구멍으로
  * 보이는" 모순이 재발한다(티켓 20260906_2231 게이트 리뷰 재작업).
  */
-export const MISSION_REQUIRED_GATE_STAGES: readonly MissionGateStage[] = ['epic_to_mystic']
+const MISSION_REQUIRED_GATE_STAGES: readonly MissionGateStage[] = ['epic_to_mystic']
 
 /** 이 단계는 미션이 없어도 정상인가(=축 교차만으로 충분한 단계인가) */
 export function isGateStageMissionOptional(stage: MissionGateStage): boolean {
@@ -83,10 +83,10 @@ export function isGateStageMissionOptional(stage: MissionGateStage): boolean {
 }
 
 /** 노출 규칙 안에서 계열 요구를 담는 두 자리 */
-export const VISIBILITY_RULE_REQUIREMENT_KEYS = ['require_owned', 'hide_when_owned'] as const
-export type VisibilityRuleRequirementKey = (typeof VISIBILITY_RULE_REQUIREMENT_KEYS)[number]
+const VISIBILITY_RULE_REQUIREMENT_KEYS = ['require_owned', 'hide_when_owned'] as const
+type VisibilityRuleRequirementKey = (typeof VISIBILITY_RULE_REQUIREMENT_KEYS)[number]
 
-export const VISIBILITY_RULE_REQUIREMENT_LABEL: Record<VisibilityRuleRequirementKey, string> = {
+const VISIBILITY_RULE_REQUIREMENT_LABEL: Record<VisibilityRuleRequirementKey, string> = {
   require_owned: '노출 조건(이 배지를 보유해야 보여요)',
   hide_when_owned: '숨김 조건(이 배지를 보유하면 숨겨요)',
 }
@@ -110,12 +110,12 @@ export type GateMissionBadge = Pick<
  * `{종목}:{축슬러그}` 꼴이며, 쉼표(목록 구분자)와 `#`(폴백 접두어)를 막는다.
  * 마이그레이션 135의 `missions_gate_axis_format` CHECK가 DB에서도 같은 것을 막는다.
  */
-export function isValidGateAxis(axis: string): boolean {
+function isValidGateAxis(axis: string): boolean {
   return isValidFamilyKey(axis)
 }
 
 /** 축 키의 종목 부분 (`walking:거리` → `walking`). 형태가 아니면 null */
-export function gateAxisActivityType(axis: string): string | null {
+function gateAxisActivityType(axis: string): string | null {
   const idx = axis.indexOf(':')
   return idx > 0 ? axis.slice(0, idx) : null
 }

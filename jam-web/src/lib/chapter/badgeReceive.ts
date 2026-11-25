@@ -74,7 +74,7 @@ export interface AwardBadgeReceiveScoreInput {
   occurrenceActivityId?: number | string | null
 }
 
-export type BadgeReceiveSkipReason = 'origin' | 'badge_type' | 'hidden' | 'excluded_condition' | 'suspended'
+type BadgeReceiveSkipReason = 'origin' | 'badge_type' | 'hidden' | 'excluded_condition' | 'suspended'
 
 export type BadgeReceiveScoreOutcome =
   | { status: 'scored'; score: Extract<AwardServiceJamResult, { ok: true }> }

@@ -38,7 +38,7 @@ export type ButtonSurface = 'main' | 'sub' | 'dark'
  */
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   /** primary의 면(및 dark의 secondary·ghost)을 바꾼다. */
   surface?: ButtonSurface

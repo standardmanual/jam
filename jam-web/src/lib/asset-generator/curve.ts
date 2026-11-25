@@ -39,7 +39,7 @@ export interface PathPoint {
   a: number;
 }
 
-export interface CandidateStats {
+interface CandidateStats {
   overlap: number;
   center: number;
   radius: number;
@@ -49,23 +49,23 @@ export interface CandidateStats {
  * 곡선 길이 중 스테이지 밖에 있는 비율의 목표값. 곡선 크기를 이 비율에 맞춰 자동으로 조절하므로
  * 불규칙성·비율과 상관없이 곡선이 늘 스테이지 밖으로 크게 나갔다 들어온다.
  */
-export const OUT_FRACTION = 0.3;
+const OUT_FRACTION = 0.3;
 /** 진행 방향을 흔드는 파형의 개수(곡선 한 바퀴 동안 1~HARMONICS번 흔들림) */
-export const HARMONICS = 6;
+const HARMONICS = 6;
 /** 가장 급하게 도는 곳의 회전 반경 최솟값(짧은 변 대비). 이보다 급하게 꺾이는 곡선은 버린다 */
-export const RADIUS_MIN = 0.15;
+const RADIUS_MIN = 0.15;
 /** 곡선 길이 중 화면 중앙(가로·세로 가운데 40%)에 머무는 비율의 최솟값 */
-export const CENTER_MIN = 0.1;
+const CENTER_MIN = 0.1;
 /** 후보 선택 때 중앙 기준에 곱하는 여유. 후보 평가가 완성 경로의 중앙 체류 비율보다 조금 높게 나오기 때문이다 */
-export const CENTER_MARGIN = 1.3;
+const CENTER_MARGIN = 1.3;
 /** 불규칙성 슬라이더(0~100%)가 매핑되는 내부 굴곡 세기 범위. 슬라이더 0%가 내부 0.6, 100%가 내부 1.5다 */
-export const IRR_LO = 0.6;
-export const IRR_HI = 1.5;
+const IRR_LO = 0.6;
+const IRR_HI = 1.5;
 /** 시드마다 곡선에 큰 고리 구간이 들어갈 확률 */
-export const LOOP_CHANCE = 0.5;
+const LOOP_CHANCE = 0.5;
 /** 고리 구간의 길이 범위(곡선 한 바퀴 대비 비율). 길수록 고리가 크다 */
-export const LOOP_WIDTH_MIN = 0.32;
-export const LOOP_WIDTH_MAX = 0.45;
+const LOOP_WIDTH_MIN = 0.32;
+const LOOP_WIDTH_MAX = 0.45;
 
 const CANDIDATE_TRIES = 40;
 const CANDIDATE_EVAL_POINTS = 240;
@@ -97,7 +97,7 @@ function harmWeight(k: number, irr: number): number {
  * - amp·ph: 진행 방향을 흔드는 파형의 진폭(라디안)과 위상
  * - loop: withLoop이면 곡선 한 곳에서 방향이 한 바퀴 더 도는 큰 고리 구간. 이때 turns는 항상 ±1이다
  */
-export function makeCandidate(rnd: RandomSource, withLoop = false): CurveCandidate {
+function makeCandidate(rnd: RandomSource, withLoop = false): CurveCandidate {
   const r = rnd();
   const sign = rnd() < 0.5 ? -1 : 1;
   const amp: number[] = [];
@@ -129,7 +129,7 @@ function loopAngle(loop: NonNullable<CurveCandidate['loop']>, u: number): number
  * 정규화된 곡선 좌표 M개. 방향 θ(u)를 따라 나아간 뒤, 평균 진행 벡터를 빼서 끝점이 시작점과 정확히 만나게 한다.
  * 방향 함수가 주기적이므로 이음매에서도 진행 방향이 끊기지 않는다.
  */
-export function unitCurve(c: CurveCandidate, irr: number, M: number): { ux: Float32Array; uy: Float32Array } {
+function unitCurve(c: CurveCandidate, irr: number, M: number): { ux: Float32Array; uy: Float32Array } {
   const vx = new Float32Array(M);
   const vy = new Float32Array(M);
   let mx = 0;
@@ -226,7 +226,7 @@ export function sampleFitted(
 }
 
 /** 후보 평가: 겹침 점수(서로 다른 구간이 가까이 지나가는 정도), 중앙 체류 비율, 최소 회전 반경 */
-export function candidateStats(
+function candidateStats(
   c: CurveCandidate,
   irr: number,
   stageWidth: number,

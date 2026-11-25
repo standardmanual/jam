@@ -18,18 +18,18 @@
 import { createServiceClient } from '@/lib/supabase/server'
 
 /** 참가. 참가 행이 없으면(참가한 적이 없거나 트라이브 변경으로 취소됐으면) 기록 전체에서 null이다 */
-export interface MissionParticipationRecord {
+interface MissionParticipationRecord {
   joinedAt: string
   /** 지금 진행 값. 시점별 이력은 두지 않는다 */
   progressValue: number
 }
 
-export interface MissionCompletionRecord {
+interface MissionCompletionRecord {
   completedAt: string
 }
 
 /** 아이템 배지 보상 한 건 */
-export interface MissionItemRewardRecord {
+interface MissionItemRewardRecord {
   /** 서버 안에서만 쓴다 — 유저 화면으로 내릴 때 `locked`면 빼야 한다 */
   badgeId: string
   /** 기록할 때 고정한 잠김. 배지 설정이 나중에 바뀌어도 그대로다 */
@@ -42,7 +42,7 @@ export interface MissionItemRewardRecord {
   inventoryItemId: string | null
 }
 
-export interface MissionCancellationRecord {
+interface MissionCancellationRecord {
   cancelledAt: string
   joinedAt: string
   /** 취소 당시 진행 값 */

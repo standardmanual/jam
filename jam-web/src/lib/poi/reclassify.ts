@@ -38,7 +38,7 @@ import { UNASSIGNED_POI_CATEGORY_SLUG } from '@/lib/admin/poi-review'
 /** 재분류 대상에서 제외하는 카테고리 — mountain/train_subway는 티켓이 명시적으로 재분류
  *  대상에서 제외를 지시했고(자동수집만 중단, 기존 POI는 그대로), unassigned는 이미
  *  최종 상태라 "재분류할 이전 카테고리"가 아니다. */
-export const RECLASSIFY_EXCLUDED_CATEGORIES = ['mountain', 'train_subway', UNASSIGNED_POI_CATEGORY_SLUG]
+const RECLASSIFY_EXCLUDED_CATEGORIES = ['mountain', 'train_subway', UNASSIGNED_POI_CATEGORY_SLUG]
 
 /** 동명이인 장소를 걸러내는 거리 상한(m). 그리드 수집 반경(500m)보다 보수적으로 좁혀
  *  이름만으로 다른 지역의 동명 장소를 같은 곳으로 오판할 위험을 줄인다. */
@@ -55,7 +55,7 @@ interface ReclassifyRule {
 
 // 순서가 중요하다 — 구체적인 패턴을 앞에 둔다(국립공원 등 nature 세부 유형이 park의
 // 일반 "공원"보다 먼저 검사돼야 한다).
-export const RECLASSIFY_RULES: ReclassifyRule[] = [
+const RECLASSIFY_RULES: ReclassifyRule[] = [
   { slug: 'nature', patterns: ['국립공원', '자연휴양림', '해수욕장', '수목원'] },
   { slug: 'tourist_attraction', patterns: ['박물관', '미술관', '전망대'] },
   { slug: 'stadium', patterns: ['종합운동장', '경기장'] },
@@ -82,7 +82,7 @@ export function matchNaverCategoryToTargetSlug(naverCategoryRaw: string | null |
   return null
 }
 
-export interface ReclassifyTargetPoi {
+interface ReclassifyTargetPoi {
   id: string
   name: string
   latitude: number
@@ -91,7 +91,7 @@ export interface ReclassifyTargetPoi {
 }
 
 /** 재분류 대상 POI(자동수집분, 산·기차지하철·unassigned 제외)를 불러온다. */
-export async function loadReclassifyTargets(service: SupabaseClient): Promise<ReclassifyTargetPoi[]> {
+async function loadReclassifyTargets(service: SupabaseClient): Promise<ReclassifyTargetPoi[]> {
   const { data, error } = await service
     .from('poi')
     .select('id, name, latitude, longitude, category')
@@ -122,7 +122,7 @@ async function findMatchingNaverPlace(poi: ReclassifyTargetPoi): Promise<NaverMa
   return best
 }
 
-export interface ReclassifyPlanEntry {
+interface ReclassifyPlanEntry {
   id: string
   name: string
   oldCategory: string

@@ -299,7 +299,7 @@ export type CleanRingOptions = {
   collinearTolerance: number;
 };
 
-export const DEFAULT_CLEAN_OPTIONS: CleanRingOptions = { minSegment: 0.002, collinearTolerance: 0.00005 };
+const DEFAULT_CLEAN_OPTIONS: CleanRingOptions = { minSegment: 0.002, collinearTolerance: 0.00005 };
 
 /** 일직선상의 점과 너무 짧은 선분을 지워 점 간격을 고르게 한다. 점이 3개 미만이 되면 빈 배열이다. */
 export function cleanRing(ring: Ring, options: CleanRingOptions = DEFAULT_CLEAN_OPTIONS): Ring {

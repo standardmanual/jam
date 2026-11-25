@@ -53,7 +53,7 @@ export interface OpenCapsuleOptions {
 }
 
 /** 열기가 응답에 더하는 챕터 횟수 정보 */
-export interface CapsuleCountedInfo {
+interface CapsuleCountedInfo {
   /** 횟수를 센 챕터(오르기 전). 센 게 없으면(퀘스트 전 캡슐 등) null */
   chapterNo: number | null
   /** 이번 열기로 오른 챕터 번호 목록(최대 한 칸). 오르지 않았으면 빈 배열 */
@@ -139,7 +139,7 @@ function toOpenError(result: CapsuleOpenResult): Error {
  * 추첨에 쓸 데이터(트라이브·후보·카운터)를 읽는다. 읽지 못하면 던진다 — 틀린 값으로 추첨하지 않는다.
  * 등급 올리기(`lib/combine/tierUp.ts`, 티켓 20261022_2119 2회)도 같은 풀을 읽으려고 내보낸다.
  */
-export async function loadRollData(supabase: SupabaseClient, userId: string) {
+async function loadRollData(supabase: SupabaseClient, userId: string) {
   const { data: userRow, error: userError } = await supabase.from('users').select('tribe_id').eq('id', userId).maybeSingle()
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`)
   const tribeId = (userRow as { tribe_id?: string | null } | null)?.tribe_id ?? null

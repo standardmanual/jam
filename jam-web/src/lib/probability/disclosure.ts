@@ -31,7 +31,7 @@ export interface DisclosureRow {
 }
 
 /** 개수·잠김 표와 등급 표 */
-export interface DisclosureTables {
+interface DisclosureTables {
   counts: DisclosureRow[]
   rarity: DisclosureRow[]
 }

@@ -166,7 +166,7 @@ interface ActivityRow {
  * `normalized`(JSON)에서 종목을 읽는다. 종목이 없거나 걷기 게이트를 통과하지 못하면 `null`이다.
  * 게이트가 읽는 필드가 숫자가 아니면 걷기는 세지 않는다.
  */
-export function recognizedTypeOf(normalized: unknown): string | null {
+function recognizedTypeOf(normalized: unknown): string | null {
   if (typeof normalized !== 'object' || normalized === null) return null
   const a = normalized as Partial<Record<keyof NormalizedActivity, unknown>>
   const type = a.jamActivityType

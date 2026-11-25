@@ -18,7 +18,7 @@ import type { CSSProperties, HTMLAttributes, MouseEventHandler, ReactNode } from
 
 const WEIGHT = { regular: 400, strong: 700 }
 
-export const LIST_CARD_STATIC_CSS = `
+const LIST_CARD_STATIC_CSS = `
 .ds-list-card{transition:transform var(--duration-micro,80ms) var(--ease-out,ease-out)}
 .ds-list-card[data-interactive="true"]:has(.ds-list-card-hit:active){transform:scale(var(--scale-press-card,0.98))}
 .ds-list-card-hit:focus-visible{outline:2px solid var(--link);outline-offset:2px}

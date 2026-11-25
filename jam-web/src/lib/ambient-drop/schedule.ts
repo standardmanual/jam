@@ -15,9 +15,6 @@ import { kstHour } from '@/lib/notifications/kst'
 
 const MINUTES_PER_DAY = 24 * 60
 
-/** 배포 시각으로 고를 수 있는 KST 정시 목록 (0~23) */
-export const AMBIENT_DROP_SCHEDULE_HOURS_KST = Array.from({ length: 24 }, (_, h) => h)
-
 /** 0~23 정수인지 — 어드민 입력 검증용 */
 export function isValidScheduleHourKst(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 23
@@ -87,8 +84,3 @@ function dayBandLabel(hourKst: number): string {
  * 운영자가 스스로를 잠그는 경로다.
  */
 export const AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES = 180
-
-/** 화면 표기 — 「매일 03:00 KST」 */
-export function formatAmbientDropScheduleLabel(scheduleHourKst: number): string {
-  return `매일 ${formatAmbientDropScheduleTime(scheduleHourKst)}`
-}

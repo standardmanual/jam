@@ -7,7 +7,7 @@
  */
 
 /** 숫자 위치: 채운 비율(채운 양 ÷ 필요량)이 이 값 이상이면 채움 안쪽 왼쪽에, 미만이면 트랙 바깥쪽(채움 오른쪽 빈 자리의 오른쪽 끝)에 둔다 */
-export const CAPSULE_NUMBER_INSIDE_RATIO = 0.5
+const CAPSULE_NUMBER_INSIDE_RATIO = 0.5
 
 export type CapsuleNumberPlacement = 'inside' | 'outside'
 
@@ -15,7 +15,7 @@ export type CapsuleNumberPlacement = 'inside' | 'outside'
 export const GRAPH_MIN_PERCENT = 2
 
 /** 그래프 최대 눈금(%). 캡슐 잼 100%가 대응한다 */
-export const GRAPH_MAX_PERCENT = 100
+const GRAPH_MAX_PERCENT = 100
 
 /** 진입 모션: 트랙이 이만큼(0~1) 이상 보이면 «화면에 보인다»로 친다 (티켓 20261031_1806, IntersectionObserver threshold) */
 export const GAUGE_ENTRY_VISIBLE_RATIO = 0.5

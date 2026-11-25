@@ -9,7 +9,7 @@ import type { createServiceClient } from '@/lib/supabase/server'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
-export const AVATAR_BUCKET = 'avatars'
+const AVATAR_BUCKET = 'avatars'
 
 /** 목록을 한 번에 읽는 개수와 한 번에 지우는 개수 */
 const LIST_PAGE_SIZE = 100

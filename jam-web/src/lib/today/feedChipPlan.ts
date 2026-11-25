@@ -47,9 +47,9 @@ import { FEED_CORNER_TILT_RANGE } from './feedConstants'
 import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@ds/components/cards/CategorySticker'
 
 /** 분류 칩 중 스티커가 되는 몫(카드마다 시드로 정한다). */
-export const STICKER_SHARE = 0.5
+const STICKER_SHARE = 0.5
 /** 물러서기 2단계의 스티커 배율. */
-export const STICKER_BACKOFF_SCALE = 0.8
+const STICKER_BACKOFF_SCALE = 0.8
 /** 한 카드에 둘 수 있는 스티커 수. */
 export const MAX_STICKERS_PER_CARD = 1
 /** 후보 계획 수의 상한(자리 배치 × 기울기 방향 조합 중 시드로 섞은 앞부분). */
@@ -59,7 +59,7 @@ const SAME_ROW_COST = 1e5
 const LETTERS = ['J', 'a', 'm'] as const
 const PAIR_KEYS = Object.keys(STICKER_COLOR_PAIRS) as CategoryStickerPair[]
 
-export type PlanChipKind = 'label' | 'value'
+type PlanChipKind = 'label' | 'value'
 /** 물러서기 단계: 0 = 물러서지 않음, 1~5 = 위 규칙의 순서, 6 = 칩 하나만 남았을 때 그 칩 작게. */
 export type BackoffLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
@@ -95,7 +95,7 @@ export interface ChipPlanInput {
 }
 
 /** `CategorySticker`에 그대로 넘기는 인자. 색 짝은 R5가 카드 바탕·앞 스티커와 겹치지 않게 바꿀 수 있다. */
-export interface StickerArgs {
+interface StickerArgs {
   shape: StickerShapeName
   pair: CategoryStickerPair
   letter: 'J' | 'a' | 'm'

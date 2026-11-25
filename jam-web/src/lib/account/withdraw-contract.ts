@@ -30,11 +30,6 @@ export const WITHDRAWN_QUERY_KEY = 'withdrawn'
 /** 탈퇴가 끝난 뒤 이동하는 곳 */
 export const WITHDRAWN_LOGIN_PATH = `/login?${WITHDRAWN_QUERY_KEY}=1`
 
-/** `POST /api/account/delete` 본문 */
-export interface WithdrawRequestBody {
-  confirmPhrase: string
-}
-
 /** 탈퇴 화면이 «지워지는 것»으로 보이는 본인 데이터 요약 */
 export interface AccountSummary {
   /** 액티비티 배지 보유 수(삭제된 배지 제외, 프로필의 배지 수와 같은 기준) */

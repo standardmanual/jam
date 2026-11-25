@@ -44,11 +44,10 @@ export interface PoiCategoryKeyword {
   keyword: string
   scope: PoiKeywordScope
 }
-export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
 // 'ambient_drop' — 20260829_2101: 앰비언트(시스템) 드랍이 배치 시점에 InventoryItem을
 // 선발급할 때만 쓰인다. assign_random_serial() 트리거가 이 값으로 앰비언트 일련번호
 // 범위(50,001~999,999)를 판별한다(migrations/108).
-export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup' | 'ambient_drop'
+type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup' | 'ambient_drop'
 
 // =========================================
 // 테이블 Row 타입
@@ -256,58 +255,6 @@ export interface BadgeImagePresetRow {
   is_active: boolean
   created_at: string
   updated_at: string
-}
-
-/** 액티비티 배지 템플릿(마이그레이션 344, 티켓 20261115_2355). 분류(class_key)마다 한 줄. 서비스 롤 전용 */
-export interface ActivityBadgeTemplateRow {
-  /** 'metric' | 'days' | 'streak' | 'count' */
-  class_key: string
-  svg: string
-  /** SVG에서 읽어 낸 이름 자리·값 자리 정보 */
-  slots: Record<string, unknown>
-  /** 색·글자 기본 조정값 */
-  default_params: Record<string, unknown>
-  /** 마지막으로 고친 운영자 이메일 */
-  updated_by: string | null
-  created_at: string
-  updated_at: string
-}
-
-/** 아이템(item_book_id + item_name)별 영어 묘사 문장(마이그레이션 337) */
-export interface BadgeImageItemPromptRow {
-  id: string
-  item_book_id: string
-  item_name: string
-  description_en: string
-  /** 영어 문장을 만들 때 쓴 badges.form_description의 sha256 16진수 */
-  source_hash: string
-  source: 'claude' | 'manual'
-  updated_at: string
-}
-
-export type BadgeImageGenerationStatus = 'generated' | 'applied' | 'reverted' | 'failed'
-
-/** 이미지 생성 1회(후보 2장) 이력(마이그레이션 337) */
-export interface BadgeImageGenerationRow {
-  id: string
-  item_book_id: string
-  item_name: string
-  preset_id: string | null
-  preset_version: number
-  prompt: string
-  request_json: Record<string, unknown>
-  candidate_urls: string[]
-  status: BadgeImageGenerationStatus
-  /** 적용한 후보 번호(0 또는 1) */
-  applied_index: number | null
-  applied_url: string | null
-  /** 적용 직전 4등급 공통 image_url, 되돌리기용 */
-  previous_image_url: string | null
-  feedback: string | null
-  error: string | null
-  created_by: string | null
-  created_at: string
-  applied_at: string | null
 }
 
 export interface UserActivityBadgeRow {
@@ -622,17 +569,6 @@ export interface PoiCategoryRow {
   display_on_map: boolean
 }
 
-export interface TradeRow {
-  id: string
-  sender_id: string
-  receiver_id: string
-  offer_item_id: string
-  request_item_id: string
-  status: TradeStatus
-  created_at: string
-  updated_at: string
-}
-
 // =========================================
 // Phase 15: 조합 레시피
 // =========================================
@@ -729,31 +665,6 @@ export type CombineFailReason =
   /** 등급 대응형 레시피에 재료 등급이 섞였다(티켓 20261114_1705). 소각 전에 거절하므로 실패 기록·실패 보상은 없다 */
   | 'mixed_grade_not_allowed'
 
-export interface UserCombineFailLogRow {
-  id: string
-  user_id: string
-  attempted_at: string
-  ingredient_badge_ids: string[]
-  fail_reason: CombineFailReason
-  points_awarded: number
-}
-
-/**
- * 믹스 성공 이력 (마이그레이션 200, 티켓 20261001_0631)
- * `recipe_id`에는 FK가 없다(레시피를 지워도 성공 기록이 남는다). `is_recipe_first`는 그 레시피를
- * 전체 유저 중 처음 성공한 행이며 레시피당 최대 1행이다.
- */
-export interface UserCombineSuccessLogRow {
-  id: string
-  user_id: string
-  recipe_id: string
-  attempted_at: string
-  ingredient_badge_ids: string[]
-  result_badge_ids: string[]
-  points_awarded: number
-  is_recipe_first: boolean
-}
-
 // =========================================
 // Phase 16: 다이나믹 미션
 // =========================================
@@ -779,7 +690,7 @@ export type MissionType =
    * 진행바 개념이 없다 — 달성형(0/1)으로만 표시된다(체크인·아이템 수집과 같은 취급).
    */
   | 'engine_condition'
-export type MissionRewardType = 'badge' | 'points' | 'item_badge'
+type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
 /** individual(개인형)은 달성형으로 통합해 없앴다(티켓 20261111_0900). 틀의 의미는 랭킹형인가 아닌가다 */
 export type MissionStatusDisplayType = 'ranking' | 'achievement'
@@ -1139,27 +1050,6 @@ export interface TribeAdjacencyRow {
   adjacent_tribe_id: string
 }
 
-/**
- * user_drop_state — 발급 경로(동기화·캡슐)가 읽고 쓰는 열은 `common_streak`(`syncIssueRun.ts`)·
- * `capsule_epic_miss`(캡슐)·`updated_at`뿐이다. `last_drop_tribe_id`·`last_drop_book_id`는 어드민의
- * 트라이브·컬렉션 삭제 가드(`lib/admin/reference-guards.ts`, `tribe-list.ts`)가 외래키 때문에 조회만 한다.
- * `last_piece_pity`·`daily_drop_count`·`daily_drop_date`·`total_drops`·`last_activity_at`은 옛 드랍 엔진 전용이었고,
- * 그 엔진을 지운 지금 코드가 읽지도 쓰지도 않는다. 옛 열 7개는 DB에 남아 있다(열 정리와 가드 정리는
- * 티켓 20261022_0938 2회).
- */
-export interface UserDropStateRow {
-  user_id: string
-  last_drop_tribe_id: string | null
-  last_drop_book_id: string | null
-  common_streak: number
-  last_piece_pity: Record<string, number>
-  daily_drop_count: number
-  daily_drop_date: string | null
-  total_drops: number
-  last_activity_at: string | null
-  updated_at: string
-}
-
 /** 3축 모드 — 명시(explicit) 또는 무작위(random). AmbientDropConfigRow 참고 */
 export type AmbientDropAxisMode = 'explicit' | 'random'
 
@@ -1281,15 +1171,6 @@ export interface UserFollowRow {
 // JAM! 카테고리 — 서비스 사용량 배지 (티켓 20260910_1557)
 // =========================================
 
-/** 하루(KST) 동기화 성공 횟수 카운터. `increment_daily_sync_count()` RPC로만 증가한다 */
-export interface UserDailySyncCountRow {
-  user_id: string
-  /** KST 기준 날짜 (YYYY-MM-DD) */
-  sync_date: string
-  count: number
-  updated_at: string
-}
-
 // =========================================
 // Phase 15: 투데이 콘텐츠 카드 (today_cards)
 // =========================================
@@ -1308,7 +1189,7 @@ export type TodayCardTemplateType =
   | 'content_intro'
 
 /** 카드가 화면에 어떤 형태로 노출될지 — template_type(콘텐츠 종류)과 별개 축 */
-export type TodayCardLayoutType =
+type TodayCardLayoutType =
   | 'large_thumbnail' // 큰 썸네일형 — 커버 이미지 크게 + 제목/부제
   | 'badge_gallery'    // 배지목록형 — 배지 여러 개를 갤러리/리스트로 나열
   | 'shortcut'         // 바로가기형 — 이미지 없이 짧은 CTA 한 줄
@@ -1545,7 +1426,7 @@ export interface BadgeGateRequirement {
  * 계열끼리(예: `walking:B1`↔`B2`, `hiking:R1`↔`R2`) 조건이 글자 그대로 같아지는 문제가 있었다.
  * 이 필드가 그 축을 지정한다 — 값 후보는 「기록」이 의미가 있는 스칼라 축(누적/단일 활동)이다.
  */
-export type PersonalRecordMetric =
+type PersonalRecordMetric =
   | 'distance_km'
   | 'elevation_gain_m'
   | 'duration_minutes'
@@ -1967,13 +1848,6 @@ export type PointReason =
   /** 컬렉션(아이템북) 완성 보상 포인트 (마이그레이션 157) */
   | 'item_book_completion_point_reward'
 
-/** 유저별 잔액 캐시 (직접 UPDATE 금지 — award_points RPC로만 변경) */
-export interface PointWalletRow {
-  user_id: string
-  balance: number
-  updated_at: string
-}
-
 /** 불변 원장 (append-only, 수정/삭제 없음) */
 export interface PointTransactionRow {
   id: string
@@ -1995,96 +1869,6 @@ export interface PointTreasuryRow {
   total_minted: number
   total_reclaimed: number
   updated_at: string
-}
-
-export interface ThemePresetRow {
-  id: string
-  name: string
-  main_color: string
-  sub_color: string
-  is_active: boolean
-  created_at: string
-}
-
-/**
- * 2026-08-11 발견: 아래 6개 테이블은 실제 운영 DB엔 있었지만 이 파일에 타입이
- * 한 번도 등록된 적이 없었음 — 그래서 관련 코드 전체가 `(supabase as any)`로
- * 타입 체크를 우회하고 있었음(as any 전수 정리 작업에서 발견, DEV_PROCESS_GUARDRAILS.md
- * 패턴 3 참고). `database.generated.ts` 기준으로 채움.
- */
-export interface AbusingLogRow {
-  id: string
-  user_id: string
-  event_type: string
-  detail: Record<string, unknown> | null
-  created_at: string
-}
-
-/**
- * 어뷰징 정책 설정 (싱글톤 id=1) — src/lib/abusing/policy.ts의 AbusingPolicy와 필드 일치.
- * 단 `soft_*_rate`·`hard_*_rate` 8열은 코드가 쓰지 않음, 열 정리 대기(티켓 20261021_1250, 6-4 4회 정리 SQL).
- */
-export interface AbusingPolicyRow {
-  id: number
-  soft_common_rate: number
-  soft_rare_rate: number
-  soft_epic_rate: number
-  soft_mystic_rate: number
-  hard_common_rate: number
-  hard_rare_rate: number
-  hard_epic_rate: number
-  hard_mystic_rate: number
-  gps_max_speed_kmh: number
-  poi_block_hours: number
-  vehicle_speed_filter_kmh: number
-  gps_daily_distance_cap_km: number
-  transit_walk_max_speed_kmh: number
-  transit_run_max_speed_kmh: number
-  transit_cycling_max_speed_kmh: number
-  transit_segment_min_duration_sec: number
-  /** 마이그레이션 314(티켓 20261103_1115) */
-  transit_ratio_filter_pct: number
-  walk_avg_max_speed_kmh: number
-  updated_at: string
-}
-
-/** GPS 조작 감지 후 72시간 POI 드랍/픽업 차단 — src/lib/abusing/poi-block.ts */
-export interface PoiBlockRow {
-  id: string
-  user_id: string
-  poi_id: string
-  blocked_until: string
-  reason: string
-  created_at: string
-}
-
-/** 네이버 지역검색 결과 캐시(카테고리×그리드 단위 TTL) — src/lib/poi/search-cache.ts */
-export interface PoiSearchCacheRow {
-  grid_key: string
-  category: string
-  had_results: boolean
-  searched_at: string
-}
-
-/** 어뷰징 섀도우밴 — 코드가 쓰지 않음, 표 정리 대기(티켓 20261021_1250, 6-4 4회 정리 SQL). 옛 모듈 shadow-ban.ts는 지웠다 */
-export interface UserShadowBanRow {
-  id: string
-  user_id: string
-  ban_level: string
-  reason: string
-  created_by: string
-  expires_at: string | null
-  created_at: string
-}
-
-/** 배지·드랍 엔진 판정 구조화 로그 — src/lib/engine-log/index.ts */
-export interface EngineDecisionLogRow {
-  id: string
-  user_id: string | null
-  engine: string
-  event: string
-  payload: Record<string, unknown>
-  created_at: string
 }
 
 // =========================================
@@ -2185,19 +1969,6 @@ export interface PoiViewRow {
   viewed_at: string
 }
 
-/**
- * 미션 순위 스냅샷 (마이그레이션 099) — 소식 #23("순위 상승") 판정 기준선.
- * 순위는 어디에도 저장되지 않고 매번 계산되므로, "상승 시만" 조건을 판정하려면
- * 직전 배치의 순위가 필요하다. 025 배치만 읽고 쓴다.
- */
-export interface MissionRankSnapshotRow {
-  mission_id: string
-  user_id: string
-  /** 1부터. 025 배치가 lib/missions/ranking.ts의 정렬로 계산한 값 */
-  rank: number
-  captured_at: string
-}
-
 /** create_notification() RPC 인자 — src/lib/notifications/index.ts */
 export interface CreateNotificationArgs {
   p_user_id: string
@@ -2215,395 +1986,4 @@ export interface CreateNotificationArgs {
    * actor_ids를 넣으면 actor_count가 병합 횟수가 아니라 고유 인원으로 갱신된다 (DATA_MODEL §4-1)
    */
   p_append_keys?: string[] | null
-}
-
-/** award_points() RPC 인자 */
-export interface AwardPointsArgs {
-  p_user_id: string
-  p_amount: number
-  p_reason: PointReason
-  p_source_badge_id?: string | null
-  p_source_mission_id?: string | null
-  p_admin_reason_label?: string | null
-  p_admin_reason_note?: string | null
-  /** 컬렉션(아이템북) 완성 보상일 때만(마이그레이션 157) */
-  p_source_item_book_id?: string | null
-}
-
-// =========================================
-// Supabase Database 제네릭 타입 (createClient에 주입)
-// =========================================
-export interface Database {
-  public: {
-    Tables: {
-      users: {
-        Row: UserRow
-        Insert: Omit<UserRow, 'created_at' | 'updated_at' | 'initial_sync_done'> & {
-          created_at?: string
-          updated_at?: string
-          initial_sync_done?: boolean
-        }
-        Update: Partial<Omit<UserRow, 'id'>>
-        Relationships: []
-      }
-      strava_connections: {
-        Row: StravaConnectionRow
-        Insert: Omit<StravaConnectionRow, 'id' | 'created_at' | 'updated_at'> & {
-          id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<Omit<StravaConnectionRow, 'id'>>
-        Relationships: []
-      }
-      strava_activities: {
-        Row: StravaActivityRow
-        Insert: Omit<StravaActivityRow, 'id' | 'processed_at' | 'created_at'> & {
-          id?: string
-          processed_at?: string
-          created_at?: string
-        }
-        Update: Partial<Omit<StravaActivityRow, 'id'>>
-        Relationships: []
-      }
-      badges: {
-        Row: BadgeRow
-        Insert: Omit<BadgeRow, 'id' | 'created_at' | 'sort_order'> & {
-          id?: string
-          created_at?: string
-          /** DB DEFAULT 0 (미설정) — 마이그레이션 130 */
-          sort_order?: number
-        }
-        Update: Partial<Omit<BadgeRow, 'id'>>
-        Relationships: []
-      }
-      user_activity_badges: {
-        Row: UserActivityBadgeRow
-        Insert: Omit<UserActivityBadgeRow, 'id' | 'earned_at' | 'earn_count' | 'earn_history'> & {
-          id?: string
-          earned_at?: string
-          triggered_by_poi_id?: string | null
-          /** DB DEFAULT 1 — 마이그레이션 130 */
-          earn_count?: number
-          /** DB DEFAULT '[]' — 마이그레이션 130 */
-          earn_history?: BadgeEarnHistoryEntry[]
-        }
-        Update: Partial<Omit<UserActivityBadgeRow, 'id'>>
-        Relationships: []
-      }
-      user_checkin_badge_earns: {
-        Row: UserCheckinBadgeEarnRow
-        Insert: Omit<UserCheckinBadgeEarnRow, 'id' | 'earned_at'> & {
-          id?: string
-          earned_at?: string
-        }
-        Update: Partial<Omit<UserCheckinBadgeEarnRow, 'id'>>
-        Relationships: []
-      }
-      inventory: {
-        Row: InventoryRow
-        Insert: Omit<InventoryRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<InventoryRow, 'id'>>
-        Relationships: []
-      }
-      inventory_items: {
-        Row: InventoryItemRow
-        Insert: Omit<InventoryItemRow, 'id' | 'serial_number' | 'obtained_at' | 'destroyed_at'> & {
-          id?: string
-          obtained_at?: string
-          destroyed_at?: string | null
-        }
-        Update: Partial<Omit<InventoryItemRow, 'id'>>
-        Relationships: []
-      }
-      custody_events: {
-        Row: CustodyEventRow
-        Insert: Omit<CustodyEventRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<CustodyEventRow, 'id'>>
-        Relationships: []
-      }
-      item_books: {
-        Row: ItemBookRow
-        Insert: Omit<ItemBookRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<ItemBookRow, 'id'>>
-        Relationships: []
-      }
-      poi: {
-        Row: PoiRow
-        Insert: Omit<PoiRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<PoiRow, 'id'>>
-        Relationships: []
-      }
-      poi_categories: {
-        Row: PoiCategoryRow
-        Insert: Omit<PoiCategoryRow, 'created_at'> & { created_at?: string }
-        Update: Partial<Omit<PoiCategoryRow, 'slug'>>
-        Relationships: []
-      }
-      trades: {
-        Row: TradeRow
-        Insert: Omit<TradeRow, 'id' | 'created_at' | 'updated_at'> & {
-          id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<Omit<TradeRow, 'id'>>
-        Relationships: []
-      }
-      poi_drops: {
-        Row: PoiDropRow
-        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available' | 'source' | 'inventory_item_id'> & {
-          id?: string
-          dropped_at?: string
-          picked_up_by?: string | null
-          picked_up_at?: string | null
-          is_available?: boolean
-          source?: PoiDropSource
-          inventory_item_id?: string | null
-        }
-        Update: Partial<Omit<PoiDropRow, 'id'>>
-        Relationships: []
-      }
-      combination_recipes: {
-        Row: CombinationRecipeRow
-        Insert: Omit<CombinationRecipeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<CombinationRecipeRow, 'id'>>
-        Relationships: []
-      }
-      combination_recipe_slots: {
-        Row: CombinationRecipeSlotRow
-        Insert: Omit<CombinationRecipeSlotRow, 'id'> & { id?: string }
-        Update: Partial<Omit<CombinationRecipeSlotRow, 'id'>>
-        Relationships: []
-      }
-      combine_policy: {
-        Row: CombinePolicyRow
-        Insert: Partial<CombinePolicyRow> & { id: number }
-        Update: Partial<Omit<CombinePolicyRow, 'id'>>
-        Relationships: []
-      }
-      user_combine_fail_logs: {
-        Row: UserCombineFailLogRow
-        Insert: Omit<UserCombineFailLogRow, 'id' | 'attempted_at'> & { id?: string; attempted_at?: string }
-        Update: Partial<Omit<UserCombineFailLogRow, 'id'>>
-        Relationships: []
-      }
-      user_combine_success_logs: {
-        Row: UserCombineSuccessLogRow
-        Insert: Omit<UserCombineSuccessLogRow, 'id' | 'attempted_at'> & { id?: string; attempted_at?: string }
-        Update: Partial<Omit<UserCombineSuccessLogRow, 'id'>>
-        Relationships: []
-      }
-      missions: {
-        Row: MissionRow
-        Insert: Omit<MissionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<MissionRow, 'id'>>
-        Relationships: []
-      }
-      user_mission_completions: {
-        Row: UserMissionCompletionRow
-        Insert: Omit<UserMissionCompletionRow, 'id' | 'completed_at'> & { id?: string; completed_at?: string }
-        Update: Partial<Omit<UserMissionCompletionRow, 'id'>>
-        Relationships: []
-      }
-      user_mission_participations: {
-        Row: UserMissionParticipationRow
-        Insert: Omit<UserMissionParticipationRow, 'id' | 'joined_at' | 'progress_value'> & { id?: string; joined_at?: string; progress_value?: number }
-        Update: Partial<Omit<UserMissionParticipationRow, 'id'>>
-        Relationships: []
-      }
-      user_activity_feed: {
-        Row: ActivityFeedRow
-        Insert: Omit<ActivityFeedRow, 'id' | 'event_at' | 'created_at' | 'strava_activity_id'> & { id?: string; event_at?: string; created_at?: string; strava_activity_id?: number | null }
-        Update: Partial<Omit<ActivityFeedRow, 'id'>>
-        Relationships: []
-      }
-      tribes: {
-        Row: TribeRow
-        Insert: Omit<TribeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<TribeRow, 'id'>>
-        Relationships: []
-      }
-      tribe_adjacency: {
-        Row: TribeAdjacencyRow
-        Insert: TribeAdjacencyRow
-        Update: Partial<TribeAdjacencyRow>
-        Relationships: []
-      }
-      user_drop_state: {
-        Row: UserDropStateRow
-        Insert: Omit<UserDropStateRow, 'updated_at'> & { updated_at?: string }
-        Update: Partial<Omit<UserDropStateRow, 'user_id'>>
-        Relationships: []
-      }
-      inventory_policy: {
-        Row: InventoryPolicyRow
-        Insert: Partial<InventoryPolicyRow> & { id?: number }
-        Update: Partial<Omit<InventoryPolicyRow, 'id'>>
-        Relationships: []
-      }
-      ambient_drop_config: {
-        Row: AmbientDropConfigRow
-        Insert: Partial<AmbientDropConfigRow> & { id: number }
-        Update: Partial<Omit<AmbientDropConfigRow, 'id'>>
-        Relationships: []
-      }
-      ambient_drop_schedules: {
-        Row: AmbientDropScheduleRow
-        Insert: Partial<AmbientDropScheduleRow> & Pick<AmbientDropScheduleRow, 'scheduled_at' | 'poi_mode' | 'item_mode'>
-        Update: Partial<Omit<AmbientDropScheduleRow, 'id'>>
-        Relationships: []
-      }
-      user_item_book_slots: {
-        Row: UserItemBookSlotRow
-        Insert: Omit<UserItemBookSlotRow, 'id' | 'slotted_at'> & { id?: string; slotted_at?: string }
-        Update: Partial<Omit<UserItemBookSlotRow, 'id'>>
-        Relationships: []
-      }
-      user_item_book_completions: {
-        Row: UserItemBookCompletionRow
-        Insert: Omit<UserItemBookCompletionRow, 'completed_at'> & { completed_at?: string }
-        Update: Partial<UserItemBookCompletionRow>
-        Relationships: []
-      }
-      user_follows: {
-        Row: UserFollowRow
-        Insert: Omit<UserFollowRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<UserFollowRow, 'id'>>
-        Relationships: []
-      }
-      point_wallets: {
-        Row: PointWalletRow
-        Insert: Omit<PointWalletRow, 'updated_at'> & { updated_at?: string }
-        Update: Partial<Omit<PointWalletRow, 'user_id'>>
-        Relationships: []
-      }
-      point_transactions: {
-        Row: PointTransactionRow
-        Insert: Omit<PointTransactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<PointTransactionRow, 'id'>>
-        Relationships: []
-      }
-      point_treasury: {
-        Row: PointTreasuryRow
-        Insert: Partial<PointTreasuryRow> & { id: number }
-        Update: Partial<Omit<PointTreasuryRow, 'id'>>
-        Relationships: []
-      }
-      today_cards: {
-        Row: TodayCardRow
-        Insert: Omit<TodayCardRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<TodayCardRow, 'id'>>
-        Relationships: []
-      }
-      abusing_logs: {
-        Row: AbusingLogRow
-        Insert: Omit<AbusingLogRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<AbusingLogRow, 'id'>>
-        Relationships: []
-      }
-      abusing_policy: {
-        Row: AbusingPolicyRow
-        Insert: Partial<AbusingPolicyRow> & { id: number }
-        Update: Partial<Omit<AbusingPolicyRow, 'id'>>
-        Relationships: []
-      }
-      poi_blocks: {
-        Row: PoiBlockRow
-        Insert: Omit<PoiBlockRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<PoiBlockRow, 'id'>>
-        Relationships: []
-      }
-      poi_search_cache: {
-        Row: PoiSearchCacheRow
-        Insert: PoiSearchCacheRow
-        Update: Partial<PoiSearchCacheRow>
-        Relationships: []
-      }
-      user_shadow_bans: {
-        Row: UserShadowBanRow
-        Insert: Omit<UserShadowBanRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<UserShadowBanRow, 'id'>>
-        Relationships: []
-      }
-      engine_decision_log: {
-        Row: EngineDecisionLogRow
-        Insert: Omit<EngineDecisionLogRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<EngineDecisionLogRow, 'id'>>
-        Relationships: []
-      }
-      theme_presets: {
-        Row: ThemePresetRow
-        Insert: Omit<ThemePresetRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<ThemePresetRow, 'id'>>
-        Relationships: []
-      }
-      notifications: {
-        Row: NotificationRow
-        Insert: Omit<NotificationRow, 'id' | 'actor_count' | 'created_at' | 'updated_at'> & {
-          id?: string
-          actor_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<Omit<NotificationRow, 'id'>>
-        Relationships: []
-      }
-      poi_views: {
-        Row: PoiViewRow
-        Insert: Omit<PoiViewRow, 'id' | 'viewed_at'> & { id?: string; viewed_at?: string }
-        Update: Partial<Omit<PoiViewRow, 'id'>>
-        Relationships: []
-      }
-      mission_rank_snapshots: {
-        Row: MissionRankSnapshotRow
-        Insert: Omit<MissionRankSnapshotRow, 'captured_at'> & { captured_at?: string }
-        Update: Partial<MissionRankSnapshotRow>
-        Relationships: []
-      }
-      activity_badge_templates: {
-        Row: ActivityBadgeTemplateRow
-        Insert: Omit<ActivityBadgeTemplateRow, 'slots' | 'default_params' | 'updated_by' | 'created_at' | 'updated_at'> & {
-          slots?: Record<string, unknown>
-          default_params?: Record<string, unknown>
-          updated_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: Partial<ActivityBadgeTemplateRow>
-        Relationships: []
-      }
-    }
-    Views: Record<never, never>
-    Functions: {
-      award_points: {
-        Args: AwardPointsArgs
-        Returns: PointTransactionRow
-      }
-      activate_theme_preset: {
-        Args: { p_preset_id: string }
-        Returns: void
-      }
-      create_notification: {
-        Args: CreateNotificationArgs
-        Returns: NotificationRow
-      }
-      /** 반복형 배지 회차 카운터 원자적 증가 (마이그레이션 132 / 티켓 20260905_0030) */
-      increment_activity_badge_earn: {
-        Args: {
-          p_user_id: string
-          p_badge_id: string
-          p_entries: BadgeEarnHistoryEntry[]
-          p_history_limit?: number
-        }
-        Returns: number
-      }
-    }
-    Enums: {
-      badge_type: BadgeType
-      badge_rarity: BadgeRarity
-      trade_status: TradeStatus
-      notification_type: NotificationType
-    }
-  }
 }

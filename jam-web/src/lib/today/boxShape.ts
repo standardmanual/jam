@@ -48,12 +48,12 @@ export const BOX_SHAPES: readonly BoxShape[] = ['round', 'ticket', 'stamp', 'wav
 export const BOX_ORIENTATIONS: readonly BoxOrientation[] = ['text', 'image', 'item']
 
 /** 박스 모서리 px. `rounded-xl`(radius.css, 12px)과 같다. 라운드·티켓·우표는 클래스로, 돌출은 마스크 안에서 같은 값으로 둥글린다. */
-export const BOX_CORNER_RADIUS = 12
+const BOX_CORNER_RADIUS = 12
 
 // ── `item` 방향과 PRD가 정하지 않은 치수 (모두 채원 확인 필요, 위 머리말 참고) ──────────
 
 /** 우표 홈 개수(변마다). 이미지 5개는 PRD 규격이고 텍스트 8·아이템 5는 이 파일이 정한 값이다. */
-export const STAMP_NOTCH_COUNT: Readonly<Record<BoxOrientation, number>> = { text: 8, image: 5, item: 5 }
+const STAMP_NOTCH_COUNT: Readonly<Record<BoxOrientation, number>> = { text: 8, image: 5, item: 5 }
 
 /** `item` 방향의 줄인 치수. 아이템 배지 칸이 작아서 텍스트·이미지 치수를 줄였다. */
 export const ITEM_BOX = {
@@ -120,7 +120,7 @@ export function createRng(seed: BoxSeed): () => number {
 
 // ── 시드 물결 ────────────────────────────────────────────────
 
-export type WaveSide = 'top' | 'right' | 'bottom' | 'left'
+type WaveSide = 'top' | 'right' | 'bottom' | 'left'
 
 export interface WaveLobe {
   side: WaveSide
@@ -248,7 +248,7 @@ export function buildWaveMaskImage(seed: BoxSeed, orientation: BoxOrientation): 
 
 // ── CSS 마스크 ───────────────────────────────────────────────
 
-export interface MaskLayer {
+interface MaskLayer {
   image: string
   size: string
   position: string

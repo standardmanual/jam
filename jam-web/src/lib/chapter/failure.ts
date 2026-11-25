@@ -13,7 +13,7 @@ import { logEngineDecision } from '@/lib/engine-log'
 import type { ChapterCollectionKind } from './kinds'
 
 /** 이 기록을 남기는 두 곳(믹스 성공, 컬렉션 완성)의 종류 */
-export type ChapterScoreFailureKind = 'mix_success' | ChapterCollectionKind
+type ChapterScoreFailureKind = 'mix_success' | ChapterCollectionKind
 
 export interface ChapterScoreFailure {
   userId: string

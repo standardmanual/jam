@@ -15,7 +15,7 @@
 
 import type { CombineRecipeGradeMode } from '@/types/database'
 
-export type CombineSlotBadgeType = 'item' | 'activity' | 'checkin'
+type CombineSlotBadgeType = 'item' | 'activity' | 'checkin'
 
 /** 레시피 유형 입력 값(마이그레이션 340, 티켓 20261114_1705) */
 const GRADE_MODES: readonly CombineRecipeGradeMode[] = ['follow_materials', 'fixed']
@@ -38,7 +38,7 @@ export const MAX_DESCRIPTION_LENGTH = 500
 /** 소각되는 재료가 전혀 없는 레시피 방지 — 최소 1개의 아이템 타입 슬롯이 있어야 한다 */
 export const MIN_ITEM_SLOTS = 1
 
-export interface RecipeSlotInput {
+interface RecipeSlotInput {
   badge_type?: unknown
   allowed_badge_ids?: unknown
 }

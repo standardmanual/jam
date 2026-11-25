@@ -16,7 +16,7 @@ import { STRAVA_DISCONNECT_CLEARED } from '@/lib/strava/connection-state'
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 /** Strava 토큰 교환 응답에서 연결 저장에 필요한 값(평문). 저장할 때 암호화한다 */
-export interface StravaTokenSet {
+interface StravaTokenSet {
   accessToken: string
   refreshToken: string
   /** access token 만료 시각(epoch 초) */

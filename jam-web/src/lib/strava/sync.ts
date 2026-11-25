@@ -89,7 +89,7 @@ const RECORD_UPSERT_CHUNK_SIZE = 200
  * 이력이 두 번째 동기화에서 한꺼번에 들어와 온보딩 순간 배지가 쏟아지는 문제
  * (20260801_001)가 되살아난다.
  */
-export const SYNC_OVERLAP_SECONDS = 15 * 60
+const SYNC_OVERLAP_SECONDS = 15 * 60
 
 /**
  * 동기화 응답에 실어보내는 "이번에 획득한 배지" 요약 (20260823_007).

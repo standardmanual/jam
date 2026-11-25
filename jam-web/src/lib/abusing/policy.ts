@@ -48,7 +48,7 @@ export const MISMATCH_POLICY_KEYS = [
  * 차량 판정 두 칸(교통수단 비율·걷기 평균 상한) — 양수여야 한다. 0 이하이면 모든 활동이 걸러지는 규칙이 되므로 로더가 기본값으로 대체한다
  * (티켓 20261103_1115). 종목 불일치 칸과 묶음이 달라 목록을 따로 둔다.
  */
-export const VEHICLE_RULE_POLICY_KEYS = [
+const VEHICLE_RULE_POLICY_KEYS = [
   'transit_ratio_filter_pct',
   'walk_avg_max_speed_kmh',
 ] as const satisfies readonly (keyof AbusingPolicy)[]

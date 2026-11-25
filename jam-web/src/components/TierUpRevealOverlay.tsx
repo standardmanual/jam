@@ -73,7 +73,7 @@ const BUTTON_HEIGHT = 52
 /** 하단 버튼 바깥 여백 */
 const BUTTON_BOTTOM_GAP = 16
 
-export type RevealRarity = 'common' | 'rare' | 'epic' | 'mystic'
+type RevealRarity = 'common' | 'rare' | 'epic' | 'mystic'
 
 /** 재료 한 장 — 제출하는 순간 슬롯 화면에서 잰 그림 주소와 화면(뷰포트) 좌표 */
 export interface TierUpRevealMaterial {

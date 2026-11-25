@@ -16,7 +16,7 @@ export type LockedItemRarity = 'common' | 'rare' | 'epic' | 'mystic'
  */
 export const LOCKED_ITEM_OPEN_ERROR_CODES = ['user_suspended', 'item_not_found', 'not_locked', 'not_full', 'insufficient_points'] as const
 
-export type LockedItemOpenErrorCode = (typeof LOCKED_ITEM_OPEN_ERROR_CODES)[number]
+type LockedItemOpenErrorCode = (typeof LOCKED_ITEM_OPEN_ERROR_CODES)[number]
 
 /** 잠긴 개체 거절 코드 전체(열기 + 조회) */
 export type LockedItemErrorCode = LockedItemOpenErrorCode

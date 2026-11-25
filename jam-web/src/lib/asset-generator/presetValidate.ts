@@ -17,11 +17,11 @@ import type { OverlayLayerConfig } from './types';
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const HTTP_URL = /^https?:\/\//i;
 
-export const INVALID_OVERLAY_COLOR_MESSAGE =
+const INVALID_OVERLAY_COLOR_MESSAGE =
   '프리셋을 저장하지 못했어요. 오버레이 색이 #rrggbb 형식이 아니에요. 색을 #ffffff처럼 6자리로 고른 뒤 다시 저장해 주세요.';
-export const MISSING_OVERLAY_COLOR_MESSAGE =
+const MISSING_OVERLAY_COLOR_MESSAGE =
   '프리셋을 저장하지 못했어요. 오버레이를 켰는데 색이 비어 있어요. 오버레이 색을 고르거나 오버레이를 끄고 다시 저장해 주세요.';
-export const INVALID_ASSET_URL_MESSAGE =
+const INVALID_ASSET_URL_MESSAGE =
   '프리셋을 저장하지 못했어요. 이미지 주소가 JAM! 저장소의 주소가 아니에요. 이미지를 다시 올린 뒤 저장해 주세요.';
 
 /** 환경변수의 Supabase URL에서 호스트를 꺼낸다. 없거나 형식이 틀리면 null. */

@@ -44,7 +44,7 @@ export function cardMatchesTags(cardTags: readonly string[] | null | undefined, 
 }
 
 /** 노출이 시작된 지 이 시간이 안 된 카드는 «새 카드»로 보고 맨 앞에 둔다(티켓 20261102_1720). */
-export const NEW_CARD_WINDOW_MS = 24 * 3600_000
+const NEW_CARD_WINDOW_MS = 24 * 3600_000
 
 /** 문자열 → 32비트 부호 없는 정수 해시(FNV-1a). 섞기 키로만 쓴다. */
 function fnv1a32(text: string): number {

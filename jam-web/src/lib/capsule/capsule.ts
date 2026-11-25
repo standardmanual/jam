@@ -47,7 +47,7 @@ interface SlotCheck {
 }
 
 /** 열 때 나올 수 있는 최대 개수. DB 함수 `capsule_open`은 이제 뽑힌 개수로 거절하므로(323) 이 값은 화면 표시용이다. */
-export function neededSlotsOf(policy: Pick<CapsulePolicy, 'guaranteed_count' | 'bonus_count'>): number {
+function neededSlotsOf(policy: Pick<CapsulePolicy, 'guaranteed_count' | 'bonus_count'>): number {
   return policy.guaranteed_count + policy.bonus_count
 }
 

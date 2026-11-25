@@ -4,8 +4,6 @@
  */
 import type {
   StravaSummaryActivity,
-  StravaDetailedActivity,
-  StravaAthlete,
   StravaRefreshResponse,
 } from '@/types/strava'
 
@@ -129,36 +127,6 @@ export async function getAllActivities(
 }
 
 // =========================================
-// 단일 활동 조회 (소급 백필·진단용)
-// =========================================
-/**
- * `GET /activities/{id}` — **Detailed** 응답을 돌려준다.
- *
- * 반환 타입이 `StravaSummaryActivity`로 잘못 좁혀져 있었다(티켓 20260905_0029). 실제로는
- * 상세 엔드포인트라 `splits_metric`·`description`·`device_name` 등이 함께 오는데, 타입에
- * 없어 컴파일 단계에서 접근이 막혀 있었다.
- *
- * ⚠️ 활동 1건당 1회 호출이다. 전체 이력을 훑는 용도로 쓰지 말 것 — 백필은 목록 엔드포인트를 쓴다.
- */
-export async function getActivityById(
-  activityId: number | string,
-  accessToken: string
-): Promise<StravaDetailedActivity | { error: string; status: number }> {
-  const res = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
-  })
-  if (!res.ok) {
-    const body = await res.text()
-    return { error: body, status: res.status }
-  }
-  return res.json() as Promise<StravaDetailedActivity>
-}
-
-// =========================================
 // 토큰 갱신
 // =========================================
 /**
@@ -211,16 +179,6 @@ export async function deauthorizeStrava(accessToken: string): Promise<void> {
   if (!res.ok) {
     throw new StravaApiError(`Strava 앱 해제 실패 ${res.status}`, res.status)
   }
-}
-
-// =========================================
-// 운동선수 프로필 조회
-// =========================================
-/**
- * 현재 인증된 Strava 운동선수 프로필
- */
-export async function getAthleteProfile(accessToken: string): Promise<StravaAthlete> {
-  return stravaFetch<StravaAthlete>(`${STRAVA_API_BASE}/athlete`, accessToken)
 }
 
 // =========================================

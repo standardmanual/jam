@@ -56,7 +56,7 @@ export * from './shared'
  * 이 시간을 넘기면 경고를 남긴다. 라우트의 `maxDuration`이 60초라 그 전에 눈치채야 한다 —
  * 타임아웃되면 **요약 로그 자체가 남지 않아** 일부만 생성된 상태가 흔적 없이 지나간다.
  */
-export const BATCH_SLOW_MS = 45_000
+const BATCH_SLOW_MS = 45_000
 
 export interface NotificationBatchResult {
   startedAt: string

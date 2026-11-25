@@ -15,7 +15,7 @@ export const PENDING_CHOSEN_IDS_MAX = 500
 export type PendingItemView = OpenPendingItemView | LockedPendingItemView
 
 /** 열린 개체. `locked` 키가 없거나 false다(옛 응답 모양과 같다) */
-export interface OpenPendingItemView {
+interface OpenPendingItemView {
   /** `sync_pending_items.id` — 고르기 요청의 `chosenIds`에 담는 값 */
   id: string
   locked?: false
@@ -58,12 +58,4 @@ export interface ResolvePendingPayload {
   discarded: number
   /** 새로 생긴 인벤토리 개체 id */
   itemIds: string[]
-}
-
-/** `POST /api/strava/sync`가 보류 때문에 막혔을 때의 409 응답 본문 */
-export interface SyncPendingItemsBody {
-  error: string
-  code: typeof SYNC_PENDING_ITEMS_CODE
-  /** 고르기를 기다리는 보류 개수 */
-  pendingCount: number
 }

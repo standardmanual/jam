@@ -44,7 +44,7 @@ export type ChipGeometryType = (typeof CHIP_GEOMETRY_TYPES)[number]
 /** 카드 안쪽 여백(`FeedCardShell`의 `p-4`). */
 const PAD = 16
 /** 칩 자리 후보가 달라붙는 가장자리: 글자가 아래에 있으면 위(`top`), 글자가 위에 있으면 아래(`bottom`), 글자가 가운데면 네 모서리(`all`), 목록형은 흐름 줄(`flow`). */
-export type ChipEdge = 'top' | 'bottom' | 'all' | 'flow'
+type ChipEdge = 'top' | 'bottom' | 'all' | 'flow'
 
 export interface ChipTypeSpec {
   /** 칩·스티커가 놓일 수 있는 모서리 후보. 목록형은 비어 있다(제목 위 흐름 줄, 결정 6). */
@@ -71,9 +71,9 @@ export const FEED_CHIP_TYPE_TABLE: Readonly<Record<ChipGeometryType, ChipTypeSpe
 /** 같은 가장자리의 둘째 칩을 내리는 높이 범위(카드 높이 대비, 상위 §3). */
 export const LOWER_BAND = { min: 0.12, max: 0.22 } as const
 /** 그림 상자의 «가운데» 비율: 가로·세로 각각 이 비율만큼 가운데 영역을 피한다(안전 구역 방식, 상위 §6). */
-export const ART_SAFE_RATIO = { x: 0.5, y: 0.5 } as const
+const ART_SAFE_RATIO = { x: 0.5, y: 0.5 } as const
 /** 글자·피할 영역 둘레 여유 px. */
-export const AVOID_PAD = 4
+const AVOID_PAD = 4
 /** 두 칩 사이 여유 px(같은 줄 판정과 겹침에 쓴다). */
 export const CHIP_GAP = 6
 /**
@@ -88,7 +88,7 @@ export const PLAN_WIDTHS = [343] as const
  * 화면은 모서리 `top-right`에 세로 오프셋을 크게 준 위치로 그린다(`plannedChipPositionOf`가 그대로 읽는다).
  */
 /** 드랍·픽업 제목 줄 폭 보정 계수: 공백까지 한 글자 폭으로 센 추정을 실제 글자 폭에 가깝게 줄인다(공백이 줄마다 1~2개인 한국어 제목 기준). */
-export const TITLE_WIDTH_CORRECTION = 0.8
+const TITLE_WIDTH_CORRECTION = 0.8
 
 export const TITLE_EDGE = { centerBand: { min: 0.62, max: 0.78 }, maxTitleRatio: 0.6, corner: 'top-right' } as const satisfies {
   centerBand: { min: number; max: number }
@@ -129,7 +129,7 @@ function charEm(ch: string): number {
 }
 
 /** 글자 한 줄의 폭(em). */
-export function textEm(text: string): number {
+function textEm(text: string): number {
   return [...text].reduce((sum, ch) => sum + charEm(ch), 0)
 }
 
@@ -232,7 +232,7 @@ export function textBlockOf(text: CardTextInput, width: number, withDescription 
 
 /** 텍스트형 큰 제목의 글자 크기(px). `FEED_TEXT_BOX_TITLE_STEPS`와 같은 단계 판정이고 크기는 카드 안쪽 폭의 14.7%·11%·9.2%다(`cqw`). */
 const TEXT_BOX_FONT_RATIO = [0.147, 0.11, 0.092] as const
-export function textBoxTitleFontOf(titleLines: readonly number[], width: number): { fontSize: number; charsPerLine: number } {
+function textBoxTitleFontOf(titleLines: readonly number[], width: number): { fontSize: number; charsPerLine: number } {
   const inner = width - PAD * 2
   const wrapped = (cpl: number) => wrapEstimate(titleLines, cpl).count
   const index = Math.max(

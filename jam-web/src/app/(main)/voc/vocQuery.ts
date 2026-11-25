@@ -8,8 +8,8 @@
 import type { VocSortKey } from '@/app/api/voc/route'
 import { buildQueryHref, readEnumParam, readPageParam, type QuerySource } from '@/lib/urlQueryState'
 
-export const VOC_SORT_KEYS = ['latest', 'answered'] as const satisfies readonly VocSortKey[]
-export const DEFAULT_VOC_SORT: VocSortKey = 'latest'
+const VOC_SORT_KEYS = ['latest', 'answered'] as const satisfies readonly VocSortKey[]
+const DEFAULT_VOC_SORT: VocSortKey = 'latest'
 
 const SORT_KEY = 'sort'
 const PAGE_KEY = 'page'

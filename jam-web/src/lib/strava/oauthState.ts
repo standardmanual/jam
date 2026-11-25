@@ -9,7 +9,7 @@
 import { randomBytes } from 'node:crypto'
 
 export const STRAVA_OAUTH_STATE_COOKIE = 'strava_oauth_state'
-export const STRAVA_OAUTH_STATE_MAX_AGE_SECONDS = 600
+const STRAVA_OAUTH_STATE_MAX_AGE_SECONDS = 600
 
 /**
  * 쿠키 속성. `sameSite`가 `lax`인 이유는 Strava에서 돌아오는 최상위 GET 이동에 쿠키가 실려야 해서다

@@ -23,7 +23,7 @@ import { FEED_RENDERED_TYPES, resolveFeedLook, type FeedLookCard, type RenderedF
 import type { FeedValueChipSource } from './feedValueChips'
 
 /** 남은 기간 칩이 늘 같은 값이 되도록 고정한 기준 시각 */
-export const PREVIEW_NOW = new Date('2026-11-21T12:00:00+09:00')
+const PREVIEW_NOW = new Date('2026-11-21T12:00:00+09:00')
 
 /** 자동 배정 구역의 카드 수 */
 export const PREVIEW_AUTO_COUNT = 120
@@ -41,7 +41,7 @@ export const PREVIEW_TYPE_LABELS: Readonly<Record<RenderedFeedType, string>> = {
 }
 
 /** 박스 모양 이름(화면 표시용) */
-export const PREVIEW_BOX_SHAPE_LABELS: Readonly<Record<BoxShape, string>> = {
+const PREVIEW_BOX_SHAPE_LABELS: Readonly<Record<BoxShape, string>> = {
   round: '둥근 모서리',
   ticket: '티켓',
   stamp: '우표',
@@ -67,7 +67,7 @@ const COVER_SQUARE = '/dev-sample/card-cover-square.webp'
 const ACTIVITY_BADGE = '/badges/sample/s142.png'
 
 /** 컬렉션 소개·드랍·픽업이 쓰는 아이템 배지 샘플(`public/badges/sample`) */
-export const PREVIEW_ITEM_BADGES: readonly FeedCardViewBadge[] = [
+const PREVIEW_ITEM_BADGES: readonly FeedCardViewBadge[] = [
   { name: '황동 카메라', imageUrl: '/badges/sample/s001.png' },
   { name: '다 쓴 필름통', imageUrl: '/badges/sample/s003.png' },
   { name: '인화 타이머', imageUrl: '/badges/sample/s004.png' },
@@ -78,7 +78,7 @@ export const PREVIEW_ITEM_BADGES: readonly FeedCardViewBadge[] = [
 const PREVIEW_DROP_BADGES: readonly FeedCardViewBadge[] = [...PREVIEW_ITEM_BADGES, { name: '손때 묻은 열쇠', imageUrl: '/badges/sample/s006.png' }]
 
 /** 목록형 항목 샘플. 그림이 없는 항목(색 면)도 하나 둔다. */
-export const PREVIEW_LIST_ITEMS: readonly FeedCardViewListItem[] = [
+const PREVIEW_LIST_ITEMS: readonly FeedCardViewListItem[] = [
   { name: '산', href: '/drops?place=mountain', imageUrl: COVER_SQUARE },
   { name: '편의점', href: '/drops?place=cvs', imageUrl: null },
   { name: '마트', href: '/drops?place=mart', imageUrl: '/badges/sample/s006.png' },
@@ -103,7 +103,7 @@ export interface PreviewCardOptions extends Partial<Omit<FeedLookCard, 'feed_typ
 }
 
 /** 해석 함수를 거쳐 표시 데이터를 만든다. 지정하지 않은 칸은 자동 규칙(NULL)이다. `tracking`은 싣지 않는다(계측·링크 없음). */
-export function buildPreviewView(feedType: RenderedFeedType, options: PreviewCardOptions = {}): FeedCardView {
+function buildPreviewView(feedType: RenderedFeedType, options: PreviewCardOptions = {}): FeedCardView {
   const {
     id = `preview-${feedType}`,
     title = '낙엽 소리 따라\n걷는 한 주',
@@ -271,7 +271,7 @@ export interface PreviewTypeSample {
 }
 
 /** 전체 배경 이미지는 서비스에서 꺼져 있다(`FEED_FULL_IMAGE_ENABLED`). 이 페이지는 컴포넌트를 직접 그려 보인다. */
-export const PREVIEW_FULL_IMAGE_NOTE = '꺼짐 상태예요. 켤 때 채원이 글자색과 막을 정해요.'
+const PREVIEW_FULL_IMAGE_NOTE = '꺼짐 상태예요. 켤 때 채원이 글자색과 막을 정해요.'
 
 export function buildTypeSamples(): PreviewTypeSample[] {
   return FEED_RENDERED_TYPES.map((feedType) => ({
@@ -371,7 +371,7 @@ export function buildMotion(): PreviewMotion {
 
 // ── ④ 자동 배정 120장과 요약 ────────────────────────────────
 
-export interface PreviewAutoCard {
+interface PreviewAutoCard {
   /** 1부터 */
   number: number
   feedType: RenderedFeedType
@@ -421,7 +421,7 @@ export function formatChipSummary(chips: PreviewChipSummary): string {
   return `칩 배치: 스티커 ${chips.stickerCount}장 · 알약 ${chips.pillCount}장 · ${retreat} · 연속·앞 카드 규칙 위반 ${chips.violationCount}`
 }
 
-export interface PreviewAssignSummary {
+interface PreviewAssignSummary {
   cardCount: number
   /** 규칙 ①~④에 걸린 색 쌍이 하나라도 있는 카드 수 */
   ruleViolationCount: number

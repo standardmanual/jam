@@ -23,7 +23,7 @@
  */
 
 /** 현재 지원하는 유일한 애니메이션 타입. 향후 타입이 늘어나도 컬럼을 늘리지 않기 위해 값에 담는다. */
-export const BLOB_ANIMATION_TYPE = 'blob' as const
+const BLOB_ANIMATION_TYPE = 'blob' as const
 
 /** 블롭 하나를 구성하는 꼭짓점 수 (참조 스크립트 고정값) */
 const BLOB_POINTS = 10
@@ -32,7 +32,7 @@ const BLOB_POINTS = 10
 const BLOB_COUNT = 6
 
 /** 색상은 4개 고정 — 6개 블롭에 [c1, c2, c3, c4, c1, c2] 순으로 순환 배치된다. */
-export const BLOB_COLOR_COUNT = 4
+const BLOB_COLOR_COUNT = 4
 
 export interface BlobAnimationParams {
   type: typeof BLOB_ANIMATION_TYPE

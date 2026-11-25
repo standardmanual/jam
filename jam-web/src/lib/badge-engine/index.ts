@@ -97,9 +97,9 @@ import {
 export { collectRepeatOccurrences }
 export {
   passesWalkingGate,
-  matchesDayOfWeek,
-  dedupeOnePerDay,
-  inTimeRange,
+  
+  
+  
   calcMaxStreak,
   WALKING_GATE_MIN_DISTANCE_KM,
   WALKING_GATE_MIN_DURATION_MIN,
@@ -158,10 +158,10 @@ export type BadgeMissedInfo = {
 // `repeatOccurrences.ts`로 이전했다(로직 변경 없는 순수 이동).
 
 /** `earn_history` 배열 상한 — `earn_count`가 총계를 들고 있어 최근 N건만 남겨도 정보 손실이 작다 */
-export const EARN_HISTORY_LIMIT = 200
+const EARN_HISTORY_LIMIT = 200
 
 /** 회차 활동 목록 → `earn_history` 원소. 상한을 넘기면 **최근 것만** 남긴다 */
-export function toEarnHistoryEntries(occurrences: NormalizedActivity[]): BadgeEarnHistoryEntry[] {
+function toEarnHistoryEntries(occurrences: NormalizedActivity[]): BadgeEarnHistoryEntry[] {
   return occurrences.slice(-EARN_HISTORY_LIMIT).map((a) => ({
     // 20260824_006 — startDateLocal은 로컬 벽시계에 Z를 붙인 값이라 최대 +9시간 미래로
     // 오해석된다. 회차 시각도 진짜 UTC인 startDate만 쓴다.

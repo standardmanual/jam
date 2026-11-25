@@ -20,14 +20,14 @@ const LOG = '[capsule-signals]'
 const DAY_MS = 24 * 60 * 60 * 1000
 const UNREAD = '읽지 못했어요'
 
-export interface CapsuleOpensSignal {
+interface CapsuleOpensSignal {
   /** 어제(KST) 열린 캡슐 총수. */
   total: number
   /** 한 유저가 어제 하루에 연 캡슐 수의 최댓값. */
   maxPerUser: number
 }
 
-export interface CapsulePendingSignal {
+interface CapsulePendingSignal {
   /** 보류가 하나 이상인 유저 수. */
   pendingUsers: number
   /** 보류가 2개라 잼을 받을 수 없는 유저 수. */

@@ -67,8 +67,6 @@ export const SCALAR_AXIS_KEYS = [
   ...CUMULATIVE_ONLY_KEYS,
 ] as const
 
-export type PerActivityKey = (typeof PER_ACTIVITY_KEYS)[number]
-export type CumulativeSameActivityKey = (typeof CUMULATIVE_SAME_ACTIVITY_KEYS)[number]
 export type ScalarAxisKey = (typeof SCALAR_AXIS_KEYS)[number]
 
 /**
@@ -99,7 +97,7 @@ export const COUNTER_AXIS_KEYS = [
 ] as const satisfies readonly (keyof BadgeCondition)[]
 
 /** 축이 여러 개로 펼쳐지는 키 — `kind: 'multi'` */
-export const MULTI_AXIS_KEYS = ['season_count_all'] as const satisfies readonly (keyof BadgeCondition)[]
+const MULTI_AXIS_KEYS = ['season_count_all'] as const satisfies readonly (keyof BadgeCondition)[]
 
 /**
  * 진행 계산이 «독립 측정 축»으로 세는 조건 키 전체 (티켓 20260905_0031 재시도).
@@ -122,9 +120,6 @@ export const MEASURED_AXIS_KEYS = [
   ...MULTI_AXIS_KEYS,
 ] as const
 
-export type PeriodicAxisKey = (typeof PERIODIC_AXIS_KEYS)[number]
-export type CounterAxisKey = (typeof COUNTER_AXIS_KEYS)[number]
-export type MeasuredAxisKey = (typeof MEASURED_AXIS_KEYS)[number]
 
 /**
  * "작을수록 좋음" 축 — 나머지는 전부 "클수록 좋음".

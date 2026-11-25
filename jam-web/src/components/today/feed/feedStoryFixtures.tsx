@@ -11,10 +11,10 @@ import type { TodayChipSpec } from '@/types/database'
  * 이미지는 외부 요청 없이 뜨도록 `data:` SVG 가짜 이미지와 `public/badges/sample`의 배지 그림만 쓴다.
  */
 
-export const STORY_NOW = new Date('2026-11-21T12:00:00+09:00')
+const STORY_NOW = new Date('2026-11-21T12:00:00+09:00')
 
 /** 폭 390 화면의 카드 폭(샘플 기준)과 폭 320 화면의 카드 폭 */
-export const CARD_WIDTH = 358
+const CARD_WIDTH = 358
 export const CARD_WIDTH_320 = 288
 
 /** 샘플 이미지(1280×720). 가장자리 잘림과 박스 모양이 눈에 보이도록 줄무늬와 원을 넣었다. */
@@ -29,7 +29,7 @@ export function fakeImage(background: string, accent: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-export const IMAGE = fakeImage('#3a5f7d', '#f2c14e')
+const IMAGE = fakeImage('#3a5f7d', '#f2c14e')
 export const BADGE = '/badges/sample/s142.png'
 
 /** 컬렉션 소개·드랍·픽업이 쓰는 아이템 배지 샘플 그림 5종(`public/badges/sample`, 드랍·픽업의 배지 한도 5). 외부 요청이 없다. */
@@ -44,7 +44,7 @@ export const ITEM_BADGES: FeedCardViewBadge[] = [
 /** 컬렉션 대표 그림 샘플(168×168 정사각) */
 export const COLLECTION_ART = fakeImage('#d9c7a3', '#8a5a2b')
 
-export const MISSION_VALUES: FeedValueChipSource = {
+const MISSION_VALUES: FeedValueChipSource = {
   resource: 'mission',
   endsAt: '2026-11-23T12:00:00+09:00',
   rewardPoints: 300,

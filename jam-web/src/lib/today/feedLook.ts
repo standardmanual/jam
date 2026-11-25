@@ -110,9 +110,9 @@ export function feedTypeShowsDescription(feedType: unknown): boolean {
 // ── 해석 결과 ────────────────────────────────────────────────
 
 /** 칩 면 색: 색 키 9개 또는 `black`(구분 칩). */
-export type FeedLookChipColor = FeedColorKey | 'black'
+type FeedLookChipColor = FeedColorKey | 'black'
 
-export interface FeedLookChip {
+interface FeedLookChip {
   kind: 'label' | 'value' | 'phrase'
   text: string
   color: FeedLookChipColor
@@ -124,7 +124,7 @@ export interface FeedLookChip {
   fixed?: { slot: string | null; tilt: FeedTilt | null }
 }
 
-export interface FeedLookStamp {
+interface FeedLookStamp {
   slot: string
   color: FeedColorKey
 }

@@ -25,10 +25,8 @@ import type { NotificationPayloadMap } from '@/lib/notifications/types'
 import type { NotificationType } from '@/types/database'
 import { KST_OFFSET_MS, kstDateString } from '@/lib/notifications/kst'
 
+/** 하루의 밀리초. 팔로잉 활동 판정 창("지난 24시간 이벤트", PRD §4-2)도 이 값이다 */
 export const DAY_MS = 24 * 60 * 60 * 1000
-
-/** ⑥ 팔로잉 활동 판정 창 — "지난 24시간 이벤트"(PRD §4-2) */
-export const FOLLOWING_WINDOW_MS = DAY_MS
 
 /**
  * 배치가 만들 소식 1건.
@@ -200,7 +198,7 @@ const EMIT_CONCURRENCY = 8
  * `createNotification()`은 실패해도 던지지 않고 `null`을 돌려주므로(그리고 이미
  * `console.error`를 남기므로) 한 유저의 실패가 배치를 죽이지 않는다.
  */
-export async function emitDrafts(
+async function emitDrafts(
   drafts: NotificationDraft[],
   ctx: BatchContext
 ): Promise<{ created: number; failed: number }> {

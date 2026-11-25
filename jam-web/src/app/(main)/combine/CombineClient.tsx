@@ -183,7 +183,7 @@ export function toTierUpRevealBadges(resultBadges: TierUpResultBadge[]): RevealB
 }
 
 /** 순수 변환 — 잠기지 않은 등급 올리기 결과 배지를 결과 연출(`TierUpRevealOverlay`)의 입력으로 바꾼다. 옛 응답처럼 `description`이 없으면 설명 없음이다 */
-export function toTierUpReveal(badge: TierUpResultBadge): TierUpRevealResult {
+function toTierUpReveal(badge: TierUpResultBadge): TierUpRevealResult {
   return { name: badge.name, rarity: badge.rarity ?? null, imageUrl: badge.imageUrl ?? null, description: badge.description ?? null }
 }
 

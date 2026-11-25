@@ -10,7 +10,7 @@
  */
 
 export const COMBINE_PATH = '/combine'
-export const TIER_UP_VIEW = 'tier-up'
+const TIER_UP_VIEW = 'tier-up'
 
 export type CombineView =
   | { kind: 'list'; recipeId: null; needsCleanup: boolean }

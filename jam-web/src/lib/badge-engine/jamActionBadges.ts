@@ -88,13 +88,13 @@ import {
 // 이 파일이 판정하는 JAM! 행동 지표 키와 보조 키. 서버 모듈 없이 키만 필요한 순수 모듈(운영툴 예약 등록 핸들러)이 쓰도록
 // 순수 파일 `jamActionKeys.ts`로 옮겼고(티켓 20261004_1756), 기존 호출부가 그대로 쓰도록 여기서 다시 내보낸다.
 export { JAM_ACTION_CONDITION_KEYS, JAM_ACTION_MODIFIER_KEYS }
-export type { JamActionConditionKey }
+
 
 /**
  * 「유저 단위로 한 번 계산한 숫자 하나」를 모든 후보에 비교하는 수치형 지표.
  * `days_since_signup`·`active_week_streak`·`jam_week_count`·`jam_week_streak`(후보마다 보조 키가 다르다)은 전용 분기라 뺀다.
  */
-export type JamActionMetric = Exclude<
+type JamActionMetric = Exclude<
   JamActionConditionKey,
   'days_since_signup' | 'active_week_streak' | 'jam_week_count' | 'jam_week_streak'
 >

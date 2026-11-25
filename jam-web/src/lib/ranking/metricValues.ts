@@ -41,7 +41,7 @@ export const RANKING_ACTIVITY_METRIC_KEYS = [
 export type RankingActivityMetricKey = (typeof RANKING_ACTIVITY_METRIC_KEYS)[number]
 
 /** 활동 이력과 무관하게 "지금 값"이 하나로 정해지는 사용량 지표(usageBadges.ts와 같은 소스) */
-export const RANKING_USAGE_METRIC_KEYS = ['follower_count', 'following_count', 'daily_sync_count'] as const
+const RANKING_USAGE_METRIC_KEYS = ['follower_count', 'following_count', 'daily_sync_count'] as const
 export type RankingUsageMetricKey = (typeof RANKING_USAGE_METRIC_KEYS)[number]
 
 /** metric_type='condition_field'일 때 1차로 선택 가능한 필드 키 전체(활동 이력 + 사용량) */

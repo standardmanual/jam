@@ -98,7 +98,7 @@ export function FeedTitle({
 }
 
 /** 설명. 이 카드가 설명을 보이지 않거나 값이 없으면 아무것도 그리지 않는다. */
-export function FeedDescription({ view }: { view: FeedCardView }) {
+function FeedDescription({ view }: { view: FeedCardView }) {
   if (!view.look.showDescription || !view.description) return null
   return (
     <p className="text-sm font-medium break-keep wrap-break-word" style={{ color: feedTextOnBg(view.look.colors.bg) }}>

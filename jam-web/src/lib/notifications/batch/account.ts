@@ -36,7 +36,7 @@ export const INVENTORY_FULL_REMAINING_SLOTS = 0
  * #42 재고지 간격. 꽉 찬 상태가 유지되는 동안 매일 보내면 PRD §2-4가 금지한 반복 발송이
  * 된다. 이미 만든 소식은 T3 재평가로 계속 경고 스타일을 유지하므로 매일 알릴 이유가 없다.
  */
-export const INVENTORY_FULL_RENOTIFY_DAYS = 7
+const INVENTORY_FULL_RENOTIFY_DAYS = 7
 
 export interface SyncStalledInput {
   connections: { userId: string; lastSyncedAt: string | null; createdAt: string }[]

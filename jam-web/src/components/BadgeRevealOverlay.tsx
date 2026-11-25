@@ -63,7 +63,7 @@ export interface RevealBadge {
 }
 
 /** 캐러셀 항목 — 잠긴 개체는 가린 이름과 일반 설명 문구로 바꾸고 그림을 비운다 */
-export function toCarouselItem(item: RevealBadge): RevealBadge {
+function toCarouselItem(item: RevealBadge): RevealBadge {
   if (item.locked !== true) return item
   return {
     id: item.id,

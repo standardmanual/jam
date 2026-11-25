@@ -9,7 +9,7 @@ import type { ActivityFeedRow, BadgeRow } from '@/types/database'
 import { familyKeyOf, isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 
 /** 같은 동기화로 볼 최대 간격 — 바로 앞 멤버와의 간격이 이 값 이하면 같은 묶음(연쇄) */
-export const LEVELED_BURST_GAP_MS = 10 * 60 * 1000
+const LEVELED_BURST_GAP_MS = 10 * 60 * 1000
 
 /** 피드 메타데이터에서 계열 키를 꺼낸다. 비어 있으면 `familyKeyOf`와 같은 이름 폴백 */
 export function leveledFamilyKey(meta: Record<string, unknown>): string {

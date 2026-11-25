@@ -20,7 +20,7 @@ import type {
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 /** 목록 기본 개수 — 최근 예약부터 */
-export const SCHEDULE_LIST_LIMIT = 50
+const SCHEDULE_LIST_LIMIT = 50
 
 const LIST_FAILED = '예약 목록을 불러오지 못했어요. 서버에서 목록을 읽는 중 오류가 났어요. 잠시 후 새로고침해 주세요.'
 

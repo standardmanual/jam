@@ -52,7 +52,7 @@ export interface CollectionBook {
 }
 
 /** 아이템북에 속한 배지 1개 — R12(부족한 것을 이름으로)를 위해 `name`이 필요하다 */
-export interface CollectionBadge {
+interface CollectionBadge {
   id: string
   name: string
   /** 드랍 제외 배지는 완성 분모에서 뺀다 (티켓 20260921_1113). 없으면 false로 본다 */
@@ -64,7 +64,7 @@ export interface CollectionBadge {
 }
 
 /** 유저 1명의 컬렉션 보유 현황 (DB 접근 없이 판정할 수 있는 형태) */
-export interface UserCollectionState {
+interface UserCollectionState {
   /** 컬렉션별 이미 채워진 칸 = 그 컬렉션 슬롯에 넣은 배지 ∪ 획득 이력이 있는 POI 배지 */
   filledByBook: Map<string, Set<string>>
   /** 미장착 보유 아이템 배지 → 가장 최근 획득 시각(ISO). 드랍해서 넘긴 것은 제외 */

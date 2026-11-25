@@ -188,7 +188,7 @@ export type ServiceIssueInput<B extends IssueBadge = IssueBadge> = Omit<PickItem
  * 서비스 전체에서 발급할 수 있는 컬렉션인가 — 활성, 드랍 제외 아님, 공개 기간 안. **트라이브는 보지 않는다**(`tribe_id`가 없는 컬렉션도 든다).
  * 등급 올리기(`lib/combine/tierUp.ts`, 티켓 20261111_0846)와 어드민 아이템 길이 같은 판정을 쓴다. 드랍·동기화·캡슐은 `isIssuableBook`을 그대로 쓴다.
  */
-export function isServiceIssuableBook(book: IssueBook, now: Date): boolean {
+function isServiceIssuableBook(book: IssueBook, now: Date): boolean {
   return book.is_active && !book.drop_excluded && inWindow(book.valid_from, book.valid_until, now.getTime())
 }
 

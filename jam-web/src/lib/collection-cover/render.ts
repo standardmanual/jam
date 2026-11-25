@@ -28,18 +28,18 @@ export interface CoverImageSource {
   readonly height: number;
 }
 
-export interface CoverGradient {
+interface CoverGradient {
   addColorStop(offset: number, color: string): void;
 }
 
-export interface CoverImageData {
+interface CoverImageData {
   readonly width: number;
   readonly height: number;
   readonly data: Uint8ClampedArray;
 }
 
 /** 이 모듈이 실제로 쓰는 2D 컨텍스트 메서드·속성만 담은 최소 인터페이스 */
-export interface CoverContextLike {
+interface CoverContextLike {
   drawImage(image: CoverImageSource, dx: number, dy: number): void;
   drawImage(image: CoverImageSource, dx: number, dy: number, dw: number, dh: number): void;
   drawImage(

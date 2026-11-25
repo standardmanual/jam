@@ -12,7 +12,7 @@ import { FEED_GALLERY } from './feedConstants'
 import { isRenderedFeedType, type RenderedFeedType } from './feedLook'
 
 /** `feed_type`이 비었거나 모르는 값, 또는 그릴 값이 없을 때 그리는 유형. */
-export const FEED_FALLBACK_TYPE: RenderedFeedType = 'text_box'
+const FEED_FALLBACK_TYPE: RenderedFeedType = 'text_box'
 
 /** 목록형 항목 중 그릴 수 있는 것(이름·주소가 비어 있지 않은 것)만 앞에서 `FEED_GALLERY.maxItems`개까지. */
 export function usableListItems(items: readonly TodayListItem[] | null | undefined): TodayListItem[] {

@@ -26,7 +26,7 @@ const RARITY_RANK: Record<Rarity, number> = { common: 0, rare: 1, epic: 2, mysti
 export const TIER_UP_ENDPOINT = '/api/combine/tier-up'
 
 /** 받지 않은 결과가 남아 있어 거절될 때 응답이 싣는 `code`·`reason` 값(믹스와 같다) */
-export const TIER_UP_PENDING_RESULTS_EXIST = 'pending_results_exist'
+const TIER_UP_PENDING_RESULTS_EXIST = 'pending_results_exist'
 
 /** `POST /api/combine/tier-up` 본문 */
 export interface TierUpRequest {
@@ -43,27 +43,6 @@ export interface TierUpResultBadge {
   description?: string | null
   locked?: boolean
 }
-
-export interface TierUpSuccessResponse {
-  success: true
-  path: 'tier_up'
-  materialRarity: TierUpMaterialRarity
-  resultBadges: TierUpResultBadge[]
-  /** `pending`이면 인벤토리 빈칸이 모자라 결과를 받지 않은 상태로 남겼다 */
-  resultStatus: 'granted' | 'pending'
-  pendingCount?: number
-  freeSlots?: number
-  message?: string
-}
-
-export interface TierUpFailureResponse {
-  success: false
-  reason: string
-  message?: string
-  code?: string
-}
-
-export type TierUpResponse = TierUpSuccessResponse | TierUpFailureResponse
 
 /** 재료 후보로 쓰는 인벤토리 개체의 최소 모양 — `InventoryItemWithBadge`가 그대로 들어맞는다 */
 export interface TierUpMaterial {

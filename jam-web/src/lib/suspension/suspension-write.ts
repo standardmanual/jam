@@ -16,7 +16,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { notifySuspensionLifted, notifySuspensionStarted } from './notify'
 
 export type SuspendFailure = 'reason_required' | 'user_not_found' | 'already_suspended'
-export type LiftFailure = 'not_suspended'
+type LiftFailure = 'not_suspended'
 
 export type SuspendResult = { ok: true; id: string } | { ok: false; code: SuspendFailure }
 export type LiftResult = { ok: true } | { ok: false; code: LiftFailure }

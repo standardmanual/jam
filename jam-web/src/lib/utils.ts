@@ -4,31 +4,6 @@
 import { twMerge } from 'tailwind-merge'
 
 /**
- * 한국 지역 목록 (시/도)
- */
-export const KR_REGIONS = [
-  '서울특별시',
-  '부산광역시',
-  '대구광역시',
-  '인천광역시',
-  '광주광역시',
-  '대전광역시',
-  '울산광역시',
-  '세종특별자치시',
-  '경기도',
-  '강원특별자치도',
-  '충청북도',
-  '충청남도',
-  '전북특별자치도',
-  '전라남도',
-  '경상북도',
-  '경상남도',
-  '제주특별자치도',
-] as const
-
-export type KrRegion = typeof KR_REGIONS[number]
-
-/**
  * JAM! 활동 종목 레이블
  */
 export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
@@ -55,7 +30,7 @@ export const BADGE_ACTIVITY_FILTER_LABELS: Record<string, string> = {
 /**
  * 날짜 포맷 (한국어)
  */
-export function formatDate(isoString: string): string {
+function formatDate(isoString: string): string {
   return new Date(isoString).toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
@@ -109,14 +84,6 @@ export async function decrypt(encryptedText: string): Promise<string> {
   const decipher = createDecipheriv('aes-256-cbc', key, iv)
   const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()])
   return decrypted.toString('utf8')
-}
-
-/**
- * 에러 메시지 → 한국어 사용자 메시지
- */
-export function getUserFriendlyError(error: unknown): string {
-  console.error('[JAM!] 오류:', error)
-  return '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
 }
 
 /**
