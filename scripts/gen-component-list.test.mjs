@@ -20,6 +20,7 @@ assert.deepEqual(parseComponentSource(withSummary).exports, ['Pill'])
 assert.equal(parseComponentSource(`/** 첫 문장이다. 두 번째 문장. */\nexport const Box = () => null\n`).summary, '첫 문장이다.')
 assert.equal(parseComponentSource(`export const Box = () => null\n`).summary, '—')
 assert.deepEqual(parseComponentSource('const Button = forwardRef(() => null)\nexport default Button\nexport const PEBBLE_SIZE = 1\n').exports, ['Button'], '따로 쓴 default export는 잡고 대문자 상수는 뺀다')
+assert.equal(parseComponentSource('/** @summary 한 줄 JSDoc 설명이다. */\nexport function Pill() { return null }\n').summary, '한 줄 JSDoc 설명이다.', '한 줄 JSDoc의 @summary도 읽는다')
 
 // 스토리 title·개수
 const story = `const data = { title: '가짜' }\nconst meta = {\n  title: 'UI/Cards/Box',\n}\nexport default meta\nexport const A = {}\nexport const B = {}\n`
