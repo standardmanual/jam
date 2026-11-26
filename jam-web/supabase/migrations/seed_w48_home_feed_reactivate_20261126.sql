@@ -21,3 +21,20 @@ where id in (select id from today_cards_backup_20261126);
 -- 되돌림 SQL (백업 표 기준)
 -- update today_cards t set is_active = b.is_active, ends_at = b.ends_at
 --   from today_cards_backup_20261126 b where t.id = b.id;
+
+-- 2차: 어드민 묶음 항목 13건과 미션 2건의 종료일·상태를 카드와 맞춘다 (같은 날 실행).
+create table if not exists ops_bundle_items_backup_20261126 as
+select i.* from ops_bundle_items i join ops_bundles b on b.id = i.bundle_id where b.week = '2026-W48';
+create table if not exists missions_backup_20261126 as
+select * from missions where id in ('0d2934a1-0e1a-4ea1-920c-4abd83387ea9','2d1daaca-eb1d-49e4-bd98-d6c4140701e4');
+alter table ops_bundle_items_backup_20261126 enable row level security;
+alter table missions_backup_20261126 enable row level security;
+
+update missions set ends_at = '2026-11-30 00:00:00+09' where id in (select id from missions_backup_20261126);
+update ops_bundle_items set status = 'live', ends_at = '2026-11-30 00:00:00+09', updated_at = now()
+where id in (select id from ops_bundle_items_backup_20261126);
+
+-- 되돌림 SQL (2차)
+-- update missions m set ends_at = b.ends_at from missions_backup_20261126 b where m.id = b.id;
+-- update ops_bundle_items i set status = b.status, ends_at = b.ends_at, updated_at = b.updated_at
+--   from ops_bundle_items_backup_20261126 b where i.id = b.id;
