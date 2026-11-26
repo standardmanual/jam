@@ -111,7 +111,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
           <ProgressBar
             as="span"
             percent={fillRatio * 100}
-            labelType="none"
+           
             height={16}
             color={barColor}
             trackColor={trackColor}

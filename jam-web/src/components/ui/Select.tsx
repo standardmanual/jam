@@ -15,9 +15,6 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   name?: string;
   'aria-label'?: string;
   'aria-describedby'?: string;
-  /** Visual validation state */
-  state?: 'default' | 'error' | 'success';
-  disabled?: boolean;
 }
 
 /* Chevron icon — inline SVG, no CDN */
@@ -40,11 +37,9 @@ const ChevronDown = () => (
  * native-select approach; a custom listbox would be a separate component.
  *
  * options: [{ value: string, label: string }]
- * state: 'default' | 'error' | 'success'
  *
- * 티켓 20261015_2133(2회): Input과 같은 면(--surface) + 1px --field-border + 캡슐(--field-radius). 오류 --danger,
- * 성공 --success는 border 1px 위에 같은 색 inset 링 1px를 더해 시각 2px로 만든다(두께가 변하면 글자가 움직인다).
- * 미선택 글자 --muted(흰 면 위 5.74:1), 선택됨 --foreground.
+ * 티켓 20261015_2133(2회): Input과 같은 면(--surface) + 1px --field-border + 캡슐(--field-radius).
+ * 티켓 20261126_1635: 서비스가 쓰지 않는 오류·성공·비활성 표현을 지웠다(`disabled`는 네이티브 속성으로만 통과한다). 미선택 글자 --muted(흰 면 위 5.74:1), 선택됨 --foreground.
  *
  * @summary 캡슐 모양의 선택 상자다. 배지 목록의 필터·정렬과 미션 목록의 정렬에서 쓴다.
  */
@@ -57,22 +52,9 @@ export function Select({
   name,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedby,
-  state = 'default',
-  disabled = false,
   style = {},
   ...rest
 }: SelectProps) {
-  const borderColorByState = {
-    default: 'var(--field-border)',
-    error: 'var(--danger)',
-    success: 'var(--success)',
-  };
-  const ringByState = {
-    default: 'none',
-    error: 'inset 0 0 0 1px var(--danger)',
-    success: 'inset 0 0 0 1px var(--success)',
-  };
-
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
       <select
@@ -80,16 +62,13 @@ export function Select({
         name={name}
         value={value}
         onChange={onChange}
-        disabled={disabled}
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedby}
-        aria-invalid={state === 'error' ? true : undefined}
         style={{
           width: '100%',
           height: 44,
           borderRadius: 'var(--field-radius)',
-          border: `1px solid ${borderColorByState[state] ?? borderColorByState.default}`,
-          boxShadow: ringByState[state] ?? ringByState.default,
+          border: '1px solid var(--field-border)',
           padding: '0 44px 0 20px',
           fontSize: 'var(--text-base)',
           lineHeight: 'var(--text-base--line-height)',
@@ -99,8 +78,7 @@ export function Select({
           boxSizing: 'border-box',
           appearance: 'none',
           WebkitAppearance: 'none',
-          opacity: disabled ? 0.4 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
+          cursor: 'pointer',
           ...style,
         }}
         {...rest}
@@ -115,7 +93,7 @@ export function Select({
       <span
         style={{
           position: 'absolute', right: 16,
-          color: disabled ? 'var(--muted)' : 'var(--foreground)',
+          color: 'var(--foreground)',
           pointerEvents: 'none',
           display: 'flex', alignItems: 'center',
         }}

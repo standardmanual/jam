@@ -32,8 +32,8 @@ type FieldState = 'default' | 'error' | 'success'
 /** 컴포넌트 이름 → 상태를 받아 렌더하는 함수 */
 const FIELDS: Record<string, (state: FieldState) => string> = {
   Input: (state) => renderToStaticMarkup(<Input aria-label="입력" state={state} />),
-  Select: (state) =>
-    renderToStaticMarkup(<Select aria-label="선택" options={OPTIONS} value="running" onChange={() => {}} state={state} />),
+  Select: () =>
+    renderToStaticMarkup(<Select aria-label="선택" options={OPTIONS} value="running" onChange={() => {}} />),
 }
 
 describe('입력창 면과 기본 테두리', () => {
@@ -71,7 +71,8 @@ describe('입력창 상태 테두리', () => {
     success: 'var(--success)',
   }
 
-  for (const [name, render] of Object.entries(FIELDS)) {
+  // Select의 오류·성공 상태는 서비스가 쓰지 않아 지웠다(티켓 20261126_1635) — 상태 시험은 Input만 건다.
+  for (const [name, render] of Object.entries({ Input: FIELDS.Input })) {
     for (const state of ['error', 'success'] as const) {
       it(`${name} ${state}: 1px 테두리 + 같은 색 inset 링 1px(시각 2px)`, () => {
         const html = render(state)
@@ -102,9 +103,7 @@ describe('입력창 상태 테두리', () => {
   })
 
   it('기본 상태에는 링이 없다', () => {
-    for (const render of Object.values(FIELDS)) {
-      expect(render('default')).toContain('box-shadow:none')
-    }
+    expect(FIELDS.Input('default')).toContain('box-shadow:none')
   })
 })
 

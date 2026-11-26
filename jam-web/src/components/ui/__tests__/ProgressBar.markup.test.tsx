@@ -21,12 +21,11 @@ const CASES: Record<string, Props> = {
   'TodayStatusStrip(64)': { current: 3, total: 10 },
   'collections/page(250)': { percent: 40, height: 6 },
   'collections/[id]/page': { percent: 30 },
-  'inventory/page(96)': { percent: Math.min(100, (7 / 10) * 100), height: 6, labelType: 'none' },
+  'inventory/page(96)': { percent: Math.min(100, (7 / 10) * 100), height: 6 },
   'MissionDetailClient 진행 중(632)': { percent: 45 },
   'MissionDetailClient 완료(632)': { percent: 100 },
   'MissionStatusClient(292)': {
     percent: 0.5 * 100,
-    labelType: 'none',
     height: 6,
     color: 'var(--accent)',
     trackColor: 'var(--accent-soft-hover)',
@@ -34,7 +33,6 @@ const CASES: Record<string, Props> = {
   },
   'RankingListRow(108)': {
     percent: 0.8 * 100,
-    labelType: 'none',
     height: 6,
     color: 'var(--accent)',
     trackColor: 'var(--border)',
@@ -42,24 +40,7 @@ const CASES: Record<string, Props> = {
   },
   'CollectionGridCard(85)': { percent: 60, height: 6 },
   // 일반 조합
-  '라벨 percent × inline': { percent: 42, labelType: 'percent', labelPosition: 'inline' },
-  '라벨 percent × top': { percent: 42, labelType: 'percent', labelPosition: 'top' },
-  '라벨 fraction × inline': { current: 3, total: 10, labelType: 'fraction', labelPosition: 'inline' },
-  '라벨 fraction × top': { current: 3, total: 10, labelType: 'fraction', labelPosition: 'top' },
-  '라벨 fraction인데 current 없음': { total: 10, labelType: 'fraction' },
-  'track-gradient': { percent: 35, fillMode: 'track-gradient', trackColor: 'var(--progress-track)', height: 10 },
-  'track-gradient 사용자 gradient': { percent: 35, fillMode: 'track-gradient', gradient: 'linear-gradient(red, blue)' },
-  'outlined + trackColor': { percent: 35, outlined: true, trackColor: 'var(--background)', height: 10, labelType: 'none' },
-  'outlined + track-gradient': {
-    percent: 100,
-    outlined: true,
-    fillMode: 'track-gradient',
-    trackColor: 'var(--background)',
-    height: 10,
-    labelType: 'none',
-  },
   'className': { percent: 10, className: 'mt-2' },
-  'className + 라벨': { percent: 10, labelType: 'percent', className: 'mt-2' },
   // 폭 계산 경계
   'percent 0': { percent: 0 },
   'percent 100': { percent: 100 },
@@ -90,28 +71,8 @@ const EXPECTED: Record<string, string> = {
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:3px;overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:80%;height:100%;border-radius:3px;background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'CollectionGridCard(85)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:60%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  '라벨 percent × inline':
-    '<div class="" style="display:flex;align-items:center;gap:var(--spacing-12);width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:42%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div><span class="font-bold" style="font-size:var(--text-sm);color:var(--foreground);font-variant-numeric:tabular-nums;white-space:nowrap">42%</span></div>',
-  '라벨 percent × top':
-    '<div class="" style="display:flex;flex-direction:column;gap:var(--spacing-8);width:100%"><div style="display:flex;justify-content:flex-end"><span class="font-bold" style="font-size:var(--text-sm);color:var(--foreground);font-variant-numeric:tabular-nums;white-space:nowrap">42%</span></div><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:42%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  '라벨 fraction × inline':
-    '<div class="" style="display:flex;align-items:center;gap:var(--spacing-12);width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:30%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div><span class="font-bold" style="font-size:var(--text-sm);color:var(--link);font-variant-numeric:tabular-nums;white-space:nowrap">3/10</span></div>',
-  '라벨 fraction × top':
-    '<div class="" style="display:flex;flex-direction:column;gap:var(--spacing-8);width:100%"><div style="display:flex;justify-content:flex-end"><span class="font-bold" style="font-size:var(--text-sm);color:var(--link);font-variant-numeric:tabular-nums;white-space:nowrap">3/10</span></div><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:30%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  '라벨 fraction인데 current 없음':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:0%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'track-gradient':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:10px;border-radius:var(--radius-full);overflow:hidden;background:var(--progress-track)"><div style="position:absolute;inset:0;border-radius:var(--radius-full);background:var(--progress-sweep);--ds-progress-fill:35%;clip-path:inset(0 calc(100% - var(--ds-progress-fill)) 0 0);transition:clip-path var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'track-gradient 사용자 gradient':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;border-radius:var(--radius-full);background:linear-gradient(red, blue);--ds-progress-fill:35%;clip-path:inset(0 calc(100% - var(--ds-progress-fill)) 0 0);transition:clip-path var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'outlined + trackColor':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:10px;border-radius:var(--radius-full);overflow:hidden;background:var(--background);box-sizing:border-box;border:1px solid var(--border)"><div style="position:absolute;inset:0;left:0;width:35%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'outlined + track-gradient':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:10px;border-radius:var(--radius-full);overflow:hidden;background:var(--background);box-sizing:border-box;border:1px solid var(--border)"><div style="position:absolute;inset:0;border-radius:var(--radius-full);background:var(--progress-sweep);--ds-progress-fill:100%;clip-path:inset(0 calc(100% - var(--ds-progress-fill)) 0 0);transition:clip-path var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'className':
     '<div class="mt-2" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:10%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
-  'className + 라벨':
-    '<div class="mt-2" style="display:flex;align-items:center;gap:var(--spacing-12);width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:10%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div><span class="font-bold" style="font-size:var(--text-sm);color:var(--foreground);font-variant-numeric:tabular-nums;white-space:nowrap">10%</span></div>',
   'percent 0':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:0%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'percent 100':
@@ -211,31 +172,16 @@ describe('ProgressBar as="span"', () => {
     })
   }
 
-  it('라벨이 없는 경로: 바깥·트랙에 display:block이 붙고 채움에는 붙지 않는다', () => {
+  it('바깥·트랙에 display:block이 붙고 채움에는 붙지 않는다', () => {
     const html = renderToStaticMarkup(<ProgressBar percent={50} height={6} as="span" />)
     expect(html.match(/display:block/g)).toHaveLength(2)
     expect(html).toMatch(/^<span class="" style="display:block;width:100%"><span style="display:block;flex:1;position:relative;height:6px/)
     expect(html).toContain('<span style="position:absolute;inset:0;left:0;width:50%;height:100%')
   })
 
-  it('라벨이 있는 경로: flex 래퍼는 flex를 유지하고 트랙만 display:block이다', () => {
-    for (const labelPosition of ['inline', 'top'] as const) {
-      const html = renderToStaticMarkup(<ProgressBar percent={50} labelType="percent" labelPosition={labelPosition} as="span" />)
-      expect(html.match(/display:block/g)).toHaveLength(1)
-      expect(html).toContain('display:flex')
-      expect(html).toContain('>50%</span>')
-    }
-  })
-
-  it('track-gradient: 채움 span에 clip-path와 --ds-progress-fill이 그대로 들어간다', () => {
-    const html = renderToStaticMarkup(<ProgressBar percent={35} fillMode="track-gradient" as="span" />)
-    expect(html).toContain('--ds-progress-fill:35%')
-    expect(html).toContain('clip-path:inset(0 calc(100% - var(--ds-progress-fill)) 0 0)')
-  })
-
   it('role·aria 속성을 더하지 않는다', () => {
     for (const as of ['div', 'span'] as const) {
-      const html = renderToStaticMarkup(<ProgressBar percent={50} labelType="percent" as={as} />)
+      const html = renderToStaticMarkup(<ProgressBar percent={50} as={as} />)
       expect(html).not.toContain('role=')
       expect(html).not.toContain('aria-')
     }

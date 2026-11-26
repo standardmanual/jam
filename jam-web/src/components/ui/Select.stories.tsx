@@ -13,9 +13,6 @@ const meta: Meta<typeof Select> = {
   title: 'UI/Forms/Select',
   component: Select,
   parameters: { layout: 'centered' },
-  argTypes: {
-    state: { control: 'radio', options: ['default', 'error', 'success'] },
-  },
 };
 
 export default meta;
