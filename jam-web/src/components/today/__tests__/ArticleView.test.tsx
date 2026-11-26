@@ -168,7 +168,7 @@ describe('ArticleView — CTA', () => {
     const html = render()
     expect(html).toMatch(/<a class="[^"]*" href="\/missions\/m1">/)
     expect(html).toContain(
-      'class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border transition-transform duration-100 rounded-full px-8 text-base py-3 text-snow bg-background-inverse border-transparent w-full cursor-pointer active:scale-95"',
+      'class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border transition-transform duration-100 rounded-full px-6 text-base py-3 text-snow bg-background-inverse border-transparent w-full cursor-pointer active:scale-95"',
     )
     expect(html).toContain('>미션 보기</a>')
   })
@@ -183,7 +183,7 @@ describe('ArticleView — CTA', () => {
     expect(html).not.toContain('active:scale-95')
     expect(html).not.toContain('transition-transform')
     expect(html).toContain(
-      '<div class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border rounded-full px-8 text-base py-3 text-snow bg-background-inverse border-transparent w-full"',
+      '<div class="inline-flex items-center justify-center gap-2 min-h-11 font-normal border rounded-full px-6 text-base py-3 text-snow bg-background-inverse border-transparent w-full"',
     )
     expect(html).toContain('>미션 보기</div>')
   })
