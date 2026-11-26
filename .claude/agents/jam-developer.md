@@ -35,22 +35,24 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    live there and only there.
 4. **Never set a ticket's `status` to `CLOSED`** or touch `closed:` (`.githooks/pre-commit` rejects it
    on `claude/jamwork-*`; revert the status and commit again).
-5. **Never push to `main` or `staging`.** When the work is done:
+5. **Never push to `main` or `staging`, and do not push the review branch either.** Review branches
+   stay local (ticket 20261126_2309). The base is the local `staging` — never `origin/staging`, no
+   fetch. If local `staging` does not exist, stop and report. When the work is done:
    - **Retry with a handed-over branch**: if the prompt tells you to resume an existing review
-     branch (`git checkout <branch>` after fetching it), do not create a new branch — run the
-     stale-worktree check below first, then check it out and keep committing on top of it. Push to
-     the same branch name when done.
-   - **Fresh run — branch from `origin/staging`, always**: before checking out, run
-     `scripts/cleanup-stale-worktree.sh claude/jamwork-{ticket-id}-{slug}`. It removes a stale
-     worktree holding that branch name, and **refuses with exit code 2** when that worktree has
-     uncommitted changes or commits not yet pushed to origin — then stop and report; never force
-     the removal yourself. Then:
-     `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{slug} origin/staging`
-     (never a bare `git checkout -b`).
-   - Commit locally with a Korean message, then `git push -u origin claude/jamwork-{...}`. Nothing
-     further — the orchestrator merges after user approval. This push needs no user request: `CLAUDE.md`
-     rule 3 limits only `staging`·`main` pushes, and `jam-web/scripts/vercel-ignore.sh` rule ① skips
-     review-branch builds.
+     branch, do not create a new branch — run the stale-worktree check below first, then
+     `git checkout <branch>` (the local branch) and keep committing on top of it.
+   - **Fresh run — branch from local `staging`, always**: before checking out, run
+     `scripts/cleanup-stale-worktree.sh claude/jamwork-{ticket-id}-{slug}`. It detaches a stale
+     worktree holding that branch name (commits stay on the branch), and **refuses with exit code 2**
+     when that worktree has uncommitted changes — then stop and report; never force it yourself. Then:
+     `git checkout -b claude/jamwork-{ticket-id}-{slug} staging` (never a bare `git checkout -b`).
+     Return `baseSha` as `git rev-parse staging` at that moment.
+   - Commit locally with a Korean message. Do not push; the orchestrator verifies on a real install and
+     merges after user approval.
+   - **Renames and removals**: if you rename or delete a name, path or string, run
+     `git grep -n -F '<old string>'` before handing off and fix the leftovers in tests, stories, docs
+     and generated docs. Check that files that must change together (package list and lockfile,
+     generator and generated doc, etc.) are both in the diff.
 6. **User-facing Korean copy** follows `docs/service/writing/UX_WRITING_GUIDELINE.md`. Search it for
    the relevant section instead of reading the whole file. If you change a string, also fix the test
    that asserts that string. Every element you create or modify that renders Korean text (service

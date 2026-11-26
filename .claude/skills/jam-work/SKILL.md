@@ -182,8 +182,9 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   채원①을 호출한다).
 - `retryReason`은 최초 실행 시 비우고, 재시도 시에만 이전 재작업 사유(`reworkReasons`)를 넣는다.
 - `retryBranch`도 최초 실행 시 비우고, 재시도 시에만 직전 시도의 review 브랜치명
-  (`devResult.branch`)을 넣는다. 값이 있으면 아현이 새 브랜치를 만들지 않고 그 브랜치를
-  체크아웃해 커밋을 이어서 쌓는다.
+  (`devResult.branch`)을 넣는다. 값이 있으면 아현이 새 브랜치를 만들지 않고 **로컬** 브랜치를
+  그대로 체크아웃해(fetch 없음) 커밋을 이어서 쌓는다. 아현은 로컬 `staging`을 기준으로 분기하고
+  리뷰 브랜치를 push하지 않는다(티켓 20261126_2309).
 - `route`는 0.1.5절의 경로 값이다. 경로 ②(가벼운 UI)면 `route: 'light'`를 넘긴다 — 채원①·②를
   건너뛴다. 경로 ③(표준)이면 비운다(기본값).
 - `planOnlyWaiver`는 **선택**이다. 면제는 이 인자로만 넘긴다(`userRequest`에 적지 않는다). 동작·부여
@@ -201,12 +202,11 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   나뉨)가 담긴다. `db`·`engine` 유형의 하위 티켓, 또는 유형을 자동으로 정할 수 없는 티켓은
   `batch-tickets.mjs`가 이미 `plannedStopAt`으로 알려준다 — 워크플로는 그 지점 앞에서 실행하지
   않고 멈춘다(정지 조건 3번). 그 티켓은 단독 호출로 사용자 확인을 받는다.
-  **머지는 순차로 한다.** 하위 티켓의 review 브랜치는 모두 `origin/staging`에서 분기하므로,
-  앞 하위 티켓을 머지한 뒤에는 `origin/staging`이 바뀐다 — 4단계 머지 전 오염 검사
-  (`git merge-base --is-ancestor origin/staging <브랜치>`)를 다음 하위 티켓마다 다시 실행한다.
-  실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
-  티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
-  하게 하고, 나머지 절차는 그대로 4단계를 따른다.
+  **머지는 순차로 한다.** 하위 티켓의 review 브랜치는 모두 로컬 `staging`에서 분기하므로,
+  앞 하위 티켓을 머지한 뒤에는 `staging`이 바뀐다 — 4단계 머지 전 오염 검사
+  (`git log --oneline staging..<브랜치>`)를 다음 하위 티켓마다 다시 실행한다.
+  앞 티켓의 커밋이 섞여 있으면(뒤 티켓이 옛 `staging` 기준으로 분기) 그
+  티켓만 `git rebase staging`으로 재분기시키고, 나머지 절차는 그대로 4단계를 따른다.
 - `gateOnly`는 **선택**이다. 좁은 재작업일 때 채원①·아현을 건너뛰고 민지(와 해당 시 채원②)만 다시
   부른다. `true`면 `ticketPath`·`branch`·`commitRange`(`baseSha..commitSha`)·`devResult`(카리나가 적은 패치
   요약, 문자열 또는 `{ summary, diffLineCount }`)가 필수이고, 하나라도 비면 워크플로가 오류로 멈춘다.
@@ -261,11 +261,10 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
     판단이 새로 필요하지 않을 때만** 아현을 다시 부르지 않고 카리나가 직접 패치한다. 확신이
     없으면 아래 일반 재작업 경로(아현 재호출)로 기운다 — 경미 판정과 같은 원칙이다. 적용될
     때의 절차:
-    1. 카리나는 **메인 트리에서 브랜치를 전환하지 않는다**(병렬 세션 공유). `git fetch origin
-       <review 브랜치>`로 최신을 받은 뒤 `git worktree add -b <임시 브랜치> .claude/worktrees/
-       <이름> origin/<review 브랜치>`로 임시 워크트리를 만들어 그 안에서만 패치·커밋한다
-       (`claude/jamwork-*` 이름은 쓰지 않는다 — pre-push가 그 이름의 staging push를 막는다).
-    2. 커밋 후 같은 review 브랜치 이름으로 `git push`한다.
+    1. 카리나는 **메인 트리에서 브랜치를 전환하지 않는다**(병렬 세션 공유). `git worktree add -b <임시 브랜치> .claude/worktrees/
+       <이름> <review 브랜치>`로 임시 워크트리를 만들어 그 안에서만 패치·커밋한다
+       (`claude/jamwork-*` 이름은 쓰지 않는다).
+    2. 커밋 후 임시 브랜치를 review 브랜치로 옮긴다(`git branch -f <review 브랜치> <임시 브랜치>`). push하지 않는다.
     3. 끝나면 임시 워크트리를 제거한다(`git worktree remove`).
     4. `Workflow(name: 'jam-work', args: { gateOnly: true, ticketPath, workType, branch:
        '<review 브랜치>', commitRange: '<patch 전 baseSha>..<patch 후 commitSha>', devResult:
@@ -301,13 +300,12 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
 
 1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**한다 (push는 4.1절)
    - **머지 전에 반드시 오염 여부를 확인한다**:
-     `git fetch origin staging && git merge-base --is-ancestor origin/staging claude/jamwork-{ticket-id}-{slug}`
-     종료 코드가 0이 아니면(= review 브랜치가 최신 `origin/staging` 위에서 분기하지 않음) 머지를
-     멈추고 사용자에게 경위를 보고한다 — 다른 진행 중 티켓의 미승인 커밋을 조상으로 물고 들어왔을
-     가능성이 있다.
-   - **CI 상태도 함께 확인한다**: `gh run list --branch claude/jamwork-{ticket-id}-{slug} --limit 1`로 최근 실행을,
-     `gh run view <run-id>` 또는 `gh api repos/{owner}/{repo}/commits/{sha}/check-runs`로 결과를
-     본다. 상태가 없거나 실패면 머지를 멈추고 원인을 먼저 본다 — 민지 점검표 1번과 같은 기준이다.
+     `git log --oneline staging..claude/jamwork-{ticket-id}-{slug}`가 이 티켓의 커밋만 담아야 한다.
+     다른 티켓의 커밋이 섞여 있으면 머지를 멈추고 사용자에게 경위를 보고한다 — 다른 진행 중
+     티켓의 미승인 커밋을 조상으로 물고 들어왔을 가능성이 있다.
+   - **실제 설치본 verify**: 리뷰 브랜치는 로컬에만 있어 CI 상태가 없다. 카리나가 머지 전에
+     `npm ci` 설치본 작업 폴더에서 `staging`과 리뷰 브랜치를 detached로 합쳐 `scripts/verify.sh`를
+     돌린다. 실패하면 머지를 멈추고 원인을 먼저 본다.
 2. 아현이 브랜치에서 직접 고친 문서를 확인한다. 문서가 모두 `docs/`에 있어 코드와 같은 저장소이므로
    1번의 머지에 문서 변경까지 함께 들어온다. 카리나가 따로 반영하거나 별도로 커밋할 일은 없다
    - 민지가 점검표 11번에서 문서 누락을 지적했거나 아현이 빠뜨린 문서가 보이면, 이 시점에
@@ -334,7 +332,7 @@ CLOSED를 로컬에 쌓아 두고, 요청이 오면 쌓인 커밋을 한 번에 
 빈 커밋(`git commit --allow-empty -m "[배포] …"`)을 더해 push한다. 이 빌드는 그때까지 쌓인 `jam-web/` 변경을
 한 번에 배포한다. 표식이 있어도 직전에 빌드한 커밋 이후 `jam-web/` 밖만 바뀌었으면 빌드하지 않는다(규칙 ②).
 
-- review 브랜치(`claude/jamwork-*`) push는 요청 없이 한다 — 규칙 ①이 프로덕션 대상이 아닌 배포를 전부 건너뛴다
+- review 브랜치(`claude/jamwork-*`)는 로컬에만 둔다. 아현도 push하지 않는다(티켓 20261126_2309)
 - 확인 뒤 나오는 수정·문서 커밋은 다시 묶어서 다음 요청 때 올린다
 - 병렬 세션이 같은 파일을 건드리고 있어 먼저 올려 두는 편이 안전해 보이면, 사유를 사용자에게 한 줄로
   알리고 허락을 받은 뒤 push한다
@@ -355,9 +353,9 @@ CLOSED를 로컬에 쌓아 두고, 요청이 오면 쌓인 커밋을 한 번에 
   `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다(값이 없으면 실행). 민지와 채원②는 `parallel()`로
   동시에 호출하고, 민지가 FAIL이어도 채원②의 결과는 참고용으로 남는다. `tokenUsage`에는
   `gate+jam-designer-post` 하나로 합산된다.
-- 기계 검사는 `scripts/verify.sh` 하나다. 아현이 제출 전에 직접 돌리고, 리뷰 브랜치 push는 CI(GitHub
-  Actions `verify`)가 커밋 상태로 남긴다. 민지는 판독 마지막에 CI 상태를 확인하고 상태가 없을 때만 직접 재실행한다.
-- **워크트리 최신성**: 격리 워크트리는 기본 브랜치(main) 기준으로 생성되므로, 첫 명령(아현은 `origin/staging`,
+- 기계 검사는 `scripts/verify.sh` 하나다. 아현이 제출 전에 직접 돌린다. 리뷰 브랜치는 push하지 않아 CI 상태가 없으므로,
+  민지는 바뀐 파일의 시험·검사기만 돌리고 전체 verify는 카리나가 머지 전에 실제 설치본에서 돌린다.
+- **워크트리 최신성**: 격리 워크트리는 기본 브랜치(main) 기준으로 생성되므로, 첫 명령(아현은 로컬 `staging`을 detached로 체크아웃, fetch 없음,
   민지·채원②는 리뷰 커밋 체크아웃)을 `jam-work.js`가 프롬프트에 넣는다. 민지·채원②는 `jam-work.js`가 넘긴
   `baseSha..commitSha` 사이의 diff만 본다.
 - **스킬 라우팅 평가** (선택 실행): `scripts/skill-eval-cases.json`에 요청 문장 → 기대

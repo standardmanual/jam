@@ -80,12 +80,12 @@ a one-word reason; do not silently omit it.
 
 If the diff adds or edits a ticket's `- 사용자 승인:` line, that is a `FAIL` — only 카리나 writes it.
 
-1. Mechanical checks — the commit's CI status (GitHub Actions `verify` check). Look it up with
-   `gh run list --branch <branch> --limit 1 --json status,conclusion,databaseId,url`. If it is
-   still `in_progress`/`queued`, judge items 2~12 first and wait on this one **last**:
-   `gh run watch <id> --exit-status` (up to 5 minutes). A `failure` conclusion — read the failing
-   step name with `gh run view <id> --log-failed`, put it in `reasons`, and FAIL. No CI status at
-   all — run `scripts/verify.sh` yourself. 확신도/[주의]/[중단] never trigger a re-run on their own
+1. Mechanical checks — review branches stay local, so there is normally no CI status. Run only the
+   tests and checkers for the changed files (not the full `scripts/verify.sh`) and write "전체
+   verify는 카리나가 실제 설치본에서 머지 전에 돌린다". This alone is never a reason for WARN. If a
+   CI status does exist (`gh run list --branch <branch> --limit 1 --json status,conclusion,databaseId,url`),
+   a `failure` conclusion — read the failing step with `gh run view <id> --log-failed`, put it in
+   `reasons`, and FAIL. 확신도/[주의]/[중단] never trigger a re-run on their own
 2. Spec match against the ticket's 상세 요구사항 and 완료 조건. Completion conditions filed under a
    `후속 범위` heading with a named owner and timing belong to that owner (usually the
    orchestrator, after the merge) — do not judge them and do not report them as unmet; judge only

@@ -121,6 +121,10 @@ async function test4_retryBranchResumesExistingBranch() {
   const devCall = calls.find((c) => c.label === 'jam-developer')
   assert.ok(devCall.prompt.includes('git checkout claude/jamwork-t-slug'), '재시도는 기존 브랜치를 체크아웃해 이어받아야 한다')
   assert.ok(!devCall.prompt.includes('checkout -b'), '재시도 프롬프트가 새 브랜치 생성 지시와 섞이면 안 된다')
+  assert.ok(!devCall.prompt.includes('origin/staging'), '아현 첫 명령은 origin/staging을 기준으로 삼지 않는다')
+  assert.ok(!devCall.prompt.includes('git fetch'), '로컬 기준이라 fetch하지 않는다')
+  assert.ok(devCall.prompt.includes('git checkout --detach staging && scripts/workspace-setup.sh link'), '첫 명령은 로컬 staging 기준이다')
+  assert.ok(devCall.prompt.includes('push하지 않는다'), '리뷰 브랜치는 push하지 않는다')
   console.log('PASS test4_retryBranchResumesExistingBranch')
 }
 
@@ -507,7 +511,7 @@ async function test24_standardGateCallsAreIsolatedAndCheckOutFirst() {
   const designPostCall = calls.find((c) => c.label === 'jam-designer-post')
   assert.equal(gateCall.isolation, 'worktree', '민지는 격리 워크트리에서 불러야 한다')
   assert.equal(designPostCall.isolation, 'worktree', '채원②도 격리 워크트리에서 불러야 한다')
-  const firstCommand = 'git fetch origin claude/jamwork-t-slug && git checkout --detach cccc111'
+  const firstCommand = 'git checkout --detach cccc111'
   for (const call of [gateCall, designPostCall]) {
     assert.ok(call.prompt.includes(firstCommand), `${call.label} 프롬프트에 리뷰 커밋 체크아웃 첫 명령이 들어가야 한다`)
     assert.ok(call.prompt.includes('scripts/workspace-setup.sh link'), `${call.label} 프롬프트에 node_modules 연결 안내가 들어가야 한다`)
@@ -537,7 +541,7 @@ async function test25_gateOnlyCallsAreIsolatedAndCheckOutFirst() {
     devResult: { summary: '버튼 라벨 수정', diffLineCount: 20 },
   })
   assert.equal(calls.length, 2, '민지와 채원②가 모두 불려야 한다')
-  const firstCommand = 'git fetch origin claude/jamwork-t-slug && git checkout --detach bbb222'
+  const firstCommand = 'git checkout --detach bbb222'
   for (const call of calls) {
     assert.equal(call.isolation, 'worktree', `${call.label}는 gateOnly에서도 격리 워크트리에서 불러야 한다`)
     assert.ok(call.prompt.includes(firstCommand), `${call.label} 프롬프트에 리뷰 커밋 체크아웃 첫 명령이 들어가야 한다`)
@@ -557,8 +561,8 @@ async function test26_gateWithoutRangeChecksOutOriginStaging() {
   const gateCall = calls.find((c) => c.label === 'jam-reviewer')
   assert.equal(gateCall.isolation, 'worktree')
   assert.ok(
-    gateCall.prompt.includes('git fetch origin staging && git checkout --detach origin/staging'),
-    '커밋 범위가 없으면 origin/staging을 체크아웃하는 첫 명령이 들어가야 한다'
+    gateCall.prompt.includes('git checkout --detach staging'),
+    '커밋 범위가 없으면 로컬 staging을 체크아웃하는 첫 명령이 들어가야 한다'
   )
   console.log('PASS test26_gateWithoutRangeChecksOutOriginStaging')
 }
