@@ -28,9 +28,9 @@ assert.equal(count('const a = arr[0]; const b = x.y[1]', 'arbitrary'), 0, '배�
 assert.equal(count("const c = '#ff0000'", 'color-literal'), 1, 'hex6')
 assert.equal(count('c: #fff; d: #12345678;', 'color-literal'), 2, 'hex3·hex8')
 assert.equal(count("fill: rgb(0 0 0) rgba(0,0,0,.5) hsl(1 2% 3%) hsla(1,2%,3%,.1) oklch(.5 .1 20)", 'color-literal'), 5, '함수형 색')
-assert.equal(count("href: '#section' // #fff", 'color-literal'), 1, '앵커는 아님, 줄 끝 주석 속 hex는 세는 단순 규칙')
+assert.equal(count("href: '#section' // #fff", 'color-literal'), 0, '앵커는 아님, 줄 끝 주석 속 hex도 세지 않음')
 assert.equal(count('// 예전 색 #ff0000', 'color-literal'), 0, '주석 줄은 세지 않음')
-assert.equal(count(' * rgba(0,0,0,.5) 설명', 'color-literal'), 0, '* 주석 줄은 세지 않음')
+assert.equal(count('/**\n * rgba(0,0,0,.5) 설명\n */', 'color-literal'), 0, '* 주석 줄은 세지 않음')
 assert.equal(count('color: var(--text-primary)', 'color-literal'), 0)
 
 // --- inline-visual
@@ -63,6 +63,35 @@ assert.equal(isTarget('jam-web/src/components/a.json'), false)
 assert.equal(isTarget('jam-web/src/app/globals.css'), false, '토큰 정의 파일')
 assert.equal(isTarget('jam-web/design-system/components/a.tsx'), false)
 assert.equal(isTarget('jam-web/src/app/admin/a.tsx'), false)
+
+// --- 주석 안은 세지 않는다 (티켓 20261126_1310)
+assert.equal(rules('/**\n * max-w-[430px] #171717 <button>\n */\nconst a = 1').length, 0, 'JSDoc 본문은 세지 않음')
+assert.equal(rules('/* bg-[#fff]\n   <input> */').length, 0, '여러 줄 블록 주석은 세지 않음')
+assert.equal(rules('<div>{/* <button> w-[13px] #fff */}</div>').length, 0, 'JSX 주석은 세지 않음')
+assert.equal(rules("const a = 1 // w-[13px] <select> rgb(0 0 0)").length, 0, '줄 끝 주석은 세지 않음')
+assert.equal(count("const u = 'https://x'; const c = 'bg-[#fff]'", 'arbitrary'), 1, '문자열 안 // 옆의 임의값은 센다')
+assert.equal(count("const u = 'https://x'; const c = '#fff'", 'color-literal'), 1, '문자열 안 // 옆의 색은 센다')
+assert.equal(rules("<div style={{ /* color: '#fff' */ }} />").length, 0, 'style 안 주석 속 값은 세지 않음')
+assert.equal(count('<button> {/* ui-allow: 사유 */}', 'raw-element'), 0, 'ui-allow가 있는 줄은 빠짐')
+assert.equal(count('<button> // ui-allow: 사유', 'raw-element'), 0, '줄 끝 ui-allow도 빠짐')
+assert.equal(count('<button> {/* ui-allow: */}', 'raw-element'), 1, '사유 없는 ui-allow는 예외가 아님')
+assert.equal(rules('<p className="w-[13px]">\n// w-[13px]').length, 1, '줄 번호는 그대로')
+
+// --- 토큰만으로 이뤄진 임의값은 통과
+assert.equal(count('<p className="text-[color:var(--link)] w-[length:var(--x)]">', 'arbitrary'), 0, '형식 힌트 + 토큰')
+assert.equal(count('<p className="top-[calc(var(--a)+var(--b))]">', 'arbitrary'), 0, '토큰 계산식')
+assert.equal(count('<p className="min-h-[calc(100dvh-var(--a))] h-[calc(100%-var(--b))] w-[min(100vw,var(--m))]">', 'arbitrary'), 0, '화면 단위·100%')
+assert.equal(count('<p className="w-[calc(var(--a)*2)] p-[calc(var(--a)/2)] top-[clamp(0,var(--a),1)]">', 'arbitrary'), 0, '숫자·연산자')
+assert.equal(count('<p className="w-[calc(100%+0.75rem)]">', 'arbitrary'), 1, '리터럴 길이가 섞이면 위반')
+assert.equal(count('<p className="w-[calc(100%+8px)] w-[calc(100%-42px)]">', 'arbitrary'), 2, '리터럴 px가 섞이면 위반')
+assert.equal(count('<p className="pb-[var(--x,1rem)]">', 'arbitrary'), 1, '대체값이 있으면 위반')
+assert.equal(count('<p className="text-[color:#fff] w-[calc(var(--a)+2vh)]">', 'arbitrary'), 2, '형식 힌트 뒤 리터럴·다른 단위는 위반')
+assert.equal(count('<p className="w-[calc(1000%-var(--a))]">', 'arbitrary'), 1, '100%가 아닌 퍼센트는 위반')
+
+// --- 스토리 전용 견본 파일은 대상이 아니다
+assert.equal(isTarget('jam-web/src/components/today/feed/feedStoryFixtures.tsx'), false)
+assert.equal(isTarget('jam-web/src/components/a/xStoryFixtures.ts'), false)
+assert.equal(isTarget('jam-web/src/components/a/StoryFixturesHelper.tsx'), true, '이름 끝이 아니면 대상')
 
 // --- 기준선 비교
 const cur = (counts) => ({ counts, lines: Object.fromEntries(Object.keys(counts).map((k) => [k, [1]])) })

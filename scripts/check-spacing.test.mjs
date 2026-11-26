@@ -42,6 +42,17 @@ assert.equal(countLine('<div className="gap-8"> {/* spacing-allow: */}'), 1, '�
 assert.deepEqual(countViolations('a\n<p className="gap-8">\nb\n<p className="pt-[32px]">').lines, [2, 4])
 assert.equal(countViolations('<p className="gap-8 pt-16">').total, 2)
 
+// 주석 안은 세지 않는다 (티켓 20261126_1310)
+assert.equal(countViolations('// py-[13px] gap-8').total, 0, '줄 주석은 세지 않음')
+assert.equal(countViolations('const a = 1 // pt-[32px]').total, 0, '줄 끝 주석은 세지 않음')
+assert.equal(countViolations('/**\n * py-[13px] gap-8\n */\nconst a = 1').total, 0, '블록 주석은 세지 않음')
+assert.equal(countViolations('<div>{/* gap-8 */}</div>').total, 0, 'JSX 주석은 세지 않음')
+assert.equal(countViolations("const u = 'https://x'; const c = 'gap-8'").total, 1, '문자열 안 // 옆의 클래스는 센다')
+assert.deepEqual(countViolations('/* a\n gap-8 */\n<p className="gap-8">').lines, [3], '줄 번호는 그대로')
+assert.equal(countViolations('<p className="gap-8"> {/* spacing-allow: 사유 */}').total, 0, '면제 주석은 원래 줄에서 읽음')
+assert.equal(countViolations('a { /* gap: var(--spacing-32) */ }', 'css').total, 0, 'CSS 주석은 세지 않음')
+assert.equal(countViolations('a { gap: var(--spacing-32); }', 'css').total, 1, 'CSS 선언은 센다')
+
 // --- 기준선 비교
 const cur = (total) => ({ total, lines: [1] })
 {

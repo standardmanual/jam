@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // check-spacing — 서비스 화면 소스에 눈금 밖 간격이 새로 들어오면 실패한다 (티켓 20261108_2140, 간격 5회차, 상위 20261108_1926).
 //
-// 위반으로 세는 것 세 가지다. 문자열 속 클래스를 정규식으로 세고, 주석 줄도 센다(단순하게).
+// 위반으로 세는 것 세 가지다. 문자열 속 클래스를 정규식으로 세고, 주석 안은 세지 않는다(scripts/strip-code-comments.mjs로 지운 본문에서 센다).
 //   1. 임의 px 간격: pt-[32px]처럼 간격 접두에 [<숫자>px]를 쓴 것
 //   2. 32px 이상 Tailwind 단계: gap-8·pb-10·pt-16처럼 간격 접두에 8 이상 단계를 쓴 것 (w-·h-·size-·inset-·top- 등
 //      크기·위치 접두와 -mt-8 같은 음수 마진은 대상이 아니다)
 //   3. 인라인 style·CSS의 padding·margin·gap 값이 var(--spacing-32|40|48|64|96)을 참조하는 것
-// 같은 줄에 `spacing-allow: <사유>` 주석이 있으면 세지 않는다(사유 필수).
+// 같은 줄에 `spacing-allow: <사유>` 주석이 있으면 세지 않는다(사유 필수, 예외 주석은 원래 줄에서 읽는다).
 //
 // 남아 있는 위반은 scripts/spacing-baseline.json에 { "경로": 개수 }로 고정한다. 기준선에 없는 파일의 위반이나
 // 기준선보다 늘어난 파일은 실패로, 줄어든 파일은 「기준선을 줄이세요」 안내만 낸다(실패 아님).
@@ -17,6 +17,7 @@
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stripComments } from './strip-code-comments.mjs'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 
@@ -41,20 +42,21 @@ const RULE_STEP = new RegExp(`(?<![\\w-])${PREFIX}-(?:[89]|[1-9]\\d)(?![\\w.\\[]
 const RULE_VAR = /(?:padding|margin|gap)[\w-]*['"]?\s*:[^;},\n]*?var\(--spacing-(?:32|40|48|64|96)\)/gi
 const ALLOW = /spacing-allow:\s*(?!\*\/|-->|\}|$)\S/
 
-// 한 줄의 위반 개수. 면제 주석이 있으면 0.
-export function countLine(line) {
-  if (ALLOW.test(line)) return 0
+// 한 줄의 위반 개수. 면제 주석이 있으면 0. rawLine은 주석을 지우기 전의 같은 줄이다(면제 주석을 읽는 용도).
+export function countLine(line, rawLine = line) {
+  if (ALLOW.test(rawLine)) return 0
   let n = 0
   for (const re of [RULE_ARBITRARY, RULE_STEP, RULE_VAR]) n += (line.match(re) ?? []).length
   return n
 }
 
-// 파일 내용의 위반: { total, lines: [줄번호...] }
-export function countViolations(text) {
+// 파일 내용의 위반: { total, lines: [줄번호...] }. ext는 주석 문법을 고른다('css'면 /* */만, 기본은 ts·tsx).
+export function countViolations(text, ext = 'tsx') {
   const lines = []
   let total = 0
-  text.split('\n').forEach((line, i) => {
-    const n = countLine(line)
+  const rawLines = text.split('\n')
+  stripComments(text, ext).split('\n').forEach((line, i) => {
+    const n = countLine(line, rawLines[i])
     if (n > 0) {
       total += n
       lines.push(i + 1)
@@ -82,7 +84,7 @@ export function scan(root) {
   for (const d of TARGET_DIRS) walk(path.join(root, d), files)
   const result = {}
   for (const f of files.sort()) {
-    const v = countViolations(readFileSync(f, 'utf8'))
+    const v = countViolations(readFileSync(f, 'utf8'), path.extname(f).slice(1))
     if (v.total > 0) result[path.relative(root, f).split(path.sep).join('/')] = v
   }
   return result
