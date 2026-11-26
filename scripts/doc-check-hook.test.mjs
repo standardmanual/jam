@@ -154,6 +154,39 @@ test('JAM_SKIP_DOCLINT=1 우회는 검사를 건너뛴다', () => {
   assert.equal(r.status, 0, r.stderr)
 })
 
+// 홈피드 PRD 동반 검사 전용 우회 (티켓 20261126_2224). 임시 저장소에 항상 실패하는 가짜 gen-home-feed-doc.mjs를 둔다.
+const withFailingHomeFeedCheck = (dir) => write(dir, 'scripts/gen-home-feed-doc.mjs', "console.error('가짜 홈피드 검사 실패')\nprocess.exit(1)\n")
+
+test('홈피드 동반 검사가 실패하면 커밋이 막히고 전용 변수를 안내한다', () => {
+  const dir = makeRepo()
+  withFailingHomeFeedCheck(dir)
+  write(dir, 'docs/a.md', '본문\n고친 줄\n')
+  const r = commit(dir)
+  assert.notEqual(r.status, 0)
+  assert.match(r.stderr, /JAM_SKIP_HOMEFEED_DOC=1/)
+  assert.match(r.stderr, /JAM_SKIP_DOCLINT=1/)
+})
+
+test('JAM_SKIP_HOMEFEED_DOC=1은 홈피드 검사만 건너뛰고 사유 안내를 출력한다', () => {
+  const dir = makeRepo()
+  withFailingHomeFeedCheck(dir)
+  write(dir, 'docs/a.md', '본문\n고친 줄\n')
+  const r = commit(dir, { JAM_SKIP_HOMEFEED_DOC: '1' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.match(r.stderr, /홈피드 PRD 동반 검사를 건너뜁니다.*사유를 커밋 메시지에 남기세요/)
+  assert.doesNotMatch(r.stderr, /가짜 홈피드 검사 실패/)
+})
+
+test('JAM_SKIP_HOMEFEED_DOC=1이어도 다른 검사(frontmatter 필드 오류)는 여전히 막는다', () => {
+  const dir = makeRepo()
+  withFailingHomeFeedCheck(dir)
+  write(dir, 'scripts/doc-check.config.json', JSON.stringify({ ...CFG, severity: { field: 'error' } }))
+  write(dir, 'docs/c.md', '본문만 있는 문서\n')
+  const r = commit(dir, { JAM_SKIP_HOMEFEED_DOC: '1' })
+  assert.notEqual(r.status, 0)
+  assert.match(r.stderr, /frontmatter: .*DOCUMENT_SCHEMA\.md/)
+})
+
 test('백틱 경로·frontmatter 문제는 경고만 하고 통과한다', () => {
   const dir = makeRepo()
   write(dir, 'docs/a.md', '본문 `docs/none.md`\n')
