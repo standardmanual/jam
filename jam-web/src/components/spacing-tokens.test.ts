@@ -18,19 +18,10 @@ const STORY = readFileSync(path.join(DS, 'foundations/Spacing.stories.tsx'), 'ut
 
 // 티켓 확정 표: 이름 → [px 값(공백으로 구분), 클래스]
 const ROLES: Record<string, [string, string]> = {
-  '--page-x': ['16', 'px-4'],
   '--page-top': ['16', 'pt-4'],
   '--page-bottom': ['24', 'pb-6'],
-  '--gap-section': ['20', 'gap-5 · space-y-5'],
-  '--gap-section-lg': ['24', 'gap-6'],
-  '--gap-group': ['12', 'gap-3'],
-  '--gap-text': ['8', 'gap-2'],
-  '--gap-label': ['4', 'gap-1'],
-  '--gap-card': ['8', 'gap-2'],
   '--gap-card-detail': ['12', 'gap-3'],
   '--card-padding': ['16', 'p-4'],
-  '--card-padding-row': ['12 16', 'py-3 px-4'],
-  '--gap-field': ['16', 'gap-4'],
   '--gap-actions': ['8', 'gap-2'],
 }
 

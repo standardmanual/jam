@@ -11,21 +11,11 @@
   --rarity-rare: var(--base-rarity-green);      /* 주 강조색과 구분되도록 지금 값 유지 (결정 6) */
   --rarity-epic: var(--base-rarity-amber);
   --rarity-mystic: var(--base-rarity-pink);
-  /* 칩 위 글자. 값은 문서 4.2절 (common 5.74 · rare 9.92 · epic 10.12 · mystic 5.98 : 1) */
+  /* 칩 위 글자. 값은 문서 4.2절 (common 4.74 · rare 9.92 · epic 10.12 · mystic 5.98 : 1) */
   --rarity-common-foreground: var(--base-white);
   --rarity-rare-foreground: var(--base-black);
   --rarity-epic-foreground: var(--base-black);
   --rarity-mystic-foreground: var(--base-black);
-
-  /* ── 진행 상태 (문서 5.2절) ───────────────────────────────── */
-  --progress-short: var(--base-neutral-500);                    /* 모자람(채우는 중) */
-  --progress-done: var(--base-neutral-900);                     /* 다 채움·획득 */
-  --progress-latest: var(--base-neutral-600);                   /* 방금 들어옴 */
-  --progress-latest-soft: color-mix(in srgb, var(--base-neutral-600) 18%, transparent);
-  --progress-track: var(--base-neutral-200);                    /* 아직 손대지 않은 자리 */
-  /* 채움 스윕: 트랙 전체에 깔고 clip-path로 잘라 「어디까지 넘어갔나」가 곧 진행도가 되게 한다. */
-  --progress-sweep: linear-gradient(90deg in oklab,
-      var(--progress-short), var(--progress-done));
 
   /* ── 캡슐 게이지 (티켓 20261028_1739) ─────────────────────── */
   /* 어두운 트랙 위에 오렌지 채움이 차오르는 게이지. --capsule-track은 ProgressBar shape="capsule"의 트랙으로도 쓴다(캡슐 모양 진행 바 공통, 티켓 20261114_1502). 오렌지와 트랙 대비는 약 4.8:1, 흰 번개와 오렌지는 약 3.4:1(둘 다 계산값, 실측 아님)이다. 트랙·테두리는 회색 눈금으로 맞췄다(티켓 20261126_1908, 대비 값은 옛 색 기준). */
@@ -162,32 +152,12 @@
   --text-swap-translate-y: 4px;
   --text-swap-blur: 2px;
   --text-swap-ease: var(--ease-in-out);
-  /* Modal open / close */
-  --modal-open-dur: var(--duration-fast);
-  --modal-close-dur: var(--duration-quick);
-  --modal-scale-close: var(--scale-modal);
-  --modal-ease: var(--ease-smooth-out);
   /* Panel reveal */
   --panel-open-dur: var(--duration-slow);
   --panel-close-dur: var(--duration-medium);
   --panel-translate-y: 100px;
   --panel-blur: 2px;
   --panel-ease: var(--ease-smooth-out);
-  /* Success check */
-  --check-opacity-dur: var(--duration-very-slow);
-  --check-rotate-dur: var(--duration-very-slow);
-  --check-rotate-from: 80deg;
-  --check-bob-dur: var(--duration-very-slow);
-  --check-y-amount: 40px;
-  --check-blur-dur: var(--duration-very-slow);
-  --check-blur-from: 10px;
-  --check-path-dur: var(--duration-very-slow);
-  --check-path-delay: var(--duration-micro);
-  --check-ease-out: var(--ease-smooth-out);
-  --check-ease-opacity: var(--ease-smooth-out);
-  --check-ease-rotate: var(--ease-smooth-out);
-  --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
-  --check-ease-path: var(--ease-smooth-out);
   /* Error state shake */
   --shake-distance: 6px;
   --shake-overshoot: 4px;
@@ -212,7 +182,6 @@
   /* Accordion expand */
   --acc-expand: var(--duration-fast);
   --acc-collapse: var(--duration-fast);
-  --acc-chevron: var(--duration-fast);
   --acc-ease: var(--ease-smooth-out);
   /* Toast open / close */
   --toast-open: var(--duration-medium);
@@ -227,7 +196,6 @@
   /* Spinning counter */
   --reel-dur: 1400ms;
   --reel-cell: 30px;
-  --reel-spin-blur: 3px;
   --reel-stagger: 90ms;
   --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
 

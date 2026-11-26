@@ -18,7 +18,7 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
             height: 20,
             width: `var(${token})`,
             maxWidth: '100%',
-            background: semantic ? 'var(--progress-latest)' : 'var(--accent)',
+            background: semantic ? 'var(--base-neutral-600)' : 'var(--accent)',
             borderRadius: 2,
           }}
         />
@@ -60,19 +60,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // 티켓 20261108_1928: 역할 이름과 Tailwind 기본 클래스 대응. design-system/readme.md 「간격 역할 토큰과 클래스 대응」과 같은 표다.
 const ROLE_TOKENS: { token: string; className: string }[] = [
-  { token: '--page-x', className: 'px-4' },
   { token: '--page-top', className: 'pt-4' },
   { token: '--page-bottom', className: 'pb-6' },
-  { token: '--gap-section', className: 'gap-5 · space-y-5' },
-  { token: '--gap-section-lg', className: 'gap-6' },
-  { token: '--gap-group', className: 'gap-3' },
-  { token: '--gap-text', className: 'gap-2' },
-  { token: '--gap-label', className: 'gap-1' },
-  { token: '--gap-card', className: 'gap-2' },
   { token: '--gap-card-detail', className: 'gap-3' },
   { token: '--card-padding', className: 'p-4' },
-  { token: '--card-padding-row', className: 'py-3 px-4' },
-  { token: '--gap-field', className: 'gap-4' },
   { token: '--gap-actions', className: 'gap-2' },
 ];
 
@@ -115,7 +106,7 @@ function SpacingPage() {
         <SpacingRow token="--spacing-8" desc="소형 — 태그 내부, 버튼 아이콘 간격" />
         <SpacingRow token="--spacing-12" desc="컴팩트 — 리스트 아이템 간격" />
         <SpacingRow token="--spacing-16" desc="기본 — 카드 내부 요소 간격" />
-        <SpacingRow token="--spacing-20" desc="섹션 사이 — 역할 토큰 --gap-section의 값" />
+        <SpacingRow token="--spacing-20" desc="섹션 사이 — gap-5" />
         <SpacingRow token="--spacing-24" desc="중형 — 카드 패딩, 섹션 내 간격" />
         <SpacingRow token="--spacing-32" desc="대형 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />
         <SpacingRow token="--spacing-40" desc="대형 — 화면은 직접 쓰지 않는다(5회차에서 검사)" />

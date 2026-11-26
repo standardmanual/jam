@@ -3,7 +3,7 @@
  *
  * 토큰은 세 층으로 나뉜다. 이름은 그대로이고 층은 파일로 나눈다.
  *   primitive.css  기본값  원재료 눈금. 색 hex·px·ms·곡선 같은 직접 값은 이 파일에만 둔다.
- *   semantic.css   의미    쓰임새 이름(--background, --muted, --page-x …). 색은 반드시 기본값을 참조한다.
+ *   semantic.css   의미    쓰임새 이름(--background, --muted, --page-top …). 색은 반드시 기본값을 참조한다.
  *   component.css  컴포넌트 한 컴포넌트 전용(--tabbar-*, --capsule-*, --rarity-*, 모션 레시피 …).
  * 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·jam-theme.css·admin-theme.css·
  * globals.css·정본 폴더(src/components/ui)·src/components/transitions.css·스토리북 토큰 소개뿐이다(티켓 20261126_2024·2025, 9-4 검사기가 막는다).
@@ -60,7 +60,7 @@
 
   /* 홈피드 카드 색은 통합 팔레트 9개(원색 5개 + 위 보조 4개)다(티켓 20261122_2224). 연한 색 5개·참조 색 5개는 회차 13에서 걷었다.
      글자는 --foreground 고정(--snow는 이 색들 위에서 AA 미달).
-     예외: 짙은 초록(--jam-green-deep) 바탕 위 글자는 --snow 흰색(대비 약 4.59:1, 계산값).
+     예외: 짙은 초록(--jam-green-deep) 바탕 위 글자는 --snow 흰색(대비 약 4.48:1, 계산값).
      코드 쪽 hex 표는 src/lib/today/feedConstants.ts이며 같은 값인지 시험이 대조한다. */
 
   /* ── 반경 눈금 ────────────────────────────────────────────── */

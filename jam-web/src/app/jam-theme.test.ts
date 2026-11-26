@@ -1,9 +1,9 @@
 /**
- * JAM 테마 계약 테스트 (티켓 20261126_1945, 상위 20261125_1923 9-2회차).
+ * JAM 테마 계약 테스트 (티켓 20261126_1945 9-2회차, 눈금 단일 원천은 티켓 20261126_2225 10-7회차).
  *
- * `jam-theme.css`(@theme)와 `tokens/primitive.css`(:root)는 text-*·radius-*·ease-*·leading-loose를 둘 다 적는다.
- * 유틸리티 생성에는 @theme가, 평문 눈금·어드민 미리보기 복원에는 :root가 필요해서다. 레이어 밖 :root가 이기므로
- * 두 값이 어긋나면 화면은 primitive.css 값을 따르고 @theme 값은 죽은 값이 된다 — 그 어긋남을 여기서 막는다.
+ * text-*·radius-*·ease-out·ease-in-out·leading-loose·leading-reading의 값은 `tokens/primitive.css`(:root)에만 둔다.
+ * `jam-theme.css`는 맨 아래 `@theme inline reference` 블록에서 이름만 알리고 `var(--같은이름)`으로 primitive.css를 가리킨다.
+ * 같은 이름에 값을 다시 적으면 두 값이 어긋날 수 있어 이 시험이 막는다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -21,22 +21,33 @@ const declsOf = (css: string): Map<string, string> => {
 const THEME = declsOf(read('./jam-theme.css'))
 const PRIMITIVE = declsOf(read('../../design-system/tokens/primitive.css'))
 const SHARED = /^--(text-|radius-|ease-|leading-loose$|leading-reading$)/
+const theme = read('./jam-theme.css')
+const refBlock = /@theme inline reference\s*\{([^}]*)\}/.exec(theme)?.[1] ?? ''
+const REF = declsOf(refBlock)
 
 describe('jam-theme.css', () => {
   it('Tailwind 기본 테마를 닫는다', () => {
-    expect(read('./jam-theme.css')).toMatch(/@theme\s*\{\s*--\*:\s*initial;/)
+    expect(theme).toMatch(/@theme\s*\{\s*--\*:\s*initial;/)
   })
 
-  it('primitive.css와 같은 이름은 같은 값이다', () => {
-    const shared = [...THEME.keys()].filter((k) => SHARED.test(k) && PRIMITIVE.has(k))
-    expect(shared.length).toBeGreaterThan(20)
-    for (const k of shared) expect([k, THEME.get(k)]).toEqual([k, PRIMITIVE.get(k)])
+  it('primitive.css와 겹치는 눈금은 reference 블록에서 같은 이름의 var()로만 가리킨다', () => {
+    expect(REF.size).toBeGreaterThan(20)
+    for (const [k, v] of REF) {
+      expect([k, PRIMITIVE.has(k)]).toEqual([k, true])
+      expect([k, v]).toEqual([k, `var(${k})`])
+    }
   })
 
-  it('숨은 덮어쓰기 3건(loose 1.6, ease-out·ease-in-out 키워드)을 유지한다', () => {
-    expect(THEME.get('--leading-loose')).toBe('1.6')
-    expect(THEME.get('--ease-out')).toBe('ease-out')
-    expect(THEME.get('--ease-in-out')).toBe('ease-in-out')
+  it('@theme 본문은 primitive.css에 있는 눈금 이름에 값을 다시 적지 않는다', () => {
+    const body = theme.replace(/@theme inline reference\s*\{[^}]*\}/, '')
+    const dup = [...declsOf(body).keys()].filter((k) => SHARED.test(k) && PRIMITIVE.has(k))
+    expect(dup).toEqual([])
+  })
+
+  it('숨은 덮어쓰기 3건(loose 1.6, ease-out·ease-in-out 키워드)은 primitive.css가 가진다', () => {
+    expect(PRIMITIVE.get('--leading-loose')).toBe('1.6')
+    expect(PRIMITIVE.get('--ease-out')).toBe('ease-out')
+    expect(PRIMITIVE.get('--ease-in-out')).toBe('ease-in-out')
   })
 
   it('JAM 간격 눈금(--spacing-N)과 컴포넌트 토큰은 @theme에 넣지 않는다', () => {

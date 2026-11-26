@@ -121,7 +121,6 @@ function ColorsPage() {
         <Swatch token="--card-bg" desc="Card default 면. 외곽선 없음, 흰 바탕과 약 1.07:1이라 구분이 약하다" />
         <Swatch token="--card-bg-translucent" desc="반투명 카드 면 — --card-bg의 72%. 카드 뒤 장식 선이 희미하게 비치는 안내 카드용(72%를 넘겨 내리지 않는다)" />
         <Swatch token="--btn-secondary" desc="Button secondary·outline 면(둘은 같은 면). 카드 위 연한 면이 필요할 때도 이 값" />
-        <Swatch token="--surface-transparent" desc="완전 투명한 바탕색" />
       </Section>
 
       <Section title="Semantic — Text">
@@ -135,7 +134,6 @@ function ColorsPage() {
       <Section title="Semantic — Accent">
         <Swatch token="--accent" desc="주 강조색 — 버튼 같은 면 채우기 전용. 강조 글자는 --link" />
         <Swatch token="--accent-soft" desc="accent의 옅은 면" />
-        <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
       <Section title="Primitive — 강조색 5가지 (사용처는 사용자가 따로 지정, 홈피드 새 카드의 배경·칩·박스·도장 포함)">
@@ -149,7 +147,7 @@ function ColorsPage() {
       <Section title="Primitive — 보조 4개 (사용처 한정, 소비 코드는 하위 티켓)">
         <TagChip token="--jam-pink" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
         <TagChip token="--jam-sky" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
-        <TagChip token="--jam-green-deep" note="짙은 초록 바탕 카드와 박스 전용 · 위 글자는 --snow(대비 약 4.59:1)" />
+        <TagChip token="--jam-green-deep" note="짙은 초록 바탕 카드와 박스 전용 · 위 글자는 --snow(대비 약 4.48:1)" />
         <TagChip token="--jam-chip-white" note="값 칩 전용 · 일반 흰색은 --snow" />
       </Section>
 
@@ -173,15 +171,6 @@ function ColorsPage() {
         <RarityPair bg="--rarity-rare" fg="--rarity-rare-foreground" label="RARE" />
         <RarityPair bg="--rarity-epic" fg="--rarity-epic-foreground" label="EPIC" />
         <RarityPair bg="--rarity-mystic" fg="--rarity-mystic-foreground" label="MYSTIC" />
-      </Section>
-
-      <Section title="Component — Progress (진행 상태)">
-        <Swatch token="--progress-short" desc="모자람(채우는 중) — 선·점·링. 글자로 쓰지 않는다" />
-        <Swatch token="--progress-done" desc="다 채움·획득 — 선·점·링. 글자로 쓰지 않는다(다 채움 글자는 --link)" />
-        <Swatch token="--progress-latest" desc="방금 들어옴" />
-        <Swatch token="--progress-latest-soft" desc="방금 들어옴 — 점의 후광" />
-        <Swatch token="--progress-track" desc="아직 손대지 않은 자리(트랙)" />
-        <Swatch token="--progress-sweep" desc="채움 스윕 — 트랙 전체에 깔고 잘라 써서 어디까지 넘어갔나가 곧 진행도가 된다" bar />
       </Section>
 
       <Section title="Component — TabBar">
