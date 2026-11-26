@@ -107,6 +107,7 @@ export const PROGRESS_TRACK_GRADIENT = 'var(--progress-sweep)';
 /** capsule 트랙 안쪽 여백(px) — `CapsuleGauge`의 PADDING_PX와 같다 */
 const CAPSULE_PADDING_PX = 2;
 
+/** @summary 진행률을 가로 막대로 보여 주는 바다. 미션 상세·오늘 상태 띠·랭킹 줄에서 쓴다. */
 export function ProgressBar({
   current,
   total,

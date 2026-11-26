@@ -44,6 +44,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  * v4 changes (티켓 20261125_1444):
  *   - `leading` / `trailing` 슬롯(아이콘, `@` 접두어, 스피너, 우측 버튼)과 `containerRef` / `containerClassName` / `containerStyle` 추가.
  *     슬롯을 넘기지 않으면 기존과 동일한 단일 `<input>`을 그대로 렌더한다.
+ *
+ * @summary 캡슐 모양의 글자 입력칸이다. 프로필 편집·사용자 검색·온보딩·탈퇴 시트에서 쓴다.
  */
 export function Input({
   placeholder = '',

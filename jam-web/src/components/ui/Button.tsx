@@ -26,6 +26,8 @@ import { ButtonHTMLAttributes, forwardRef, type CSSProperties } from 'react'
  * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
  * 드롭섀도/그라데이션 금지. 모든 변형에 1px 테두리를 두고(외곽선 외에는 투명) 세로 패딩에서 그 두께를 뺀다 —
  * 변형이 바뀌어도 높이가 같다(md 52px).
+ *
+ * @summary 변형·크기·면을 고르는 기본 버튼이다. 로그인·팔로우·배지 상세 등 거의 모든 화면에서 쓴다.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost' | 'arrow'
 

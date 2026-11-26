@@ -15,6 +15,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, ty
  *
  * 앱 전역에서 재사용하는 공유 컴포넌트입니다. 새로운 탭 UI를 만들 때는
  * 직접 버튼 행을 구현하지 말고 이 컴포넌트를 사용하세요.
+ *
+ * @summary 활성 알약이 탭 사이를 미끄러지는 탭 전환이다. 배지·미션 목록, 홈 피드, 문의 화면에서 쓴다.
  */
 
 export interface SlidingTabItem<K extends string = string> {

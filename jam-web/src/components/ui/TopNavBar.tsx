@@ -57,6 +57,8 @@ export interface TopNavProps {
  *   - `titleSize`/`titleWeight`/`titleLineHeight`/`titleTracking` 제거 — 서비스가 항상
  *     동일한 고정값(body 16px)으로 오버라이드하고 있어 그 값을 기본값으로 흡수했다.
  *     원래 h4(24px) 기본값을 쓰던 실사용처가 없었다(실제 화면은 전부 서비스 래퍼를 거침).
+ *
+ * @summary 뒤로가기·제목·오른쪽 칸을 가진 상단 바 본체다. 서비스 TopNav와 약관 화면 LegalTopNav가 감싸 쓴다.
  */
 export function TopNavBar({
   title = '',

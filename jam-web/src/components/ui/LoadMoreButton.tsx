@@ -9,6 +9,8 @@ import Button from '@/components/ui/Button'
  * 위 간격 16px(mt-4)만 얹는다. 호출부가 모양을 덮어쓰지 못하도록 className은 받지 않는다.
  * 더 불러올 것이 없으면 호출부가 렌더하지 않는다(cursor/hasMore 제어).
  * 오류 뒤 재시도도 같은 버튼이다 — children만 «다시 시도»로 바꿔 넘긴다.
+ *
+ * @summary 목록 끝에서 더 불러오는 전체 폭 버튼이다. 친구 피드·알림·포인트 내역에서 쓴다.
  */
 interface LoadMoreButtonProps {
   /** true면 스피너와 함께 비활성(중복 탭 차단) */

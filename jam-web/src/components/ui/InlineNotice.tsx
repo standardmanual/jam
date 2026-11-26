@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils'
  * 면은 `--background-secondary`, 모서리 `rounded-2xl`, 글자는 `--foreground`다. 오류색·경고 아이콘을 쓰지 않는다 — 사용자가 잘못한 일이 아니라서
  * 심각도는 문구가 전한다. 고정 위치나 애니메이션은 없고 부모 흐름 안에 놓인다. 보조 동작이 필요하면 `action`에 버튼 하나를 넘긴다.
  * 상태가 바뀌었음을 스크린리더가 읽도록 `role="status"`(polite)를 쓴다.
+ *
+ * @summary 지금은 안 되는 까닭을 한두 문장으로 알리는 안내 블록이다. 로그인·컬렉션·조합·드랍 시트에서 쓴다.
  */
 export default function InlineNotice({
   children,

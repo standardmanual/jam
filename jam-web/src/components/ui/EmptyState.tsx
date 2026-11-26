@@ -36,6 +36,8 @@ const DefaultIcon = () => (
  * to screen readers; omit via rest spread override for purely static contexts.
  *
  * action: { label: string, onClick: () => void }
+ *
+ * @summary 내용이 없을 때 제목·설명·버튼을 보여 주는 안내 블록이다. 배지·친구·컬렉션 등 목록 화면에서 쓴다.
  */
 export function EmptyState({
   icon,

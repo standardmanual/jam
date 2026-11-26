@@ -23,6 +23,8 @@ import FooterLogo from './FooterLogo'
  *
  * 홈(`/`)은 기존에 "상단 로고 중복" 우려로 제외돼 있었으나, 바로가기·최근배지 섹션 제거로
  * 화면이 짧아져 우려가 완화됐다고 판단해 제외 목록에서 뺐다(티켓 20260917_1203).
+ *
+ * @summary 전역 하단 푸터다. 메인·온보딩 레이아웃에서 쓴다.
  */
 const FOOTER_EXCLUDED_PATHS = ['/drops', '/philosophy']
 
