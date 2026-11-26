@@ -154,6 +154,14 @@ else
   rm -f "$LOG_PREFIX.token-refs"
 fi
 
+# 어드민 코드의 기본 팔레트·그림자 클래스가 admin-theme.css에 정의돼 있는지 확인한다
+# (티켓 20261126_2115, UI 소스 정리 9-4회차. 정의 없는 클래스는 규칙이 만들어지지 않고 조용히 무시된다).
+if ! ( cd "$REPO_ROOT" && node scripts/check-admin-palette.mjs ) >"$LOG_PREFIX.admin-palette" 2>&1; then
+  FAILED+=("admin-palette")
+else
+  rm -f "$LOG_PREFIX.admin-palette"
+fi
+
 # 정본 컴포넌트 목록 문서가 최신인지, 스토리 없는 정본 파일이 없는지 확인한다
 # (티켓 20261126_0947, UI 소스 정리 6-1a회차).
 if ! ( cd "$REPO_ROOT" && node scripts/gen-component-list.mjs --check ) >"$LOG_PREFIX.component-list" 2>&1; then
@@ -163,7 +171,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · component-list"
+  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · admin-palette · component-list"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
