@@ -1,7 +1,7 @@
 # 아현 참고 — 리뷰 브랜치 이어 쓰기·훅 거절
 
 아현(`jam-developer`)은 정의 「When to read a reference」가 가리킬 때만 이 파일을 읽는다: 프롬프트가 기존 리뷰
-브랜치를 넘겨줬을 때, 커밋·push 훅에 거절당했을 때, 프롬프트가 push하라고 할 때.
+브랜치를 넘겨줬을 때, 커밋 훅에 거절당했을 때.
 
 ## Retry with a handed-over branch (Hard rule 5)
 
