@@ -571,8 +571,8 @@ export default function ProfileClient({
                   surface="main"
                   variant="outline"
                   size="xs"
-                  className="shrink-0"
-                  style={{ minHeight: 0, padding: '1px 7px', lineHeight: 'var(--text-xs--line-height)' }}
+                  className="shrink-0 leading-4"
+                  style={{ minHeight: 0, padding: '1px 7px' }}
                   onClick={() => router.push('/profile/edit')}
                 >
                   {d.profile.editButton}
@@ -631,7 +631,7 @@ export default function ProfileClient({
             >
               <div className="t-skel-skeleton is-pulsing flex flex-col gap-2 content-start" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} height={72} borderRadius="var(--radius-2xl)" className="w-full" />
+                  <Skeleton key={i} height={72} radius="2xl" className="w-full" />
                 ))}
               </div>
               <div className="t-skel-content" aria-busy={isTabLoading}>

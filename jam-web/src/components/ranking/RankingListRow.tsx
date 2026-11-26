@@ -40,7 +40,7 @@ export interface RankingListRowProps {
   isMe: boolean
   /** 지표별 값 표시 포맷 — 미션 상세는 `formatMissionProgress`, 랭킹보드는 `formatRankingMetricValue`를 주입 */
   formatValue: (value: number) => string
-  /** 진행 바 채움 색. 기본은 홈 랭킹보드 카드가 쓰는 `var(--accent)`다. 미션 상황 화면이 `var(--jam-red)`로 켠다(티켓 20261111_2049) */
+  /** 진행 바 채움 색. 기본은 홈 랭킹보드 카드가 쓰는 `var(--accent)`다. 미션 상황 화면이 `var(--mission-accent)`로 켠다(티켓 20261111_2049) */
   barColor?: string
   /**
    * 진행 바 트랙 색. 기본은 `var(--border)`다. 이 값이 행 면(`--background-secondary`)과 같아 트랙이 안 보이면 바가 없는 것처럼 읽혀
@@ -48,7 +48,7 @@ export interface RankingListRowProps {
    */
   trackColor?: string
   /**
-   * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--jam-red` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
+   * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--mission-accent` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
    */
   meMarker?: 'chip' | 'circle'
 }
@@ -59,12 +59,11 @@ function MeCircle() {
     <span
       role="img"
       aria-label={d.missions.statusMeChip}
-      className="leading-none font-bold"
+      className="text-xs leading-none font-bold rounded-full"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        width: 22, height: 22, borderRadius: 'var(--radius-full)',
-        background: 'var(--jam-red)', color: 'var(--foreground)',
-        fontSize: 'var(--text-xs)',
+        width: 22, height: 22,
+        background: 'var(--mission-accent)', color: 'var(--foreground)',
       }}
     >
       {d.missions.statusMeChip}
@@ -120,7 +119,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
       // 원형 표식은 이름 줄이 아니라 값 칸에 둔다 — 이름 줄은 기준선 정렬이라 원이 순위·아바타·값보다 아래위로 어긋난다. 값 칸은 행 세로 중앙에 놓인다.
       value={
         isMe && meMarker === 'circle' ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
+          <span className="gap-2" style={{ display: 'inline-flex', alignItems: 'center' }}>
             <MeCircle />
             {formatValue(entry.value)}
           </span>

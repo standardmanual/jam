@@ -278,8 +278,8 @@ describe('미션 상세 — 보상 카드의 잠긴 보상 행', () => {
     // 포인트 행은 흰 면(card-bg)이고 «N 포인트»는 PointText가 --point-text 주황으로 칠한다(티켓 20261112_1629). 배지 행은 레드 면 그대로
     expect(html).toMatch(/text-point-text[^>]*color:var\(--point-text\)[^>]*>300 포인트<\/span>/)
     const pointRow = html.slice(html.lastIndexOf('<', html.lastIndexOf('background', points)), points)
-    expect(pointRow).not.toContain('var(--jam-red)')
-    expect(html.slice(0, points)).toContain('background:var(--jam-red)')
+    expect(pointRow).not.toContain('var(--mission-accent)')
+    expect(html.slice(0, points)).toContain('background:var(--mission-accent)')
   })
 
   it('잠긴 보상 행은 등급 칩과 «완료하면 획득해요»를 보이고 링크가 없다', () => {

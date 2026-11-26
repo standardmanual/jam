@@ -95,11 +95,10 @@ function MyHero({ avatarUrl, name, children }: { avatarUrl: string | null; name:
   return (
     <div className="flex flex-col items-center text-center" style={{ padding: '12px 24px 40px' }}>
       <div
-        className="flex items-center justify-center overflow-hidden shrink-0"
+        className="flex items-center justify-center overflow-hidden shrink-0 rounded-full"
         style={{
           width: 114,
           height: 114,
-          borderRadius: 'var(--radius-full)',
           border: '3px solid var(--card-bg)',
           boxSizing: 'border-box',
           background: 'var(--accent-soft)',
@@ -195,7 +194,7 @@ export default function MissionStatusClient({
 
   return (
     // 배경은 강조색 한 색이다. 로딩·오류 중에도 루트에 깔아 번쩍임이 없게 하고, 상단 바 배경은 투명이라 바 뒤까지 이어진다.
-    <div className="min-h-dvh relative text-foreground" style={{ background: 'var(--jam-red)' }}>
+    <div className="min-h-dvh relative text-foreground" style={{ background: 'var(--mission-accent)' }}>
       <div className="relative">
         <TopNav title={d.missions.backToDetail} headerStyle={{ background: 'transparent' }} />
 
@@ -262,7 +261,7 @@ export default function MissionStatusClient({
                           }}
                           maxValue={maxProgress}
                           isMe={isMeInEntries(entry.userId)}
-                          barColor="var(--jam-red)"
+                          barColor="var(--mission-accent)"
                           trackColor="color-mix(in srgb, var(--foreground) 12%, var(--background-secondary))"
                           meMarker="circle"
                           formatValue={(v) => formatMissionProgress(v, missionType)}
@@ -290,11 +289,10 @@ export default function MissionStatusClient({
               <MyHero avatarUrl={me?.avatarUrl ?? null} name={me?.displayName ?? null}>
                 <p className="m-0 text-sm text-foreground break-keep wrap-break-word">{d.missions.myProgressTitle}</p>
                 <span
-                  className="inline-flex items-center text-3xl font-bold whitespace-nowrap"
+                  className="inline-flex items-center text-3xl font-bold whitespace-nowrap rounded-full"
                   style={{
                     marginTop: 4,
                     padding: '4px 16px',
-                    borderRadius: 'var(--radius-full)',
                     background: achieved ? 'var(--foreground)' : 'var(--muted)',
                     color: 'var(--snow)',
                   }}

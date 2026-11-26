@@ -325,7 +325,7 @@ describe('카드 모양', () => {
   it('카드 안쪽 여백은 16이고 minHeight 140이 없다', () => {
     const markup = html(makeProps())
 
-    expect(markup).toContain('padding:var(--spacing-16)')
+    expect(markup).toContain('padding:var(--card-padding)')
     expect(markup).not.toContain('min-height')
     expect(markup).not.toContain('140')
   })

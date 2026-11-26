@@ -53,9 +53,9 @@ beforeEach(() => {
 })
 
 describe('MissionStatusClient — 공통 골격', () => {
-  it('루트 배경은 --jam-red 한 색이고(그라데이션·흰 빛 없음) 상단 바 배경은 투명이다', () => {
+  it('루트 배경은 --mission-accent 한 색이고(그라데이션·흰 빛 없음) 상단 바 배경은 투명이다', () => {
     const html = render({ type: 'ranking', entries: [ranked('me', 1)], me: ranked('me', 1), totalParticipants: 1 })
-    expect(html).toContain('background:var(--jam-red)')
+    expect(html).toContain('background:var(--mission-accent)')
     expect(html).not.toContain('gradient')
     expect(html).not.toContain('--status-glow')
     expect(html).toContain('data-bg="transparent"')
@@ -87,7 +87,7 @@ describe('MissionStatusClient — 랭킹형', () => {
     expect(hero).not.toMatch(/<(p|span)[^>]*text-muted/) // 프로필 아이콘(svg)의 회색은 흰 원 위라 해당 없다
     expect(hero).toContain('text-base font-normal text-foreground')
     expect(hero).toMatch(/color:var\(--snow\);font-size:var\(--status-rank-size\);line-height:var\(--status-rank-line-height\)[^>]*>2위<\/p>/)
-    expect(hero).not.toContain('color:var(--jam-red)')
+    expect(hero).not.toContain('color:var(--mission-accent)')
   })
 
   it('«전체 랭킹» 카드에 1위부터 모든 참가자가 나오고 내 행에만 «나» 칩이 있다', () => {
@@ -104,14 +104,14 @@ describe('MissionStatusClient — 랭킹형', () => {
     expect(html.match(/>나<\/span>/g)).toHaveLength(1)
   })
 
-  it('내 행 표식은 칩이 아니라 --jam-red 22px 원이고 막대 채움도 --jam-red다', () => {
+  it('내 행 표식은 칩이 아니라 --mission-accent 22px 원이고 막대 채움도 --mission-accent다', () => {
     const html = render(base)
     expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;border-radius:var(--radius-full);background:var(--jam-red);color:var(--foreground);font-size:var(--text-xs)')
+    expect(html).toContain('width:22px;height:22px;background:var(--mission-accent);color:var(--foreground)')
     // 칩 면(--accent-soft)의 «나»는 없다
     expect(html).not.toMatch(/background:var\(--accent-soft\)[^>]*>나</)
-    // 막대 채움: 행 3개 모두 --jam-red
-    expect(html.match(/background:var\(--jam-red\)/g)!.length).toBeGreaterThanOrEqual(4)
+    // 막대 채움: 행 3개 모두 --mission-accent
+    expect(html.match(/background:var\(--mission-accent\)/g)!.length).toBeGreaterThanOrEqual(4)
     expect(html).not.toContain('background:var(--accent)')
   })
 

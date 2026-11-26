@@ -7,8 +7,8 @@ import Button from '@/components/ui/Button'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 
-// 라벨-값 가로 줄 (캔버스 시안 라벨↔값 간격 18px)
-const ROW_CLASS = 'flex gap-[18px]' // spacing-allow: 디자이너 캔버스 시안 값(티켓 20261109_1414), 역할 토큰에 18px 없음
+// 라벨-값 가로 줄 (라벨↔값 간격 16px, 티켓 20261126_2024)
+const ROW_CLASS = 'flex gap-4'
 
 /**
  * 홈 상단 이용 정지 배너 (티켓 20261017_1426 2회, 채원 사전 판정 2026-10-17).

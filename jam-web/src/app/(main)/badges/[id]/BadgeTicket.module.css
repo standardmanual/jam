@@ -2,6 +2,7 @@
  * 배지 상세 티켓 틀 (티켓 20261122_1222). 서버 렌더 HTML과 이 CSS 모듈만으로 첫 화면부터 그린다 — 클라이언트 JS로 색·모양을 정하지 않는다.
  * 티켓색은 서버가 인라인으로 넣는 --ticket(= var(--jam-*)), --ticket-end(끝색 문자열)다.
  * 절취선과 홈은 var(--background)로 칠해 페이지 바탕과 자동으로 같은 색이 된다(구멍처럼 보이게).
+ * 변수의 자리: 서버가 넣거나 덮는 실행 값·티켓 범위 덮어쓰기·파생값은 이 모듈 안에, 기본값 색은 컴포넌트 토큰(--ticket-ink·--ticket-paper)으로만 가리킨다.
  */
 
 .ticket {
@@ -9,7 +10,7 @@
   position: relative;
   /* 티켓 면 위 글자색(티켓 20261124_2253). 기본 #171717이라 배지 상세는 그대로다. 컬렉션 상세는 서버가 인라인으로 #fff·#000을 넣는다.
      머리 글자·로고·글자 상자 테두리·--muted(80%)·--border(12%)·--link가 이 값에서 나온다 */
-  --ticket-text: var(--base-neutral-900);
+  --ticket-text: var(--ticket-ink);
   --ticket-muted: color-mix(in srgb, var(--ticket-text) 80%, transparent);
   --ticket-border: color-mix(in srgb, var(--ticket-text) 12%, transparent);
   /* 카드 바탕에 섞는 티켓색 비율. 기본 70%·45%, 흰 글자 티켓에서만 서버가 낮춰 인라인으로 넣는다 */
@@ -27,21 +28,21 @@
 
 @supports (color: color-mix(in srgb, red, white)) {
   .ticket {
-    --card-bg: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
-    --surface: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
-    --background-secondary: color-mix(in srgb, var(--ticket) var(--card-mix-2), var(--base-white));
+    --card-bg: color-mix(in srgb, var(--ticket) var(--card-mix), var(--ticket-paper));
+    --surface: color-mix(in srgb, var(--ticket) var(--card-mix), var(--ticket-paper));
+    --background-secondary: color-mix(in srgb, var(--ticket) var(--card-mix-2), var(--ticket-paper));
   }
 }
 
 /* 카드 안 글자는 항상 var(--base-neutral-900)(#171717)(티켓 20261124_2253). 티켓 면 위 글자색은 .face가 되살린다 */
 .ink,
 .cards {
-  --foreground: var(--base-neutral-900);
-  --muted: color-mix(in srgb, var(--base-neutral-900) 80%, transparent);
-  --border: color-mix(in srgb, var(--base-neutral-900) 12%, transparent);
-  --link: var(--base-neutral-900);
-  --point-text: var(--base-neutral-900);
-  color: var(--base-neutral-900);
+  --foreground: var(--ticket-ink);
+  --muted: color-mix(in srgb, var(--ticket-ink) 80%, transparent);
+  --border: color-mix(in srgb, var(--ticket-ink) 12%, transparent);
+  --link: var(--ticket-ink);
+  --point-text: var(--ticket-ink);
+  color: var(--ticket-ink);
 }
 
 /* 카드 구간 안이지만 카드가 아니라 티켓 면 위에 놓이는 글자(이야기 글·체크인 제목 등) */
@@ -60,12 +61,12 @@
 .faceKeepCards :global(.grid-cols-3),
 .faceKeepCards :global(.bg-card-bg),
 .faceKeepCards :global(button:not(.bg-accent)) {
-  --foreground: var(--base-neutral-900);
-  --muted: color-mix(in srgb, var(--base-neutral-900) 80%, transparent);
-  --border: color-mix(in srgb, var(--base-neutral-900) 12%, transparent);
-  --link: var(--base-neutral-900);
-  --point-text: var(--base-neutral-900);
-  color: var(--base-neutral-900);
+  --foreground: var(--ticket-ink);
+  --muted: color-mix(in srgb, var(--ticket-ink) 80%, transparent);
+  --border: color-mix(in srgb, var(--ticket-ink) 12%, transparent);
+  --link: var(--ticket-ink);
+  --point-text: var(--ticket-ink);
+  color: var(--ticket-ink);
 }
 
 /* 머리: 티켓색 단색, 윗모서리 직각 */

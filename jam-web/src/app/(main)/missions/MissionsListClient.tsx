@@ -158,7 +158,7 @@ function statusChip(m: MissionListItem, tab: Tab, started: boolean): React.React
       return <ListRowChip>{d.missions.tagDone}</ListRowChip>
     case 'locked':
       return (
-        <ListRowChip style={{ gap: 'var(--spacing-4)' }}>
+        <ListRowChip className="gap-1">
           {/* icons.tsx의 Svg는 strokeWidth 1.5 / viewBox 24 = 24px 렌더 전제다.
               12px로 축소하면 실효 스트로크가 0.75px라 자물쇠 형태가 뭉개지므로 strokeWidth를 보정한다. */}
           <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.25} />
@@ -377,21 +377,18 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
             const footer = hasFooter ? (
               <>
                 {m.locked && (
-                  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--muted)', lineHeight: 'var(--text-xs--line-height)' }}>
-                    <span style={{ marginRight: 'var(--spacing-4)' }}>{d.missions.cardConditionLabel}</span>
+                  <span className="text-xs" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', color: 'var(--muted)' }}>
+                    <span className="mr-1">{d.missions.cardConditionLabel}</span>
                     {m.requiredBadge ? conditionBadgeNode(m.requiredBadge) : lockedHintText(m)}
                   </span>
                 )}
                 {reward.length > 0 && (
                   <span
-                    className="font-bold"
+                    className={`text-xs font-bold ${m.locked ? 'mt-1' : ''}`}
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
-                      fontSize: 'var(--text-xs)',
-                      lineHeight: 'var(--text-xs--line-height)',
-                      marginTop: m.locked ? 'var(--spacing-4)' : undefined,
                     }}
                   >
                     {reward}

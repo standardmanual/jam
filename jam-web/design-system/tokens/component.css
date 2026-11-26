@@ -41,6 +41,11 @@
   /* ── 미션 상황 화면 전용 (티켓 20261111_2049). 다른 화면에 퍼뜨리지 않는다. ── */
   /* 레드 면(--jam-red) 위에 얹는 «전체 랭킹»·«달성 현황» 카드 면: 검정(--foreground) 94%. 아주 약한 투과(blur 없음). */
   --status-card-bg: color-mix(in srgb, var(--foreground) 94%, transparent);
+  /* 9-3a: 화면이 기본값 층을 직접 가리키지 않도록 역할 이름을 붙인다 */
+  --mission-accent: var(--jam-red); /* 미션 화면의 빨강(완료 면·진행 글자·진행 바·순위 «나» 원) */
+  --login-background: var(--base-black); /* 로그인 화면 바탕 */
+  --ticket-ink: var(--base-neutral-900); /* 배지 티켓 카드 안 글자색 */
+  --ticket-paper: var(--base-white); /* 배지 티켓 카드 면에 티켓색을 섞는 흰 바탕 */
 }
 
 /*

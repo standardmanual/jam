@@ -17,7 +17,7 @@ describe('RankingListRow — 기본값은 홈 랭킹보드 카드의 모양이�
   it('막대 채움은 --accent이고 내 행 표식은 «나» 칩이다', () => {
     const html = render()
     expect(html).toContain('background:var(--accent)')
-    expect(html).not.toContain('var(--jam-red)')
+    expect(html).not.toContain('var(--mission-accent)')
     expect(html).toContain('background:var(--accent-soft);color:var(--foreground)')
     expect(html).toContain('>나</span>')
     expect(html).not.toContain('role="img"')
@@ -26,15 +26,15 @@ describe('RankingListRow — 기본값은 홈 랭킹보드 카드의 모양이�
 
 describe('RankingListRow — barColor·meMarker', () => {
   it('barColor를 주면 막대 채움 색이 바뀌고 --accent는 쓰지 않는다', () => {
-    const html = render({ barColor: 'var(--jam-red)' })
-    expect(html).toContain('background:var(--jam-red)')
+    const html = render({ barColor: 'var(--mission-accent)' })
+    expect(html).toContain('background:var(--mission-accent)')
     expect(html).not.toContain('background:var(--accent)')
   })
 
-  it('meMarker="circle"이면 이름 옆에 22px --jam-red 원이 있고 «나» 칩은 없다', () => {
+  it('meMarker="circle"이면 이름 옆에 22px --mission-accent 원이 있고 «나» 칩은 없다', () => {
     const html = render({ meMarker: 'circle' })
     expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;border-radius:var(--radius-full);background:var(--jam-red);color:var(--foreground);font-size:var(--text-xs)')
+    expect(html).toContain('width:22px;height:22px;background:var(--mission-accent);color:var(--foreground)')
     expect(html).not.toContain('background:var(--accent-soft)')
   })
 

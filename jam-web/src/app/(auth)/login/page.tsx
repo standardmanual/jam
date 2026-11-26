@@ -24,7 +24,7 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center bg-[var(--base-black)] text-snow px-4 pt-[var(--spacing-safe-top)] pb-[var(--spacing-safe-bottom)]">
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-[var(--login-background)] text-snow px-4 pt-[var(--spacing-safe-top)] pb-[var(--spacing-safe-bottom)]">
       {/* 로고 — 검정 바탕 위라 흰색(--snow)으로 칠한다(FooterLogo와 같은 방식). 캔버스 값 204×67·아래 간격 88을 토큰에 가까운 h-16(64)·mb-24(96)로 옮겼다(티켓 20261112_2254). 이름은 role="img"가 맡는다. */}
       <div className="text-center mb-6">
         <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-16 bg-snow" />
@@ -96,7 +96,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-dvh flex items-center justify-center bg-[var(--base-black)] text-snow">
+        <main className="min-h-dvh flex items-center justify-center bg-[var(--login-background)] text-snow">
           <div className="text-3xl">{d.auth.wordmark}</div>
         </main>
       }

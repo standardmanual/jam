@@ -319,9 +319,9 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
     expect(card).not.toContain('7일 중 3일</span>')
   })
 
-  it('끝낸 칸은 레드(--jam-red) 채움·흰 글자(--snow), 남은 칸은 회색(--btn-secondary) 채움·검정 글자(--foreground)이고 테두리가 없다', () => {
+  it('끝낸 칸은 레드(--mission-accent) 채움·흰 글자(--snow), 남은 칸은 회색(--btn-secondary) 채움·검정 글자(--foreground)이고 테두리가 없다', () => {
     const card = streak(3)
-    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(3)
+    expect((card.match(/background:var\(--mission-accent\)/g) ?? []).length).toBe(3)
     expect((card.match(/color:var\(--snow\)/g) ?? []).length).toBe(3)
     expect((card.match(/background:var\(--btn-secondary\)/g) ?? []).length).toBe(4)
     expect((card.match(/color:var\(--foreground\)/g) ?? []).length).toBeGreaterThanOrEqual(4)
@@ -331,7 +331,7 @@ describe('MissionDetailClient 나의 진행 상황: 개수 서클', () => {
 
   it('달성하면 전부 레드로 채워지고 회색 칸이 없다', () => {
     const card = streak(0, { completed: true })
-    expect((card.match(/background:var\(--jam-red\)/g) ?? []).length).toBe(7)
+    expect((card.match(/background:var\(--mission-accent\)/g) ?? []).length).toBe(7)
     expect(card).not.toContain('background:var(--btn-secondary)')
     expect(card).not.toContain('border-color')
   })
@@ -468,15 +468,15 @@ describe('MissionDetailClient 나의 진행 상황 카드 면 (티켓 20261111_2
     ]) {
       const html = render(CONDITION_TEXT, opts)
       const slice = html.slice(html.lastIndexOf('<div', html.indexOf(d.missions.myProgressTitle)))
-      expect(slice.slice(0, slice.indexOf(d.missions.myProgressTitle))).not.toContain('var(--jam-red)')
+      expect(slice.slice(0, slice.indexOf(d.missions.myProgressTitle))).not.toContain('var(--mission-accent)')
     }
   })
 
-  it('수치형은 현재 값만 레드(--jam-red)이고, 막대는 16px 레드 채움에 기본 트랙(--border)이다', () => {
+  it('수치형은 현재 값만 레드(--mission-accent)이고, 막대는 16px 레드 채움에 기본 트랙(--border)이다', () => {
     const html = render(CONDITION_TEXT, { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } })
-    expect(html).toContain('color:var(--jam-red)')
+    expect(html).toContain('color:var(--mission-accent)')
     expect(html).not.toContain('color:var(--snow)')
-    expect(html).toContain('background:var(--jam-red)')
+    expect(html).toContain('background:var(--mission-accent)')
     expect(html).toContain('height:16px')
     expect(html).toContain('background:var(--border)')
     expect(html).not.toContain('color-mix')
