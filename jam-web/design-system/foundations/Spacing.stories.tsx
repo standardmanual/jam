@@ -34,6 +34,19 @@ function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; s
   );
 }
 
+// 치수·겹침 순서 토큰: 값이 길이가 아니거나(z-index) 화면보다 넓어 막대로 그리기 어려워 이름·값·설명만 보인다.
+function DimensionRow({ token, desc }: { token: string; desc: string }) {
+  const value = useTokenValue(token);
+  return (
+    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+      <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+      <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+        {value || '—'} — {desc}
+      </span>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 40 }}>
@@ -135,7 +148,33 @@ function SpacingPage() {
             </span>
           </div>
         </div>
+        <SpacingRow token="--spacing-safe-top" desc="iOS 상단 노치·상태바 safe area (env())" />
         <SpacingRow token="--spacing-safe-bottom" desc="iOS 홈 인디케이터 safe area (env())" />
+      </Section>
+
+      <Section title="앱 틀·하단 고정 UI 치수">
+        <DimensionRow token="--app-max-width" desc="앱 본문 컬럼의 최대 너비" />
+        <DimensionRow token="--topnav-height" desc="상단 내비게이션 바 높이" />
+        <DimensionRow token="--sheet-full-height" desc="바텀시트 전체 높이" />
+        <DimensionRow token="--sheet-max-height" desc="바텀시트 최대 높이" />
+        <DimensionRow token="--floating-bar-width" desc="플로팅 탭바·토스트의 너비" />
+        <DimensionRow token="--floating-bar-max-width" desc="플로팅 탭바·토스트의 최대 너비" />
+      </Section>
+
+      <Section title="컴포넌트 치수: 배지·공유 카드">
+        <DimensionRow token="--badge-hero-size" desc="배지 상세 히어로·티켓 사진의 한 변" />
+        <DimensionRow token="--grid-cell-max-width" desc="배지 그리드 카드·슬롯 원형 버튼 한 칸의 최대 너비" />
+        <DimensionRow token="--grid-thumb-bleed" desc="배지 그리드 카드 썸네일이 칸 너비보다 넓어지는 양" />
+        <DimensionRow token="--grid-thumb-inset" desc="배지 그리드 카드 썸네일 안쪽 여백 비율" />
+        <DimensionRow token="--cta-max-width" desc="합성·티어업 화면 CTA 버튼의 최대 너비" />
+        <DimensionRow token="--share-card-max-width" desc="배지 공유 카드의 최대 너비" />
+        <DimensionRow token="--share-card-image-size" desc="배지 공유 카드 안 이미지의 한 변(카드 대비)" />
+      </Section>
+
+      <Section title="겹침 순서 (z-index, 클수록 위)">
+        <DimensionRow token="--z-toast-scrim" desc="토스트 뒤의 어둠" />
+        <DimensionRow token="--z-toast" desc="토스트" />
+        <DimensionRow token="--z-navigation-loader" desc="화면 전환 로더(모든 것의 위)" />
       </Section>
 
       {/* 실제 사용 예시 */}

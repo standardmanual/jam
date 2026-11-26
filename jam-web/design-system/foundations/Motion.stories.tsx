@@ -113,6 +113,16 @@ function EaseRow({ token, desc }: { token: string; desc: string }) {
   );
 }
 
+function AnimationRow({ token, desc }: { token: string; desc: string }) {
+  const value = useTokenValue(token);
+  return (
+    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+      <code style={{ fontSize: 12, color: 'var(--link)', display: 'block' }}>{token}</code>
+      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{value || '—'} — {desc}</span>
+    </div>
+  );
+}
+
 function ScaleRow({ token, desc }: { token: string; desc: string }) {
   const [pressed, setPressed] = useState(false);
   const value = useTokenValue(token);
@@ -208,6 +218,13 @@ function MotionPage() {
         <ScaleRow token="--scale-press-card" desc="카드 눌림 — .jam-press" />
         <ScaleRow token="--scale-modal" desc="모달 등장 시작 스케일" />
         <CompactRow token="--scale-compact" desc="조밀한 컨텍스트의 치수에 곱하는 배율 — 내비게이션 바 안의 작은 버튼" />
+      </div>
+
+      <div style={{ marginBottom: 40 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', margin: '0 0 12px' }}>
+          Animation
+        </h2>
+        <AnimationRow token="--animate-sync-spin" desc="동기화 아이콘 버튼의 회전(animation 값 그대로)" />
       </div>
     </div>
   );

@@ -28,4 +28,7 @@
    * 치수를 calc(44px * var(--scale-compact))처럼 곱해 "조밀한 컨텍스트 전용" 사이즈를
    * 도출할 때 쓴다(예: 내비게이션 바 안의 44px 버튼 → 32px 컴팩트 버튼). 20260824_010. */
   --scale-compact: 0.7;
+
+  /* 동기화 아이콘 버튼의 회전 애니메이션(티켓 20261126_1310) */
+  --animate-sync-spin: spin 2.4s linear infinite;
 }

@@ -62,8 +62,24 @@
   --list-row-lead-badge-size: 20px;
   --list-row-lead-badge-padding-x: 6px;
 
+  /* 컴포넌트 치수: 배지·공유 카드 (티켓 20261126_1310, 값은 화면 코드에 있던 그대로) */
+  --badge-hero-size: 200px;                     /* 배지 상세 히어로·티켓 사진의 한 변 */
+  --grid-cell-max-width: 90px;                  /* 배지 그리드 카드·슬롯 원형 버튼 한 칸의 최대 너비 */
+  --grid-thumb-bleed: 0.75rem;                  /* 배지 그리드 카드 썸네일이 칸 너비보다 넓어지는 양 */
+  --grid-thumb-inset: 4.4%;                     /* 배지 그리드 카드 썸네일 안쪽 여백 비율 */
+  --cta-max-width: 220px;                       /* 합성·티어업 화면 CTA 버튼의 최대 너비 */
+  --share-card-max-width: 360px;                /* 배지 공유 카드의 최대 너비 */
+  --share-card-image-size: 70%;                 /* 배지 공유 카드 안 이미지의 한 변(카드 대비) */
+
   /* Safe area — iOS home indicator clearance */
+  --spacing-safe-top: env(safe-area-inset-top, 0px);  /* 상단 노치·상태바 여백(로그인·드랍 위치 안내 알약) */
   --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* 앱 틀 치수 (티켓 20261126_1310) */
+  --app-max-width: 430px;                       /* 앱 본문 컬럼의 최대 너비((main)·(legal)·(onboarding) 레이아웃) */
+  --topnav-height: 56px;                        /* 상단 내비게이션 바 높이. 드랍·미션 상황 화면의 계산식도 읽는다 */
+  --sheet-full-height: 92dvh;                   /* 바텀시트 전체 높이 */
+  --sheet-max-height: 75dvh;                    /* 바텀시트 최대 높이 */
 
   /* 하단 고정 UI의 기준선 (티켓 20261125_1840).
      --tabbar-bottom: 플로팅 탭바 하단과 화면 아래 끝 사이 간격. 홈 인디케이터가 있으면 그 위로 올리고, 없으면 최소 10px를 둔다.
@@ -72,5 +88,12 @@
      --toast-bottom: 토스트 아랫면의 화면 아래 간격. 탭바 윗면에서 8px 위다. */
   --tabbar-bottom: max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px));
   --tabbar-height: 49px;
+  --floating-bar-width: calc(100% - 42px);      /* 플로팅 탭바·토스트의 너비 */
+  --floating-bar-max-width: 388px;              /* 플로팅 탭바·토스트의 최대 너비 */
   --toast-bottom: calc(var(--tabbar-bottom) + var(--tabbar-height) + 8px);
+
+  /* 겹침 순서 (티켓 20261126_1310). 값이 클수록 위에 놓인다. */
+  --z-toast-scrim: 59;                          /* 토스트 뒤의 어둠 */
+  --z-toast: 60;                                /* 토스트 */
+  --z-navigation-loader: 9999;                  /* 화면 전환 로더(모든 것의 위) */
 }

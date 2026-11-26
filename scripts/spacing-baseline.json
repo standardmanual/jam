@@ -1,19 +1,17 @@
 {
-  "jam-web/src/app/(auth)/login/page.tsx": 4,
+  "jam-web/src/app/(auth)/login/page.tsx": 3,
   "jam-web/src/app/(legal)/location-terms/page.tsx": 4,
   "jam-web/src/app/(legal)/privacy/page.tsx": 4,
   "jam-web/src/app/(legal)/probability/page.tsx": 3,
   "jam-web/src/app/(main)/[username]/followers/page.tsx": 1,
   "jam-web/src/app/(main)/[username]/following/page.tsx": 1,
-  "jam-web/src/app/(main)/drops/BadgeDetailSheet.tsx": 1,
   "jam-web/src/app/(main)/inventory/[itemId]/LockedItemDetail.tsx": 1,
-  "jam-web/src/app/(main)/profile/ProfileClient.tsx": 1,
   "jam-web/src/app/(main)/search/page.tsx": 1,
   "jam-web/src/app/(main)/voc/page.tsx": 1,
-  "jam-web/src/app/(onboarding)/onboarding/TribeStep.tsx": 4,
+  "jam-web/src/app/(onboarding)/onboarding/TribeStep.tsx": 3,
   "jam-web/src/app/(onboarding)/onboarding/page.tsx": 2,
   "jam-web/src/components/points/PointHistoryList.tsx": 1,
-  "jam-web/src/components/today/ArticleView.tsx": 2,
-  "jam-web/src/components/ui/Button.tsx": 8,
-  "jam-web/src/components/ui/sheetClasses.ts": 2
+  "jam-web/src/components/today/ArticleView.tsx": 1,
+  "jam-web/src/components/ui/Button.tsx": 5,
+  "jam-web/src/components/ui/sheetClasses.ts": 1
 }
