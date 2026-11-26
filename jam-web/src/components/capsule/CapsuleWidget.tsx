@@ -103,11 +103,12 @@ export default function CapsuleWidget({
         fullWidth
         onClick={() => void retryLoad()}
         aria-label={d.capsule.aria.error}
-        className="flex-col"
+        className="whitespace-nowrap"
         style={{ height: CAPSULE_GAUGE_HEIGHT_PX }}
       >
-        <span className="text-sm font-bold text-muted break-keep wrap-break-word text-balance">{d.capsule.pill.loadFailed}</span>
-        <span className="mt-1 text-xs font-semibold text-link break-keep wrap-break-word">{d.capsule.pill.retry}</span>
+        <span className="text-sm font-bold text-muted break-keep wrap-break-word whitespace-nowrap">{d.capsule.pill.failed}</span>
+        <span aria-hidden="true" className="mx-1 text-sm text-muted">·</span>
+        <span className="text-sm font-semibold text-link break-keep wrap-break-word whitespace-nowrap">{d.capsule.pill.retry}</span>
       </Button>
     )
   }
