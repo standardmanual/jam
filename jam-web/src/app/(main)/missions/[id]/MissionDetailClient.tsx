@@ -624,7 +624,7 @@ export default function MissionDetailClient({
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} height={16} color="var(--mission-accent)" />
+                <ProgressBar shape="capsule" percent={isCompleted ? 100 : progressPct} height={16} color="var(--mission-accent)" />
               </div>
             )}
           </InfoCard>

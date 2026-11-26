@@ -48,6 +48,11 @@ export interface RankingListRowProps {
    */
   trackColor?: string
   /**
+   * 진행 바 모양. 기본 `flat`은 홈 랭킹보드 카드가 쓰던 모양이고, `capsule`은 인벤토리·컬렉션 상세의 진행 바와 같은 캡슐(어두운 트랙 + 둥근 채움)이다.
+   * 미션 상황 화면이 `capsule`로 켠다(티켓 20261127_0020). `capsule`이면 `trackColor`를 주지 않고 캡슐 기본 트랙(`--capsule-track`)을 쓴다.
+   */
+  barShape?: 'flat' | 'capsule'
+  /**
    * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--mission-accent` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
    */
   meMarker?: 'chip' | 'circle'
@@ -80,7 +85,7 @@ function MeCircle() {
  * 클릭 영역(프로필 링크) 안은 phrasing만 쓴다 — 진행 바는 `as="span"`이고 장식이라 호출부 span 래퍼에 aria-hidden을 건다.
  * 순위 숫자는 화면용 숫자(aria-hidden)와 «N위»(sr-only)를 함께 둔다.
  */
-export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', trackColor = 'var(--border)', meMarker = 'chip' }: RankingListRowProps) {
+export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', trackColor, barShape = 'flat', meMarker = 'chip' }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
 
   return (
@@ -111,8 +116,9 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
             as="span"
             percent={fillRatio * 100}
             height={16}
+            shape={barShape}
             color={barColor}
-            trackColor={trackColor}
+            trackColor={trackColor ?? (barShape === 'capsule' ? undefined : 'var(--border)')}
           />
         </span>
       }

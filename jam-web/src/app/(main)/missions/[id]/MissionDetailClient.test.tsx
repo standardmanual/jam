@@ -472,13 +472,14 @@ describe('MissionDetailClient 나의 진행 상황 카드 면 (티켓 20261111_2
     }
   })
 
-  it('수치형은 현재 값만 레드(--mission-accent)이고, 막대는 16px 레드 채움에 기본 트랙(--border)이다', () => {
+  it('수치형은 현재 값만 레드(--mission-accent)이고, 막대는 인벤토리와 같은 캡슐(16px 레드 채움, 어두운 --capsule-track 트랙)이다 (티켓 20261127_0020)', () => {
     const html = render(CONDITION_TEXT, { participating: true, missionType: 'distance', progressValue: 3.2, conditionJson: { distance_km: 10 } })
     expect(html).toContain('color:var(--mission-accent)')
     expect(html).not.toContain('color:var(--snow)')
     expect(html).toContain('background:var(--mission-accent)')
     expect(html).toContain('height:16px')
-    expect(html).toContain('background:var(--border)')
+    expect(html).toContain('background:var(--capsule-track)')
+    expect(html).not.toContain('background:var(--border)')
     expect(html).not.toContain('color-mix')
   })
 })

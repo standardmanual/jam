@@ -38,6 +38,16 @@ describe('RankingListRow — barColor·meMarker', () => {
     expect(html).not.toContain('background:var(--accent-soft)')
   })
 
+  it('barShape를 안 주면 기존 플랫 막대(--border 트랙)이고, capsule이면 캡슐 트랙(--capsule-track)이다 (티켓 20261127_0020)', () => {
+    const flat = render()
+    expect(flat).toContain('background:var(--border)')
+    expect(flat).not.toContain('var(--capsule-track)')
+    const capsule = render({ barShape: 'capsule', barColor: 'var(--mission-accent)' })
+    expect(capsule).toContain('background:var(--capsule-track)')
+    expect(capsule).toContain('background:var(--mission-accent)')
+    expect(capsule).not.toContain('background:var(--border)')
+  })
+
   it('내 행이 아니면 표식이 없다', () => {
     const html = render({ meMarker: 'circle' }, false)
     expect(html).not.toContain('role="img"')
