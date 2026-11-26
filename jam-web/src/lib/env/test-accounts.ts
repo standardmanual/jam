@@ -31,7 +31,7 @@ export const DEV_LOGIN_USER_EMAIL = 'dev-tester@jam.local'
  * 새 테스트 계정이 생기면 이 배열에만 추가하면 된다 (하드코딩 위치 단일화).
  */
 export const TEST_ACCOUNT_USER_IDS: readonly string[] = [
-  // dev-login이 생성하는 고정 스테이징 테스트 유저 (username: 589132427_stage)
+  // dev-login이 생성하는 고정 스테이징 테스트 유저 (2026-11-26 DB 확인: username 3332, 표시 이름 232)
   DEV_LOGIN_USER_ID,
   // 알림(소식) 기능 QA용으로 수동 시드된 팔로잉/팔로워 상대 계정 3종
   // (username: jiwon.kim / minjun.park / sora.lee, 이메일 전부 @jam.local,

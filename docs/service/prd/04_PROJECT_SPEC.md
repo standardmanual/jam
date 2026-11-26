@@ -199,6 +199,14 @@ push로 배포하지 않는다(`.githooks/pre-push`가 `JAM_SHIP=1` 없는 main 
 2. 스테이징에서 확인을 마친 뒤 `/jam-ship`을 실행한다. 배포 전 점검표 → 롤백 계획 → 병렬 점검(민지 모드 ②·③) →
    main 승격 → 배포 검증 → 배포 후 검증 순서로 진행하며, 절차의 단일 원천은 `.claude/skills/jam-ship/SKILL.md`다.
 
+스테이징 도메인이 `stage.j-a-m.app`인 이유: Strava 앱의 Authorization Callback Domain 칸은 하나뿐이고 프로덕션
+`j-a-m.app`이 쓰고 있다. Strava는 그 도메인의 진짜 하위 도메인을 받아 주므로(2026-09-06 실측: `stage.`·`zzz.` 하위
+도메인은 302, `evil-j-a-m.app`은 400 — 앞부분 글자 일치가 아니다) 스테이징을 그 아래에 두어 한 칸을 같이 쓴다.
+`*.j-a-m.app` 와일드카드 DNS가 Vercel을 가리킨다. 새 시험 도메인이 필요하면 `vercel.app` 도메인이 아니라
+`*.j-a-m.app` 아래로 판다. `NEXT_PUBLIC_*` 값은 빌드 때 구워지므로 `jam-stage` 프로젝트의 `NEXT_PUBLIC_BASE_URL`을
+바꾸면 재배포해야 반영된다(바꾼 뒤에도 Strava 연결이 옛 주소로 가 보이면 [DEV_PROCESS_GUARDRAILS.md](../../agents/DEV_PROCESS_GUARDRAILS.md)
+패턴 16).
+
 환경변수는 Vercel 대시보드(프로젝트 → Settings → Environment Variables)에서 설정한다.
 
 ---

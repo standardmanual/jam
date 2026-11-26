@@ -145,6 +145,13 @@
       "jam-web/supabase/migrations/295_ops_routine_starts.sql",
       "jam-web/src/lib/admin/opsInbox/constants.ts",
       "jam-web/src/lib/admin/opsInbox/validate.ts",
+      "scripts/backfill-poi-region.mjs",
+      "jam-web/supabase/migrations/313_poi_region_columns_down.sql",
+      "jam-web/vercel.json",
+      "docs/plan/jam2/12 JAM 2.0 오픈 전후 적용 순서.md",
+      "jam-web/src/lib/env/test-accounts.ts",
+      "jam-web/src/lib/admin/auth.ts",
+      "jam-web/src/components/ui/RarityBadge.tsx",
       "jam-web/src/lib/admin/opsInbox/bundleStatus.ts",
       "jam-web/src/lib/admin/opsInbox/query.ts",
       "jam-web/src/app/api/admin/ops-inbox/[bundleId]/open/route.ts",
@@ -361,6 +368,10 @@
       {
         "text": "MODULAR 확장",
         "reason": "MODULAR 컴포넌트 폴더는 사라졌다. 채원① 분류는 «재사용 / 정본 변형 추가 / 새 정본»이다 (2026-11-26 사용자 결정, 상위 티켓 20261125_1923 10회차 ②)"
+      },
+      {
+        "text": "staging에서는 어드민을 확인할 수 없다",
+        "reason": "staging 어드민은 사용자 관리자 계정이면 열린다. 막히는 것은 자동 로그인 시험 계정뿐이다(jam-web/src/lib/admin/auth.ts의 hasAdminAccess, 2026-11-24 사용자 정정, 티켓 20261126_2301). «에이전트는 staging에서 어드민을 확인할 수 없다»로 쓴다"
       }
     ]
   },

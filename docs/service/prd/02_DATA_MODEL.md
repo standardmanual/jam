@@ -669,6 +669,15 @@ service 클라이언트라 정책을 거치지 않는다. 관리자에게 공개
 | naver_category | **신규(2026-09-07, [20260907_1242](../../tickets/p2-normal/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — 네이버 지역검색 응답의 원본 분류 문자열(가공 없이 저장). 수동 등록(T1)은 NULL |
 | naver_keyword | 위와 동일 티켓 신규 — 이 POI를 찾은 실제 네이버 검색 키워드. 수동 등록(T1)은 NULL |
 | pending_review | 위와 동일 티켓 신규 — 수집 시 3단계 판정(자동승인/자동거부/검토대기) 중 "검토대기"로 저장된 행 표시. `is_active`(노출 여부)와는 분리된 개념 — 검토 대기 중에도 게이트 통과분과 동일하게 노출된다 |
+| sido | 시·도 이름(text, NULL 가능). 마이그레이션 313(티켓 20261102_2254)이 만들었고, 값은 NCP 역지오코딩 결과 그대로다. 2026-11-02에 `scripts/backfill-poi-region.mjs`로 당시 전체 2,752행을 채웠다(실패 0) |
+| gu | 시·군·구 이름(text, NULL 가능). 시·군·구가 없는 지역(예: 세종특별자치시)은 `sido`만 채워지고 `gu`는 NULL로 남는다 |
+
+> **새 장소의 지역 칸은 자동으로 채워지지 않는다.** 장소를 만드는 경로(어드민 등록·자동 수집)는 `sido`·`gu`를 쓰지
+> 않는다. 새 장소가 생기면 `node --env-file=jam-web/.env.local scripts/backfill-poi-region.mjs --apply`로 빈 칸만 채운다
+> (옵션 없이 돌리면 드라이런, `--limit N`으로 앞 N행만 시험, 호출 사이 200ms 이상). 되돌림 SQL은
+> `jam-web/supabase/migrations/313_poi_region_columns_down.sql`인데, 칸을 읽는 코드(운영 읽기 API `ops-places` 등)를
+> 먼저 되돌린 뒤 실행한다 — 순서가 바뀌면 읽기 API가 없는 칸을 select해 500이 난다. 칸을 읽는 새 코드는 칸을 먼저
+> 만든 뒤 push한다.
 
 > **T2 POI 데이터 소스가 OpenStreetMap → 네이버 지역검색 오픈API로 전환됨** (2026-07-22). 지도 렌더링도 Google Maps → 네이버 지도(NCP Maps.js)로 전환.
 >
