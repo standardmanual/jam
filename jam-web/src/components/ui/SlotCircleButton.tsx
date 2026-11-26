@@ -17,6 +17,8 @@ import { MinusIcon, PlusIcon } from '@/components/ui/icons'
  *   transform 애니메이션과 충돌하지 않는다. 틀이 `pointer-events-none`이라 틀 자체는 카드 탭을 가로채지 않고,
  *   눌리는 44px 영역만 카드 링크 위에 얹힌다. `dense`(믹스 4열, 카드 `p-2`)이면 틀의 안쪽 여백을 8px로 줄인다.
  *   기본값 `corner`는 이전과 같다(«−»는 계속 우상단).
+ *
+ * @summary 컬렉션 칸 모서리의 «빼기»·«추가» 원형 버튼이다. 컬렉션 상세 칸 격자와 조합 레시피 칸에서 쓴다.
  */
 type SlotCircleIcon = 'minus' | 'plus'
 type SlotCirclePosition = 'corner' | 'center'

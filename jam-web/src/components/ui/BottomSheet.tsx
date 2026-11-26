@@ -99,6 +99,9 @@ function getCurrentTranslateY(el: HTMLElement): number {
   return parts.length >= 6 && Number.isFinite(parts[5]) ? parts[5] : 0
 }
 
+/**
+ * @summary 화면 아래에서 올라와 끌어 내려 닫는 시트다. 배지 공유·합성·컬렉션 등 여러 화면에서 쓴다.
+ */
 export default function BottomSheet({
   open,
   onClose,

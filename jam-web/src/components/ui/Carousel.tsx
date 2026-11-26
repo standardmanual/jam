@@ -53,6 +53,8 @@ export interface CarouselProps<T = unknown> {
  * 중앙 배치한다. 활성 카드 판정·프로그램적 스크롤 이동은 슬라이드 폭을 고정값으로
  * 가정하지 않고, 실제 렌더된 슬라이드 DOM 요소의 offsetLeft/offsetWidth를 기준으로
  * 계산한다.
+ *
+ * @summary 가운데 카드가 선택되는 무한 순환 가로 캐러셀이다. 지도의 장소 카드 모달에서 쓴다.
  */
 const SLIDE_WIDTH_PERCENT = 72; // 20260820_022: 여백 없는 풀블리드 레이아웃에서 peek이 잘리지 않도록 축소(기존 80%)
 const SLIDE_INSET_PERCENT = (100 - SLIDE_WIDTH_PERCENT) / 2;

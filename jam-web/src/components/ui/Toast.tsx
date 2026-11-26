@@ -129,6 +129,9 @@ function overlayGapPx(): number {
   return cachedOverlayGapPx
 }
 
+/**
+ * @summary 화면 아래에 잠깐 뜨는 알림 한 줄과 그 공급자다. 팔로우·공유·합성 등 결과 알림에서 쓴다.
+ */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const timerMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())

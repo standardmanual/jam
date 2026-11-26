@@ -27,6 +27,8 @@ import { d } from '@/lib/i18n'
  *
  * 점은 종 글리프 **바깥**에 놓는다. 24px 아이콘의 벨 외곽선은 x≈21까지 차지하므로
  * 아이콘 박스 안쪽에 두면 우상단 스트로크와 정면으로 겹친다.
+ *
+ * @summary 읽지 않은 알림이 있으면 빨간 점이 뜨는 종 버튼이다. 상단 바 오른쪽에서 쓴다.
  */
 export default function NotificationBell() {
   const { hasUnreadNotifications, clearNotificationDot } = useTopNavData()

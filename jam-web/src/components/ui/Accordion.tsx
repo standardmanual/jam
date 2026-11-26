@@ -119,6 +119,8 @@ function AccordionItemView({ item, index, isOpen, onToggle, headerId, panelId }:
  * Accordion — single-open collapsible list.
  * items: [{ title: string, content: ReactNode, defaultOpen?: boolean }]
  * Keyboard: Enter/Space to toggle; Tab moves between headers.
+ *
+ * @summary 한 번에 하나만 펼쳐지는 접이식 목록이다. 철학 화면의 자주 묻는 질문에서 쓴다.
  */
 export function Accordion({ items = [], style = {}, className = '' }: AccordionProps) {
   const [openIndex, setOpenIndex] = useState(

@@ -22,6 +22,8 @@ export interface SkeletonProps {
  * width/height accept any CSS length value (px, %, rem, etc.).
  * borderRadius defaults to var(--radius-lg); pass 'var(--radius-full)' for text lines
  * or '50%' for avatar placeholders.
+ *
+ * @summary 불러오는 동안 자리를 채우는 반짝이는 막대다. 프로필·캡슐 위젯·합성 결과 시트에서 쓴다.
  */
 export function Skeleton({
   width = '100%',

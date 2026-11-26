@@ -30,6 +30,8 @@ const CheckIcon = () => (
  * 44×44 touch target via the wrapping <label>.
  *
  * state: 'default' | 'error' | 'success'
+ *
+ * @summary 라벨이 붙은 체크박스다. 온보딩의 만 14세 이상 확인에서 쓴다.
  */
 export function Checkbox({
   checked,

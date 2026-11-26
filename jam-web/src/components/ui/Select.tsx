@@ -45,6 +45,8 @@ const ChevronDown = () => (
  * 티켓 20261015_2133(2회): Input과 같은 면(--surface) + 1px --field-border + 캡슐(--field-radius). 오류 --danger,
  * 성공 --success는 border 1px 위에 같은 색 inset 링 1px를 더해 시각 2px로 만든다(두께가 변하면 글자가 움직인다).
  * 미선택 글자 --muted(흰 면 위 5.74:1), 선택됨 --foreground.
+ *
+ * @summary 캡슐 모양의 선택 상자다. 배지 목록의 필터·정렬과 미션 목록의 정렬에서 쓴다.
  */
 export function Select({
   value,

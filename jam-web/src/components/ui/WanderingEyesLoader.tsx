@@ -17,6 +17,8 @@ export interface WanderingEyesLoaderProps {
  *
  * 이동 경로는 마운트마다 새로 랜덤 생성 — 매번 다르게 움직인다.
  * 두 눈은 같은 경로를 공유해 "같은 곳을 보는" 느낌을 유지한다.
+ *
+ * @summary 눈동자가 돌아다니다 깜빡이는 대기 표시다. 화면 전환·배지 획득 연출·공유 버튼 등 로딩에서 쓴다.
  */
 
 /* DS-023: CSS fallbacks updated from hardcoded hex (#f8fafc/#0f172a) to DS v2 tokens.

@@ -163,7 +163,7 @@ function ColorsPage() {
         <Swatch token="--success" desc="성공·다 채움 (가는 선·점·링)" />
         <Swatch token="--warning" desc="경고·모자람 — 계정·동기화·인벤토리 소식(가는 선·점·링)" />
         <Swatch token="--danger" desc="위험 — 안 읽은 소식 점" />
-        <Swatch token="--default" desc="중립 면(#f5f5f5). 카드 면과 거의 같아 트랙에는 --progress-track을 쓴다" />
+        <Swatch token="--default" desc="중립 면(#e5e5e5)" />
         <Swatch token="--default-soft" desc="중립 칩 배경" />
       </Section>
 

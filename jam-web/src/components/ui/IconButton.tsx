@@ -44,6 +44,8 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
  *   - surface="dark" 아이콘 색을 --background-inverse → --snow로 바꿨다. dark는
  *     --background-inverse 면 위에 놓이므로 이전 값은 배경과 같은 색(1.00:1)이었다.
  *     밝은 면(--background·--surface) 위에서는 surface="light"를 쓴다.
+ *
+ * @summary 아이콘만 담은 44px 원형 버튼이다. 배지 획득 연출과 장소 카드 모달에서 쓴다.
  */
 
 const ICON_PATHS = {

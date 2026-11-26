@@ -11,58 +11,23 @@ const meta: Meta<typeof Skeleton> = {
 export default meta;
 type Story = StoryObj<typeof Skeleton>;
 
-export const Default: Story = {
-  args: { width: 240, height: 16 },
+/** 홈 캡슐 위젯(`CapsuleWidget`)이 불러오는 동안 — 게이지 높이 36px의 알약 모양. */
+export const CapsuleGauge: Story = {
+  name: '캡슐 게이지 자리',
+  args: { height: 36, borderRadius: 'var(--radius-full)', className: 'w-full' },
+  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
-export const Avatar: Story = {
-  name: '아바타 원형',
-  args: { width: 48, height: 48, borderRadius: '50%' },
+/** 합성 결과 시트(`PendingResultsSheet`)가 불러오는 동안 — 정사각 타일 자리. */
+export const SquareTile: Story = {
+  name: '정사각 타일 자리',
+  args: { height: 'auto', borderRadius: 'var(--radius-2xl)', className: 'aspect-square' },
+  decorators: [(Story) => <div style={{ width: 96 }}><Story /></div>],
 };
 
-export const ButtonShape: Story = {
-  name: '버튼 형태',
-  args: { width: 120, height: 44, borderRadius: 'var(--radius-full)' },
-};
-
-export const CardLoading: Story = {
-  name: '카드 로딩 (복합 레이아웃)',
-  render: () => (
-    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--background-secondary)', borderRadius: 'var(--radius-2xl)' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <Skeleton width={40} height={40} borderRadius="50%" />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Skeleton width="60%" height={14} />
-          <Skeleton width="40%" height={12} />
-        </div>
-      </div>
-      <Skeleton width="100%" height={12} />
-      <Skeleton width="80%" height={12} />
-      <Skeleton width="90%" height={12} />
-    </div>
-  ),
-};
-
-export const TextLines: Story = {
-  name: '텍스트 줄 목록',
-  render: () => (
-    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <Skeleton width="100%" height={14} />
-      <Skeleton width="90%" height={14} />
-      <Skeleton width="75%" height={14} />
-      <Skeleton width="85%" height={14} />
-      <Skeleton width="60%" height={14} />
-    </div>
-  ),
-};
-
-export const BadgeGrid: Story = {
-  name: '배지 그리드',
-  render: () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 60px)', gap: 12 }}>
-      {Array.from({ length: 8 }, (_, i) => (
-        <Skeleton key={i} width={60} height={60} borderRadius="50%" />
-      ))}
-    </div>
-  ),
+/** 프로필(`ProfileClient`)의 목록이 불러오는 동안 — 높이 72px의 둥근 칸. */
+export const ProfileRow: Story = {
+  name: '프로필 칸 자리',
+  args: { height: 72, borderRadius: 'var(--radius-2xl)', className: 'w-full' },
+  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };

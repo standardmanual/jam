@@ -55,6 +55,8 @@ import { d } from '@/lib/i18n'
  * 타이포 오버라이드 prop 제거 — 이 래퍼가 항상 동일한 고정값(body 16px)으로만 오버라이드
  * 하고 있었기 때문에 그 값을 DS 기본값으로 흡수). `centerSlot`은 도메인 결합(스트라바
  * 동기화 버튼) 콘텐츠라 서비스 TopNavProps에는 노출하지 않고 DS 전용 slot으로 남겼다.
+ *
+ * @summary 서비스의 상단 바다. 뒤로가기·제목·동기화·알림 종·아바타를 얹고 메인 화면 대부분에서 쓴다.
  */
 export interface TopNavProps {
   title?: string

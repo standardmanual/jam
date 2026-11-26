@@ -1,43 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import React from 'react';
 import { WanderingEyesLoader } from './WanderingEyesLoader';
 
 const meta: Meta<typeof WanderingEyesLoader> = {
   title: 'UI/Feedback/WanderingEyesLoader',
   component: WanderingEyesLoader,
   parameters: { layout: 'centered' },
-  argTypes: {
-    duration: { control: 'text' },
-    eyeColor: { control: 'text' },
-    pupilColor: { control: 'text' },
-  },
 };
 
 export default meta;
 type Story = StoryObj<typeof WanderingEyesLoader>;
 
+/** 화면 전환(`NavigationLoader`)·배지 공유 버튼·미션 현황에서 밝은 면 위에 쓴다. */
 export const Default: Story = {
   args: {},
 };
 
-export const Slow: Story = {
-  name: '느린 속도 (3s)',
-  args: { duration: '3s' },
-};
-
-export const Fast: Story = {
-  name: '빠른 속도 (1s)',
-  args: { duration: '1s' },
-};
-
-export const CustomColors: Story = {
-  name: '커스텀 색상 (Primary)',
-  args: {
-    eyeColor: 'var(--link)',
-    pupilColor: 'var(--accent-foreground)',
-  },
-};
-
-export const LargeSize: Story = {
-  name: '큰 사이즈 (scale 2x)',
-  args: { style: { transform: 'scale(2)', transformOrigin: 'center' } },
+/** 배지 획득 연출(`BadgeRevealOverlay`)·아이템 고르기 오버레이(`PendingItemsPickOverlay`)에서 어두운 막 위에 쓴다 — 눈과 눈동자 색을 맞바꾼다. */
+export const OnDark: Story = {
+  name: '어두운 막 위',
+  args: { eyeColor: 'var(--snow)', pupilColor: 'var(--background-inverse)' },
+  decorators: [(Story) => <div style={{ background: 'var(--background-inverse)', padding: 32, borderRadius: 'var(--radius-2xl)' }}><Story /></div>],
 };
