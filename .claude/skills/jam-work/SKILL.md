@@ -345,8 +345,8 @@ CLOSED를 로컬에 쌓아 두고, 요청이 오면 쌓인 커밋을 한 번에 
 - 이 스킬 호출 자체가 Workflow 툴 사용에 대한 명시적 opt-in이다.
 - `copy`·`ui`·`content` 유형의 한국어 문구는 아현이 `.claude/output-styles/fluent-korean.md` 지침으로 쓰고,
   민지가 체크리스트 12번으로 판정한다. 패턴 매칭 가능한 금칙어는 `scripts/check-slop.mjs`가 먼저 거른다.
-- 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는
-  `jam-reviewer.md`의 「Checklist」 절에 있다.
+- 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 유형별 적용은
+  `jam-reviewer.md`의 「Checklist」 절, 항목별 상세 판정 기준은 `references/reviewer-gate-criteria.md`에 있다.
 - 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-work/references/designer-review-checklist.md`다.
   라이팅 품질은 게이트(민지)가 담당하므로 점검표에서 의도적으로 뺐다.
 - 채원②는 `devResult.diffLineCount`(아현이 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
