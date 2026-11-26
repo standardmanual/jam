@@ -71,6 +71,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "eslint-plugin-storybook": "^10.5.8",
+    "jsdom": "^29.1.1",
     "knip": "^6.48.0",
     "patch-package": "^8.0.1",
     "playwright": "latest",
