@@ -8,6 +8,8 @@ import { MinusIcon, PlusIcon } from '@/components/ui/icons'
  * - «+» 원은 24px이고 카드의 우측·위 가장자리에서 6px 안쪽에 놓인다. «−» 원은 «+»의 80%(19.2px)이고 원의 중심이 같도록 8.4px 안쪽에 놓인다.
  * - `before`로 «+»는 사방 10px씩, «−»는 12.4px씩 넓혀 눌리는 영역을 44px로 맞춘다(점검표 기준, 티켓 20261112_1817).
  * - 이름은 보이지 않으므로 `aria-label`로 알린다(«빼기»·«추가»).
+ * - `data-slot-circle` 표식이 붙는다. 티켓 안쪽 구간의 «버튼은 잉크색 글자» 규칙(`BadgeTicket.module.css`의 `.faceKeepCards`)이
+ *   이 표식이 있는 버튼은 건너뛰어, 컬렉션 상세 티켓 위에서도 아이콘이 --snow(흰색)로 보인다(티켓 20261127_0009).
  * - 위치(`absolute`)는 이 버튼을 감싸는 호출부의 `relative` 래퍼가 정한다. 격자 카드 전체가 링크라
  *   `preventDefault`/`stopPropagation`은 호출부 `onClick`이 맡는다(`SlotActionPill`과 같다).
  * - 한 칸에는 둘 중 하나만 나온다: 장착된 칸은 «−», 장착하지 않았고 넣을 수 있는 칸은 «+».
@@ -61,6 +63,7 @@ export default function SlotCircleButton({
       type="button"
       aria-label={label}
       aria-busy={pending || undefined}
+      data-slot-circle=""
       onClick={onClick}
       disabled={pending || disabled}
       className={`${placement} ${circleCls}${extra}`}

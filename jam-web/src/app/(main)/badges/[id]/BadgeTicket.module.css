@@ -57,10 +57,11 @@
 
 /* 면 위 글자 구간 안의 카드(격자 칸·오류 상자)와 연한 회색 면 버튼(«한번에 빼기»)은 다시 잉크색으로 되돌린다.
    SlotGrid 안의 카드 밖 문구(등급 고정 안내)는 면 글자색을 따른다.
-   강조색 바탕 버튼(«교체» 알약, `bg-accent`)은 제외한다: 바탕이 어두워 자기 글자색(흰색)을 그대로 써야 읽힌다 */
+   강조색 바탕 버튼(«교체» 알약, `bg-accent`)은 제외한다: 바탕이 어두워 자기 글자색(흰색)을 그대로 써야 읽힌다.
+   칸의 «빼기»·«추가» 원 버튼(`SlotCircleButton`, `data-slot-circle`)도 제외한다: 검정·레드 원 위의 아이콘이 흰색(--snow)이어야 보인다(티켓 20261127_0009) */
 .faceKeepCards :global(.grid-cols-3),
 .faceKeepCards :global(.bg-card-bg),
-.faceKeepCards :global(button:not(.bg-accent)) {
+.faceKeepCards :global(button:not(.bg-accent):not([data-slot-circle])) {
   --foreground: var(--ticket-ink);
   --muted: color-mix(in srgb, var(--ticket-ink) 80%, transparent);
   --border: color-mix(in srgb, var(--ticket-ink) 12%, transparent);
