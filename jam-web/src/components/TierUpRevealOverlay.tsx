@@ -28,7 +28,7 @@ import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'
  * 가운뎃값 두 개(#343434·#1a1a1a)는 이 연출에만 쓰는 중간 회색이라 토큰을 새로 만들지 않고 여기 한 곳에만 둔다(채원 판정 승인 ①). 끝색은 토큰이다.
  * 결과 배지 뒤의 glow·후광은 두지 않는다.
  */
-export const STAGE_BACKGROUND = 'radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)'
+export const STAGE_BACKGROUND = 'var(--tierup-stage-bg)'
 
 /** 연출 시간과 곡선(ms) — 프로토타입 v7 원문 값. 문구 등장 시간은 사용자 확정값이라 임의로 바꾸지 않는다. primitive.css 모션 토큰은 쓰지 않는다 */
 export const TIMING = {
@@ -483,10 +483,9 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
       {/* 로고 — 폭은 좌우 16px을 뺀 전체, 비율 유지, 세로 중심은 화면 높이의 약 88%. 위치 잡는 바깥 상자는 움직이지 않고 안쪽 상자만 애니메이션한다 */}
       <div
         aria-hidden="true"
+        className="left-4 right-4"
         style={{
           position: 'absolute',
-          left: 'var(--spacing-16)',
-          right: 'var(--spacing-16)',
           top: 'calc(88% - env(safe-area-inset-bottom, 0px) / 2)',
           transform: 'translateY(-50%)',
           pointerEvents: 'none',
@@ -501,6 +500,7 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
       {/* 결과 컬럼 — 배지 중심이 화면 높이의 약 35%. 작은 화면에서는 컬럼 안에서 스크롤하고, 아래 버튼 영역만큼 비워 둔다 */}
       <div
         data-reveal="column"
+        className="pt-3 px-4"
         style={{
           position: 'absolute',
           left: 0,
@@ -511,10 +511,7 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          paddingTop: 'var(--spacing-12)',
-          paddingLeft: 'var(--spacing-16)',
-          paddingRight: 'var(--spacing-16)',
-          paddingBottom: `calc(${BUTTON_HEIGHT}px + ${buttonBottom} + var(--spacing-24))`,
+          paddingBottom: `calc(${BUTTON_HEIGHT}px + ${buttonBottom} + var(--page-bottom))`,
         }}
       >
         <div data-reveal="badge" style={{ position: 'relative', width: BADGE_SIZE, height: BADGE_SIZE, flexShrink: 0, opacity: 0 }}>
@@ -523,13 +520,12 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
 
         <div
           aria-live="polite"
+          className="mt-6 gap-2"
           style={{
-            marginTop: 'var(--spacing-24)',
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 'var(--spacing-8)',
           }}
         >
           {lines.chipRarity && (
@@ -539,13 +535,11 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
           )}
           <p
             data-reveal="item"
-            className="break-keep wrap-break-word text-balance font-bold"
+            className="break-keep wrap-break-word text-balance text-2xl font-bold"
             style={{
               ...textStyle,
               opacity: 0,
-              color: 'var(--base-white)',
-              fontSize: 'var(--text-2xl)',
-              lineHeight: 'var(--text-2xl--line-height)',
+              color: 'var(--overlay-foreground)',
             }}
           >
             {lines.name}
@@ -554,13 +548,11 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
             <p
               key={index}
               data-reveal="item"
-              className="break-keep wrap-break-word text-balance"
+              className="break-keep wrap-break-word text-balance text-base"
               style={{
                 ...textStyle,
                 opacity: 0,
                 color: 'var(--muted-on-inverse)',
-                fontSize: 'var(--text-base)',
-                lineHeight: 'var(--text-base--line-height)',
               }}
             >
               {sentence}
@@ -574,7 +566,8 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
         data-reveal="button"
         aria-hidden={!buttonReady}
         inert={!buttonReady}
-        style={{ position: 'absolute', left: 'var(--spacing-16)', right: 'var(--spacing-16)', bottom: buttonBottom, opacity: 0 }}
+        className="left-4 right-4"
+        style={{ position: 'absolute', bottom: buttonBottom, opacity: 0 }}
       >
         <Button variant="primary" surface="dark" fullWidth disabled={closing} onClick={handleConfirm} className="whitespace-nowrap">
           {d.combine.tierUp.reveal.confirm}

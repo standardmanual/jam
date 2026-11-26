@@ -19,7 +19,7 @@ describe('dropMarkerGlyphSvg (티켓 20261114_2347)', () => {
 
   it('마커 원 색 규칙은 그대로다: 드랍 있음=초록+검정 글리프, 없음=muted+snow 글리프', () => {
     const on = dropMarkerIconHtml({ hasDrops: true, inRange: true, size: 24 })
-    expect(on).toContain('background:var(--jam-green)')
+    expect(on).toContain('background:var(--map-drop-marker-active)')
     expect(on).toContain('color:var(--foreground)')
     const off = dropMarkerIconHtml({ hasDrops: false, inRange: false, size: 24 })
     expect(off).toContain('background:var(--muted)')
