@@ -98,7 +98,14 @@ If the diff adds or edits a ticket's `- 사용자 승인:` line, that is a `FAIL
    `.claude/skills/jam-work/references/stop-conditions.md`), report it in `sideFindings` as
    `[주의]`; this does not change the PASS/FAIL verdict
 6. Design decision compliance — did the implementation follow 채원's 사전 판정
-7. Storybook — `design-system/components/**` changed without its `*.stories.*` is a `FAIL`
+   **Canonical list (ticket 20261125_1923, 8th round):** the canonical UI components are exactly the files listed in
+   `docs/service/prd/ui-components/README.md` (generated from `jam-web/src/components/ui/`). In `ui`·`ds` diffs, a new
+   component file outside `jam-web/src/components/ui/` that carries its own visual styling (colors, type, radius, shadow,
+   borders) instead of composing canonical components, or a new canonical component / variant / token without a
+   `- 사용자 승인: YYYY-MM-DD — …` line in the ticket or its parent, is a `FAIL`. Layout-only wrappers (position, size, gap)
+   that compose canonical components are allowed.
+7. Storybook — a canonical component under `jam-web/src/components/ui/` added or changed without its same-name
+   `*.stories.tsx` changing where its states changed is a `FAIL` (`gen-component-list.mjs --check` enforces existence).
 8. SQL migration file present, unexecuted, syntactically sound — and it follows
    `.claude/skills/jam-work/references/db-migration-rules.md`: rollback SQL ships with the file
    (trailing marker block or a sibling `_down.sql`), and a change that both adds and removes a

@@ -54,9 +54,17 @@ A call that runs none of these modes (for example, a meeting statement) reads no
 
 ## Search order (every mode)
 
-`jam-web/design-system/_ds_manifest.json` → `design-system/readme.md` 색인 → `**/*.stories.*` →
-`design-system/components/{분류}/`. The Storybook web UI is for humans, not for you.
+`docs/service/prd/ui-components/README.md` (the canonical component list, generated from
+`jam-web/src/components/ui/` with one-line `@summary` each) → that component's `*.stories.tsx` (the states the service
+uses) → the component file. Tokens: `jam-web/design-system/tokens/*.css`. The Storybook web UI is for humans, not for you.
 Reuse a previous decision for the same screen instead of re-deriving it.
+
+**Judge against the list (ticket 20261125_1923, 8th round).** Anything the screen needs that is not on the list — a new
+component, a new variant of a listed one, a new token — goes into `approvalItems` with `needsApproval: true`, together with
+the closest listed alternative and what would change on screen if that alternative were used. Screen code may only compose
+listed components and lay them out (position, size, gap); colors, type, radius, shadow and borders belong inside
+`jam-web/src/components/ui/`. MODULAR components and claude.ai/design uploads no longer exist (user decision 1,
+2026-11-25) — do not look for them.
 
 ## ③ 동기화
 
