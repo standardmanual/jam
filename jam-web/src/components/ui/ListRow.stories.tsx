@@ -112,7 +112,7 @@ export const Ranking: Story = {
     titleSuffix: <ListRowChip tone="accent">{d.missions.statusMeChip}</ListRowChip>,
     meta: (
       <span aria-hidden="true" className="block">
-        <ProgressBar as="span" percent={60} labelType="none" height={16} />
+        <ProgressBar as="span" percent={60} height={16} />
       </span>
     ),
     value: '12.5 km',

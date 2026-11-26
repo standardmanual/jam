@@ -8,10 +8,9 @@ export interface BadgeLevelChipProps {
    */
   level?: number | null;
   /**
-   * 칩 크기 (티켓 20260906_2140). `sm`(기본) = 8px 라벨 — **기존 렌더 그대로**.
-   * `md`·`row` = 12px 라벨 · 높이 20px — 모든 칩의 기준인 ListRowChip과 같다(티켓 20261106_2322, 20261112_0010). `md`는 예전에 높이 22px이었다. `RarityBadge`와 같은 어휘다.
+   * 칩 크기 (티켓 20260906_2140). `md`(기본)·`row` = 12px 라벨 · 높이 20px — 모든 칩의 기준인 ListRowChip과 같다(티켓 20261106_2322, 20261112_0010). `md`는 예전에 높이 22px이었다. `RarityBadge`와 같은 어휘다.
    */
-  size?: 'sm' | 'md' | 'row';
+  size?: 'md' | 'row';
   /** 칩 고정 폭. 기본 52 — 계열 카드 1행 그리드 `[52px 칩][1fr 이름][auto 카운터]`와 맞춘다 */
   width?: number | string;
   /** 기본 `'default'`(`--default-soft`), 회색 카드 면 위는 `'common'`(`--rarity-common` + `--rarity-common-foreground`). */
@@ -37,11 +36,9 @@ export interface BadgeLevelChipProps {
  * 자릿수가 늘어도(Lv.128) 폭이 흔들리지 않게 `tabular-nums`를 건다.
  */
 /**
- * 칩 크기 (티켓 20260906_2140) — `RarityBadge`와 같은 어휘. `sm`이 **기존 값 그대로**라
- * `size`를 넘기지 않는 서비스 5개 호출부는 렌더가 달라지지 않는다.
+ * 칩 크기 (티켓 20260906_2140) — `RarityBadge`와 같은 어휘. 서비스가 넘기지 않는 `sm`(8px)은 지웠다(티켓 20261126_1635).
  */
 const SIZES = {
-  sm: { fontSize: '8px', padding: '4px 0', lineHeight: 1 },
   // md·row — ListRowChip과 같은 12px/20px(2026-11-11 사용자 지시, 티켓 20261112_0010). 가로 패딩은 0으로 두고 width로 폭을 잡는다
   md: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
   // row (티켓 20261106_2322) — ListRow 안 칩 전용, ListRowChip과 같은 12px/20px.
@@ -53,9 +50,9 @@ const SIZES = {
 /**
  * @summary 무한레벨형 배지의 «Lv.N» 칩이다. 등급 칩 대신 홈 피드·미션 목록·배지 상세·획득 연출에서 쓴다.
  */
-export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default', className = '', style = {} }: BadgeLevelChipProps) {
+export function BadgeLevelChip({ level, size = 'md', width = 52, tone = 'default', className = '', style = {} }: BadgeLevelChipProps) {
   if (level == null) return null;
-  const s = SIZES[size] ?? SIZES.sm;
+  const s = SIZES[size] ?? SIZES.md;
   const isCommon = tone === 'common';
   return (
     <span

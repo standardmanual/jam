@@ -189,6 +189,13 @@ describe('1px 테두리와 세로 패딩 — 4px 눈금 높이', () => {
     }
   })
 
+  it('서비스 primary: 좌우 여백 24px(px-6) — 다른 변형과 같다(티켓 20261126_1635)', () => {
+    const html = renderToStaticMarkup(<ServiceButton variant="primary">확인</ServiceButton>)
+    expect(classesOf(html)).toContain('px-6')
+    expect(classesOf(html)).not.toContain('px-8')
+    expect(readFileSync(path.resolve(__dirname, '../Button.tsx'), 'utf8')).not.toContain('spacing-allow')
+  })
+
   it('서비스 arrow: 세로 패딩 24px(py-6) + 테두리 1px — 높이 82px(줄 높이 32px)', () => {
     const html = renderToStaticMarkup(<ServiceButton variant="arrow">확인</ServiceButton>)
     expect(classesOf(html)).toContain('py-6')

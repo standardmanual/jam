@@ -86,7 +86,7 @@ function resolveColorClass(variant: ButtonVariant, surface: ButtonSurface): stri
 const pillShape = 'rounded-full px-6 text-base'
 
 const shapeClasses: Record<ButtonVariant, string> = {
-  primary: 'rounded-full px-8 text-base', // spacing-allow: 버튼 안쪽 좌우 여백(primary 32px)은 화면 간격이 아니라 알약 모양 치수다(7회차에 바꾸지 않음, 8회차 확인 항목 — 상위 티켓 20261125_1923)
+  primary: 'rounded-full px-6 text-base',
   secondary: pillShape,
   danger: pillShape,
   outline: pillShape,

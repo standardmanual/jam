@@ -1,18 +1,8 @@
 import React from 'react';
-import type { CSSProperties } from 'react';
-
-export type ProgressBarLabelType = 'none' | 'percent' | 'fraction';
-export type ProgressBarLabelPosition = 'inline' | 'top';
-/**
- * 'solid'         — 기본. 단색 fill의 폭을 늘린다(기존 동작, 변경 없음).
- * 'track-gradient' — 트랙 전체 폭에 그라데이션을 깔고 clip-path로 잘라 보여준다.
- *                    fill 안에서 그라데이션을 압축하지 않아 진행률이 색으로 읽힌다.
- */
-export type ProgressBarFillMode = 'solid' | 'track-gradient';
 
 /**
  * 'div'  — 기본. 기존 마크업 그대로.
- * 'span' — 모든 요소(바깥·트랙·채움, 라벨 있을 때 래퍼 포함)를 span으로 그린다. `<a>`·`<button>`·`Link` 같은
+ * 'span' — 모든 요소(바깥·트랙·채움)를 span으로 그린다. `<a>`·`<button>`·`Link` 같은
  *          클릭 영역 안(phrasing 요건)에 놓을 때 켠다. `ProgressBar` 한정 prop이다.
  */
 export type ProgressBarAs = 'div' | 'span';
@@ -21,21 +11,17 @@ export type ProgressBarAs = 'div' | 'span';
  * 'flat'    — 기본. 기존 모양 그대로(트랙 `--border`, 채움 `--accent`).
  * 'capsule' — 홈 캡슐 게이지와 같은 모양. 어두운 트랙(`--capsule-track`) 안쪽 2px 여백, 둥근 채움(기본색 `--capsule-fill`).
  *             채움 너비는 `calc(원지름px + (100% - 원지름px) × 비율)`(원지름 = height - 4)이라 아주 작아도 찌그러지지 않고, 0%이면 채움이 없다.
- *             **숫자 height만 받는다**(문자열이면 flat으로 그린다). `fillMode='track-gradient'`·`outlined`는 지원하지 않는다.
+ *             **숫자 height만 받는다**(문자열이면 flat으로 그린다).
  */
 export type ProgressBarShape = 'flat' | 'capsule';
 
 export interface ProgressBarProps {
-  /** 현재값 (fraction 라벨, percent 미지정 시 percent 계산에 사용) */
+  /** 현재값 (percent 미지정 시 percent 계산에 사용) */
   current?: number;
-  /** 전체값 (fraction 라벨, percent 미지정 시 percent 계산에 사용) */
+  /** 전체값 (percent 미지정 시 percent 계산에 사용) */
   total?: number;
   /** 0~100 사이 퍼센트값. 지정하면 current/total 기반 계산을 덮어쓴다 */
   percent?: number;
-  /** 'none'=바만 / 'percent'=바+퍼센트 / 'fraction'=바+n/n */
-  labelType?: ProgressBarLabelType;
-  /** 라벨 배치. 'inline'=바 옆, 'top'=바 위 우측 정렬 */
-  labelPosition?: ProgressBarLabelPosition;
   /** 바 높이(px 또는 CSS 단위 문자열). 기본 8. shape='capsule'은 숫자만 받는다 */
   height?: number | string;
   /** 필 색상. 기본 var(--accent)(capsule은 var(--capsule-fill)). 그라데이션 문자열도 허용(순위별 그라데이션 등) */
@@ -46,16 +32,6 @@ export interface ProgressBarProps {
   radius?: string;
   /** 모양. 기본 'flat'(기존 마크업 그대로). 'capsule'은 홈 캡슐 게이지와 같은 트랙·채움 모양 */
   shape?: ProgressBarShape;
-  /** 필 그리기 방식. 기본 'solid'(기존 동작). 'track-gradient'면 `color`는 무시된다 */
-  fillMode?: ProgressBarFillMode;
-  /** fillMode='track-gradient'일 때 트랙에 깔 그라데이션. 기본 PROGRESS_TRACK_GRADIENT */
-  gradient?: string;
-  /**
-   * 트랙에 1px `--border` 외곽선을 둔다. 기본 false(기존 모양 그대로).
-   * `box-sizing: border-box`라 `height`가 외곽선을 포함한다(`height={10}`이면 안쪽 8px). 채움은 외곽선 안쪽에만 그려진다.
-   * 기본 `trackColor`(`--border`)로는 외곽선이 안 보이므로 `trackColor`를 따로 정한다.
-   */
-  outlined?: boolean;
   /**
    * 어떤 태그로 그릴지. 기본 'div'(기존 마크업 그대로).
    * 'span'은 `<a>`·`<button>`·`Link` 같은 클릭 영역 안(phrasing 요건)에 놓을 때 켠다.
@@ -68,7 +44,7 @@ export interface ProgressBarProps {
 }
 
 /**
- * ProgressBar — 진행도 바. 단독 / +퍼센트 / +n분의n 3가지 표기 패턴을 하나의 API로 표현한다.
+ * ProgressBar — 진행도 바.
  *
  * [20260820_001] 서비스 6개 호출처(ItemBookHeroSection, CollectionGridCard,
  * itembooks/page, MissionDetailClient, inventory/page, MissionStatusClient) 전수조사 결과,
@@ -80,30 +56,13 @@ export interface ProgressBarProps {
  *     3px 임의값 등 예외 대응. [20260820_006])
  *   - height: 기본 8px (실사용 최빈값 — MissionDetailClient/ItemBookHeroSection 등 6곳 중 4곳)
  *
- * [20260905_0036] `fillMode="track-gradient"` 추가 — **기본 동작은 그대로다.**
- * 서비스 8곳 + `DualAxisGauge`가 이 컴포넌트를 쓰므로 새 표현은 새 prop으로만 켠다.
- *
- * [20261018_0054] `outlined` 추가 — **기본 false라 기존 호출부는 그대로다.** true이면 트랙에 1px `--border`
- * 외곽선을 둔다(`box-sizing: border-box`라 `height`가 외곽선을 포함한다). 채움은 절대 배치(`inset: 0`)라
- * 테두리 안쪽에만 그려져 외곽선이 가려지지 않는다. 기본 `trackColor`가 `--border`와 같은 색이라 외곽선이 보이려면
- * 호출부가 트랙 면을 따로 정해야 한다(예: `trackColor="var(--background)"`).
- *
  * [20261114_1502] `shape` 추가 — **기본 'flat'이라 기존 호출부는 한 글자도 바뀌지 않는다.** 'capsule'이면 홈 캡슐 게이지(`CapsuleGauge`)와 같은
  * 트랙·채움 모양을 쓴다: 어두운 트랙(`--capsule-track`) 안쪽 2px 여백, 둥근 채움, 채움 너비 `calc(원지름px + (100% - 원지름px) × 비율)`
  * (원지름 = height - 4, 비율 0이면 채움 없음). 테두리·그림자는 게이지 전용이라 없다(게이지의 회색 점은 2026-11-19에 뺐다). 채움 기본색은 `--capsule-fill`이고 호출부가 `color`로 정한다.
- * capsule은 숫자 height만 받는다(문자열이면 flat으로 그린다). `fillMode='track-gradient'`는 capsule에서 지원하지 않는다(solid로 그린다).
+ * capsule은 숫자 height만 받는다(문자열이면 flat으로 그린다).
+ *
+ * [20261126_1635] 서비스가 쓰지 않는 표현(바깥 선 `outlined`·`track-gradient` 채움·퍼센트/분수 글자)을 지웠다. 진행 바는 바만 그린다.
  */
-/**
- * [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다.
- * 레일 연결선·진행 링은 JSX가 아닌 CSS 문자열 안에서 채움을 그려 이 JS 상수를 import할 수
- * 없었고, 그래서 한 화면에서 진행 표현이 셋으로 갈라져 있었다. 토큰을 가리키게 바꾸면
- * 정의가 한 군데(colors.css)에만 남는다.
- * ⚠️ 값이 `to right`(sRGB 보간) → `90deg in oklab`으로 바뀐다. amber↔lime은 인접 색상이라
- * 시각 변화는 미미하지만, 이 파일을 쓰는 서비스 8곳 + DualAxisGauge에 실제로 반영되는
- * **이번 티켓의 유일한 기존 화면 영향**이다.
- */
-export const PROGRESS_TRACK_GRADIENT = 'var(--progress-sweep)';
-
 /** capsule 트랙 안쪽 여백(px) — `CapsuleGauge`의 PADDING_PX와 같다 */
 const CAPSULE_PADDING_PX = 2;
 
@@ -114,16 +73,11 @@ export function ProgressBar({
   current,
   total,
   percent,
-  labelType = 'none',
-  labelPosition = 'inline',
   height = 8,
   color,
   trackColor,
   radius = 'var(--radius-full)',
   shape = 'flat',
-  fillMode = 'solid',
-  gradient = PROGRESS_TRACK_GRADIENT,
-  outlined = false,
   as = 'div',
   className = '',
 }: ProgressBarProps) {
@@ -147,33 +101,6 @@ export function ProgressBar({
   const isCapsule = shape === 'capsule' && typeof height === 'number';
   const resolvedColor = color === undefined ? (isCapsule ? 'var(--capsule-fill)' : 'var(--accent)') : color;
   const resolvedTrackColor = trackColor === undefined ? (isCapsule ? 'var(--capsule-track)' : 'var(--border)') : trackColor;
-
-  const label =
-    labelType === 'percent' ? (
-      <span
-        className="font-bold"
-        style={{
-          fontSize: 'var(--text-sm)',
-          color: 'var(--foreground)',
-          fontVariantNumeric: 'tabular-nums',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {Math.round(clampedPercent)}%
-      </span>
-    ) : labelType === 'fraction' && current != null && total != null ? (
-      <span
-        className="font-bold"
-        style={{
-          fontSize: 'var(--text-sm)',
-          color: 'var(--link)',
-          fontVariantNumeric: 'tabular-nums',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {current}/{total}
-      </span>
-    ) : null;
 
   const capsuleCircle = isCapsule ? height - CAPSULE_PADDING_PX * 2 : 0;
   const capsuleRatio = clampedPercent / 100;
@@ -220,59 +147,22 @@ export function ProgressBar({
         borderRadius: radius,
         overflow: 'hidden',
         background: resolvedTrackColor,
-        ...(outlined ? { boxSizing: 'border-box', border: '1px solid var(--border)' } : null),
       }}
     >
-      {fillMode === 'track-gradient' ? (
-        // 트랙 기준 그라데이션: 그라데이션을 **트랙 전체 폭**에 깔아 두고 clip-path로 잘라
-        // 보여준다. `width: N%` + `background: 그라데이션`으로 하면 그라데이션이 fill 안에서
-        // 압축돼, 진행률이 10%든 90%든 늘 같은 그림이 보인다(진행 감각이 사라진다).
-        // 진행률은 --ds-progress-fill 하나로만 들어가고 clip-path가 그 값을 소비한다.
-        <Tag
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: radius,
-            background: gradient,
-            '--ds-progress-fill': `${clampedPercent}%`,
-            clipPath: 'inset(0 calc(100% - var(--ds-progress-fill)) 0 0)',
-            transition: 'clip-path var(--duration-slow) var(--ease-smooth-out)',
-          } as CSSProperties}
-        />
-      ) : (
-        <Tag
-          style={{
-            position: 'absolute',
-            inset: 0,
-            left: 0,
-            width: `${clampedPercent}%`,
-            height: '100%',
-            borderRadius: radius,
-            background: resolvedColor,
-            transition: 'width var(--duration-slow) var(--ease-smooth-out)',
-          }}
-        />
-      )}
+      <Tag
+        style={{
+          position: 'absolute',
+          inset: 0,
+          left: 0,
+          width: `${clampedPercent}%`,
+          height: '100%',
+          borderRadius: radius,
+          background: resolvedColor,
+          transition: 'width var(--duration-slow) var(--ease-smooth-out)',
+        }}
+      />
     </Tag>
   );
 
-  if (!label) {
-    return <Tag className={className} style={{ ...blockStyle, width: '100%' }}>{bar}</Tag>;
-  }
-
-  if (labelPosition === 'top') {
-    return (
-      <Tag className={className} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)', width: '100%' }}>
-        <Tag style={{ display: 'flex', justifyContent: 'flex-end' }}>{label}</Tag>
-        {bar}
-      </Tag>
-    );
-  }
-
-  return (
-    <Tag className={className} style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-12)', width: '100%' }}>
-      {bar}
-      {label}
-    </Tag>
-  );
+  return <Tag className={className} style={{ ...blockStyle, width: '100%' }}>{bar}</Tag>;
 }

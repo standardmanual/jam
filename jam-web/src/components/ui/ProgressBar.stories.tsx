@@ -31,7 +31,7 @@ export const MissionProgress: Story = {
 /** 랭킹 줄(`RankingListRow`)의 값 막대 — 링크 안에 놓이므로 span으로 그린다. */
 export const RankingBar: Story = {
   name: '랭킹 줄 막대',
-  args: { as: 'span', percent: 78, labelType: 'none', height: 16, color: 'var(--accent)', trackColor: 'var(--border)' },
+  args: { as: 'span', percent: 78, height: 16, color: 'var(--accent)', trackColor: 'var(--border)' },
   decorators: WIDTH,
   play: async ({ canvasElement }) => {
     // span 경로에는 바깥 감싸개 안에 div가 없다
