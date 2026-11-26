@@ -1,8 +1,6 @@
 # `bug` 유형 절차 (아현)
 
-> 신설 문서 (티켓 20260922_1521). `workType`이 `bug`인 티켓을 구현하기 전에 읽는다.
-> 정의 파일(`jam-developer.md`)에는 이 문서를 읽으라는 한 줄만 있다 — 매 호출에 실리는
-> 정의 크기를 늘리지 않기 위해서다.
+> `workType`이 `bug`인 티켓을 구현하기 전에 읽는다(아현 정의에는 이 문서를 읽으라는 한 줄만 있다).
 
 ## 재현 테스트 5단계 (Prove-It Pattern)
 
@@ -16,8 +14,6 @@
 
 재현 테스트를 만들 수 없으면(예: 타이밍 의존·환경 의존이라 결정적으로 재현이 안 됨) 구현
 요약의 `tests_added`에 사유를 적는다. 만들 수 없다고 수정을 건너뛰지는 않는다.
-
-> 이식 출처: `test-driven-development` skill §The Prove-It Pattern.
 
 ## 디버깅 4단계
 
@@ -36,11 +32,3 @@
    남길 만한 패턴을 발견하면 코드를 고치지 말고 구현 요약의 `doc_updates`에 제안으로
    적는다(범위 밖 개선은 손대지 않는다, Hard rule 7).
 
-> 이식 출처: `debugging-and-error-recovery` skill §The Triage Checklist(6단계 → 4단계로 압축).
-
-## 참조하는 곳
-
-- `.claude/agents/jam-developer.md` 「Verification before handing off」 — `bug` 유형 읽기 조건 한 줄
-
-<!-- 되돌림 기록: 이 파일은 신규 문서라 삭제만 하면 되돌려진다. 삭제 시
-jam-developer.md의 읽기 조건 한 줄도 함께 되돌린다(git revert 권장). -->

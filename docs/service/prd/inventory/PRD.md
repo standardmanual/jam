@@ -228,7 +228,7 @@ code:
 
 - **인벤토리 그리드의 잠김 카드**: 서버 페이지(`inventory/page.tsx`)가 잠긴 개체의 이름·그림을 **클라이언트로 내리는 props에서 비운다**(등급만 싣는다).
   화면에서 가리는 것이 아니라 RSC 페이로드에 값이 없다. 카드는 서비스 쪽 `BadgeGridCard`의 `locked`다: 같은 면(`--surface`·1px `--border`·`--radius-2xl`), 썸네일 자리에 `LockedTile`, 이름 줄은 «잠긴 아이템 배지»,
-  그 아래 등급 칩이 전부다. **게이지는 없다.** `locked`이면 `name`·`imageUrl`이 넘어와도 그리지 않는다. (디자인 시스템 쪽 `design-system/components/patterns/BadgeGridCard.*` 사본에는 옛 게이지 입력이 남아 서비스와 어긋나 있고, 서비스 코드가 원천이다.)
+  그 아래 등급 칩이 전부다. **게이지는 없다.** `locked`이면 `name`·`imageUrl`이 넘어와도 그리지 않는다.
 - **잠긴 상세** `/inventory/[itemId]`: 잠긴 개체면 `/badges/...`로 리다이렉트하지 않고 `LockedItemDetail`을 그린다(주소에 배지 id가 실리면 이름·그림이 드러나기 때문이다).
   클라이언트 props는 등급·필요 포인트(`pointsRequired`)·보유 포인트(`pointBalance`)·받은 시각과 경로(`obtainedAt`·`obtainedBy`·발급 기록의 경로 `issueRoute`)뿐이고 배지 id·이름·그림·설명·일련번호와 잼 값은 없다.
   화면은 일반 아이템 배지 상세와 같은 부품으로 만든다(2026-11-09). 위에서 아래로: 일반 상세의 히어로 카드(`BadgeHeroSection`: 큰 `LockedTile`, 등급 칩과 «잠김» 칩, 특수문자 6글자(제목, 예 «(/%!¥@», 개체 id에서 정해져 같은 개체는 늘 같다, 2026-11-10 사용자 지시), «뒷면에 숨은 무언가가 있어요»(설명, 세계관 말투)),

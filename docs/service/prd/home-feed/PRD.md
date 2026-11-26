@@ -463,7 +463,7 @@ code:
 - **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 보조 4개는 `--jam-pink`·`--jam-sky`·`--jam-green-deep`·`--jam-chip-white`로 `primitive.css`에 둔다(옛 연한 색·참조 색 토큰은 회차 13에서 걷었다). 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다. 구현 위치: `jam-web/design-system/tokens/primitive.css`, `jam-web/src/lib/today/feedConstants.ts`.
 - **서비스 전용 상수**: 디자인 시스템에 없는 값(칩 높이 32·40(제목 속 칩)·40·52(카드 모서리 칩), 외곽선 2px, 홈 지름 28·52·56, 도장 60px, 기울기 여섯 값, 물결 12~22px, 모션 0.72초·70~210ms·탄성 곡선)은 `lib/today`의 한 파일에 근거 주석과 함께 둔다. 구현 위치: `jam-web/src/lib/today/feedConstants.ts`.
 - **기존 컴포넌트**: `CardFrame`·`CardBody`의 제목·필수 정보·설명 조각, `CardThumb`, `SafeImage`는 그대로 쓴다. 칩·박스 모양 5종·도장·갤러리 4칸·컬렉션 모션·색 배정 함수는 새로 만든다. `LabelChip`은 12px 대문자에 외곽선이 없어 확장하지 않고, `CardChipRow`와 `CardImageSlot`은 옛 7모양 전용으로 둔다.
-- **함께 고칠 곳**: 강조색 사용처 규칙(`primitive.css` 주석, 디자인 시스템 문서 11 §5.3, `_adherence.oxlintrc.json` 두 곳, `_ds_manifest.json`).
+- **함께 고칠 곳**: 강조색 사용처 규칙(`primitive.css` 주석, 디자인 시스템 문서 11 §5.3).
 
 #### 아직 정하지 않은 것
 

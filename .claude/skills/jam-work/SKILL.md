@@ -35,12 +35,9 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 
 **가정 목록**: 요청이 모호해 DEFINE 성격이 섞여 있는데도 바로 BUILD로 보내야 할 때(예: 사용자가
 "그냥 진행해"라고 답함), 아현을 부르기 전에 "이런 가정으로 진행합니다: …" 목록을 사용자에게
-보여 주고 확인받는다. 목록이 없으면 그 가정은 카리나 혼자 판단한 것이 되어 나중에 되짚기
-어렵다. 형식은 짧은 불릿 목록이면 충분하다 — 별도 문서를 만들지 않는다.
+보여 주고 확인받는다. 형식은 짧은 불릿 목록이면 충분하다 — 별도 문서를 만들지 않는다.
 
-**정지 조건의 단일 원천**은 `.claude/skills/jam-work/references/stop-conditions.md`다. 3.0절·
-아현 정의(`jam-developer.md`)·`jam-work.js`가 모두 이 문서를 참조한다 — 서술을 각자 옮겨 적지
-않는다.
+**정지 조건의 단일 원천**은 `.claude/skills/jam-work/references/stop-conditions.md`다.
 
 ### 0.1 경미 수정 여부 먼저 확인 — 해당하면 아래 단계를 전부 건너뛴다
 
@@ -52,12 +49,10 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
    조건 연산자 하나 수정처럼 원인-결과가 1:1로 명확한 버그 수정). 원인이 불확실하거나 영향
    범위가 여러 파일·여러 기능에 걸치면 해당하지 않는다.
 
-확신이 없으면 안전하게 아래 유형 판정으로 넘어간다 — jam-reviewer가 판정을 확신하지
-못할 때 FAIL 쪽으로 기우는 것과 같은 원칙이다.
+확신이 없으면 안전하게 아래 유형 판정으로 넘어간다.
 
 해당하면:
-- 오케스트레이터가 직접 구현한다 (jam-developer 위임 없음, review 브랜치도 없음 — 리뷰어가
-  없으므로 머지할 대상 자체가 없다).
+- 오케스트레이터가 직접 구현한다 (jam-developer 위임 없음, review 브랜치도 없음).
 - 변경 파일에 한해 `npx eslint <파일>`로 최소 검증한다. 전체 `npm run lint`는 생략한다 — push
   시점 `.githooks/pre-push`가 전체 lint를 기계적으로 재검증한다.
 - 1번 규칙대로 티켓은 반드시 남긴다 (`status: OPEN`으로 생성 후 완료 기록 작성, CLOSED 처리는
@@ -123,15 +118,14 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 
 > 유형은 **파이프라인 라우팅 키**, 티켓 카테고리는 **문서 분류 키**로 축이 다르다.
 > 카테고리 8종(Admin·Service·Feature·Content·BadgeEngine·Infra·UI·API)은 `/jam-docs` 참조.
-> **정책 대시보드 동기화 규칙**: 서비스 운영 정책, 밸런스 수치, 속도/어뷰징 기준, 챕터/미션/포인트 등 도메인 규칙이 변경되면 `jam-web/src/lib/admin/policyDashboard/policiesData.ts`의 해당 정책 항목도 반드시 함께 갱신한다 (`CLAUDE.md` 절대 규칙 §2).
+> 정책 대시보드(`policiesData.ts`) 동기화 규칙은 `CLAUDE.md` 절대 규칙 2가 단일 원천이다.
 
 ## 1. 사전 준비 (모든 유형 공통, 위임하지 않음)
 
 1. `docs/tickets/`에서 유사·관련 티켓 검토 (재구현 방지, 미채택 대안 확인)
 2. `_TEMPLATE.md` 형식으로 신규 티켓을 `status: OPEN`으로 생성.
-   파일명 `YYYYMMDD_HHMM_[카테고리]_[제목].md` — **모든 유형에서 티켓을 만든다.**
-   `HHMM`은 **티켓을 만드는 시각(KST)** 이다. 기존 파일을 훑어 번호를 계산하지 않는다(시각은
-   조회 없이 정해지므로 병렬 세션과 경합하지 않는다).
+   **모든 유형에서 티켓을 만든다.** 파일명 형식은 `.githooks/pre-commit`이 검사하고, 그 안의 `HHMM`은
+   **티켓을 만드는 시각(KST)** 이다. 기존 파일을 훑어 번호를 계산하지 않는다.
    **우선순위(P0~P3)도 함께 판정**해 frontmatter `priority:`를 채우고 `docs/tickets/
    p{0-3}-{라벨}/` 폴더 안에 만든다 (기준은 `/jam-docs` 참조). `- 관련 파일:`에는 경로만이
    아니라 고칠 함수 이름·대략 줄 위치(지도)까지 적는다 — 아현이 탐색 없이 그 구간을 연다.
@@ -140,12 +134,10 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
    것 같으면 아현을 부르기 전에 둘 중 하나를 한다 — (a) 티켓을 쪼갠다 (b) 「구현 계획」을 파일
    단위(경로 + 함수명·줄 위치)로 적고 **첫 호출부터** `planOnlyWaiver`에 사유를 넣는다(면제
    조건 (a)(b)를 이 시점에 충족시킨다). 아현의 `plan_only`는 이 판정이 빗나갔을 때만 발동하는
-   안전망이다 — 아현이 탐색만 하고 돌아온 뒤 면제를 받아 같은 탐색을 다시 하는 왕복을 여기서
-   막는다. 판정할 때 세 가지를 지킨다: (가) 파일 수와 줄 수는 코드만이 아니라 **테스트·문서·
-   생성 산출물까지 바뀌는 모든 파일**로 센다(테스트를 함께 쓰면 줄 수가 크게 늘어난다 — 티켓
-   20260925_1529). (나) `retryReason`으로 재작업 요구사항이 처음보다 커졌으면(예: 단순 수정에서
-   데이터 확장으로) 재시도 호출 전에 이 판정을 다시 하고 필요하면 `planOnlyWaiver`를 넣는다(티켓
-   20260923_1309). (다) 하위 티켓을 묶은 티켓은 하위 티켓의 파일을 모두 더해 센다.
+   안전망이다. 판정할 때 세 가지를 지킨다: (가) 파일 수와 줄 수는 코드만이 아니라 **테스트·문서·
+   생성 산출물까지 바뀌는 모든 파일**로 센다. (나) `retryReason`으로 재작업 요구사항이 처음보다
+   커졌으면(예: 단순 수정에서 데이터 확장으로) 재시도 호출 전에 이 판정을 다시 하고 필요하면
+   `planOnlyWaiver`를 넣는다. (다) 하위 티켓을 묶은 티켓은 하위 티켓의 파일을 모두 더해 센다.
 4. 티켓 경로와 사용자 요청 원문을 다음 단계 컨텍스트로 준비
 
 ### 1.5 UI 판정은 채원이 한다 (위임한다)
@@ -194,12 +186,8 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   체크아웃해 커밋을 이어서 쌓는다.
 - `route`는 0.1.5절의 경로 값이다. 경로 ②(가벼운 UI)면 `route: 'light'`를 넘긴다 — 채원①·②를
   건너뛴다. 경로 ③(표준)이면 비운다(기본값).
-- `planOnlyWaiver`는 **선택**이다. 비우면 워크플로가 아현 프롬프트에 "계획 반환 면제가 없다"는
-  줄을 넣어, 크기 기준을 넘긴 아현이 구현하지 않고 `plan_only`로 멈춘다. 사유 문자열을 넣으면
-  `계획 반환 면제: <값>` 줄이 대신 들어간다. 부여 조건은 1단계 3번과 `stop-conditions.md`에
-  있다. 면제는 이 인자로만 넘긴다 — `userRequest`에 그 줄을 직접 적으면 "면제 없음" 줄과
-  모순된다. 워크플로는 이전 실행을 기억하지 않으므로 재시도(`retryReason`·`retryBranch`)에도
-  같은 면제가 필요하면 다시 넘긴다.
+- `planOnlyWaiver`는 **선택**이다. 면제는 이 인자로만 넘긴다(`userRequest`에 적지 않는다). 동작·부여
+  조건·재시도 때 다시 넘기는 규칙은 `stop-conditions.md` 「`plan_only` 판정 기준」이 단일 원천이다.
 - `batch`는 **선택**이다. Workflow 스크립트는 파일시스템·Node API·`import()`를 쓸 수 없으므로
   하위 티켓 조회는 워크플로 밖에서 먼저 한다: `node scripts/batch-tickets.mjs <상위 티켓 ID>`를
   실행해 하위 티켓 목록(JSON: `parentTicket`, 티켓별 `id`·`path`·`status`·`category`·
@@ -219,24 +207,17 @@ Workflow(name: 'jam-work', args: { ticketPath, userRequest, workType, reuseDecis
   실패하면(뒤 티켓이 옛 `origin/staging` 기준으로 분기해 최신 커밋을 조상으로 물지 않음) 그
   티켓만 `git fetch origin staging && git rebase origin/staging`으로 재분기시킨 뒤 다시 push
   하게 하고, 나머지 절차는 그대로 4단계를 따른다.
-- `gateOnly`는 **선택**이다. 좁은 재작업(적용 조건은 3.1절 "게이트만 재실행" 참고)일 때
-  채원①·아현을 건너뛰고 민지(와 해당 시 채원②)만 다시 부른다. `true`면
-  `ticketPath`·`branch`·`commitRange`(`baseSha..commitSha`)·`devResult`(카리나가 적은 패치
-  요약 — 아현이 반환하던 `summary` 형식과 같다. 문자열 또는 `{ summary, diffLineCount }`
-  객체 둘 다 받는다)가 필수다. 하나라도 비면 워크플로가 오류로 멈춘다. 반환 스키마는 표준
-  경로와 같다(`gate`·`designReview`·`needsRework`·`tokenUsage`) — `tokenUsage`에
-  `jam-developer` 항목은 없고 `orchestrator-patch: 0`으로 아현을 부르지 않았음을 명시한다.
-  기본은 비움(단일 티켓 모드).
-- **드라이런**은 `node scripts/batch-tickets.mjs <상위 티켓 ID>`를 Workflow 호출 없이 그
-  출력만 보는 것이다 — 실측 전 목록·순서·정지 예정 지점을 먼저 확인하고 싶으면 스크립트만
-  실행해 결과를 사용자에게 보여주고, 그 단계에서는 Workflow를 부르지 않는다.
+- `gateOnly`는 **선택**이다. 좁은 재작업일 때 채원①·아현을 건너뛰고 민지(와 해당 시 채원②)만 다시
+  부른다. `true`면 `ticketPath`·`branch`·`commitRange`(`baseSha..commitSha`)·`devResult`(카리나가 적은 패치
+  요약, 문자열 또는 `{ summary, diffLineCount }`)가 필수이고, 하나라도 비면 워크플로가 오류로 멈춘다.
+  적용 조건과 절차는 3.1절 「게이트만 재실행」.
 - 스크립트를 고쳐야 하면 `.claude/workflows/jam-work.js`를 직접 편집한 뒤 다시 호출한다
   (같은 세션에서 이어 돌릴 때는 `resumeFromRunId`를 함께 넘긴다).
 
 ## 3. 결과 보고 — 예외 신호 처리를 포함한다
 
 **`node scripts/batch-tickets.mjs <상위 티켓 ID>`만 실행했을 때(Workflow 호출 전, 드라이런)**:
-Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다. 출력의 `subTickets`(티켓별
+실측 전에 목록·순서·정지 예정 지점을 확인하는 단계라 Workflow를 부르지 않고, 3.0~3.1절 판정 처리도 없다. 출력의 `subTickets`(티켓별
 `id`·`path`·`status`·`category`·`workType`·`sequence`)를 그대로 사용자에게 표로 보여주고,
 `plannedStopAt`이 있으면 어느 하위 티켓에서 왜 멈출 예정인지(db·engine 진입 또는 유형 미매핑,
 정지 조건 3번) 알린다. `plannedStopAt`이 없으면 실제 실행 시(이 출력을 그대로 `batch` 인자에
@@ -255,12 +236,9 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
    멈췄다는 뜻이다(1.5절). `needsApprovalItems`를 사용자에게 그대로 보고하고 승인 여부를 묻는다.
    승인되면 `reuseDecision: designDecision`으로 다시 호출한다.
 1. **`stoppedAt: '구현'`**: 아현이 게이트 진입 전에 멈췄다는 뜻이다. `devStatus`별로:
-   - `plan_only` — 작업이 크다. 판정 기준·면제 부여 조건의 단일 원천은
-     `.claude/skills/jam-work/references/stop-conditions.md`다. 구현 계획을 사용자에게 보고하고
-     **티켓을 쪼갤지** 묻는다. 승인되면 계획을 티켓 「구현 계획」에 옮기고(파일 경로 + 함수명·줄
-     위치까지 — 2차 호출의 아현이 탐색 없이 그 구간을 바로 열도록), `userRequest`에도 넣고,
-     승인 사실을 `planOnlyWaiver`에 넣어 다시 호출한다(면제가 없으면 아현이 또 멈춘다). 이
-     경로에 오는 것 자체가 1단계 규모 사전 판정이 빗나갔다는 뜻이므로, 무엇을 놓쳤는지 「주요
+   - `plan_only` — 작업이 크다(기준은 `stop-conditions.md`). 구현 계획을 사용자에게 보고하고
+     **티켓을 쪼갤지** 묻는다. 승인되면 계획을 티켓 「구현 계획」에 파일 경로 + 함수명·줄 위치까지 옮기고,
+     승인 사실을 `planOnlyWaiver`에 넣어 다시 호출한다. 1단계 규모 사전 판정에서 무엇을 놓쳤는지 「주요
      의사결정」에 한 줄 남긴다.
    - `needs_design` — UI 작업인데 채원 사전 판정이 없다. 유형 판정을 `ui`로 고쳐 다시 호출한다
      (그러면 워크플로가 채원①부터 돈다).
@@ -278,8 +256,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   묻는다.** 임의 재시도 금지. 승인받아 재시도할 때는 `reworkReasons`를 `retryReason`에, 직전
   `devResult.branch`를 `retryBranch`에 넣어 다시 호출한다 (같은 실수 반복 방지, 아현이 기존
   review 브랜치를 이어받는다).
-  **동일 티켓에서 재작업이 2회 연속 발생하면**, 재시도 전에 "워크플로우 규칙이나 티켓 스펙 자체에
-  문제가 있을 수 있습니다 — 규칙을 검토할까요?"라고 먼저 묻는다 (정책 갱신 피드백 루프).
+  **동일 티켓에서 재작업이 2회 연속 발생하면** 재시도 전에 규칙 검토 여부를 먼저 묻는다(정지 조건 7번).
   - **게이트만 재실행(`gateOnly`)**: `reworkReasons`가 **파일 2개·10줄 이내로 고쳐지고, 로직
     판단이 새로 필요하지 않을 때만** 아현을 다시 부르지 않고 카리나가 직접 패치한다. 확신이
     없으면 아래 일반 재작업 경로(아현 재호출)로 기운다 — 경미 판정과 같은 원칙이다. 적용될
@@ -304,11 +281,8 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   `proposals`와 `promotionCandidates`를 요약한다. 제안형이라 머지를 막지 않는다.
   `designReview`가 `null`이면 diff 규모(15줄 미만) 또는 유형 때문에 생략됐다는 사실을 밝힌다 —
   필요하면 사용자가 수동으로 요청할 수 있다.
-- **한국어 자연스러움**(민지 체크리스트 12번, `copy`·`ui`·`content` 유형이고 사용자 노출
-  문구가 있었을 때): 이건 별도 리뷰 단계가 아니라 게이트 판정 자체의 일부다. 지적됐으면
-  `reasons`·`checked`에 이미 포함되어 있으므로 그대로 요약하면 된다. 판정에 실질적으로
-  영향을 주므로(FAIL/WARN 사유가 될 수 있음) 사용자에게 별도로 "제안형"이라고 안내하지
-  않는다.
+- **한국어 자연스러움**(민지 체크리스트 12번)은 게이트 판정의 일부다. 지적은 `reasons`·`checked`에 이미
+  들어 있으므로 그대로 요약하고, "제안형"이라고 안내하지 않는다.
 
 ### 3.2 범위 밖 발견물 처리 — 자동 티켓화
 
@@ -325,8 +299,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
 
 ## 4. 승인 후 처리 — 카리나가 직접 처리한다 (위임하지 않음)
 
-1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**한다 (push는 아직 하지 않는다 —
-   아래 「staging push는 티켓당 한 번」 참고)
+1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**한다 (push는 4.1절)
    - **머지 전에 반드시 오염 여부를 확인한다**:
      `git fetch origin staging && git merge-base --is-ancestor origin/staging claude/jamwork-{ticket-id}-{slug}`
      종료 코드가 0이 아니면(= review 브랜치가 최신 `origin/staging` 위에서 분기하지 않음) 머지를
@@ -347,81 +320,46 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
    글자 단위로 일치시킨다). 재작업이 있으면 실행 행을 추가하고 마지막 행은 `합계`로 둔다 —
    `scripts/ticket-metrics.mjs`가 이 헤더로 티켓을 찾아 주간 집계를 낸다.
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 직접 실행한다. 사용자 승인은 기다리지 않고
-   실행 전 점검(드라이런·백업·롤백 실측)을 거친다(CLAUDE.md 6, 2026-10-25). jam-developer는 파일 작성까지만 했다
-5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다 (문서 변경도 같은
-   저장소에 있으므로 이 push 한 번으로 함께 올라간다)
+   실행 전 점검을 거친다(`CLAUDE.md` 규칙 6, 절차는 `docs/agents/orchestrator.md` §4)
+5. 1~4는 로컬 커밋까지 한다. staging push는 사용자가 요청했을 때 4.1절대로 한다
 6. 프로덕션 반영은 `/jam-ship`으로 별도 진행 — main 머지는 사용자 명시 승인이 있을 때만
-7. 사용자 승인이 필요했던 UI 변경(토큰·정본 컴포넌트)은 승인 직후 Workflow를 다시 부르기 전에 티켓에 `- 사용자 승인: YYYY-MM-DD — <승인한 항목>` 줄을 적었는지 확인한다. 이 줄은 카리나만 쓴다.
 
-### 4.1 staging push는 티켓당 한 번
+### 4.1 staging push는 사용자가 요청할 때 묶어서 한 번
 
-**사용자가 요청하기 전에는 push하지 않는다**(2026-11-10 사용자 지시). 로컬 커밋까지만 하고, push 요청이 오면
-쌓인 커밋을 한 번에 올린다. 아래 «티켓당 한 번» 규칙은 push 요청이 왔을 때의 묶음 단위다.
+**사용자가 요청하기 전에는 staging에 push하지 않는다**(`CLAUDE.md` 규칙 3). 구현 머지·문서 갱신·티켓
+CLOSED를 로컬에 쌓아 두고, 요청이 오면 쌓인 커밋을 한 번에 올린다.
 
-**커밋할 때마다 push하지 않는다.** `origin/staging`에 push할 때마다 Vercel이 배포를 하나
-만들고, 그게 곧 Build CPU 청구다.
+**staging push는 커밋 메시지에 `[배포]`(또는 `[deploy]`)가 있을 때만 빌드한다**(`jam-web/scripts/vercel-ignore.sh`
+규칙 ③). 표식이 없는 push는 코드가 바뀌었어도 빌드하지 않는다. 사용자가 staging 화면 확인을 요청하면
+빈 커밋(`git commit --allow-empty -m "[배포] …"`)을 더해 push한다. 이 빌드는 그때까지 쌓인 `jam-web/` 변경을
+한 번에 배포한다. 표식이 있어도 직전에 빌드한 커밋 이후 `jam-web/` 밖만 바뀌었으면 빌드하지 않는다(규칙 ②).
 
-**staging push는 커밋 메시지에 `[배포]`(또는 `[deploy]`)가 있을 때만 빌드한다**(`vercel-ignore.sh` 규칙 ③,
-티켓 20261110_0907). 표식이 없는 push는 코드가 바뀌었어도 빌드하지 않는다. 사용자가 staging 화면 확인을 요청하면
-빈 커밋(`git commit --allow-empty -m "[배포] …"`)을 더해 push한다. 이 빌드는 그때까지 쌓인 `jam-web/` 변경을 한 번에 배포한다.
-
-- 구현 커밋·문서 갱신·티켓 CLOSED를 **로컬에 다 쌓은 뒤** 마지막에 한 번 push한다
-- review 브랜치(`claude/jamwork-*`) push는 종전대로 자유롭게 한다 — `ignoreCommand`가
-  프로덕션 대상이 아닌 배포를 전부 차단하므로 빌드가 돌지 않는다
-- staging 배포를 눈으로 확인해야 하는 티켓은 **확인이 필요한 시점에만** push한다.
-  확인 후 나오는 수정·문서 커밋은 다시 묶어서 한 번에 올린다
-- 예외: 병렬 세션이 같은 파일을 건드리고 있어 먼저 올려두는 편이 안전할 때. 이때는
-  사유를 사용자에게 한 줄로 알린다
-
-**문서만 바꾼 push는 빌드를 만들지 않는다** — `jam-web/` 밖(`docs/`·`.claude/` 등)만
-바뀐 구간은 `ignoreCommand`가 건너뛴다. 판정 기준은 직전 커밋이 아니라 **직전에 실제로 빌드한
-커밋**이라, 한 push에 코드 커밋과 문서 커밋이 섞여도 코드 변경을 놓치지 않는다
-(`jam-web/scripts/vercel-ignore.sh`).
+- review 브랜치(`claude/jamwork-*`) push는 요청 없이 한다 — 규칙 ①이 프로덕션 대상이 아닌 배포를 전부 건너뛴다
+- 확인 뒤 나오는 수정·문서 커밋은 다시 묶어서 다음 요청 때 올린다
+- 병렬 세션이 같은 파일을 건드리고 있어 먼저 올려 두는 편이 안전해 보이면, 사유를 사용자에게 한 줄로
+  알리고 허락을 받은 뒤 push한다
 
 ## 참고 — 절차에 필요한 사실만
 
-- 서브에이전트는 `.claude/agents/`에 **영어로** 정의돼 있고 fresh context로 스폰된다. 정의는
-  영어, 출력은 한국어다. 모델은 각 정의의 `model` 키로 고정되며, 모드별로 다른 모델을 쓰는
-  에이전트(채원·윈터·카즈하·하니)는 호출부가 `model` 옵션으로 덮어쓴다. 한국어 출력·티켓 우선
-  검토 같은 규칙은 정의에 들어 있으므로 프롬프트에서 반복할 필요는 없지만, **티켓 경로·작업
-  유형·요청 원문은 반드시 전달**해야 한다.
-- `CLAUDE.md`는 서브에이전트 호출마다 자동으로 포함되며 선택 제외는 불가능하다 — 그래서 그
-  파일에는 전원에게 필요한 규칙만 둔다.
+- 서브에이전트는 fresh context로 스폰된다. 한국어 출력·티켓 우선 검토 같은 규칙은 정의에 들어 있으므로
+  프롬프트에서 반복하지 않지만, **티켓 경로·작업 유형·요청 원문은 반드시 전달**한다. 모델 배정은
+  `docs/agents/team-operations.md` §7이 단일 원천이다.
 - 이 스킬 호출 자체가 Workflow 툴 사용에 대한 명시적 opt-in이다.
-- `copy`·`ui`·`content` 유형의 한국어 문구는 **구현 단계**에서 아현이
-  `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **게이트 리뷰**에서 민지가
-  체크리스트 12번으로 자연스러움을 판정한다(판정에 실질적으로 영향, `docs/service/writing/SLOP_DICTIONARY.md`
-  §4 기준). 패턴 매칭 가능한 금칙어·금지 문장은 `scripts/check-slop.mjs`가 `verify.sh` 단계에서
-  먼저 기계적으로 거른다.
+- `copy`·`ui`·`content` 유형의 한국어 문구는 아현이 `.claude/output-styles/fluent-korean.md` 지침으로 쓰고,
+  민지가 체크리스트 12번으로 판정한다. 패턴 매칭 가능한 금칙어는 `scripts/check-slop.mjs`가 먼저 거른다.
 - 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는
   `jam-reviewer.md`의 「Checklist」 절에 있다.
 - 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-work/references/designer-review-checklist.md`다.
   라이팅 품질은 게이트(민지)가 담당하므로 점검표에서 의도적으로 뺐다.
 - 채원②는 `devResult.diffLineCount`(아현이 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
-  `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다. 값이 없으면 안전하게 실행 쪽으로 기운다.
-  민지(게이트)와 채원②는 둘 다 아현의 결과만 참조하므로 전역 `parallel()`(배리어, 실패한 작업은
-  null)로 동시에 호출한다 — 그래서 실행 여부는 병렬 시작 **전에** 알 수 있는 아현의 값으로
-  정한다. 민지가 FAIL이어도 채원②는 계속 진행되며 그 결과는 참고용이다. 두 호출이 동시에
-  진행돼 `tokenUsage`에는 `gate+jam-designer-post` 하나로 합산해 기록한다. 채원②의 모델은 `ds`
-  유형만 Sonnet, 나머지는 Haiku다(파급 범위 기준).
-- 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·token-refs·slop 등). 아현이
-  제출 전에 직접 돌리고, 리뷰 브랜치 push는 CI(GitHub Actions `verify`)가 같은 검사를 돌려
-  결과를 커밋 상태로 남긴다. `wf_*` 워크트리에서의 리뷰 브랜치 push는 pre-push가 verify를
-  건너뛰고 CI에 맡긴다(기준 방어 검사는 그대로 걸린다). 아현은 CI를 기다리지 않고 반환하며,
-  민지가 판독 마지막에 CI 상태를 확인하고 상태가 없을 때만 직접 재실행한다.
-- `jam-web`의 `npm run lint`·`lint:ci`는 ESLint 캐시(`--cache`)를 쓴다. `npm run typecheck`는
-  `.next/types` 캐시를 먼저 지우고 `tsc --noEmit`을 돌린다 — 지우고도 남는 에러는 실제 타입
-  에러다.
-- **토큰 측정**: `jam-work.js`의 `tokenUsage`는 `budget.spent()` 전후 차이로 잰 에이전트별
-  **출력 토큰**만 담는다. 전체 토큰·소요 시간·에이전트 수는 Workflow 완료 알림의 `<usage>`
-  블록에서 옮겨 적는다(4단계 3번).
-- **워크트리 최신성**: `isolation: 'worktree'`의 격리 워크트리는 **기본 브랜치(main) 기준으로
-  생성된다.** staging에만 있는 변경은 보이지 않으므로 아현의 첫 명령은 `git fetch origin
-  staging && git checkout --detach origin/staging`이다(`jam-work.js`가 프롬프트에 넣는다).
-  민지·채원②에게는 아현이 push한 `baseSha..commitSha`를 `jam-work.js`가 그대로 넘긴다 — 두
-  에이전트는 그 고정된 두 커밋 사이의 diff만 보므로 워크트리의 `origin/staging` 참조가 뒤처져
-  있어도 결과가 흔들리지 않는다. 아현이 범위를 채우지 못한 예외 상황에서만 "먼저 `git fetch
-  origin staging`을 실행하라"는 폴백을 쓴다.
+  `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다(값이 없으면 실행). 민지와 채원②는 `parallel()`로
+  동시에 호출하고, 민지가 FAIL이어도 채원②의 결과는 참고용으로 남는다. `tokenUsage`에는
+  `gate+jam-designer-post` 하나로 합산된다.
+- 기계 검사는 `scripts/verify.sh` 하나다. 아현이 제출 전에 직접 돌리고, 리뷰 브랜치 push는 CI(GitHub
+  Actions `verify`)가 커밋 상태로 남긴다. 민지는 판독 마지막에 CI 상태를 확인하고 상태가 없을 때만 직접 재실행한다.
+- **워크트리 최신성**: 격리 워크트리는 기본 브랜치(main) 기준으로 생성되므로, 첫 명령(아현은 `origin/staging`,
+  민지·채원②는 리뷰 커밋 체크아웃)을 `jam-work.js`가 프롬프트에 넣는다. 민지·채원②는 `jam-work.js`가 넘긴
+  `baseSha..commitSha` 사이의 diff만 본다.
 - **스킬 라우팅 평가** (선택 실행): `scripts/skill-eval-cases.json`에 요청 문장 → 기대
   스킬·기대 유형 사례가 있다. 카리나가 요청받았을 때만 돈다 — `verify.sh`에는 넣지 않는다.
   절차: ① 각 `.claude/skills/*/SKILL.md`의 frontmatter `description`을 모은다. ② Haiku

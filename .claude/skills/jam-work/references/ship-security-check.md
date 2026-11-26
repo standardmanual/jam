@@ -4,9 +4,8 @@
 > 형식은 `.claude/skills/jam-work/references/forms/review-verdict-format.md` 「배포 전 점검 모드
 > ②·③ 출력」 절을 따른다.
 >
-> 이식 출처: agent-skills 플러그인 `agents/security-auditor.md`·`references/security-checklist.md`
-> (티켓 20260922_1523). 이론적 위험이 아니라 실제로 악용 가능한 문제에 집중하고, 발견물마다
-> 파일:줄을 남긴다 — 수정안은 제안하지 않는다.
+> 이론적 위험이 아니라 실제로 악용 가능한 문제에 집중하고, 발견물마다 파일:줄을 남긴다 — 수정안은
+> 제안하지 않는다.
 
 ## 위협 모델링부터
 

@@ -4,8 +4,7 @@
 > 출력 형식은 `.claude/skills/jam-work/references/forms/review-verdict-format.md` 「배포 전 점검
 > 모드 ②·③ 출력」 절을 따른다.
 >
-> 이식 출처: agent-skills 플러그인 `agents/test-engineer.md`·`references/testing-patterns.md`
-> (티켓 20260922_1523). 테스트를 직접 작성하지 않는다 — 공백을 찾아 보고만 한다.
+> 테스트를 직접 작성하지 않는다 — 공백을 찾아 보고만 한다.
 
 ## 점검 범위 — 다섯 시나리오
 

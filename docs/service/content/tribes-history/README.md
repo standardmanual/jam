@@ -29,5 +29,5 @@ tags: [트라이브]
 ## 참고
 
 - 인접 그래프·트라이브 설정 변경은 승인 전 시뮬레이터 검증 결과를 함께 올려야 한다
-  (`.claude/skills/jam-work/references/loop-improvements.md` 4번).
+  (윈터 정의 `.claude/agents/jam-tribe.md`).
 - 이 폴더는 읽기 전용 `Archive/`가 아니다 — 필요할 때마다 새 스냅샷을 계속 추가한다.

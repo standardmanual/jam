@@ -6,7 +6,7 @@
 // 않았다. 실제로 jam-developer.md 규칙 9와 jam-work/SKILL.md 227행이 정면으로 모순된 채
 // 방치됐고, 같은 종류의 드리프트가 하루 조사에서 네 건 나왔다(티켓 20260920_1412·1907).
 //
-// 코드는 lint·typecheck·test·ds:check로 4중 검사를 받는데 문서는 링크와 frontmatter 형식만
+// 코드는 lint·typecheck·test와 여러 검사기로 검사를 받는데 문서는 링크와 frontmatter 형식만
 // 검사받는다. 그런데 에이전트에게 정의 문서는 코드와 똑같은 구속력을 갖는다. 이 비대칭을
 // 좁히는 것이 이 스크립트의 목적이다.
 //
@@ -189,7 +189,7 @@ function checkWorktreeContains(c) {
   let tracked
   try {
     tracked = new Set(
-      execFileSync('git', ['ls-files', '--', ...paths], { cwd: REPO, encoding: 'utf8' })
+      execFileSync('git', ['-c', 'core.quotePath=false', 'ls-files', '--', ...paths], { cwd: REPO, encoding: 'utf8' })
         .split('\n').filter(Boolean)
     )
   } catch {
@@ -237,7 +237,7 @@ function checkHooks(c) {
 
 // ── ⑨ 낡은 문구가 되살아나지 않았는가 ─────────────────────────────────────────
 function listFiles(dir, acc = []) {
-  const entries = execFileSync('git', ['ls-files', '--', dir], { cwd: REPO, encoding: 'utf8' })
+  const entries = execFileSync('git', ['-c', 'core.quotePath=false', 'ls-files', '--', dir], { cwd: REPO, encoding: 'utf8' })
     .split('\n').filter(Boolean)
   acc.push(...entries)
   return acc

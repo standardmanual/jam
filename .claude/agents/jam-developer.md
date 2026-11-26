@@ -48,7 +48,9 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
      `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{slug} origin/staging`
      (never a bare `git checkout -b`).
    - Commit locally with a Korean message, then `git push -u origin claude/jamwork-{...}`. Nothing
-     further — the orchestrator merges after user approval.
+     further — the orchestrator merges after user approval. This push needs no user request: `CLAUDE.md`
+     rule 3 limits only `staging`·`main` pushes, and `jam-web/scripts/vercel-ignore.sh` rule ① skips
+     review-branch builds.
 6. **User-facing Korean copy** follows `docs/service/writing/UX_WRITING_GUIDELINE.md`. Search it for
    the relevant section instead of reading the whole file. If you change a string, also fix the test
    that asserts that string. Every element you create or modify that renders Korean text (service

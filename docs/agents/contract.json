@@ -318,11 +318,11 @@
       },
       {
         "text": "두 작업 모두 켜짐",
-        "reason": "2026-10-07 사용자가 예약 루틴을 모두 삭제했다(RemoteTrigger list로 cron 루틴 0개 확인). 현재 상태는 scheduled-jobs.md 머리말이 단일 원천이다 (티켓 20261007_1956)"
+        "reason": "2026-10-07 사용자가 예약 루틴을 모두 삭제했다(RemoteTrigger list로 cron 루틴 0개 확인). 루틴마다 현재 상태는 scheduled-jobs.md 각 절의 「상태」 칸이 단일 원천이다 (티켓 20261007_1956)"
       },
       {
         "text": "매일·주 1회 종합으로 이미 돈다",
-        "reason": "카즈하의 예약 점검은 2026-10-07 예약 루틴 삭제로 돌지 않는다. scheduled-jobs.md 머리말 참고 (티켓 20261007_1956)"
+        "reason": "카즈하의 예약 점검이 도는지는 scheduled-jobs.md 각 절의 「상태」 칸을 본다(2026-10-07 예약 루틴 삭제, 티켓 20261007_1956)"
       },
       {
         "text": "staging과 main에는 CI가 없다",
@@ -335,6 +335,32 @@
       {
         "text": "CI는 리뷰 브랜치에만 있습니다",
         "reason": "2026-10-23부터 CI는 리뷰 브랜치와 staging에 있다. main에만 없다 (티켓 20261023_2318)"
+      },
+      {
+        "text": "_ds_manifest",
+        "reason": "옛 디자인 시스템 매니페스트(_ds_manifest.json)는 저장소에 없다(2026-11-26 git ls-files 확인). 정본 컴포넌트 목록은 생성 문서 docs/service/prd/ui-components/README.md다 (상위 티켓 20261125_1923 10회차)"
+      },
+      {
+        "text": "ds:check",
+        "reason": "ds:check 스크립트는 jam-web/package.json에 없다. 토큰 참조 검사는 scripts/check-token-refs.mjs가 scripts/verify.sh에서 한다 (상위 티켓 20261125_1923)"
+      },
+      {
+        "text": "design-system/components",
+        "reason": "jam-web/design-system/에는 assets·foundations·styles.css·tokens만 있다(2026-11-26 ls 확인). 정본 컴포넌트는 jam-web/src/components/ui/에 있다 (상위 티켓 20261125_1923)",
+        "allow_in": ["scripts/check-ui-rules.test.mjs"],
+        "_allow_why": "check-ui-rules.test.mjs는 옛 경로가 검사 대상이 아님을 시험하는 자리라 인용이 불가피하다."
+      },
+      {
+        "text": ".design-sync",
+        "reason": "claude.ai/design 동기화 폴더(.design-sync)는 저장소에 없다(2026-11-26 git ls-files·ls 확인, 상위 티켓 20261125_1923 3-1회차에서 업로드 체계 삭제)"
+      },
+      {
+        "text": "claude.ai/design",
+        "reason": "claude.ai/design 업로드는 쓰지 않는다(사용자 결정, 상위 티켓 20261125_1923). 3-1회차에서 업로드 체계를 지웠다"
+      },
+      {
+        "text": "MODULAR 확장",
+        "reason": "MODULAR 컴포넌트 폴더는 사라졌다. 채원① 분류는 «재사용 / 정본 변형 추가 / 새 정본»이다 (2026-11-26 사용자 결정, 상위 티켓 20261125_1923 10회차 ②)"
       }
     ]
   },

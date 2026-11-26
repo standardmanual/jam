@@ -37,8 +37,8 @@ JAM!의 핵심 신뢰 루프는 "활동을 하면 정확히 그에 맞는 보상
 
 ### 패턴 2 — 코드 배포와 DB 마이그레이션 적용이 분리되어 있고, 적용 여부를 추적하는 장치가 없음
 
-이 프로젝트는 `supabase_migrations.schema_migrations`에 4건만 기록돼 있다(레포엔 80개 파일).
-즉 대부분의 마이그레이션이 CLI(`supabase db push`)가 아니라 SQL Editor·MCP `execute_sql`
+2026-08-11 감사 때 `supabase_migrations.schema_migrations`에는 4건만 기록돼 있었다(그때 레포엔 80개 파일).
+대부분의 마이그레이션이 CLI(`supabase db push`)가 아니라 SQL Editor·MCP `execute_sql`
 등으로 수동 적용돼 왔고, "적용했는지 안 했는지"를 기계적으로 확인할 방법이 없었다.
 
 - 실제 사례: 포인트 시스템(045/080) 도입 당시 "로컬 환경 제약으로 SQL 파일만 작성, 원격
@@ -47,7 +47,8 @@ JAM!의 핵심 신뢰 루프는 "활동을 하면 정확히 그에 맞는 보상
 - 실제 사례: 068 데이터 정합화 마이그레이션도 같은 이유로 "배포 후 수동 실행 필요"로 남음.
 
 **규칙**: DB 스키마·함수·트리거 변경은 **마이그레이션 파일 작성 → 즉시 적용(`apply_migration`
-또는 동등한 방식) → 커밋을 한 세트**로 묶어 같은 턴 안에 끝낸다. "일단 파일만 써두고 나중에
+또는 동등한 방식) → 커밋을 한 세트**로 묶어 끝낸다. 적용은 메인 세션만 한다(`CLAUDE.md` 규칙 6) —
+서브에이전트가 작성한 파일은 메인 세션이 `/jam-work` 4단계에서 적용한다. "일단 파일만 써두고 나중에
 적용"을 기본 흐름으로 만들지 않는다. ([04_PROJECT_SPEC.md](../service/prd/04_PROJECT_SPEC.md) "절대 하지
 마" 목록에도 명문화됨)
 
@@ -129,8 +130,9 @@ Supabase/PostgREST는 한 번의 조회에서 기본 1,000행까지만 반환한
 같은 날 여러 작업이 진행되며 마이그레이션 번호가 중복 부여된 사례(045가 두 파일에 부여됨,
 20260811_002에서 발견·정리).
 
-**규칙**: 새 마이그레이션 작성 전엔 `ls supabase/migrations | tail`로 최신 번호를 항상 직접
-확인한다. 레포 상태를 기억에 의존하지 않는다.
+**규칙**: 새 마이그레이션 번호는 원격 staging 기준으로 잡고 push 직전에 다시 확인한다. 레포 상태를 기억에
+의존하지 않는다. 절차는 `.claude/skills/jam-work/references/handling-rules.md` 카리나 절 「마이그레이션 번호가
+병렬 세션과 충돌」 행이 단일 원천이다.
 
 ### 패턴 8 — SECURITY DEFINER 함수 신규 생성 시 `REVOKE ... FROM PUBLIC`만으로는
 anon/authenticated 권한이 회수되지 않음
@@ -360,12 +362,11 @@ ADMIN_EMAILS=<dev-login 계정 이메일> npm run dev
   나오면 push하지 않고 그 머지를 되돌린다(별도 워크트리면 워크트리를 폐기한다).
 - **장소는 `node_modules`가 실제 폴더인 작업 폴더다.** 메인 폴더의 로컬 staging은 병렬
   세션이 함께 쓰므로, 병렬 세션이 있으면 원격 staging 기준 별도 워크트리에서 머지·검증한다.
-  그 워크트리의 의존성은 링크가 아니라 복제본으로 둔다(`cp -Rc jam-web/node_modules
-  <워크트리>/jam-web/node_modules`, 시크릿은 `scripts/workspace-setup.sh link-secrets
-  <워크트리>`). 이 방식으로 티켓 20260924_0907·0908·0911에서 Turbopack 개발 서버가 떠서
-  `/admin` 실렌더를 마쳤다. `preview_start`는 메인 폴더의 `.claude/launch.json`을 읽으므로
-  `cwd`가 그 워크트리인 임시 설정을 넣고 서버가 뜬 직후 원복한다(`handling-rules.md`
-  「어드민 화면 로컬 실렌더」).
+  그 워크트리의 의존성은 링크가 아니라 실제 폴더로 둔다(링크를 지우고 `npm ci`로 설치하거나
+  `cp -Rc jam-web/node_modules <워크트리>/jam-web/node_modules`로 복제한다). 시크릿은
+  `scripts/workspace-setup.sh link-secrets <워크트리>`로 잇는다. 이 항목이 의존성 준비 절차의 단일
+  원천이다. `preview_start`는 메인 폴더의 `.claude/launch.json`을 읽으므로 `cwd`가 그 워크트리인
+  임시 설정을 넣고 서버가 뜬 직후 원복한다(`handling-rules.md` 「어드민 화면 로컬 실렌더」).
 
 **쓰기 동작은 실제 컨텐츠를 대상으로 실행하지 않는다** (티켓 20260917_1501):
 

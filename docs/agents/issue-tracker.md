@@ -12,18 +12,15 @@ tags: [워크플로]
 
 ## 규칙
 
-- **티켓 생성**: 파일명은 `P{우선순위}-{기한}/{YYYYMMDD}_{HHMM}_{제목}-{작업자}-{상태}.md` 형식을
-  따른다. 정확한 규칙은 `/jam-docs` 스킬 참조. 새 티켓 생성 요청은 `/jam-work` 또는 `/jam-docs`로
-  라우팅한다.
+- **티켓 생성**: 우선순위 폴더·파일명·frontmatter 규칙은 `/jam-docs` 스킬이 단일 원천이다. 새 티켓
+  생성 요청은 `/jam-work` 또는 `/jam-docs`로 라우팅한다.
 - **티켓 조회**: `docs/tickets/` 하위를 파일명·frontmatter(status 필드 등)로 검색한다.
 - **티켓 상태 변경**: frontmatter의 status 필드를 갱신하고, CLOSED 처리는 `/jam-docs` 절차를
   따른다(원격 staging 기준 브랜치에서 커밋).
-- **작업 파이프라인**: 티켓 검토 → 채원 사전 판정(`jam-designer`, `ui`·`ds` 유형) →
-  구현(`jam-developer`) → 게이트 리뷰(`jam-reviewer`, 한국어 자연스러움 포함) →
-  채원 사후 리뷰 → 승인 후 머지·문서 갱신까지는 `/jam-work` 스킬이 전체를 처리한다.
+- **작업 파이프라인**: 티켓 검토부터 승인 후 머지·문서 갱신까지 `/jam-work` 스킬이 처리한다.
 - **상위 티켓의 하위 티켓 표**: 행마다 「선행」 열을 적는다(선행 티켓이 없으면 "없음"). 표기
   규칙은 `.claude/skills/jam-work/references/forms/brief-format.md`의 「작업 분해 표기」를
-  따른다. 관례는 상위 티켓 20260918_1101의 4차 표.
+  따른다.
 
 ## PR을 트리아지 대상으로 볼지
 
