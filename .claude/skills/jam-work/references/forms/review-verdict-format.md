@@ -14,7 +14,8 @@
 
 ## 점검표
 
-항목(12개)과 유형별 적용은 `.claude/agents/jam-reviewer.md` 「Checklist」가 단일 원천이다.
+항목(12개)과 유형별 적용은 `.claude/agents/jam-reviewer.md` 「Checklist」, 항목별 상세 판정 기준은
+`.claude/skills/jam-work/references/reviewer-gate-criteria.md`가 단일 원천이다.
 
 ## 결과 형식
 

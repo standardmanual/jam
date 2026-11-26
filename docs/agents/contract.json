@@ -239,7 +239,14 @@
     "tracked_paths": [
       "docs/service/content/TRIBES.md",
       "docs/service/prd/01_PRD.md",
-      "CLAUDE.md"
+      "CLAUDE.md",
+      ".claude/skills/jam-work/references/developer-branch-and-hooks.md",
+      ".claude/skills/jam-work/references/developer-ui-and-copy.md",
+      ".claude/skills/jam-work/references/developer-worktree-and-verification.md",
+      ".claude/skills/jam-work/references/developer-return-format.md",
+      ".claude/skills/jam-work/references/reviewer-ship-modes.md",
+      ".claude/skills/jam-work/references/reviewer-gate-criteria.md",
+      ".claude/skills/jam-work/references/reviewer-worktree-and-verification.md"
     ]
   },
 

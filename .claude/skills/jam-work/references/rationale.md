@@ -129,8 +129,8 @@ push마다 도는 jam-stage 빌드가 Vercel 비용의 대부분이라, 2026-11-
 - 민지·채원 정의의 «공유 작업 폴더에서 `git checkout`·`switch`·`reset --hard`·`rebase` 금지» — 이 명령은 브랜치를
   옮기거나 HEAD를 분리해, 오케스트레이터의 다음 커밋이 닿지 않거나 push가 조용히 아무 일도 하지 않게 만든다. 첫
   사고는 티켓 20260926_0121이고, 2026-10-02의 두 건은 `team-operations.md` §8에 있다.
-- 아현 정의의 «링크를 실제 설치로 바꾼 뒤에만 npm 설치 명령 실행» — 격리 워크트리의 `jam-web/node_modules`는 메인
-  폴더를 가리키는 링크라 `npm install`·`npm ci`·`npm audit fix`·`npm update`가 링크를 거쳐 메인 폴더의
+- 아현 정의 Hard rule 11과 `developer-worktree-and-verification.md`의 «링크를 실제 설치로 바꾼 뒤에만 npm
+  설치 명령 실행» — 격리 워크트리의 `jam-web/node_modules`는 메인 폴더를 가리키는 링크라 `npm install`·`npm ci`·`npm audit fix`·`npm update`가 링크를 거쳐 메인 폴더의
   `node_modules`에 쓴다(티켓 20260923_0100).
 
 ### `/jam-ship`

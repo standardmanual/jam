@@ -273,7 +273,7 @@ review 브랜치의 `CLOSED` 커밋을 막는다).
 | 브라우저 검증 중 실제 배지 이미지에 쓰기 버튼을 눌러 덮어씀, 복구 불가 | 1회 | 실데이터 쓰기 금지, `[TEST]` 더미 또는 API 응답 형태만 확인 (`DEV_PROCESS_GUARDRAILS.md` 패턴 13) |
 | 함수 인자 수를 바꾸며 옛 시그니처를 안 지워 오버로드가 남고 런타임 `is not unique` | 1회 | `DROP FUNCTION IF EXISTS` 선행 (패턴 14, 20260911_1259) |
 | 민지가 읽기 명령에 `git checkout --detach`를 섞어 공유 작업 폴더의 HEAD를 `staging`에서 분리 (정의는 이미 금지, 제자리 복구로 유실 없음) | 2회 (2026-10-02, 두 번째는 권한 단계에서 거부됨) | 1차: 민지·채원 정의 frontmatter에 `PreToolUse` 훅(`scripts/guard-shared-head.mjs`)을 등록했으나 실제 호출에서 걸리지 않았다(2026-10-02, 2026-10-04 `git clean -n`이 그대로 실행됨, 원인 미확인). 2차: 워크플로 게이트의 민지·채원②와 `/jam-ship` 5단계의 민지를 격리 워크트리에서 불러 공유 폴더에 서지 않게 한다 (20261002_1905) |
-| 격리 워크트리에서 `git push`가 osxkeychain 자격 증명 프롬프트에 멈춤 | 1회 (2026-09-22) | `-c credential.helper=!gh auth git-credential`로 push (아현 정의 「CI stamp」) |
+| 격리 워크트리에서 `git push`가 osxkeychain 자격 증명 프롬프트에 멈춤 | 1회 (2026-09-22) | `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push -u origin <branch>`로 push한다(2026-11-26부터 아현은 push하지 않으므로 push하는 쪽, 주로 카리나가 쓴다) |
 | 아현 반환 요약이 30줄 형식을 세 건 연속 위반하고 diff 원문까지 포함 — 카리나·민지·채원② 세 곳에 실림 | 3회 | `DEV_RESULT.summary` 스키마 `maxLength: 3000` (20260922_0620 → 20260922_1755) |
 | 커밋마다 staging push → Vercel 배포 1,212개(20일), Build CPU $66.15 | 누적 (2026-09-06 실측) | staging push는 사용자 요청 때 묶어서 한 번(`CLAUDE.md` 규칙 3). `vercel-ignore.sh`가 `[배포]` 표식 없는 staging push(규칙 ③)와 `jam-web/` 밖만 바뀐 구간(규칙 ②)의 빌드를 건너뜀 |
 | 정의·`CLAUDE.md`·`SKILL.md`에 사고 경위·티켓 번호가 규칙과 섞여 호출마다 실림 | 누적 | 규칙만 남기고 경위는 이 표와 `jam-work/references/rationale.md`로 (20260922_1800) |
