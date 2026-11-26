@@ -14,6 +14,8 @@ import { cssDurationMs } from '@/lib/motion'
  *   3. reflow 강제 후 `.is-enter-start` 제거 — 새 텍스트가 제자리로 애니메이션
  *
  * 사용처: 팔로우/팔로잉 버튼 라벨, 상태 문구("확인 중…" → "사용 가능") 등.
+ *
+ * @summary 같은 자리에서 문구가 바뀔 때 위로 빠지고 아래에서 들어오는 문구 전환이다. 프로필 버튼·잠긴 아이템 배지 상세·믹스 결과 시트에서 쓴다.
  */
 export default function SwapText({ value, className }: { value: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null)

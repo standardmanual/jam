@@ -105,6 +105,9 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: 'var(--chip-padding)', lineHeight: 'var(--text-xs--line-height)' },
 };
 
+/**
+ * @summary 배지 등급(Rare·Epic·Mystic 등)을 보여 주는 칩이다. 홈 피드·미션 목록·배지 상세·컬렉션·등급 올리기에서 쓴다.
+ */
 export function RarityBadge({ rarity = 'common', size = 'sm', tone = 'default', className = '', showCommon = false }: RarityBadgeProps) {
   // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다(대신 `BadgeLevelChip`).
   // common과 같은 처리지만 이유가 다르다: common은 "노이즈 축소"(20260827_024),

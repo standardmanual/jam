@@ -45,6 +45,8 @@ const TONES = {
  *
  * 비인터랙티브 `<span>` — 터치 대상이 아니다(44px 규칙 비해당). `children`이 비어 있으면
  * 빈 필이 남지 않게 아무것도 그리지 않는다.
+ *
+ * @summary 카드 좌상단에 붙는 작은 라벨 칩이다. 오늘 현황 줄·정지 안내·획득 이력의 «처음 받은 날»·기사 화면에서 쓴다.
  */
 export function LabelChip({ tone = 'default', children, className = '', style = {}, ...rest }: LabelChipProps) {
   if (children == null || children === '') return null;

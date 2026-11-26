@@ -56,6 +56,9 @@ export interface ListCardProps extends Omit<HTMLAttributes<HTMLElement>, 'title'
   style?: CSSProperties
 }
 
+/**
+ * @summary 이미지·제목·칩·값·푸터를 한 장에 쌓아 보여 주는 목록 카드다. 미션 목록에서 미션 한 건을 그릴 때 쓴다.
+ */
 export function ListCard({
   imageUrl,
   imageAlt = '',

@@ -422,6 +422,8 @@ const GLYPH_KEYS: ('J' | 'a' | 'm')[] = ['J', 'a', 'm'];
  * 비인터랙티브 장식 SVG. `role="img"` + `aria-label`=분류 문구.
  * 문구가 비면 둘레 글자 없이 바탕과 가운데 로고만 그린다(도형 자체는 유효하므로).
  * 크기는 모양별로 고정이라 `size` prop이 없다 — `className`만 호출부에 연다.
+ *
+ * @summary 홈 피드 카드 모서리에 붙는 분류 스티커다. 조약돌·물결 모양 바탕에 분류 문구와 JAM 로고 글자를 얹는다.
  */
 export function CategorySticker({
   shape = 'pebble',

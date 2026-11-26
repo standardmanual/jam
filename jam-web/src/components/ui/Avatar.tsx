@@ -24,6 +24,8 @@ export interface AvatarProps {
  * 공용 유저 아바타 (티켓 20261125_1444).
  * 서비스 전역에 중복돼 있던 `rounded-full/rounded-2xl overflow-hidden + Image / UserIcon` 패턴을
  * 한 컴포넌트로 통합한다. 호출부별 크기(`size`)·모양(`shape`)·배경/테두리(`className`)는 기존 값을 그대로 유지한다.
+ *
+ * @summary 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 프로필·검색·팔로우 목록·상단 내비게이션에서 쓴다.
  */
 export default function Avatar({
   src,

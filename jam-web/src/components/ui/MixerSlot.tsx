@@ -81,6 +81,8 @@ export function ActionCircle({ kind }: { kind: 'plus' | 'minus' }) {
  *
  * 배지 드랍·픽업 화면에서도 "빈칸 채우기" 패턴이 재사용될 여지가 있다고 판단해
  * 서비스 전용이 아니라 MODULAR 정식 컴포넌트로 둔다(티켓 20260917_1655 사용자 결정).
+ *
+ * @summary 믹스·등급 올리기에서 재료 배지를 담는 슬롯 카드다. 빈 칸·잠긴 칸·채운 칸 세 상태를 그린다.
  */
 export function MixerSlot({
   status = 'empty',

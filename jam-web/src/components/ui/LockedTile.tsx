@@ -25,6 +25,8 @@ const LOCK_ICON_RATIO = 0.45;
  * 자물쇠는 장식이라 `aria-hidden`이다 — 잠겼다는 사실은 호출부의 «잠김» 문구가 글자로 전한다.
  *
  * `maxWidth: 100%` + `aspectRatio: 1`이라 부모가 `size`보다 좁으면 정사각형을 유지한 채 줄어든다(3열 그리드의 320px 화면).
+ *
+ * @summary 잠긴 아이템 배지를 자물쇠 하나로 대신 보여 주는 정사각 타일이다. 잠긴 배지 상세·배지 격자·드랍 시트·미션 보상에서 쓴다.
  */
 export function LockedTile({ size = 90, className = '', style = {} }: LockedTileProps) {
   return (

@@ -58,6 +58,9 @@ const SIZE_STYLE = {
   sheet: { wrapper: 'relative z-10', card: 'py-6 px-4' },
 };
 
+/**
+ * @summary 배지 한 장의 이미지·등급 칩·이름·설명을 가운데로 쌓은 대표 카드다. 배지 상세 페이지와 드랍 바텀시트, 잠긴 아이템 배지 상세에서 쓴다.
+ */
 export function BadgeHeroSection({
   /** 배지 이름 — `titleNode`가 없을 때 h1 안에 그린다 */
   name,

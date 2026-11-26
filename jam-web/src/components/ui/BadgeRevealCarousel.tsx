@@ -275,6 +275,9 @@ function relativeOffset(index: number, active: number, count: number) {
   return rel;
 }
 
+/**
+ * @summary 배지를 얻은 순간 카드를 3D로 넘겨 보는 전체 화면 캐러셀이다. 배지 획득 연출과 보류 아이템 배지 고르기에서 쓴다.
+ */
 export function BadgeRevealCarousel({
   open,
   items = [],
