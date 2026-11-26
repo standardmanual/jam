@@ -162,8 +162,15 @@ else
   rm -f "$LOG_PREFIX.component-list"
 fi
 
+# 토큰 카탈로그 문서가 토큰·화면 코드와 같은 최신본인지 확인한다 (티켓 20261126_2116, UI 소스 정리 9-5회차).
+if ! ( cd "$REPO_ROOT" && node scripts/gen-token-catalog.mjs --check ) >"$LOG_PREFIX.token-catalog" 2>&1; then
+  FAILED+=("token-catalog")
+else
+  rm -f "$LOG_PREFIX.token-catalog"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · component-list"
+  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · component-list · token-catalog"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"
