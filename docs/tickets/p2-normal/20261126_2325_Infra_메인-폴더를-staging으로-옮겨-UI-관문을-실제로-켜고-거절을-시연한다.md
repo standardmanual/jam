@@ -15,6 +15,8 @@ created: 2026-11-26
 - 전제: 메인 폴더 브랜치 위에 staging에 없는 다른 세션의 커밋 `ee37aec58`·`8a81bebd4`(48주차 홈피드 카드·묶음 SQL 기록)가 있다. 메인 폴더 전환 전에 이 두 커밋을 staging으로 옮긴다. 메인 폴더 브랜치 전환은 사용자나 메인 세션이 한다(다른 세션이 쓰는 중인지 먼저 확인).
 - 관련 파일: `.githooks/pre-commit`·`commit-msg`, `.claude/hooks/ui-guard.mjs`, `.claude/settings.json`, `scripts/check-ui-rules.mjs`·`check-ui-approval.mjs`·`gen-component-list.mjs`·`gen-token-catalog.mjs`, `scripts/ensure-hooks-path.sh`.
 
+- 진행 상황 (2026-11-26 23:55경 KST): 1번 끝 — `ee37aec58`·`8a81bebd4`를 로컬 staging에 체리픽했다(`ed78fd91f`·`e4021e018`, `git cherry`로 내용 동일 확인). 메인 폴더는 깨끗하고 실행 중인 세션은 없었다. 2번 메인 폴더 전환은 구체 명령(이 세션 작업 폴더의 staging 브랜치 풀기 → 메인 폴더 `git switch staging` → 메인 폴더 jam-web `npm install`)과 영향을 보이고 물었고, 사용자가 «보류»를 골랐다. 이 티켓은 OPEN으로 둔다.
+
 ## 구현 계획
 
 1. 두 커밋을 staging으로 옮긴다(체리픽, 충돌 확인).

@@ -134,7 +134,8 @@ GA4는 광고 차단기 유저를 놓치고 일부 이벤트가 특정 경로에
 - 주간: `docs/operations/reports/weekly/YYYY-Www.md` · 월간: `docs/operations/reports/monthly/YYYY-MM.md`
 - 쌓기만 하고 덮어쓰지 않는다(`docs/operations/reports/README.md`).
 - **리포트는 `staging`에 커밋하고 `push origin staging`한다.** 루틴 커밋에는 `[배포]` 표식이 없어 빌드는 돌지 않는다
-  (`jam-web/scripts/vercel-ignore.sh` 규칙 ③).
+  (`jam-web/scripts/vercel-ignore.sh` 규칙 ③). 이 push와 `CLAUDE.md` 규칙 3(staging push는 사용자 요청 때만)의 관계는 미정이다.
+  루틴을 다시 켜는 티켓에서 정한다(2026-11-26 사용자 결정).
 - 에이전트는 **주간 최근 4주·월간 최근 3개월**만 읽는다. 오래된 기록은 필요할 때 찾아 읽는다.
 - **트렌드 리서치 자료**(`docs/operations/trendresearch/`, 티켓 20260930_1518·20261102_1355, 구조와 주제 표는 그 폴더의 `README.md`)는 주제 폴더의
   `latest.md`와 `notes/`를 읽는다. `notes/`는 이름이 `YYYY-MM-DD_`로 시작하는 파일만 대상으로, 이름순 최신부터 고른다. 이 상한의 단일 원천은 이 줄이다.
