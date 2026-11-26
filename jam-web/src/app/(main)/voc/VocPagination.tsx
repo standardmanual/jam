@@ -1,7 +1,7 @@
 'use client'
 
 import Button from '@/components/ui/Button'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 
 interface VocPaginationProps {
   page: number
@@ -9,33 +9,16 @@ interface VocPaginationProps {
   onChange: (page: number) => void
 }
 
-// 현재 페이지 주변 + 처음/끝만 보여주고 나머지는 "…"으로 축약
-function buildPageList(page: number, totalPages: number): (number | 'ellipsis')[] {
-  const pages = new Set<number>([1, totalPages])
-  for (let p = page - 2; p <= page + 2; p++) {
-    if (p >= 1 && p <= totalPages) pages.add(p)
-  }
-  const sorted = [...pages].sort((a, b) => a - b)
-  const result: (number | 'ellipsis')[] = []
-  let prev = 0
-  for (const p of sorted) {
-    if (prev && p - prev > 1) result.push('ellipsis')
-    result.push(p)
-    prev = p
-  }
-  return result
-}
-
 /**
- * VOC 게시판 전용 번호형 페이지네이션 (무한스크롤/더보기 아님).
+ * VOC 게시판 전용 «이전 · 현재 / 전체 · 다음» 페이지네이션 (무한스크롤/더보기 아님).
+ * 쪽 번호 목록은 360px 폭에서 한 줄을 넘쳐 없앴다 (티켓 20261126_1618).
  *
- * 서비스 레이어에 재사용 가능한 번호형 페이지네이션이 없어 최소 구현으로 신설했다
+ * 서비스 레이어에 재사용 가능한 페이지네이션이 없어 최소 구현으로 신설했다
  * (어드민 `Pagination.tsx`는 어드민 전용이라 재사용하지 않음, 티켓 20260828_1921).
  * 다른 화면에서도 필요해지면 그때 MODULAR 승격을 판단한다.
  */
 export default function VocPagination({ page, totalPages, onChange }: VocPaginationProps) {
   if (totalPages <= 1) return null
-  const pageList = buildPageList(page, totalPages)
 
   return (
     <nav
@@ -53,26 +36,12 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
       >
         {d.voc.paginationPrev}
       </Button>
-      {pageList.map((p, i) =>
-        p === 'ellipsis' ? (
-          <span key={`e${i}`} className="px-1 text-base text-muted">
-            …
-          </span>
-        ) : (
-          <Button
-            key={p}
-            type="button"
-            variant={p === page ? 'secondary' : 'ghost'}
-            size="xs"
-            onClick={() => onChange(p)}
-            aria-current={p === page ? 'page' : undefined}
-            className="min-w-11 min-h-11 break-keep wrap-break-word"
-            style={{ minHeight: 'var(--touch-target-min)' }}
-          >
-            {p}
-          </Button>
-        )
-      )}
+      <span
+        aria-label={t(d.voc.paginationCurrentAria, { page, total: totalPages })}
+        className="px-2 text-base text-muted whitespace-nowrap"
+      >
+        {page} / {totalPages}
+      </span>
       <Button
         type="button"
         variant="ghost"
