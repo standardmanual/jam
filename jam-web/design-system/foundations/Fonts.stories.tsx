@@ -41,7 +41,7 @@ function FontsPage() {
           </code>
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
-          <strong style={{ color: 'var(--foreground)' }}>서체</strong>: <code>Noto Sans KR</code> (typography.css에서 정의)<br />
+          <strong style={{ color: 'var(--foreground)' }}>서체</strong>: <code>Noto Sans KR</code> (primitive.css에서 정의)<br />
           폰트 로드: <code>globals.css</code> 1행의 Google Fonts CDN (400~800, <code>display=swap</code>)
         </div>
       </div>

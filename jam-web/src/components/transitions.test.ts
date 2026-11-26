@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 const TRANSITIONS_CSS = readFileSync(path.resolve(__dirname, 'transitions.css'), 'utf-8')
-const MOTION_CSS = readFileSync(path.resolve(__dirname, '../../design-system/tokens/motion.css'), 'utf-8')
+const MOTION_CSS = readFileSync(path.resolve(__dirname, '../../design-system/tokens/primitive.css'), 'utf-8')
 
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
 const css = stripComments(TRANSITIONS_CSS)
@@ -64,7 +64,7 @@ describe('.jam-press — 동작 줄이기(prefers-reduced-motion: reduce)', () =
 })
 
 describe('--scale-press-card 토큰', () => {
-  it('motion.css에 0.98로 정의돼 있다', () => {
+  it('primitive.css에 0.98로 정의돼 있다', () => {
     expect(stripComments(MOTION_CSS)).toMatch(/--scale-press-card:\s*0\.98\s*;/)
   })
 

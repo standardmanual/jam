@@ -62,7 +62,7 @@ Return a **`StructuredOutput`** with: `hasCritical` (boolean) · `critical` (중
 
 ## 2. 토큰 준수 — 위반은 **중대**
 
-- [ ] 색상: `design-system/tokens/colors`에 대응 토큰이 있는데 `#hex`·`rgb()`를 직접 썼는가
+- [ ] 색상: `design-system/tokens/semantic`(색은 primitive 참조)에 대응 토큰이 있는데 `#hex`·`rgb()`를 직접 썼는가
 - [ ] 간격: 토큰 스케일 밖의 임의값(`13px`, `p-[7px]`)을 썼는가
 - [ ] 타이포: 정의된 타입 스케일 밖의 `font-size`·`line-height`를 썼는가
 - [ ] 라운드·그림자·모션: 대응 토큰 대신 직접 값을 썼는가

@@ -21,7 +21,7 @@ MODULAR은 JAM!의 디자인 시스템 단일 진실 원천(`jam-web/design-syst
 | 5 | Storybook 웹 (`npm run storybook`, :6006) | **사람이 눈으로 확인할 때만** |
 
 컴포넌트 분류: `buttons` · `cards` · `feedback` · `forms` · `navigation` · `patterns`
-파운데이션: `tokens/`(colors·typography·spacing·radius·motion·materials·fonts) · 스토리북 `foundations/`(Colors·Fonts·Motion·Radius·Spacing·Typography)
+파운데이션: `tokens/`(primitive·semantic·component 세 층 + fonts) · 스토리북 `foundations/`(Colors·Fonts·Motion·Radius·Spacing·Typography)
 
 ## 2. 판단 — 재사용 / 확장 / 서비스 전용
 

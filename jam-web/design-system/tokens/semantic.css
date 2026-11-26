@@ -1,0 +1,114 @@
+/*
+ * JAM! DS v3 — 의미 층(semantic). 티켓 20261126_1908(상위 20261125_1923 9-1회차).
+ * 쓰임새 이름이다. 색은 반드시 primitive.css의 기본값을 참조한다(투명도는 color-mix(in srgb, var(--기본값) N%, transparent)).
+ * 눈금에 없는 치수(44px 같은)는 직접 값을 허용한다. 층 규칙의 전문은 primitive.css 머리 주석에 있다.
+ * 값의 원천: 피그마 `JAM-Modulor-V2`(Theme 컬렉션)와 docs/plan/jam2/11 JAM 2.0 디자인 시스템.md 2~4절.
+ * 다크 테마는 두지 않는다(결정 4). 어드민은 globals.css의 [data-admin-theme] 안에서 같은 이름을 다시 정의해 덮고,
+ * 어드민 안의 서비스 미리보기는 data-service-theme로 이 값을 되찾는다 — 그래서 색 블록은 :root와 [data-service-theme] 둘 다에 선언한다.
+ */
+:root,
+[data-service-theme] {
+  /* ── 배경·표면 ────────────────────────────────────────────── */
+  --background: var(--base-neutral-100);        /* 서비스 열(430px) 바탕. 카드·시트·모달 면은 --card-bg를 쓴다(티켓 20261108_1940, 20261108_2029) */
+  --background-secondary: var(--base-neutral-200);
+  --page-bg: var(--base-neutral-200);           /* 서비스 열 바깥(html·body) 바탕 */
+  --card-bg: var(--base-white);                 /* Card default 면, 시트·모달·ListRow 면. 외곽선 없이 면으로만 구분한다(바탕 --background #f5f5f5 위 흰 면) */
+  --btn-secondary: var(--base-neutral-200);     /* Button secondary·outline 면. 카드 위 연한 면이 필요하면 이 값을 쓴다 */
+  --background-inverse: var(--base-neutral-900);
+  --surface: var(--base-white);
+  --surface-transparent: color-mix(in srgb, var(--base-white) 0%, transparent); /* 완전 투명 */
+  --surface-on-inverse: color-mix(in srgb, var(--snow) 15%, transparent); /* 반전 면 위 한 단계 밝은 면(썸네일 박스 등). --snow 15% */
+
+  /* ── 글자 ─────────────────────────────────────────────────── */
+  --foreground: var(--base-neutral-900);
+  --muted: var(--base-neutral-500);
+  --link: var(--base-neutral-900);              /* 본문 글자와 같은 검정. 색만으로 링크를 구분하지 않는다 */
+  --snow: var(--base-snow);                     /* 반전 면(--background-inverse) 위 글자 */
+  --muted-on-inverse: color-mix(in srgb, var(--snow) 70%, transparent); /* 반전 면 위 보조 글자. --background-inverse 위 약 8.9:1(계산값, 티켓 20261106_2003) */
+
+  /* ── 강조 ─────────────────────────────────────────────────── */
+  --accent: var(--base-neutral-900);            /* 면 채우기 전용 */
+  --accent-foreground: var(--snow);             /* accent 면 위 글자 */
+  --accent-soft: var(--base-neutral-100);
+  --accent-soft-hover: var(--base-neutral-200);
+
+  /* ── 선·면 ────────────────────────────────────────────────── */
+  --border: var(--base-neutral-200);
+  --field-border: var(--base-neutral-400);
+  --separator: var(--base-neutral-200);         /* 결정 4: 구분선은 하나 */
+  --backdrop: color-mix(in srgb, var(--base-black) 50%, transparent);
+
+  /* ── 상태 ─────────────────────────────────────────────────── */
+  --success: var(--base-neutral-900);
+  --warning: var(--base-neutral-600);
+  --danger: var(--base-neutral-900);
+  --danger-text: var(--base-danger-red);        /* 붉은 글자 전용(탈퇴 확인 문구 «탈퇴합니다»). 면·버튼·아이콘에는 쓰지 않는다. 흰 면 위 약 5.2:1, 티켓 20261110_2150(사용자 지시) */
+  --default: var(--base-neutral-200);
+  --default-soft: var(--base-neutral-200);
+  --opacity-disabled: 0.4;                      /* 비활성 요소 투명도(범용). 현재 소비처는 ListRow뿐 */
+
+  /* 포인트 글자색(티켓 20261104_2319): 값과 «포인트» 글자 모두 이 색이다. */
+  --point-text: var(--base-point-orange);
+
+  /* 입력창 (피그마 field/radius). 눈금에 없는 100px(캡슐) */
+  --field-radius: 100px;
+}
+
+:root {
+  /* ── 간격 역할 ────────────────────────────────────────────── */
+  /* 티켓 20261108_1928(간격 1회차): 화면이 쓸 간격에 역할 이름을 붙였다. 클래스는 그대로 Tailwind 기본 유틸리티를 쓰고,
+     값과 클래스 대응표는 design-system/readme.md 「간격」 절과 Spacing.stories.tsx에 있다. */
+  /* Layout semantic tokens — change these to adjust spacing globally */
+  --layout-card-padding: var(--spacing-24);
+  --layout-section-gap: var(--spacing-48);
+  --layout-element-gap: var(--spacing-16);
+
+  /* 간격 역할 토큰 (티켓 20261108_1928) — 주석은 대응하는 Tailwind 기본 클래스 */
+  --page-x: var(--spacing-16); /* px-4 */
+  --page-top: var(--spacing-16); /* pt-4 */
+  --page-bottom: var(--spacing-24); /* pb-6 */
+  --gap-section: var(--spacing-20); /* gap-5 · space-y-5 */
+  --gap-section-lg: var(--spacing-24); /* gap-6 */
+  --gap-group: var(--spacing-12); /* gap-3 */
+  --gap-text: var(--spacing-8); /* gap-2 */
+  --gap-label: var(--spacing-4); /* gap-1 */
+  --gap-card: var(--spacing-8); /* gap-2 */
+  --gap-card-detail: var(--spacing-12); /* gap-3 */
+  --card-padding: var(--spacing-16); /* p-4 */
+  --card-padding-row: var(--spacing-12) var(--spacing-16); /* py-3 px-4 */
+  --gap-field: var(--spacing-16); /* gap-4 */
+  --gap-actions: var(--spacing-8); /* gap-2 */
+
+  /* Touch target minimum (iOS HIG) */
+  --touch-target-min: 44px;
+
+  /* Safe area — iOS home indicator clearance */
+  --spacing-safe-top: env(safe-area-inset-top, 0px);  /* 상단 노치·상태바 여백(로그인·드랍 위치 안내 알약) */
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* 앱 틀 치수 (티켓 20261126_1310) */
+  --app-max-width: 430px;                       /* 앱 본문 컬럼의 최대 너비((main)·(legal)·(onboarding) 레이아웃) */
+  --topnav-height: 56px;                        /* 상단 내비게이션 바 높이. 드랍·미션 상황 화면의 계산식도 읽는다 */
+  --sheet-full-height: 92dvh;                   /* 바텀시트 전체 높이 */
+  --sheet-max-height: 75dvh;                    /* 바텀시트 최대 높이 */
+
+  /* 겹침 순서 (티켓 20261126_1310). 값이 클수록 위에 놓인다. */
+  --z-toast-scrim: 59;                          /* 토스트 뒤의 어둠 */
+  --z-toast: 60;                                /* 토스트 */
+  --z-navigation-loader: 9999;                  /* 화면 전환 로더(모든 것의 위) */
+
+  /* ── 재질 ─────────────────────────────────────────────────── */
+  /* 시트·모달 스크림(--backdrop) 뒤 화면의 흐림(티켓 20261117_1752, 사용자 지시 2026-11-17).
+     20261015_2131의 «스크림 blur 0» 결정을 스크림에 한해 되돌린다. 투명도 줄이기 설정에서는 아래 미디어 쿼리가 0으로 만든다. */
+  --scrim-blur: 8px;
+
+  /* 반투명 카드 면(티켓 20261114_1507): 카드 뒤 장식 선이 희미하게 비치는 흰 면. --card-bg 위에 72% 불투명도만 얹는 별칭이며 새 색 수치는 없다. 72%를 넘겨 내리지 않는다(설명 글자 대비) */
+  --card-bg-translucent: color-mix(in srgb, var(--card-bg) 72%, transparent);
+}
+
+/* 투명도 줄이기: 스크림 흐림을 끈다. 스크림 면은 transitions.css에서 불투명 반전 면으로 바뀐다. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --scrim-blur: 0px;
+  }
+}

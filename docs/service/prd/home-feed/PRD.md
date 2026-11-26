@@ -376,7 +376,7 @@ code:
 | 액센트 원색 | 레드 `#FF1D1D`, 옐로 `#F9FD69`, 그린 `#59C02B`, 퍼플 `#BA8AF7`, 블루 `#0695EC` |
 | 통합 팔레트 보조 4개 | 짙은 그린 `#3D851E`, 핑크 `#F372C1`, 스카이 `#51CDF5`, 화이트 `#FFFFFF` |
 
-연한 색 5개(`--jam-*-soft`)와 참조 색 5개(`--feed-ref-*`)는 통합 팔레트로 바꾸면서 걷었다(티켓 20261122_2224 회차 12·13). 토큰 정의(`colors.css`)·Tailwind 매핑(`globals.css`)·디자인 시스템 견본(`Colors.stories`)·매니페스트에서도 지웠고, 색 칩·도장 스토리는 9색을 보인다.
+연한 색 5개(`--jam-*-soft`)와 참조 색 5개(`--feed-ref-*`)는 통합 팔레트로 바꾸면서 걷었다(티켓 20261122_2224 회차 12·13). 토큰 정의(`primitive.css`)·Tailwind 매핑(`globals.css`)·디자인 시스템 견본(`Colors.stories`)·매니페스트에서도 지웠고, 색 칩·도장 스토리는 9색을 보인다.
 
 **통합 팔레트 새 키 4개와 쓰임 표**(티켓 20261122_2224 회차 2·3, 상위 20261122_2217 결정 §1·§2·§5): 색 키에 짙은 그린 `green-deep`(`#3D851E`, `--jam-green-deep`), 핑크 `pink`(`#F372C1`, `--jam-pink`), 스카이 `sky`(`#51CDF5`, `--jam-sky`), 화이트 `white`(`#FFFFFF`, `--jam-chip-white`)를 더한 9키(`yellow`·`green`·`green-deep`·`pink`·`sky`·`red`·`purple`·`blue`·`white`)가 색 키의 전부다. 옛 10키(연한 색 5개·참조 색 5개)는 회차 12에서 코드와 DB 제약(마이그레이션 359)에서 걷었다. 저장·자동 배정은 9키만 받고, 화면은 모르는 키가 오면 지정 없음으로 보고 자동 배정한 색으로 그린다(아래 «자동 배정 규칙(통합 팔레트)»). 쓰임 표(`feedConstants.ts`의 `FEED_COLOR_USAGE`)는 다음과 같다. 바탕·박스는 노랑·초록·짙은 초록·분홍·하늘, 값 칩은 노랑·초록·분홍·하늘·빨강·보라·흰색, 스티커는 노랑·초록·분홍·하늘·빨강·보라·파랑이다. 일반 카드의 바탕+박스 조합은 9개이고(노랑+초록, 초록+노랑, 노랑+짙은 초록은 가중치 2, 초록+분홍·하늘+노랑·노랑+하늘·분홍+노랑·분홍+초록·하늘+분홍은 가중치 1) 짙은 초록 바탕 카드는 따로 두 조합(짙은 초록+노랑, 짙은 초록+분홍)이 다섯~여섯 장에 한 장꼴로 나온다. 짙은 초록 바탕 위 제목·설명은 흰색(`--snow`, `feedTextOnBg`), 나머지 바탕 위는 검정이고, 짙은 초록 박스는 글자가 들어가는 박스(텍스트형·드랍 픽업 배지 상자·목록형 타일)에 쓰지 않는다(검정 글자 대비 3.9, `boxAllowedFor`). 칩 색의 배제 표(`feedColorRules.ts`의 `chipExclusionRule`, 초안)는 같은 색끼리, 빨강과 초록·짙은 초록, 노랑 위 흰 칩, 분홍 위 보라 칩이다. 이 표와 조합을 배정(`assignFeedColors`)이 읽는다(회차 4·5).
 
@@ -460,10 +460,10 @@ code:
 - **새 유형 키**: 옛 모양 `ticket`·`hero`·`list`와 새 유형·박스 모양 «티켓»이 같은 말이어서 `shape` 열, `card_shape`, 계측 집계가 섞인다. 새 유형은 따로 키를 둔다: `today_cards.feed_type`(2회차, 마이그레이션 349).
 - **이미지 위 제목**: 전체 배경 이미지 유형은 이미지 위 제목의 대비 기준이 없다. 어두운 막이 필요하며 이미지 규칙(8회차) 전에는 켜지 않는다.
 - **박스 구현**: 티켓·우표·반원은 CSS 마스크(radial-gradient), 물결만 시드 SVG 경로로 그리는 것을 권한다. 픽셀 고정 치수는 비율 변환과 충돌하므로 구현 때 맞춘다.
-- **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 보조 4개는 `--jam-pink`·`--jam-sky`·`--jam-green-deep`·`--jam-chip-white`로 `colors.css`에 둔다(옛 연한 색·참조 색 토큰은 회차 13에서 걷었다). 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다. 구현 위치: `jam-web/design-system/tokens/colors.css`, `jam-web/src/lib/today/feedConstants.ts`.
+- **새 색 이름**: 원색 5개는 기존 `--jam-*`를 쓴다. 보조 4개는 `--jam-pink`·`--jam-sky`·`--jam-green-deep`·`--jam-chip-white`로 `primitive.css`에 둔다(옛 연한 색·참조 색 토큰은 회차 13에서 걷었다). 카드에는 hex가 아니라 색 키를 저장한다. 계산용 hex가 코드에도 필요하므로 두 정의가 같은지 대조하는 시험을 둔다. 구현 위치: `jam-web/design-system/tokens/primitive.css`, `jam-web/src/lib/today/feedConstants.ts`.
 - **서비스 전용 상수**: 디자인 시스템에 없는 값(칩 높이 32·40(제목 속 칩)·40·52(카드 모서리 칩), 외곽선 2px, 홈 지름 28·52·56, 도장 60px, 기울기 여섯 값, 물결 12~22px, 모션 0.72초·70~210ms·탄성 곡선)은 `lib/today`의 한 파일에 근거 주석과 함께 둔다. 구현 위치: `jam-web/src/lib/today/feedConstants.ts`.
 - **기존 컴포넌트**: `CardFrame`·`CardBody`의 제목·필수 정보·설명 조각, `CardThumb`, `SafeImage`는 그대로 쓴다. 칩·박스 모양 5종·도장·갤러리 4칸·컬렉션 모션·색 배정 함수는 새로 만든다. `LabelChip`은 12px 대문자에 외곽선이 없어 확장하지 않고, `CardChipRow`와 `CardImageSlot`은 옛 7모양 전용으로 둔다.
-- **함께 고칠 곳**: 강조색 사용처 규칙(`colors.css` 주석, 디자인 시스템 문서 11 §5.3, `_adherence.oxlintrc.json` 두 곳, `_ds_manifest.json`).
+- **함께 고칠 곳**: 강조색 사용처 규칙(`primitive.css` 주석, 디자인 시스템 문서 11 §5.3, `_adherence.oxlintrc.json` 두 곳, `_ds_manifest.json`).
 
 #### 아직 정하지 않은 것
 

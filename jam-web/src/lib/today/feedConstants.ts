@@ -6,19 +6,19 @@
  * 다른 화면이 이 값을 쓰게 되면 디자인 시스템으로 올릴지 다시 판정한다.
  *
  * 카드에는 hex가 아니라 색 키를 저장한다.
- * 9색 hex는 CSS(`design-system/tokens/colors.css`)와 이 파일에 두 번 있다. 자동 규칙(계산)이 hex를
+ * 9색 hex는 CSS(`design-system/tokens/primitive.css`)와 이 파일에 두 번 있다. 자동 규칙(계산)이 hex를
  * 읽기 때문이다. 두 정의가 같은지는 `__tests__/feedConstants.test.ts`가 대조한다.
  *
  * 디자인 시스템 눈금 대응(새 값을 만들지 않고 기존 눈금을 가리키는 항목):
  * | 이 파일의 값                | 디자인 시스템 눈금                                        |
  * |-----------------------------|-----------------------------------------------------------|
- * | 칩 글자 14px (작은 칩)      | typography.css `--text-sm` (0.875rem, 줄 높이 20px)       |
- * | 칩 글자 18px (큰 칩)        | typography.css `--text-lg` (1.125rem, 줄 높이 28px)       |
- * | 칩 가로 여백 12px (작은 칩) | spacing.css `--spacing-12`                                |
- * | 칩 가로 여백 16px (큰 칩)   | spacing.css `--spacing-16`                                |
+ * | 칩 글자 14px (작은 칩)      | primitive.css `--text-sm` (0.875rem, 줄 높이 20px)       |
+ * | 칩 글자 18px (큰 칩)        | primitive.css `--text-lg` (1.125rem, 줄 높이 28px)       |
+ * | 칩 가로 여백 12px (작은 칩) | primitive.css `--spacing-12`                                |
+ * | 칩 가로 여백 16px (큰 칩)   | primitive.css `--spacing-16`                                |
  * | 칩 높이 32px (작은 칩)      | 줄 높이 20px + 세로 여백 6px×2 (눈금에 높이 토큰은 없다)  |
  * | 칩 높이 40px (큰 칩)        | 줄 높이 28px + 세로 여백 6px×2 (눈금에 높이 토큰은 없다)  |
- * 모서리는 `rounded-full`(radius.css), 칩 글자 색은 `--foreground` 고정이다(`--snow`는 통합 팔레트 위에서 AA 미달).
+ * 모서리는 `rounded-full`(primitive.css), 칩 글자 색은 `--foreground` 고정이다(`--snow`는 통합 팔레트 위에서 AA 미달).
  *
  * 이 파일의 값은 모두 서비스 전용이다. 디자인 시스템 토큰이 아니므로 `design-system/`에 두지 않는다.
  */
@@ -34,9 +34,9 @@ export const FEED_COLOR_KEYS = ['yellow', 'green', 'green-deep', 'pink', 'sky', 
 export type FeedColorKey = (typeof FEED_COLOR_KEYS)[number];
 
 export interface FeedColor {
-  /** `colors.css`에 정의된 CSS 변수 이름 */
+  /** `primitive.css`에 정의된 CSS 변수 이름 */
   readonly cssVar: string;
-  /** `colors.css`와 같은 hex(대문자 비교는 시험이 대소문자를 무시한다) */
+  /** `primitive.css`와 같은 hex(대문자 비교는 시험이 대소문자를 무시한다) */
   readonly hex: string;
 }
 
@@ -48,7 +48,7 @@ export const FEED_COLORS = {
   green: { cssVar: '--jam-green', hex: '#59C02B' },
   purple: { cssVar: '--jam-purple', hex: '#BA8AF7' },
   blue: { cssVar: '--jam-blue', hex: '#0695EC' },
-  // 통합 팔레트 새 키 4개 — 값 정본은 colors.css(티켓 20261122_2223)
+  // 통합 팔레트 새 키 4개 — 값 정본은 primitive.css(티켓 20261122_2223)
   'green-deep': { cssVar: '--jam-green-deep', hex: '#3D851E' },
   pink: { cssVar: '--jam-pink', hex: '#F372C1' },
   sky: { cssVar: '--jam-sky', hex: '#51CDF5' },

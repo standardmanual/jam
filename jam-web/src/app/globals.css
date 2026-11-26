@@ -9,16 +9,13 @@
 @import "../components/transitions.css";
 
 /*
- * 모듈러 토큰 실연결. design-system/tokens/의 6개 파일을 그대로 @import한다.
+ * 모듈러 토큰 실연결. design-system/tokens/의 세 층 파일(기본값 primitive·의미 semantic·컴포넌트 component)을 그대로 @import한다.
  * 티켓 20261015_2131: JAM 2.0은 라이트 전용이라 다크 오버라이드 파일(colors.light.css)이 없다.
- * 서비스 전용 토큰(모션·transitions.dev 등)은 아래 :root에 남아 있다.
+ * 서비스용 모션 레시피(transitions.dev)도 component.css에 있다(티켓 20261126_1908).
  */
-@import "../../design-system/tokens/colors.css";
-@import "../../design-system/tokens/typography.css";
-@import "../../design-system/tokens/spacing.css";
-@import "../../design-system/tokens/radius.css";
-@import "../../design-system/tokens/motion.css";
-@import "../../design-system/tokens/materials.css";
+@import "../../design-system/tokens/primitive.css";
+@import "../../design-system/tokens/semantic.css";
+@import "../../design-system/tokens/component.css";
 /*
  ---break---
  */
@@ -29,10 +26,10 @@
  * text-muted, text-link, bg-accent …)로 이어 준다. 값은 위에서 import한 :root의 역할 토큰을
  * 참조만 한다(`inline`이라 유틸리티가 var(--이름)을 그대로 쓴다).
  *
- * 서비스와 어드민은 같은 이름을 쓴다(상위 티켓 결정 1). 서비스 값은 :root(colors.css)에 있고,
+ * 서비스와 어드민은 같은 이름을 쓴다(상위 티켓 결정 1). 서비스 값은 :root(semantic.css)에 있고,
  * 어드민 shadcn 실값은 아래 [data-admin-theme] 안에서 같은 이름을 다시 정의해 덮는다.
  * 어드민 안에서 서비스 컴포넌트를 렌더하는 미리보기는 래퍼에 data-service-theme를 걸어
- * 서비스 값을 되찾는다(colors.css·radius.css가 [data-service-theme]에도 같은 값을 선언한다).
+ * 서비스 값을 되찾는다(primitive.css·semantic.css가 [data-service-theme]에도 같은 값을 선언한다).
  *
  * 반경(rounded-*)은 여기서 덮지 않는다. Tailwind 기본 단계(rounded-2xl = 16px 등)가 서비스 값이다.
  */
@@ -111,7 +108,7 @@
 }
 
 /*
- * 서비스 전용 :root 토큰. 색·글자·간격·반경은 위에서 import한 design-system/tokens/에 있다.
+ * 서비스 토큰은 모두 위에서 import한 design-system/tokens/의 세 층 파일에 있다.
  * 클래스 문자열은 Tailwind 기본 유틸리티(p-4, text-base, rounded-2xl)를 쓰고, 인라인 style·CSS·
  * calc() 안처럼 클래스가 아닌 곳은 tokens/의 평문 눈금(var(--spacing-16), var(--text-base))을 쓴다.
  * 간격 역할 이름(--page-x, --gap-section …)과 Tailwind 클래스 대응표는 design-system/readme.md 「간격」 절에 있다.
@@ -159,7 +156,7 @@
   --sidebar-ring: oklch(0.709 0.01 56.259);
 
   /*
-   * 반경 눈금(rounded-*)은 서비스 기본이 Tailwind 단계(radius.css)다. 어드민의 모양은 바뀌지 않게
+   * 반경 눈금(rounded-*)은 서비스 기본이 Tailwind 단계(primitive.css)다. 어드민의 모양은 바뀌지 않게
    * 이 스코프 안에서 이전 값으로 다시 정의한다 — xs·sm는 서비스 옛 값(4px·8px), md~4xl은 shadcn
    * --radius 기준(calc)이었다.
    */
@@ -171,142 +168,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-/* ───────────────────────────────────────────────────────────────────────────
- * 모션 토큰 (transitions.dev `_root.css` 원본 :root 블록)
- *
- * `src/components/transitions.css`의 모든 `t-*` 트랜지션 스니펫이 이 이름들을
- * 참조합니다. 값은 transitions.dev 라이브 튜닝값 그대로이며 임의로 바꾸지
- * 마세요. 중복 설치 금지 — 이 블록은 프로젝트에 단 한 번만 존재합니다.
- * ─────────────────────────────────────────────────────────────────────────── */
-:root {
-  /* ── Motion tokens — shared scale ──────────────────────────────
-     Reference these with var(--…) anywhere in your project. The
-     transitions below ship literal values so each snippet works on
-     its own; `transitions refine` maps hardcoded values back to
-     these tokens. */
-  /* Durations */
-  /* 20260820_003: --duration-micro/-quick/-fast/-medium/-slow 는 motion.css import로 대체
-     (이름·값 완전 일치 — 68개 그룹). --duration-stagger/-very-slow 는 서비스 전용이라 유지. */
-  --duration-stagger: 40ms;  /* per-item stagger offset */
-  --duration-very-slow: 500ms;  /* emphasis moments, badge appear, text reveal, success check */
-  /* Easings */
-  /* 20260820_003: --ease-smooth-out/-out/-linear/-bounce 는 motion.css import로 대체
-     (이름·값 완전 일치 — 68개 그룹). --ease-in-out/-bounce-strong 은 서비스 전용이라 유지. */
-  --ease-in-out: ease-in-out;  /* icon swap, text swap, text reveal, skeleton reveal */
-  /* Distances */
-  /* Scales */
-  /* Blur */
-
-  /* Card resize */
-  /* Number pop-in */
-  --digit-dur: 500ms;
-  --digit-distance: 8px;
-  --digit-stagger: 70ms;
-  --digit-blur: 2px;
-  --digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
-  --digit-dir-x: 0;
-  --digit-dir-y: 1;
-  /* Notification badge */
-  --badge-slide-dur: 260ms;
-  --badge-pop-dur: 500ms;
-  --badge-pop-close-dur: 180ms;
-  --badge-fade-dur: 400ms;
-  --badge-fade-close-dur: 180ms;
-  --badge-blur: 2px;
-  --badge-offset-x: -8.2px;
-  --badge-offset-y: 12.4px;
-  --badge-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --badge-pop-ease: cubic-bezier(0.34, 1.36, 0.64, 1);
-  --badge-close-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  /* Text states swap */
-  --text-swap-dur: 150ms;
-  --text-swap-translate-y: 4px;
-  --text-swap-blur: 2px;
-  --text-swap-ease: ease-in-out;
-  /* Menu dropdown */
-  /* Modal open / close */
-  --modal-open-dur: 250ms;
-  --modal-close-dur: 150ms;
-  --modal-scale-close: 0.96;
-  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Panel reveal */
-  --panel-open-dur: 400ms;
-  --panel-close-dur: 350ms;
-  --panel-translate-y: 100px;
-  --panel-blur: 2px;
-  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Page side-by-side */
-  /* Icon swap */
-  /* Success check */
-  --check-opacity-dur: 500ms;
-  --check-rotate-dur: 500ms;
-  --check-rotate-from: 80deg;
-  --check-bob-dur: 500ms;
-  --check-y-amount: 40px;
-  --check-blur-dur: 500ms;
-  --check-blur-from: 10px;
-  --check-path-dur: 500ms;
-  --check-path-delay: 80ms;
-  --check-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --check-ease-opacity: cubic-bezier(0.22, 1, 0.36, 1);
-  --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
-  --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
-  --check-ease-path: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Avatar group hover */
-  /* Error state shake */
-  --shake-distance: 6px;
-  --shake-overshoot: 4px;
-  --shake-dur-a: 80ms;
-  --shake-dur-b: 60ms;
-  --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --revert-dur: 280ms;
-  /* Input clear with dissolve */
-  /* Skeleton loader and reveal */
-  --pulse-dur: 1000ms;
-  --pulse-count: 1;
-  --pulse-min: 0.5;
-  --reveal-dur: 400ms;
-  --reveal-blur: 2px;
-  --reveal-ease: ease-in-out;
-  /* Shimmer text */
-  /* Tabs sliding */
-  --tabs-dur: 300ms;
-  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --tabs-text-muted: var(--muted);
-  --tabs-text-active: var(--snow);
-  --tabs-bar-bg: var(--default);
-  --tabs-pill-bg: var(--background-inverse);
-  /* Tooltip open/close */
-  /* Texts reveal */
-  /* Card hover tilt */
-  /* Plus to menu morph */
-  /* Accordion expand */
-  --acc-expand: 250ms;
-  --acc-collapse: 250ms;
-  --acc-chevron: 250ms;
-  --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Toast open / close */
-  --toast-open: 350ms;
-  --toast-close: 250ms;
-  --toast-distance: 16px;
-  --toast-blur: 2px;
-  --toast-scale: 0.97;
-  --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* 토스트 뒤 화면 막: 검정 16%와 흐림 4px (티켓 20261112_2338, 사용자 확정 2026-11-12) */
-  --toast-scrim: color-mix(in srgb, var(--base-black) 16%, transparent);
-  --toast-scrim-blur: 4px;
-  /* Like button */
-  /* Learn more hover */
-  /* Checkbox check */
-  /* Spinning counter */
-  --reel-dur: 1400ms;
-  --reel-cell: 30px;
-  --reel-spin-blur: 3px;
-  --reel-stagger: 90ms;
-  --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  /* Toggle */
 }
 
 /* 스크롤바 자리를 항상 비워 둔다. 데스크톱 브라우저에서 긴 화면은 스크롤바(약 15px)만큼 폭이 줄고,

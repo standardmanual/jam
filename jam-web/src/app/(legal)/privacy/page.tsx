@@ -5,7 +5,7 @@ import LegalTopNav from '../LegalTopNav'
  *
  * `(main)/philosophy/page.tsx`(20260901_2125)의 레이아웃·타이포 패턴을 그대로 따른다 —
  * TopNav + 단일 컬럼 서버 컴포넌트, 본문은 --text-base + --leading-reading(정책 문서용,
- * typography.css 정의), 문단 간격 --spacing-32, 상단 여백 --spacing-64. 커버 이미지·태그 없음.
+ * primitive.css 정의), 문단 간격 --spacing-32, 상단 여백 --spacing-64. 커버 이미지·태그 없음.
  * (문단 간격은 항 단위 컨테이너 사이에 적용하고, 소제목-표 묶음처럼 밀접한 요소끼리는
  * --spacing-8로 더 좁게 묶어 서열을 준다.)
  *

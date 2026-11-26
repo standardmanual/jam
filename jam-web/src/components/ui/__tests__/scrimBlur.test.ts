@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * 시트·모달 스크림이 뒤 화면을 흐리게 한다(티켓 20261117_1752).
- * 흐림 값은 materials.css의 --scrim-blur 하나이고, 투명도 줄이기 설정에서는 0이다.
+ * 흐림 값은 semantic.css의 --scrim-blur 하나이고, 투명도 줄이기 설정에서는 0이다.
  */
 const root = join(__dirname, '../../../..')
 const read = (rel: string) => readFileSync(join(root, rel), 'utf8')
 
 describe('스크림 흐림 토큰', () => {
-  const materials = read('design-system/tokens/materials.css')
+  const materials = read('design-system/tokens/semantic.css')
 
   it('--scrim-blur를 8px로 정의한다', () => {
     expect(materials).toMatch(/--scrim-blur:\s*8px;/)

@@ -1,7 +1,7 @@
 /**
  * 간격 역할 토큰 계약 테스트 (티켓 20261108_1928, 상위 20261108_1926).
  *
- * 값은 두 곳에 적힌다 — `tokens/spacing.css`(원천), `Spacing.stories.tsx`의 대응표.
+ * 값은 두 곳에 적힌다 — `tokens/primitive.css`(눈금)·`tokens/semantic.css`(역할), `Spacing.stories.tsx`의 대응표.
  * (readme.md 대응표는 티켓 20261125_2122에서 파일째 지웠다.) 두 곳이 어긋나지 않도록 확정 표를 기준으로 맞춘다.
  * 역할 토큰은 이 회차에서 참조하는 곳이 없으므로, 값이 바뀌어도 화면은 바뀌지 않는다.
  */
@@ -11,7 +11,9 @@ import path from 'node:path'
 
 const DS = path.resolve(__dirname, '../../design-system')
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
-const CSS = stripComments(readFileSync(path.join(DS, 'tokens/spacing.css'), 'utf-8'))
+const CSS = stripComments(
+  ['primitive', 'semantic'].map((n) => readFileSync(path.join(DS, `tokens/${n}.css`), 'utf-8')).join('\n'),
+)
 const STORY = readFileSync(path.join(DS, 'foundations/Spacing.stories.tsx'), 'utf-8')
 
 // 티켓 확정 표: 이름 → [px 값(공백으로 구분), 클래스]

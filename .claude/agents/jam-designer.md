@@ -56,7 +56,7 @@ A call that runs none of these modes (for example, a meeting statement) reads no
 
 `docs/service/prd/ui-components/README.md` (the canonical component list, generated from
 `jam-web/src/components/ui/` with one-line `@summary` each) → that component's `*.stories.tsx` (the states the service
-uses) → the component file. Tokens: `jam-web/design-system/tokens/*.css`. The Storybook web UI is for humans, not for you.
+uses) → the component file. Tokens: `jam-web/design-system/tokens/{primitive,semantic,component}.css` (three layers). The Storybook web UI is for humans, not for you.
 Reuse a previous decision for the same screen instead of re-deriving it.
 
 **Judge against the list (ticket 20261125_1923, 8th round).** Anything the screen needs that is not on the list — a new

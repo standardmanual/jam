@@ -35,7 +35,7 @@ Tracker-less(자체 GPS 트래킹 없음, 기존 Strava 데이터 활용) + 배�
 
 ## Capabilities and Constraints
 
-- 희귀도 이름은 common·rare·epic·mystic이다. 색은 `design-system/tokens/colors.css`의 `--rarity-*`와
+- 희귀도 이름은 common·rare·epic·mystic이다. 색은 `design-system/tokens/component.css`의 `--rarity-*`와
   `docs/plan/jam2/11 JAM 2.0 디자인 시스템.md` 4.2절이 원천이고, 유저가 이미 학습한 색 언어이므로
   임의 재매핑 금지 (`src/components/ui/RarityBadge.tsx`)
 - 배지/아이템 카드가 여러 화면에서 공유 컴포넌트로 재사용됨: `BadgeGridCard`(그리드),
