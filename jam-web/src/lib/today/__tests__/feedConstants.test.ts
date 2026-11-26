@@ -1,7 +1,7 @@
 /**
  * 홈피드 새 카드 전용 상수 (티켓 20261120_2143)
  *
- * 확인하는 것: 색 표(통합 팔레트 9색)의 CSS 변수가 colors.css에 정의돼 있고 hex가 같다(대소문자 무시),
+ * 확인하는 것: 색 표(통합 팔레트 9색)의 CSS 변수가 primitive.css에 정의돼 있고 hex가 같다(대소문자 무시),
  * 색 키가 9개로 겹치지 않는다, 기울기가 여섯 값이고 0이 없다.
  * 칩 높이·글자·여백이 디자인 시스템 눈금과 같은지는 단언하지 않는다(눈금 대응은 feedConstants.ts 머리말 주석).
  *
@@ -35,9 +35,9 @@ import {
 } from '../feedConstants'
 import { FEED_TYPES } from '../feedChipSlots'
 
-const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/colors.css'), 'utf8')
+const colorsCss = readFileSync(path.resolve(process.cwd(), 'design-system/tokens/primitive.css'), 'utf8')
 
-/** colors.css에서 `--이름: #rrggbb;` 정의를 이름 → hex로 읽는다(주석 안 언급은 줄 머리가 `--`가 아니라 걸리지 않는다). */
+/** primitive.css에서 `--이름: #rrggbb;` 정의를 이름 → hex로 읽는다(주석 안 언급은 줄 머리가 `--`가 아니라 걸리지 않는다). */
 function parseHexVars(css: string): Map<string, string> {
   const vars = new Map<string, string>()
   for (const m of css.matchAll(/^\s*(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/gm)) {
@@ -55,11 +55,11 @@ describe('FEED_COLORS 색 표(통합 팔레트 9색)', () => {
     expect(Object.keys(FEED_COLORS).sort()).toEqual([...FEED_COLOR_KEYS].sort())
   })
 
-  it.each(FEED_COLOR_KEYS)('%s: CSS 변수가 colors.css에 정의돼 있다', (key) => {
+  it.each(FEED_COLOR_KEYS)('%s: CSS 변수가 primitive.css에 정의돼 있다', (key) => {
     expect(cssVars.has(FEED_COLORS[key].cssVar)).toBe(true)
   })
 
-  it.each(FEED_COLOR_KEYS)('%s: hex가 colors.css의 값과 같다(대소문자 무시)', (key) => {
+  it.each(FEED_COLOR_KEYS)('%s: hex가 primitive.css의 값과 같다(대소문자 무시)', (key) => {
     const { cssVar, hex } = FEED_COLORS[key]
     expect(hex.toLowerCase()).toBe(cssVars.get(cssVar)?.toLowerCase())
   })

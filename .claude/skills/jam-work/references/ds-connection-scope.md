@@ -33,8 +33,8 @@ cd jam-web && npm run storybook   # http://localhost:6006
 구분해야 한다.**
 
 - **토큰 — 서비스에 즉시 반영.**
-  `src/app/globals.css`가 `design-system/tokens/` 6종(colors·typography·spacing·radius·
-  motion·materials)을 직접 `@import`한다. 토큰을 고치면 서비스 화면이 바로 따라온다.
+  `src/app/globals.css`가 `design-system/tokens/` 세 층(primitive·semantic·
+  component)을 직접 `@import`한다. 토큰을 고치면 서비스 화면이 바로 따라온다.
   (JAM 2.0부터 `colors.light.css`는 없다 — 서비스는 라이트 전용이라 다크 오버라이드를 두지 않는다.
   티켓 20261015_2131)
 

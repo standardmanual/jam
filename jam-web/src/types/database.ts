@@ -1291,7 +1291,7 @@ export type TodayBoxShape = 'round' | 'ticket' | 'stamp' | 'wave' | 'bump'
 /** 박스 용도(DB CHECK `today_cards_box_kind_check`): 글자를 담는 박스 또는 이미지를 박스 모양으로 자른 마스크. */
 export type TodayBoxKind = 'text' | 'image_mask'
 
-/** 홈피드 색 키 9개(통합 팔레트, DB CHECK `today_cards_*_color_key_check`). 색 값은 `design-system/tokens/colors.css`가 정한다. */
+/** 홈피드 색 키 9개(통합 팔레트, DB CHECK `today_cards_*_color_key_check`). 색 값은 `design-system/tokens/primitive.css`가 정한다. */
 export type FeedColorKey =
   | 'yellow' | 'green' | 'green-deep' | 'pink' | 'sky'
   | 'red' | 'purple' | 'blue' | 'white'

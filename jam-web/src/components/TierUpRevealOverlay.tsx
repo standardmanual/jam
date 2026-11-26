@@ -30,7 +30,7 @@ import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'
  */
 export const STAGE_BACKGROUND = 'radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)'
 
-/** 연출 시간과 곡선(ms) — 프로토타입 v7 원문 값. 문구 등장 시간은 사용자 확정값이라 임의로 바꾸지 않는다. motion.css 토큰은 쓰지 않는다 */
+/** 연출 시간과 곡선(ms) — 프로토타입 v7 원문 값. 문구 등장 시간은 사용자 확정값이라 임의로 바꾸지 않는다. primitive.css 모션 토큰은 쓰지 않는다 */
 export const TIMING = {
   /** 1단계: 검은 층 페이드인 */
   background: { duration: 500, easing: 'ease-out' },

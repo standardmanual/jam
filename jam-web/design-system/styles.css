@@ -1,10 +1,7 @@
 @import "tokens/fonts.css";
-@import "tokens/colors.css";
-@import "tokens/typography.css";
-@import "tokens/spacing.css";
-@import "tokens/radius.css";
-@import "tokens/motion.css";
-@import "tokens/materials.css";
+@import "tokens/primitive.css";
+@import "tokens/semantic.css";
+@import "tokens/component.css";
 
 html { background: var(--background); color-scheme: light; }
 /* text-wrap·word-break는 상속되어 span·li·td·button 등 모든 요소에 적용된다 */

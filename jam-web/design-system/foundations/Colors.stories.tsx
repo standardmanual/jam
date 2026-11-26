@@ -108,6 +108,7 @@ function ColorsPage() {
         JAM 2.0 컬러 시스템(라이트 전용). 컴포넌트에서는 <code style={{ color: 'var(--link)' }}>--base-*</code>를 직접 참조하지 않고
         역할 토큰(<code style={{ color: 'var(--link)' }}>--background</code>, <code style={{ color: 'var(--link)' }}>--foreground</code>,
         <code style={{ color: 'var(--link)' }}>--accent</code> 등)만 사용한다.
+        토큰은 세 층이다: 기본값(primitive.css) · 의미(semantic.css) · 컴포넌트(component.css). 색 직접 값은 기본값 층에만 있고 나머지는 참조한다.
         실제 값은 CSS 변수에서 동적으로 읽어옴.
       </p>
 
@@ -137,7 +138,7 @@ function ColorsPage() {
         <Swatch token="--accent-soft-hover" desc="accent-soft의 hover 면" />
       </Section>
 
-      <Section title="강조색 5가지 (사용처는 사용자가 따로 지정, 홈피드 새 카드의 배경·칩·박스·도장 포함)">
+      <Section title="Primitive — 강조색 5가지 (사용처는 사용자가 따로 지정, 홈피드 새 카드의 배경·칩·박스·도장 포함)">
         <TagChip token="--jam-red" note="사용처 미지정" />
         <TagChip token="--jam-yellow" note="사용처 미지정" />
         <TagChip token="--jam-green" note="컬렉션·인벤토리 진행도 바 채움 + 완성한 컬렉션 카드 면" />
@@ -145,7 +146,7 @@ function ColorsPage() {
         <TagChip token="--jam-blue" note="사용처 미지정" />
       </Section>
 
-      <Section title="보조 4개 (사용처 한정, 소비 코드는 하위 티켓)">
+      <Section title="Primitive — 보조 4개 (사용처 한정, 소비 코드는 하위 티켓)">
         <TagChip token="--jam-pink" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
         <TagChip token="--jam-sky" note="홈피드 카드 바탕·박스·칩·분류 스티커와 배지 상세 티켓" />
         <TagChip token="--jam-green-deep" note="짙은 초록 바탕 카드와 박스 전용 · 위 글자는 --snow(대비 약 4.59:1)" />
@@ -167,14 +168,14 @@ function ColorsPage() {
         <Swatch token="--default-soft" desc="중립 칩 배경" />
       </Section>
 
-      <Section title="Badge Rarity (배경 + 텍스트 쌍)">
+      <Section title="Component — Badge Rarity (배경 + 텍스트 쌍)">
         <RarityPair bg="--rarity-common" fg="--rarity-common-foreground" label="COMMON" />
         <RarityPair bg="--rarity-rare" fg="--rarity-rare-foreground" label="RARE" />
         <RarityPair bg="--rarity-epic" fg="--rarity-epic-foreground" label="EPIC" />
         <RarityPair bg="--rarity-mystic" fg="--rarity-mystic-foreground" label="MYSTIC" />
       </Section>
 
-      <Section title="Progress (진행 상태)">
+      <Section title="Component — Progress (진행 상태)">
         <Swatch token="--progress-short" desc="모자람(채우는 중) — 선·점·링. 글자로 쓰지 않는다" />
         <Swatch token="--progress-done" desc="다 채움·획득 — 선·점·링. 글자로 쓰지 않는다(다 채움 글자는 --link)" />
         <Swatch token="--progress-latest" desc="방금 들어옴" />
@@ -183,7 +184,7 @@ function ColorsPage() {
         <Swatch token="--progress-sweep" desc="채움 스윕 — 트랙 전체에 깔고 잘라 써서 어디까지 넘어갔나가 곧 진행도가 된다" bar />
       </Section>
 
-      <Section title="TabBar">
+      <Section title="Component — TabBar">
         <Swatch token="--tabbar-background" desc="탭바 필 — 항상 흰 필" />
         <Swatch token="--tabbar-selection" desc="선택된 탭의 필" />
         <Swatch token="--tabbar-icon" desc="비활성 아이콘" />
@@ -194,7 +195,7 @@ function ColorsPage() {
         <Swatch token="--tabbar-icon-inverse" desc="반전 상태의 비활성 아이콘(활성은 --snow)" />
       </Section>
 
-      <Section title="Base Palette (컴포넌트 직접 참조 금지)">
+      <Section title="Primitive — Base Palette (컴포넌트 직접 참조 금지)">
         {[
           ['--base-white', '순수 흰색'],
           ['--base-snow', 'Snow'],
@@ -209,7 +210,13 @@ function ColorsPage() {
           ['--base-neutral-700', 'Neutral 700'],
           ['--base-neutral-800', 'Neutral 800'],
           ['--base-neutral-900', 'Neutral 900 — 글자·반전 배경이 가리키는 검정'],
-          ['--base-neutral-950', 'Neutral 950 — 역할 토큰은 가리키지 않음'],
+          ['--base-neutral-950', 'Neutral 950 — 캡슐 테두리(--capsule-ring)가 가리킴'],
+          ['--base-danger-red', '붉은 글자(--danger-text)'],
+          ['--base-point-orange', '포인트 글자(--point-text)'],
+          ['--base-rarity-green', '희귀도 rare'],
+          ['--base-rarity-amber', '희귀도 epic'],
+          ['--base-rarity-pink', '희귀도 mystic'],
+          ['--base-capsule-orange', '캡슐 게이지 채움(--capsule-fill)'],
         ].map(([t, d]) => (
           <Swatch key={t} token={t} desc={d} />
         ))}

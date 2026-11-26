@@ -33,7 +33,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'outline' | 'gh
 
 export type ButtonSurface = 'main' | 'sub' | 'dark'
 /**
- * xs: --scale-compact(0.7, design-system/tokens/motion.css) 배율 — 44px 기준 약 31px
+ * xs: --scale-compact(0.7, design-system/tokens/primitive.css) 배율 — 44px 기준 약 31px
  * 최소 높이. 내비게이션 바처럼 세로 공간이 44px로 고정된 조밀한 컨텍스트 전용이다(20260824_010).
  * 44px 터치 타겟 규칙의 명시적 예외이므로 본문 액션에는 쓰지 않는다.
  */
@@ -110,7 +110,7 @@ function verticalPadding(variant: ButtonVariant, size: ButtonSize): string {
 
 // xs는 Tailwind 클래스 우선순위 충돌(px-24/py-13 shapeClasses vs sizePadding)을 피하려고
 // 인라인 style로 강제 적용한다 — 클래스 문자열 순서는 실제 CSS 우선순위를 보장하지 않는다.
-// 치수는 --scale-compact(0.7, design-system/tokens/motion.css) 배율로 md 기준(44px/12px/24px)에서
+// 치수는 --scale-compact(0.7, design-system/tokens/primitive.css) 배율로 md 기준(44px/12px/24px)에서
 // 도출한다(매직 넘버 대신 토큰 계산, 20260824_010).
 // 세로 패딩은 1px 테두리 두께를 뺀다(높이 불변).
 const xsStyle: CSSProperties = {

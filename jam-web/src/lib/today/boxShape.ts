@@ -47,7 +47,7 @@ export type BoxSeed = string | number
 export const BOX_SHAPES: readonly BoxShape[] = ['round', 'ticket', 'stamp', 'wave', 'bump']
 export const BOX_ORIENTATIONS: readonly BoxOrientation[] = ['text', 'image', 'item']
 
-/** 박스 모서리 px. `rounded-xl`(radius.css, 12px)과 같다. 라운드·티켓·우표는 클래스로, 돌출은 마스크 안에서 같은 값으로 둥글린다. */
+/** 박스 모서리 px. `rounded-xl`(primitive.css, 12px)과 같다. 라운드·티켓·우표는 클래스로, 돌출은 마스크 안에서 같은 값으로 둥글린다. */
 const BOX_CORNER_RADIUS = 12
 
 // ── `item` 방향과 PRD가 정하지 않은 치수 (모두 채원 확인 필요, 위 머리말 참고) ──────────

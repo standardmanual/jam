@@ -442,7 +442,7 @@
 }
 
 /* 시트·모달 백드롭(스크림)은 뒤 화면을 어둡게 하고 흐리게 한다(티켓 20261117_1752, 사용자 지시 2026-11-17).
- * 티켓 20261015_2131의 «스크림 blur 0» 결정을 스크림에 한해 대체한다. 흐림 값은 --scrim-blur(materials.css)다.
+ * 티켓 20261015_2131의 «스크림 blur 0» 결정을 스크림에 한해 대체한다. 흐림 값은 --scrim-blur(semantic.css)다.
  * 백드롭은 투명도(opacity)로 페이드하므로 blur 값 자체는 보간하지 않고 필터 결과가 함께 옅어진다. */
 .t-panel-backdrop {
   backdrop-filter: blur(var(--scrim-blur));

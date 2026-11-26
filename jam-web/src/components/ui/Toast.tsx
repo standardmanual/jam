@@ -99,7 +99,7 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 /**
  * 토스트 컨테이너의 `bottom` 값 (티켓 20261125_1840).
  *
- * 기본은 DS 토큰 `--toast-bottom`(tokens/spacing.css)이다. 이 값은 플로팅 탭바 윗면에서 8px 위(`--tabbar-bottom`·`--tabbar-height`를 따른다)라
+ * 기본은 DS 토큰 `--toast-bottom`(tokens/component.css)이다. 이 값은 플로팅 탭바 윗면에서 8px 위(`--tabbar-bottom`·`--tabbar-height`를 따른다)라
  * 토스트가 탭바 바로 위에 붙는다. 예전에는 탭바 높이를 64px로 가정한 숫자 88px를 이 파일에 두었는데,
  * 탭바가 49px로 줄고 아래로 내려온 뒤에도 그대로 남아 토스트가 탭바보다 약 30px 높이 떠 있었다.
  *
