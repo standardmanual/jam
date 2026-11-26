@@ -25,15 +25,13 @@ assert.deepEqual(parseComponentSource('const Button = forwardRef(() => null)\nex
 const story = `const data = { title: '가짜' }\nconst meta = {\n  title: 'UI/Cards/Box',\n}\nexport default meta\nexport const A = {}\nexport const B = {}\n`
 assert.deepEqual(parseStorySource(story), { title: 'UI/Cards/Box', count: 2 })
 
-// 기준선 판정
+// 스토리 없는 파일은 실패, 다 있으면 빈 목록
 const entries = [
   { file: 'A.tsx', story: null },
-  { file: 'B.tsx', story: null },
-  { file: 'C.tsx', story: { title: 't', count: 1 } },
+  { file: 'B.tsx', story: { title: 't', count: 1 } },
 ]
-assert.deepEqual(judgeStories(entries, ['A.tsx']).failures, ['B.tsx'], '기준선에 없는 스토리 없는 파일은 실패')
-assert.deepEqual(judgeStories(entries, ['A.tsx', 'B.tsx', 'C.tsx']).shrink, ['C.tsx'], '스토리가 생긴 기준선 항목은 축소 안내')
-assert.deepEqual(judgeStories(entries, ['A.tsx', 'B.tsx']), { failures: [], shrink: [] })
+assert.deepEqual(judgeStories(entries), ['A.tsx'], '스토리 없는 파일은 실패 목록에 든다')
+assert.deepEqual(judgeStories([entries[1]]), [], '다 있으면 빈 목록')
 
 // 임시 폴더로 --check 종료 코드
 const tmp = mkdtempSync(join(tmpdir(), 'gen-component-list-'))
@@ -41,15 +39,15 @@ try {
   const root = join(tmp, 'ui')
   mkdirSync(root)
   writeFileSync(join(root, 'Old.tsx'), '/** 옛 컴포넌트. */\nexport function Old() { return null }\n')
-  writeFileSync(join(tmp, 'baseline.json'), '["Old.tsx"]\n')
+  writeFileSync(join(root, 'Old.stories.tsx'), "const meta = { title: 'UI/Old' }\nexport default meta\nexport const A = {}\n")
   const doc = join(tmp, 'README.md')
   writeFileSync(doc, `# 목록\n\n${BEGIN}\n${END}\n`)
-  const args = ['--root', root, '--baseline', join(tmp, 'baseline.json'), '--doc', doc]
+  const args = ['--root', root, '--doc', doc]
   const run = (extra) => spawnSync(process.execPath, [SCRIPT, ...args, ...extra], { encoding: 'utf8' })
 
   assert.equal(run(['--check']).status, 1, '생성 구간이 낡았으면 실패')
   assert.equal(run([]).status, 0, '생성은 성공')
-  assert.equal(run(['--check']).status, 0, '기준선 안의 스토리 없는 파일만 있으면 통과')
+  assert.equal(run(['--check']).status, 0, '스토리가 다 있으면 통과')
 
   writeFileSync(join(root, 'New.tsx'), 'export function New() { return null }\n')
   run([])

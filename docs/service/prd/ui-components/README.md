@@ -13,10 +13,10 @@ code:
 서비스 화면은 아래 정본 컴포넌트만 조합한다. 규칙(정본만 조합한다, 새 컴포넌트는 승인 등)은 상위 티켓 `20261125_1923`의 «사용자 결정»이 원천이다.
 
 이 목록의 표는 `node scripts/gen-component-list.mjs`가 만든다. 표는 손으로 고치지 않는다. 설명은 컴포넌트 파일 JSDoc의 `@summary`(없으면 JSDoc 첫 문장)에서 가져온다.
-스토리가 없는 정본 파일은 `scripts/stories-baseline.json`에 적힌 것만 허용하며(`verify`의 `component-list` 단계와 pre-commit이 검사), 새 정본 컴포넌트는 스토리 파일과 함께 들어와야 한다.
+스토리가 없는 정본 파일은 허용하지 않는다(`verify`의 `component-list` 단계와 pre-commit이 검사). 새 정본 컴포넌트는 같은 이름의 스토리 파일과 함께 들어와야 한다.
 
 <!-- BEGIN generated: component-list -->
-정본 컴포넌트 파일 46개 · 스토리 있음 40개 · 없음 6개
+정본 컴포넌트 파일 46개 · 스토리 있음 46개 · 없음 0개
 
 | 파일 | export | 설명 | 스토리 (제목·개수) |
 |---|---|---|---|
@@ -26,7 +26,7 @@ code:
 | `BadgeHeroSection.tsx` | BadgeHeroSection | BadgeHeroSection — «배지 한 장의 대표 카드»: 이미지 · 등급/레벨 칩 · 이름 · 설명. | UI/Cards/BadgeHeroSection (9개) |
 | `BadgeLevelChip.tsx` | BadgeLevelChip | BadgeLevelChip — 무한레벨형 배지의 «Lv.N» 칩. | UI/Cards/BadgeLevelChip (6개) |
 | `BadgeRevealCarousel.tsx` | BadgeRevealCarousel | 이미지 정사각 한 변 = 카드 폭 × 이 비율. | UI/Patterns/BadgeRevealCarousel (24개) |
-| `BottomSheet.tsx` | BottomSheet | 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — 비활성 상태는 제외한다. | 없음 |
+| `BottomSheet.tsx` | BottomSheet | 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — 비활성 상태는 제외한다. | UI/Feedback/BottomSheet (4개) |
 | `Button.tsx` | Button | SuperHi Plus Button | UI/Buttons/Button (18개) |
 | `Card.tsx` | Card | Card — surface container. | UI/Cards/Card (8개) |
 | `Carousel.tsx` | Carousel | Carousel — 센터 포커스 카드 캐러셀 (무한 루프). | UI/Navigation/Carousel (3개) |
@@ -34,7 +34,7 @@ code:
 | `Checkbox.tsx` | Checkbox | Checkbox — label-wrapped checkbox with custom indicator. | UI/Forms/Checkbox (9개) |
 | `CollectionGridCard.tsx` | CollectionGridCard | — | UI/Cards/CollectionGridCard (4개) |
 | `EmptyState.tsx` | EmptyState | EmptyState — zero-content placeholder for lists, search results, errors, and onboarding. | UI/Feedback/EmptyState (6개) |
-| `Footer.tsx` | Footer | 전역 하단 푸터. | 없음 |
+| `Footer.tsx` | Footer | 전역 하단 푸터. | UI/Navigation/Footer (1개) |
 | `FooterLogo.tsx` | FooterLogo | 푸터 맨 아래 JAM! 로고 (티켓 20261104_1642) — 화면에 나타날 때 아래에서 위로 Ease In으로 올라온다. | UI/Navigation/FooterLogo (1개) |
 | `IconButton.tsx` | IconButton | IconButton — 44×44 circular icon-only touch target. | UI/Buttons/IconButton (11개) |
 | `InlineNotice.tsx` | InlineNotice | 인라인 안내 블록 (티켓 20261018_1817, 채원 사전 판정 2026-10-19) — 서비스 전용, MODULAR 승격은 하지 않는다. | UI/Feedback/InlineNotice (3개) |
@@ -46,7 +46,7 @@ code:
 | `LoadMoreButton.tsx` | LoadMoreButton | 더보기 버튼 — 알림·포인트 내역·친구 피드가 함께 쓴다. | UI/Buttons/LoadMoreButton (3개) |
 | `LockedTile.tsx` | LockedTile | LockedTile — 잠긴 아이템 배지의 «잠금 타일». | UI/Cards/LockedTile (3개) |
 | `MixerSlot.tsx` | ActionCircle, MixerSlot | ActionCircle — 믹서·컬렉션 칸의 «+»·«−» 원. | UI/Patterns/MixerSlot (4개) |
-| `NotificationBell.tsx` | NotificationBell | TopNav 알림함 진입점 (20260824_021) | 없음 |
+| `NotificationBell.tsx` | NotificationBell | TopNav 알림함 진입점 (20260824_021) | UI/Navigation/NotificationBell (2개) |
 | `PointText.tsx` | PointText | 포인트 값+단위를 `--point-text` 오렌지로 그리는 표시 전용 컴포넌트. | UI/Patterns/PointText (11개) |
 | `PopInNumber.tsx` | PopInNumber | PopInNumber — 숫자가 갱신될 때 각 자리가 블러와 함께 아래에서 들어오는 전환. | UI/Patterns/PopInNumber (2개) |
 | `ProgressBar.tsx` | ProgressBar | [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다. | UI/Feedback/ProgressBar (11개) |
@@ -59,9 +59,9 @@ code:
 | `SlotOutline.tsx` | SlotOutline | SlotOutline — 슬롯 칸의 «점선 외곽선». | UI/Cards/SlotOutline (4개) |
 | `SwapText.tsx` | SwapText | SwapText — 같은 자리에서 텍스트가 바뀔 때 위로 빠지고 아래에서 들어오는 전환. | UI/Patterns/SwapText (2개) |
 | `SyncIconButton.tsx` | SyncIconButton | TopNav 동기화 서클 (티켓 20261114_1349) | UI/Buttons/SyncIconButton (3개) |
-| `TabBar.tsx` | TabBar | 뷰포트 하단에서 탭바 세로 중간선까지의 거리(px, 반올림). | 없음 |
-| `Toast.tsx` | ToastRow, ToastScrim, ToastProvider | 토스트 한 줄. | 없음 |
-| `TopNav.tsx` | TopNav | SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴) | 없음 |
+| `TabBar.tsx` | TabBar | 뷰포트 하단에서 탭바 세로 중간선까지의 거리(px, 반올림). | UI/Navigation/TabBar (5개) |
+| `Toast.tsx` | ToastRow, ToastScrim, ToastProvider | 토스트 한 줄. | UI/Feedback/Toast (3개) |
+| `TopNav.tsx` | TopNav | SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴) | UI/Navigation/TopNav (6개) |
 | `TopNavBar.tsx` | TopNavBar | TopNav — sticky top bar with back button, title, optional right slot. | UI/Navigation/TopNavBar (13개) |
 | `VisitCountChip.tsx` | VisitCountChip | 방문 횟수 칩 «×N» — 체크인 배지의 목록 카드(`BadgeGridCard`)와 상세 히어로 카드(`BadgeHeroSection`)가 같은 칩을 쓴다(20… | UI/Cards/VisitCountChip (2개) |
 | `WanderingEyesLoader.tsx` | WanderingEyesLoader | WanderingEyesLoader — 눈 안에서 눈동자가 돌아다니다가 주기적으로 깜빡이는 대기 표시. | UI/Feedback/WanderingEyesLoader (5개) |

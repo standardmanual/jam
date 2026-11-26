@@ -4,17 +4,14 @@
 //
 // 사용법
 //   node scripts/gen-component-list.mjs            생성 구간(<!-- BEGIN generated: component-list --> ~ END)을 다시 쓴다
-//   node scripts/gen-component-list.mjs --check    ① 생성 구간이 최신인지 ② 스토리 없는 정본 파일이 모두 기준선에 있는지 확인한다 (0 = 통과, 1 = 어긋남)
-//   --root <dir> --baseline <file> --doc <file>    시험용 경로
-//
-// 기준선(scripts/stories-baseline.json)에 있는데 이제 스토리가 생긴 파일은 실패가 아니라 «기준선에서 지우세요» 안내만 낸다.
+//   node scripts/gen-component-list.mjs --check    ① 생성 구간이 최신인지 ② 스토리 없는 정본 파일이 없는지 확인한다 (0 = 통과, 1 = 어긋남)
+//   --root <dir> --doc <file>    시험용 경로
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_ROOT = path.join(REPO_ROOT, 'jam-web/src/components/ui')
-const DEFAULT_BASELINE = path.join(REPO_ROOT, 'scripts/stories-baseline.json')
 const DEFAULT_DOC = path.join(REPO_ROOT, 'docs/service/prd/ui-components/README.md')
 export const BEGIN = '<!-- BEGIN generated: component-list -->'
 export const END = '<!-- END generated: component-list -->'
@@ -110,12 +107,9 @@ export function renderBlock(entries) {
   ].join('\n')
 }
 
-/** 스토리 없는 파일·기준선 → 실패(기준선에 없는 것)와 축소(기준선에 있으나 스토리가 생긴 것). */
-export function judgeStories(entries, baseline) {
-  const base = new Set(baseline)
-  const failures = entries.filter((e) => !e.story && !base.has(e.file)).map((e) => e.file)
-  const shrink = entries.filter((e) => e.story && base.has(e.file)).map((e) => e.file)
-  return { failures, shrink }
+/** 스토리 파일이 없는 정본 컴포넌트 파일 이름 목록. */
+export function judgeStories(entries) {
+  return entries.filter((e) => !e.story).map((e) => e.file)
 }
 
 /** 문서 본문의 생성 구간을 바꾼다. 마커가 없으면 null. */
@@ -127,10 +121,10 @@ export function replaceBlock(doc, block) {
 }
 
 function parseArgs(argv) {
-  const o = { check: false, root: DEFAULT_ROOT, baseline: DEFAULT_BASELINE, doc: DEFAULT_DOC }
+  const o = { check: false, root: DEFAULT_ROOT, doc: DEFAULT_DOC }
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--check') o.check = true
-    else if (['--root', '--baseline', '--doc'].includes(argv[i])) o[argv[i].slice(2)] = path.resolve(argv[++i])
+    else if (['--root', '--doc'].includes(argv[i])) o[argv[i].slice(2)] = path.resolve(argv[++i])
   }
   return o
 }
@@ -159,15 +153,11 @@ export function main(argv = process.argv.slice(2)) {
     console.error('component-list: 목록 문서의 생성 구간이 낡았습니다. `node scripts/gen-component-list.mjs`를 실행해 다시 쓰세요.')
     bad = true
   }
-  const baseline = existsSync(o.baseline) ? JSON.parse(readFileSync(o.baseline, 'utf8')) : []
-  const { failures, shrink } = judgeStories(entries, baseline)
-  if (failures.length) {
-    console.error(`component-list: 스토리 파일이 없는 정본 컴포넌트가 있습니다(기준선에 없음): ${failures.join(', ')}`)
-    console.error('  같은 이름의 <이름>.stories.tsx를 만드세요. 기준선(scripts/stories-baseline.json)에 더하지 않습니다.')
+  const missing = judgeStories(entries)
+  if (missing.length) {
+    console.error(`component-list: 스토리 파일이 없는 정본 컴포넌트가 있습니다: ${missing.join(', ')}`)
+    console.error('  같은 이름의 <이름>.stories.tsx를 만드세요.')
     bad = true
-  }
-  if (shrink.length) {
-    console.log(`component-list: 이제 스토리가 있는 파일이 기준선에 남아 있습니다. 기준선에서 지우세요: ${shrink.join(', ')}`)
   }
   if (!bad) console.log('component-list 통과')
   return bad ? 1 : 0

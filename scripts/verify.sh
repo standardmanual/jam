@@ -154,7 +154,7 @@ else
   rm -f "$LOG_PREFIX.token-refs"
 fi
 
-# 정본 컴포넌트 목록 문서가 최신인지, 스토리 없는 정본 파일이 기준선(scripts/stories-baseline.json) 밖으로 늘지 않았는지 확인한다
+# 정본 컴포넌트 목록 문서가 최신인지, 스토리 없는 정본 파일이 없는지 확인한다
 # (티켓 20261126_0947, UI 소스 정리 6-1a회차).
 if ! ( cd "$REPO_ROOT" && node scripts/gen-component-list.mjs --check ) >"$LOG_PREFIX.component-list" 2>&1; then
   FAILED+=("component-list")
