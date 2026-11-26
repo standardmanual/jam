@@ -549,7 +549,7 @@ async function test25_gateOnlyCallsAreIsolatedAndCheckOutFirst() {
   console.log('PASS test25_gateOnlyCallsAreIsolatedAndCheckOutFirst')
 }
 
-async function test26_gateWithoutRangeChecksOutOriginStaging() {
+async function test26_gateWithoutRangeChecksOutLocalStaging() {
   const { run, calls } = makeRunner({
     agentImpl: (prompt, opts) => {
       if (opts.label === 'jam-developer') return { status: 'done', summary: '구현 완료', diffLineCount: 20 }
@@ -564,7 +564,7 @@ async function test26_gateWithoutRangeChecksOutOriginStaging() {
     gateCall.prompt.includes('git checkout --detach staging'),
     '커밋 범위가 없으면 로컬 staging을 체크아웃하는 첫 명령이 들어가야 한다'
   )
-  console.log('PASS test26_gateWithoutRangeChecksOutOriginStaging')
+  console.log('PASS test26_gateWithoutRangeChecksOutLocalStaging')
 }
 
 async function main() {
@@ -593,7 +593,7 @@ async function main() {
   await test23_devResultSummaryHasMaxLength()
   await test24_standardGateCallsAreIsolatedAndCheckOutFirst()
   await test25_gateOnlyCallsAreIsolatedAndCheckOutFirst()
-  await test26_gateWithoutRangeChecksOutOriginStaging()
+  await test26_gateWithoutRangeChecksOutLocalStaging()
   console.log('전체 통과')
 }
 
