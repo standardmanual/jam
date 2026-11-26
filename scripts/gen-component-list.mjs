@@ -38,7 +38,11 @@ function cleanJsdoc(block) {
 
 /** 소스 한 파일에서 export된 컴포넌트 이름과 설명 한 줄을 뽑는다. */
 export function parseComponentSource(src) {
-  const exports = [...src.matchAll(/^export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z]\w*)/gm)].map((m) => m[1])
+  const exports = [
+    ...[...src.matchAll(/^export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z]\w*)/gm)].map((m) => m[1]),
+    // `const Button = forwardRef(…)` 뒤에 따로 쓴 `export default Button`
+    ...[...src.matchAll(/^export\s+default\s+([A-Z]\w*)\s*;?\s*$/gm)].map((m) => m[1]),
+  ].filter((n) => !/^[A-Z][A-Z0-9_]*$/.test(n)) // PEBBLE_SIZE 같은 대문자 상수는 컴포넌트가 아니다
   // 0열에서 시작하는 JSDoc만 센다(들여쓴 props 설명은 컴포넌트 설명이 아니다).
   const blocks = [...src.matchAll(/^\/\*\*[\s\S]*?\*\//gm)].map((m) => ({ end: m.index + m[0].length, lines: cleanJsdoc(m[0]) }))
   let summary = ''

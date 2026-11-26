@@ -19,6 +19,7 @@ assert.deepEqual(parseComponentSource(withSummary).exports, ['Pill'])
 // @summary가 없으면 주된 export 바로 위 JSDoc 첫 문장, JSDoc이 없으면 —
 assert.equal(parseComponentSource(`/** 첫 문장이다. 두 번째 문장. */\nexport const Box = () => null\n`).summary, '첫 문장이다.')
 assert.equal(parseComponentSource(`export const Box = () => null\n`).summary, '—')
+assert.deepEqual(parseComponentSource('const Button = forwardRef(() => null)\nexport default Button\nexport const PEBBLE_SIZE = 1\n').exports, ['Button'], '따로 쓴 default export는 잡고 대문자 상수는 뺀다')
 
 // 스토리 title·개수
 const story = `const data = { title: '가짜' }\nconst meta = {\n  title: 'UI/Cards/Box',\n}\nexport default meta\nexport const A = {}\nexport const B = {}\n`

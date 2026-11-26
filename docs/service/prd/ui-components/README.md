@@ -27,10 +27,10 @@ code:
 | `BadgeLevelChip.tsx` | BadgeLevelChip | BadgeLevelChip — 무한레벨형 배지의 «Lv.N» 칩. | UI/Cards/BadgeLevelChip (6개) |
 | `BadgeRevealCarousel.tsx` | BadgeRevealCarousel | 이미지 정사각 한 변 = 카드 폭 × 이 비율. | UI/Patterns/BadgeRevealCarousel (24개) |
 | `BottomSheet.tsx` | BottomSheet | 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — 비활성 상태는 제외한다. | 없음 |
-| `Button.tsx` | — | SuperHi Plus Button | 없음 |
+| `Button.tsx` | Button | SuperHi Plus Button | 없음 |
 | `Card.tsx` | Card | Card — surface container. | UI/Cards/Card (8개) |
 | `Carousel.tsx` | Carousel | Carousel — 센터 포커스 카드 캐러셀 (무한 루프). | UI/Navigation/Carousel (3개) |
-| `CategorySticker.tsx` | 8개 (PEBBLE_SIZE, WAVE_SIZE, MIN_FONT_SIZE 외) | 조약돌 글자 선의 반지름을 이동평균하는 이웃 수(앞뒤 각각). | UI/Cards/CategorySticker (5개) |
+| `CategorySticker.tsx` | CategorySticker | 조약돌 글자 선의 반지름을 이동평균하는 이웃 수(앞뒤 각각). | UI/Cards/CategorySticker (5개) |
 | `Checkbox.tsx` | Checkbox | Checkbox — label-wrapped checkbox with custom indicator. | UI/Forms/Checkbox (9개) |
 | `CollectionGridCard.tsx` | CollectionGridCard | — | 없음 |
 | `EmptyState.tsx` | EmptyState | EmptyState — zero-content placeholder for lists, search results, errors, and onboarding. | UI/Feedback/EmptyState (6개) |
@@ -42,14 +42,14 @@ code:
 | `ItemSerialCode.tsx` | ItemSerialCode | ItemSerialCode — 아이템 배지 일련번호 스탬프 패턴. | UI/Patterns/ItemSerialCode (10개) |
 | `LabelChip.tsx` | LabelChip | LabelChip — 카드 좌상단에 놓는 «라벨 필». | UI/Cards/LabelChip (6개) |
 | `ListCard.tsx` | ListCard | ListCard — 큰 이미지 위에 제목을 얹는 세로 목록 카드의 정본 (티켓 20261114_1543). | 없음 |
-| `ListRow.tsx` | LIST_ROW_STATIC_CSS, ListRowEm, ListRowChip, ListRow | 1줄은 말줄임, 2줄 이상은 줄 수로 자른다. | 없음 |
+| `ListRow.tsx` | ListRowEm, ListRowChip, ListRow | 1줄은 말줄임, 2줄 이상은 줄 수로 자른다. | 없음 |
 | `LoadMoreButton.tsx` | LoadMoreButton | 더보기 버튼 — 알림·포인트 내역·친구 피드가 함께 쓴다. | 없음 |
 | `LockedTile.tsx` | LockedTile | LockedTile — 잠긴 아이템 배지의 «잠금 타일». | UI/Cards/LockedTile (3개) |
 | `MixerSlot.tsx` | ActionCircle, MixerSlot | ActionCircle — 믹서·컬렉션 칸의 «+»·«−» 원. | UI/Patterns/MixerSlot (4개) |
 | `NotificationBell.tsx` | NotificationBell | TopNav 알림함 진입점 (20260824_021) | 없음 |
 | `PointText.tsx` | PointText | 포인트 값+단위를 `--point-text` 오렌지로 그리는 표시 전용 컴포넌트. | UI/Patterns/PointText (11개) |
 | `PopInNumber.tsx` | PopInNumber | PopInNumber — 숫자가 갱신될 때 각 자리가 블러와 함께 아래에서 들어오는 전환. | 없음 |
-| `ProgressBar.tsx` | PROGRESS_TRACK_GRADIENT, ProgressBar | [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다. | UI/Feedback/ProgressBar (11개) |
+| `ProgressBar.tsx` | ProgressBar | [20260906_2140] 그라데이션 정의를 `--progress-sweep` 토큰 하나로 모았다. | UI/Feedback/ProgressBar (11개) |
 | `ProgressCountBar.tsx` | ProgressCountBar | 진행도 바 + 오른쪽 «n/n» 수치 한 줄 — 컬렉션 상세의 진행도 바(`collections/[id]/page.tsx`)와 인벤토리의 칸 사용량 바가 같은 … | 없음 |
 | `RarityBadge.tsx` | RarityBadge | RarityBadge — badge rarity pill. | UI/Cards/RarityBadge (12개) |
 | `Select.tsx` | Select | Select — styled native <select>. | UI/Forms/Select (7개) |
@@ -59,7 +59,7 @@ code:
 | `SlotOutline.tsx` | SlotOutline | SlotOutline — 슬롯 칸의 «점선 외곽선». | UI/Cards/SlotOutline (4개) |
 | `SwapText.tsx` | SwapText | SwapText — 같은 자리에서 텍스트가 바뀔 때 위로 빠지고 아래에서 들어오는 전환. | 없음 |
 | `SyncIconButton.tsx` | SyncIconButton | TopNav 동기화 서클 (티켓 20261114_1349) | 없음 |
-| `TabBar.tsx` | FOOTER_SELECTOR, FOOTER_RELEASE_GAP, TabBar | 뷰포트 하단에서 탭바 세로 중간선까지의 거리(px, 반올림). | 없음 |
+| `TabBar.tsx` | TabBar | 뷰포트 하단에서 탭바 세로 중간선까지의 거리(px, 반올림). | 없음 |
 | `Toast.tsx` | ToastRow, ToastScrim, ToastProvider | 토스트 한 줄. | 없음 |
 | `TopNav.tsx` | TopNav | SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴) | 없음 |
 | `TopNavBar.tsx` | TopNavBar | TopNav — sticky top bar with back button, title, optional right slot. | UI/Navigation/TopNavBar (13개) |
