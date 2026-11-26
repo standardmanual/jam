@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // check-ui-rules — 서비스 화면 소스에서 DS 밖 값을 찾는 규칙 엔진 (티켓 20261125_2012, UI 소스 정리 2-1회차, 상위 20261125_1923).
 //
-// 규칙 여섯 가지(규칙 키는 출력에 그대로 쓴다):
+// 규칙 일곱 가지(규칙 키는 출력에 그대로 쓴다):
 //   arbitrary      Tailwind 임의값 클래스 `접두-[값]`. 토큰만으로 이뤄진 값은 위반이 아니다: `var(--이름)` 하나, 형식 힌트가 붙은
 //                  `color:var(--이름)`, 그리고 calc(·min(·max(·clamp( 식에서 var(--이름)·100%·100dvh 같은 화면 단위·단위 없는 숫자·
 //                  연산자·괄호·쉼표·`_`만 남는 것. `var(--x,1rem)`처럼 대체값이 있거나 `calc(100%+8px)`처럼 리터럴 길이가 섞이면 위반이다.
@@ -12,6 +12,8 @@
 //   primitive-ref 기본값(primitive.css·jam-theme.css @theme에 정의된 이름)을 `var(--이름)`으로 직접 참조(`var(--이름, 대체값)` 포함). 이름은 실행할 때 파일에서 읽는다.
 //   palette-class 기본 팔레트·어드민 층·강조색 클래스(`bg-red-500`·`text-primary`·`bg-jam-red`·`shadow-sm` 등, 변형 접두·`/50` 접미 포함).
 //                  이름은 실행할 때 admin-theme.css의 --color-*·--shadow-*, globals.css의 «shadcn 이름 — 어드민 전용» 묶음·--color-jam-*에서 읽는다.
+//   card-padding  `<Card`의 `className`에 여백 클래스(`p-*`·`px-*`·`py-*`·`pt-*`·`pr-*`·`pb-*`·`pl-*`·`ps-*`·`pe-*`, 변형 접두 포함). 정본 Card는 여백을
+//                  인라인 style(`var(--card-padding)`)로 넣어 `className`의 여백 클래스가 조용히 무시된다(티켓 20261126_2224). `<CardHeader` 같은 이름이 이어진 태그는 아니다.
 // 두 새 규칙(primitive-ref·palette-class)은 정본 폴더(jam-web/src/components/ui/)와 jam-web/src/components/transitions.css 안은 세지 않고,
 // `ui-allow` 줄 예외도 받지 않는다(예외 없는 규칙, 티켓 20261126_2115, UI 소스 정리 9-4회차).
 // 네 규칙 모두 주석(`//`·`/* */`·JSDoc·JSX `{/* */}`) 안의 글자는 세지 않는다(scripts/strip-code-comments.mjs로 지운 본문에서 센다).
@@ -104,7 +106,7 @@ function namesFor(root) {
 }
 const VAR_REF = /var\(\s*(--[\w-]+)/g
 
-export const RULES = ['arbitrary', 'color-literal', 'inline-visual', 'raw-element', 'primitive-ref', 'palette-class']
+export const RULES = ['arbitrary', 'color-literal', 'inline-visual', 'raw-element', 'primitive-ref', 'palette-class', 'card-padding']
 const LAYER_FIX =
   '의미·컴포넌트 토큰이나 서비스 눈금 클래스를 쓰세요. 맞는 토큰이 없으면 새로 만들지 말고 카리나에게 토큰 추가 승인을 요청하세요(이 규칙은 ui-allow 예외를 받지 않습니다).'
 
@@ -115,6 +117,7 @@ export const FIXES = {
   'raw-element': '`@/components/ui`의 정본 컴포넌트(Button 등)를 쓰세요.',
   'primitive-ref': LAYER_FIX,
   'palette-class': LAYER_FIX,
+  'card-padding': '정본 Card의 여백은 인라인 style로 들어가 className의 여백 클래스가 무시됩니다. Card 안쪽에 여백 래퍼를 두거나 맞는 variant가 없으면 카리나에게 요청하세요.',
 }
 
 const ALLOW = /ui-allow:\s*(?!\*\/|-->|\}|$)\S/
@@ -210,6 +213,42 @@ export function findHits(rawText, relPath, names = namesFor(path.join(SCRIPT_DIR
         if (quoted.includes('var(') || (pm[2] === '`' && quoted.includes('${'))) continue
       }
       add('inline-visual', lineOf(bodyStart + pm.index))
+    }
+  }
+
+  // card-padding: `<Card …>` 태그의 className 값 안에 여백 클래스가 있으면 센다.
+  const CARD_OPEN = /<Card(?=[\s/>])/g
+  const PADDING_CLASS = /(?<![\w-])(?:[\w[\]&>*=-]+:)*-?p[xytrblse]?-[\w[\]./%()-]+/g
+  let cm
+  while ((cm = CARD_OPEN.exec(text)) !== null) {
+    const tagStart = cm.index + cm[0].length
+    let depth = 0
+    let end = tagStart
+    for (; end < text.length; end++) {
+      const ch = text[end]
+      if (ch === '{') depth++
+      else if (ch === '}') depth--
+      else if (ch === '>' && depth <= 0) break
+    }
+    const tag = text.slice(tagStart, end)
+    const cn = /(?<![\w-])className\s*=\s*/.exec(tag)
+    if (!cn) continue
+    const vStart = cn.index + cn[0].length
+    const open = tag[vStart]
+    let vEnd = vStart
+    if (open === '"' || open === "'") {
+      vEnd = tag.indexOf(open, vStart + 1)
+      if (vEnd < 0) vEnd = tag.length
+    } else if (open === '{') {
+      let d = 0
+      for (; vEnd < tag.length; vEnd++) {
+        if (tag[vEnd] === '{') d++
+        else if (tag[vEnd] === '}' && --d === 0) break
+      }
+    }
+    const value = tag.slice(vStart, vEnd)
+    for (const pm of value.matchAll(PADDING_CLASS)) {
+      add('card-padding', lineOf(tagStart + vStart + pm.index))
     }
   }
   return hits

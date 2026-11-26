@@ -4,9 +4,9 @@ import type { ReactNode, CSSProperties, MouseEventHandler, HTMLAttributes } from
 export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'> {
   /**
    * 면 톤.
-   * - `default`: `--surface`(흰) + 1px `--border`. 그림자 없음.
+   * - `default`: `--card-bg`(흰) 면, 테두리 없음. 그림자 없음.
    * - `tint`: `--background-secondary`, 테두리 없음. 흰 카드 안 구획용.
-   * - `inverse`: `--background-inverse`(어두운 반전 면) + `--snow` 글자 + 면과 같은 색의 1px 테두리(default와 박스 크기를 맞춘다).
+   * - `inverse`: `--background-inverse`(어두운 반전 면) + `--snow` 글자, 테두리 없음.
    */
   tone?: 'default' | 'tint' | 'inverse';
   children?: ReactNode;
@@ -26,7 +26,7 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
  *              선택 표시 같은 신호 용도뿐이다. default와 같이 테두리가 없어 박스 크기가 같다(티켓 20261108_1940).
  *
  * 그 밖의 약속:
- *   - padding prop 없음 — --card-padding 토큰(16)을 쓴다(호출부는 className·style로 덮는다)
+ *   - padding prop 없음 — --card-padding 토큰(16)을 인라인 style로 넣는다. 호출부 className의 여백 클래스(p-*)는 인라인 style에 밀려 무시되므로 쓰지 않는다(check-ui-rules의 card-padding 규칙이 거절한다). 여백을 바꿔야 하면 style로 덮는다
  *   - radius prop 없음 — 항상 --radius-2xl
  *   - ...rest spread로 className, data-*, aria-*를 통과시킨다
  *   - 테두리를 그리지 않는다
