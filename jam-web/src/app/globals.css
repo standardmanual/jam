@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400..900&display=swap');
 @import "tailwindcss";
+/* Tailwind 기본 테마를 닫고 서비스 눈금을 다시 정의한다(jam-theme.css), 어드민만 쓰는 기본 팔레트는 admin-theme.css에 명시한다.
+ * 닫기는 tw-animate-css보다 앞에 와야 그 플러그인의 @theme를 비우지 않는다(티켓 20261126_1945). */
+@import "./jam-theme.css";
+@import "./admin-theme.css";
 /* 20260913_1736 — 어드민 오버레이(Select/Popover/DropdownMenu/Dialog 등)가 기존에 이미
  * 쓰던 animate-in/fade-in-0/zoom-in-95/slide-in-from-* 클래스를 정의하는 플러그인이
  * 프로젝트에 없어 모션이 전혀 재생되지 않던 문제를 고친다. 원본 shader-lab은 motion
