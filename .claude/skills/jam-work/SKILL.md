@@ -94,7 +94,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 | 유형 | 대상 | 추가 절차 | 티켓 카테고리 |
 |---|---|---|---|
 | `ui` | 서비스 화면·기능 | 채원①·② (워크플로가 자동 호출) | UI / Feature |
-| `ds` | MODULAR 디자인 시스템 | 채원①·② + Story 동반 확인. 채원①이 **연결 범위**를 함께 판정한다 | UI |
+| `ds` | 정본 UI 컴포넌트(`jam-web/src/components/ui/`)·디자인 토큰 | 채원①·② + 스토리 동반 확인. 새 정본·변형·토큰은 사용자 승인 줄이 있어야 커밋된다 | UI |
 
 **일반 파이프라인** — 구현 → 게이트 리뷰
 
@@ -111,7 +111,7 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 |---|---|---|---|
 | `content` | 컨텐츠 데이터(배지·아이템북·POI) | ③ 컨텐츠 문서 동기화 (관련 정책·수치 변경 시 `policiesData.ts` 동기화 포함) | Content |
 | `copy` | UX Writing 문안 | 가이드라인 전수 점검 | Content |
-| `admin` | 어드민 화면 | **MODULAR 적용 제외** (탐색 생략). 실렌더 검증은 카리나가 머지 뒤 push 전에 `DEV_PROCESS_GUARDRAILS.md` 패턴 13(담당·시점·장소, 로컬 `ADMIN_EMAILS` 셸 환경변수)대로 한다 — staging 배포까지 미루지 않는다. 아현·민지는 격리 워크트리에서 실렌더를 시도하지 않는다. 정책·밸런스 화면 수정 시 `policiesData.ts` 동기화 확인 | Admin |
+| `admin` | 어드민 화면 | **채원 판정 제외** (shadcn 표준). 실렌더 검증은 카리나가 머지 뒤 push 전에 `DEV_PROCESS_GUARDRAILS.md` 패턴 13(담당·시점·장소, 로컬 `ADMIN_EMAILS` 셸 환경변수)대로 한다 — staging 배포까지 미루지 않는다. 아현·민지는 격리 워크트리에서 실렌더를 시도하지 않는다. 정책·밸런스 화면 수정 시 `policiesData.ts` 동기화 확인 | Admin |
 | `infra` | 환경·배포·설정 | 설정 파일 단일성 확인 | Infra |
 
 **단독** — 서브에이전트 없이 오케스트레이터가 직접 수행
@@ -150,10 +150,9 @@ BUILD부터 시작한다(티켓이 있고 완료 조건이 채워져 있음) —
 
 ### 1.5 UI 판정은 채원이 한다 (위임한다)
 
-**오케스트레이터가 직접 MODULAR을 탐색하지 않는다.** `ui`·`ds` 유형이면 Workflow의 첫 단계에서
-채원(`jam-designer`) 모드 ①이 재사용/확장/서비스 전용을 판정하고, 쓸 컴포넌트·토큰, 텍스트
-배치도, 상태 목록, 완료 조건, 승인 필요 항목까지 반환한다. `ds` 유형이면
-`.claude/skills/jam-work/references/ds-connection-scope.md` 기준 **연결 범위**도 함께 판정한다.
+**오케스트레이터가 직접 정본 목록을 탐색해 판정하지 않는다.** `ui`·`ds` 유형이면 Workflow의 첫 단계에서
+채원(`jam-designer`) 모드 ①이 재사용/정본 변형 추가/새 정본을 판정하고, 쓸 컴포넌트·토큰, 텍스트
+배치도, 상태 목록, 완료 조건, 승인 필요 항목까지 반환한다.
 
 - 같은 화면에 대한 **이전 판정이 이미 있으면** 그 내용을 `reuseDecision` 인자로 넘긴다.
   값이 있으면 채원①을 건너뛰고 그 판정을 그대로 쓴다 (중복 호출 방지). `reuseDecision`은
@@ -340,8 +339,8 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
    1번의 머지에 문서 변경까지 함께 들어온다. 카리나가 따로 반영하거나 별도로 커밋할 일은 없다
    - 민지가 점검표 11번에서 문서 누락을 지적했거나 아현이 빠뜨린 문서가 보이면, 이 시점에
      `/jam-docs` 규칙에 맞게 직접 보완한다 (정책·수치 변경 시 `policiesData.ts` 갱신 여부 포함)
-3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성 (`ui`·`ds` 유형이면 채원① 판정 결과와
-   연결 범위도 함께 기록). Workflow 결과의 `tokenUsage`(에이전트별 출력 토큰)를 완료 기록에
+3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성 (`ui`·`ds` 유형이면 채원① 판정 결과도
+   함께 기록). Workflow 결과의 `tokenUsage`(에이전트별 출력 토큰)를 완료 기록에
    함께 남긴다. **전체 토큰(입력 포함)·소요 시간·에이전트 수는 Workflow 완료 알림의 `<usage>`
    블록(`subagent_tokens`·`duration_ms`·`agent_count`)에서 그대로 옮겨 적는다** — 이 값이 티켓
    간 비교의 기준 수치다. **`_TEMPLATE.md`의 「실행 지표」 고정 표를 채운다**(헤더는 템플릿과
@@ -396,7 +395,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   먼저 기계적으로 거른다.
 - 민지의 점검표 12개 항목 중 유형에 해당하지 않는 항목은 `해당없음`으로 처리한다 — 표는
   `jam-reviewer.md`의 「Checklist」 절에 있다.
-- 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-design/references/ui-review-checklist.md`다.
+- 채원② 사후 리뷰의 점검표는 `.claude/skills/jam-work/references/designer-review-checklist.md`다.
   라이팅 품질은 게이트(민지)가 담당하므로 점검표에서 의도적으로 뺐다.
 - 채원②는 `devResult.diffLineCount`(아현이 `git diff --numstat`으로 잰 jam-web 변경 라인 수)가
   `SMALL_DIFF_LINE_THRESHOLD`(15) 미만이면 건너뛴다. 값이 없으면 안전하게 실행 쪽으로 기운다.

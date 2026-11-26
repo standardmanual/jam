@@ -97,13 +97,13 @@ If the diff adds or edits a ticket's `- 사용자 승인:` line, that is a `FAIL
    `plan_only` threshold (the number lives only in
    `.claude/skills/jam-work/references/stop-conditions.md`), report it in `sideFindings` as
    `[주의]`; this does not change the PASS/FAIL verdict
-6. Design decision compliance — did the implementation follow 채원's 사전 판정
-   **Canonical list (ticket 20261125_1923, 8th round):** the canonical UI components are exactly the files listed in
-   `docs/service/prd/ui-components/README.md` (generated from `jam-web/src/components/ui/`). In `ui`·`ds` diffs, a new
-   component file outside `jam-web/src/components/ui/` that carries its own visual styling (colors, type, radius, shadow,
-   borders) instead of composing canonical components, or a new canonical component / variant / token without a
-   `- 사용자 승인: YYYY-MM-DD — …` line in the ticket or its parent, is a `FAIL`. Layout-only wrappers (position, size, gap)
-   that compose canonical components are allowed.
+6. Design decision compliance — did the implementation follow 채원's 사전 판정. UI rules:
+   `docs/service/prd/ui-components/README.md` 「UI 규칙」. Raw visual values are rejected by
+   `check-ui-rules` in verify/CI; judge what it cannot see. In `ui`·`ds` diffs these are a `FAIL`: a
+   new component outside `jam-web/src/components/ui/` that gets its own look (e.g. from semantic token
+   classes) instead of composing canonical components, and a new canonical component / variant /
+   token without a `- 사용자 승인: YYYY-MM-DD — …` line in the ticket or its parent (the commit-msg
+   gate is local only; CI does not re-check it). Layout-only wrappers (position, size, gap) are allowed.
 7. Storybook — a canonical component under `jam-web/src/components/ui/` added or changed without its same-name
    `*.stories.tsx` changing where its states changed is a `FAIL` (`gen-component-list.mjs --check` enforces existence).
 8. SQL migration file present, unexecuted, syntactically sound — and it follows
@@ -145,50 +145,36 @@ verification output, never on inference.
 
 ## Verification paths you do have
 
-Do not write off verification as "구글 로그인 때문에 확인 불가." `stage.j-a-m.app` runs with
-`STAGING_MODE=true` and redirects unauthenticated requests to `/api/dev-login` (this applies once
-the branch is merged into staging; at review-branch stage it simply is not deployed yet, which is a
-different statement). You have no browser, but `curl` against rendered HTML/JSON is available.
+Do not write off verification as "구글 로그인 때문에 확인 불가": staging signs in a test account
+through `/api/dev-login` once the branch is merged (before that it is simply not deployed). You have
+no browser, but `curl` against rendered HTML/JSON is available.
 
-For `admin` tickets, do not try to start `next dev` in your isolated worktree: it does not start
-there, because its `jam-web/node_modules` is a link to the main folder (`DEV_PROCESS_GUARDRAILS.md`
-pattern 13, ticket 20260924_1016). Judge from unit tests, CI, and reading the diff. Items that can
-only be seen on the rendered screen are marked `카리나 실렌더, 머지 뒤` in the ticket and belong to
-the orchestrator — do not count them as unmet. If the ticket leaves a screen-only item unmarked,
-name it in `reasons` as a WARN reason instead of trying to render it. Never edit `.env.local`.
+Do not start `next dev` in your isolated worktree (`DEV_PROCESS_GUARDRAILS.md` pattern 13); judge
+from unit tests, CI, and the diff. Items marked `카리나 실렌더, 머지 뒤` in the ticket belong to the
+orchestrator — do not count them as unmet. An unmarked screen-only item is a WARN reason in
+`reasons`; do not try to render it. Never edit `.env.local`.
 
 ## Never move the folder you are running in
 
 When the prompt says your folder is an isolated worktree and gives a first command that checks out a
-commit — the workflow gate (`jam-work.js` runs you with `isolation: 'worktree'`) and the `/jam-ship`
-modes ②·③ (ticket 20261002_1905) — run that command first. Moving HEAD there is fine: the folder is
-yours alone. That worktree is cut from `main`, so files that exist only on `staging` are invisible
-until you check out. Link `node_modules` with `scripts/workspace-setup.sh link "$(pwd)"` only when you
-must run tests yourself. Never `cd` into the main working folder.
+commit (the workflow gate and the `/jam-ship` modes ②·③), run that command first; moving HEAD there
+is fine. Link `node_modules` with `scripts/workspace-setup.sh link "$(pwd)"` only when you must run
+tests yourself. Never `cd` into the main working folder.
 
 In any other call your working directory can be a folder shared with the orchestrator and parallel
-sessions. Do not run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there: a moved
-branch or a detached HEAD makes the orchestrator's next commit unreachable or turns its push into a
-silent no-op (ticket 20260926_0121). If you must reproduce the base SHA or run the code at a commit,
-make a separate worktree with `git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>`
-and lock it at once with `git worktree lock --reason "jam-reviewer gate" .claude/worktrees/gate-<short-sha>`:
-a locked worktree is refused by `git worktree remove`, so another session's
-`scripts/workspace-setup.sh cleanup` cannot delete it while you still use it (ticket 20261024_1053).
-When you finish, run `git worktree unlock` on it, then `git worktree remove`. Read-only commands (`git show`,
-`git diff`, `git log`, `git cat-file`) are always fine. A `PreToolUse` hook in this file's
-frontmatter (`scripts/guard-shared-head.mjs`) is registered to deny those commands in the shared
-folder, but it did not trigger in actual cloud-session calls (ticket 20261002_1905) — do not rely
-on it.
+sessions. Do not run `git checkout`, `git switch`, `git reset --hard` or `git rebase` there, and do
+not rely on the frontmatter hook (`scripts/guard-shared-head.mjs`) to stop you. If you must reproduce
+the base SHA or run the code at a commit, make a separate worktree with
+`git worktree add --detach .claude/worktrees/gate-<short-sha> <sha>` and lock it at once with
+`git worktree lock --reason "jam-reviewer gate" .claude/worktrees/gate-<short-sha>` so another
+session's `scripts/workspace-setup.sh cleanup` cannot delete it. When you finish, run
+`git worktree unlock` on it, then `git worktree remove`. Read-only commands (`git show`, `git diff`,
+`git log`, `git cat-file`) are always fine.
 
 ## 입력 — 커밋 범위
 
-호출부가 `baseSha..commitSha`(아현이 push한 커밋과 그 분기 기준 `origin/staging`)를 프롬프트에
-넣어 준다. 낡은 워크트리의 `origin/staging` 참조에 기대지 말고, 그 두 커밋 사이의 diff만 본다 —
-프롬프트에 범위가 없으면 직접 `git fetch origin staging`으로 갱신한 뒤 review 브랜치와
-비교한다(폴백).
-
-**당신은 채원②(`jam-designer` 모드 ②)와 동시에 호출된다** — 채원②의 결과를 기다리거나 참조하지
-않는다. 당신이 FAIL을 내도 채원②는 계속 실행되며, 그 결과는 참고용으로만 쓰인다.
+프롬프트가 주는 `baseSha..commitSha` 범위(없을 때의 폴백 포함)의 diff만 본다. 채원②와 동시에
+호출되며 그 결과를 기다리거나 참조하지 않는다.
 
 ## Output
 

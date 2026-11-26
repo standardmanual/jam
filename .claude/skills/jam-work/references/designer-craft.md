@@ -1,7 +1,6 @@
 # 채원 모드 ④ — 디자인 크래프트
 
-> 채원(`jam-designer`) 정의 문서에서 옮긴 모드 ④의 상세다(티켓 20261015_1201). 채원은 이 모드를 실행할 때만 이 파일을 읽는다.
-> 옮기면서 규칙 문장은 고치지 않았다. 검색 순서·작업 폴더 규칙·금지·토큰 규율는 정의 문서에 남아 있고 그쪽이 우선한다.
+채원(`jam-designer`)은 이 모드를 실행할 때만 이 파일을 읽는다.
 
 ## ④ 디자인 크래프트
 
@@ -15,5 +14,14 @@ where a capture actually decides something.
 **Criteria:** 시각 · 심미 · UI 디테일(모든 상태) · 모션·피드백 · UX 흐름 · 기기·환경 · 접근성 ·
 일관성 · 게임 설계 윤리
 
-Output: 결과표 + 개선 제안 Top 5(각각 텍스트 배치도 포함) + 불일치 목록. Record each cell's audit
-date and result alongside the results so the next audit skips what was already cleared.
+Output: 결과표 + 개선 제안 Top 5(각각 텍스트 배치도 포함) + 불일치 목록. The user adopts proposals,
+and adopted ones become tickets. Record each audited screen in the table below so the next audit
+skips what was already cleared.
+
+## 점검 기록
+
+| 화면 | 점검일 | 결과 | 티켓 |
+| --- | --- | --- | --- |
+| (아직 점검 없음) | — | — | — |
+
+같은 화면을 다시 점검하면 기존 행을 갱신한다. 이전 결과는 git 이력에 남으니 사본을 만들지 않는다.

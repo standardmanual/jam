@@ -28,16 +28,13 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
 2. **Read the ticket you were handed before touching anything.** Never add requirements the ticket
    does not contain.
 3. **DB changes: write the SQL migration file only. Never execute it.** No Supabase MCP, no `psql`.
-   The orchestrator runs it after user approval — that is why this agent has no DB execution tool.
-   Supabase is a single DB shared by staging and production, so every migration lands in
-   production the instant it is applied. **Before writing any migration file, read
+   The orchestrator (main session) runs it after its pre-execution checks (root `CLAUDE.md` rule 6)
+   — that is why this agent has no DB execution tool. **Before writing any migration file, read
    `.claude/skills/jam-work/references/db-migration-rules.md`** — the expand → switch → contract
    split, backfill chunking, function-signature changes, and the machine-checked rollback marker
    live there and only there.
-4. **Never set a ticket's `status` to `CLOSED`.** You may fill in the completion record, but leave
-   `status: OPEN`/`IN_PROGRESS` and `closed:` untouched. `.githooks/pre-commit` blocks `CLOSED`
-   commits on review branches (`claude/jamwork-*`); if a commit is rejected, revert the status and
-   commit again.
+4. **Never set a ticket's `status` to `CLOSED`** or touch `closed:` (`.githooks/pre-commit` rejects it
+   on `claude/jamwork-*`; revert the status and commit again).
 5. **Never push to `main` or `staging`.** When the work is done:
    - **Retry with a handed-over branch**: if the prompt tells you to resume an existing review
      branch (`git checkout <branch>` after fetching it), do not create a new branch — run the
@@ -48,9 +45,8 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
      worktree holding that branch name, and **refuses with exit code 2** when that worktree has
      uncommitted changes or commits not yet pushed to origin — then stop and report; never force
      the removal yourself. Then:
-     `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{slug} origin/staging`.
-     A bare `git checkout -b` inherits whatever branch happened to be checked out and can drag
-     another ticket's unapproved commits into your ancestry.
+     `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{slug} origin/staging`
+     (never a bare `git checkout -b`).
    - Commit locally with a Korean message, then `git push -u origin claude/jamwork-{...}`. Nothing
      further — the orchestrator merges after user approval.
 6. **User-facing Korean copy** follows `docs/service/writing/UX_WRITING_GUIDELINE.md`. Search it for
@@ -61,29 +57,25 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
 7. No refactoring, abstraction, or extra features that the ticket did not ask for.
 8. **Screens follow 채원's design decision (`jam-designer`).** If the prompt carries a design
    decision, implement it as given. If UI work is needed and no decision was provided, stop and
-   return `needs_design` — do not pick components yourself. When you change
-   `design-system/components/**`, the matching `*.stories.*` must change with it (pre-commit checks).
-   Exception: `jam-web/src/app/admin/` is outside MODULAR and outside 채원's scope.
+   return `needs_design` — do not pick components yourself. UI rules:
+   `docs/service/prd/ui-components/README.md` 「UI 규칙」. A new canonical component ships with its
+   same-name story (the commit-msg gate and `gen-component-list --check` reject it otherwise).
+   Exception: `jam-web/src/app/admin/` (shadcn standard) is outside 채원's scope.
 9. **`docs/` holds every document — edit them directly.** Service specs, planning, content,
    marketing and operations documents all live under `docs/` (folder map: `docs/README.md`) and are
    checked out in your worktree like any other folder. Edit them in your branch and commit them with
    the code; never hand documentation changes back as a patch block — the `문서 갱신안` field lists
    what you changed directly.
-   - Folder write rules are in `docs/README.md` ("폴더 지도와 쓰기 규칙"). `docs/archive/` is read-only,
-     and `.githooks/pre-commit` blocks new files there as well as version copies of the service
-     plan and TRIBES. Overwrite the current document instead of adding a dated copy.
+   - Folder write rules: `docs/README.md` 「폴더 지도와 쓰기 규칙」 (pre-commit rejects new files in
+     `docs/archive/` and version copies).
    - Content seed generators (`docs/assets/content-seed/v5_*.py`) may be run from the worktree
      root: they resolve paths relative to their own location and write into your worktree's
      `jam-web/supabase/migrations/`.
-   - **Service Policy Dashboard synchronization**: Whenever service operating policies, balance
-     constants, speed/activity thresholds, cooldowns, or domain rules are added or altered, you
-     must update the matching items in `jam-web/src/lib/admin/policyDashboard/policiesData.ts`
-     in the same commit (`CLAUDE.md` Hard rule 2).
-10. **Do not claim "Google login blocks verification."** `stage.j-a-m.app`
-   (`STAGING_MODE=true`) redirects unauthenticated requests to `/api/dev-login` and signs in a fixed
-   test account; local `next dev` behaves the same. If this branch is not merged into staging yet,
-   say "staging 병합 후 확인 필요" — do not generalise it into a login limitation. Only production
-   (`j-a-m.app`) truly requires Google login.
+   - Policy, balance or threshold changes update `policiesData.ts` in the same commit (root
+     `CLAUDE.md` rule 2).
+10. **Do not claim "Google login blocks verification."** Staging and local `next dev` sign in a test
+   account through `/api/dev-login`; only production needs Google login. An unmerged branch is
+   "staging 병합 후 확인 필요", not a login limitation.
 11. **Never trigger a write action against real content while verifying in a browser.** Local
    `next dev` shares one Supabase DB with staging and production, so pressing an apply / save /
    delete / send button on a real badge, mission, collection or user changes live data. Verify
@@ -91,14 +83,11 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
    If the write result must be checked, use a user-approved dummy record named with a `[TEST]`
    prefix, or call the API route directly and check only the response shape and status code
    (`docs/agents/DEV_PROCESS_GUARDRAILS.md` pattern 13).
-   In your isolated worktree `next dev` does not start (its `jam-web/node_modules` is a link to
-   the main folder), so do not try to render admin screens there: cover the logic with unit tests
-   and leave screen-only checks to the orchestrator (pattern 13, ticket 20260924_1016).
-   The same link makes `npm install`, `npm ci`, `npm audit fix` and `npm update` unsafe in your
-   worktree: they write through the link into the main folder's `node_modules` (ticket
-   20260923_0100). If the ticket needs one of them, first replace the link with a real install,
-   `rm jam-web/node_modules && (cd jam-web && npm ci)`, and only then run the command. `rm` without
-   `-r` removes the link itself and never the folder it points to.
+   In your isolated worktree `jam-web/node_modules` is a link to the main folder: `next dev` does
+   not start there (cover the logic with unit tests and leave screen-only checks to the
+   orchestrator, pattern 13), and `npm install`/`ci`/`audit fix`/`update` would write into the main
+   folder. If the ticket needs one, first run `rm jam-web/node_modules && (cd jam-web && npm ci)`
+   (`rm` without `-r` removes only the link).
 12. **Commit in vertical slices, one atomic commit at a time.** Each commit is one complete,
     self-contained change; the commit message carries that change's summary (Korean, Hard rule 1).
     Keep history revertible to the last good commit — do not squash unrelated work into one commit.
@@ -109,17 +98,13 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
 
 ## Verification before handing off
 
-Run `scripts/verify.sh` — one command covering lint, typecheck, the full test suite, `token-refs`,
-and the slop check. Report pass/fail and the failing items only, never the full log.
+Run `scripts/verify.sh` once (its step list is in that file). Report pass/fail and the failing steps
+only, never the full log.
 
-**Push-time rules** (`.githooks/pre-push`). There is no bypass variable:
-
-- A new `eslint-disable`, `@ts-ignore` or `@ts-expect-error` in `jam-web` code needs its reason on
-  the same line as `-- 사유` (e.g. `// eslint-disable-next-line <rule> -- 사유`).
-- `it.skip`, `describe.skip`, `it.only`, `describe.only` and `test.only` are always blocked.
-- Deleting a `*.test.*` file needs a line `테스트 삭제: <사유>` in one of the pushed commit messages.
-- Raising `--max-warnings` in `jam-web/package.json` is blocked.
-- Pushing to `staging` from a `wf_*` worktree or from a `claude/jamwork-*` branch is blocked.
+**Push-time rules** — `.githooks/pre-push` rejects, with no bypass: a new suppression comment without
+`-- 사유` on the same line, `.skip`/`.only`, a deleted `*.test.*` without a `테스트 삭제: <사유>` commit
+line, a raised `--max-warnings`, and a push to `staging` from a review branch or `wf_*` worktree.
+The hook message says how to fix each.
 
 **CI stamp.** Your review-branch push runs GitHub Actions `verify`. After pushing your final
 commit, run `gh run list --branch <branch> --limit 1 --json databaseId,url` to get the run URL,
@@ -174,7 +159,7 @@ Return a **`StructuredOutput`** — the orchestrator branches on `status`, `bran
 - 원인:            (버그일 때만)
 - 변경 내용:       무엇을 어떻게
 - 변경 파일 목록:
-- 검증 결과:       scripts/verify.sh 결과 (lint·typecheck·test·token-refs·slop, 실패 항목만 나열).
+- 검증 결과:       scripts/verify.sh 결과 (실패 단계만 나열).
                    제출 전 `definition-of-done.md`의 정확성·품질 항목을 스스로 확인한 결과도
                    함께 적는다(통과 못한 항목만 나열, 전부 통과면 "전항목 통과")
 - 추가한 테스트:   (없으면 사유)

@@ -189,8 +189,6 @@ SQL 편집기 실행을 넘기기 전에 막힌 사유를 먼저 보고한다(�
 | `/jam-plan` | 기획 — 아이디어 구체화·타당성·리스크·티켓 분해안 (혜린) |
 | `/jam-story` | 세계관 검수·창작, 캠페인·홈피드·시즌 운영 (윈터·윤진) |
 | `/jam-docs` | 문서 체계 ①~⑤ 작성·갱신 절차 |
-| `/jam-design` | MODULAR 디자인 시스템·Storybook 탐색 및 재사용 판단 |
-| `/jam-ds` | 서비스 UI ↔ MODULAR ↔ Storybook ↔ claude.ai/design 정합성 진단·동기화 |
 | `/jam-img` | 배지 이미지 제작 파이프라인 (단계별 사용자 확인) |
 | `/jam-ship` | staging 검증 → 프로덕션 배포 |
 | `/jam-sync` | 로컬 ↔ GitHub 동기화 |

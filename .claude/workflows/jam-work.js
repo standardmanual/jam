@@ -71,7 +71,6 @@ const DESIGN_PRE = {
     motion: { type: 'string' },
     deviceNotes: { type: 'string' },
     craftNotes: { type: 'string' },
-    scope: { type: 'string' },
     completionCriteria: { type: 'string' },
     needsApproval: { type: 'boolean' },
     approvalItems: { type: 'array', items: { type: 'string' } },
@@ -92,7 +91,6 @@ function formatDesignDecision(d) {
     ['motion', d.motion],
     ['device_notes', d.deviceNotes],
     ['craft_notes', d.craftNotes],
-    ['scope', d.scope],
     ['완료 조건', d.completionCriteria],
     ['needs_approval', d.needsApproval ? (d.approvalItems ?? []).join('; ') || '있음' : '없음'],
     ['reason', d.reason],
@@ -131,7 +129,7 @@ const DESIGN_REVIEW = {
   required: ['hasCritical'],
 }
 
-// 채원①·②의 대상 유형. `admin`은 MODULAR 적용 제외라 들어오지 않는다.
+// 채원①·②의 대상 유형. `admin`(shadcn 표준)은 채원 판정 대상이 아니라 들어오지 않는다.
 const DESIGN_TYPES = ['ui', 'ds']
 const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
 // 아현의 중단 상태 목록. plan_only/needs_design/halted는 게이트 진입 전에 멈춘다는 뜻이다
@@ -225,7 +223,7 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
       rangeInstruction +
       WORKDIR_RULE +
       `\n모드 ② 사후 리뷰로 진행하라. ` +
-      `.claude/skills/jam-design/references/ui-review-checklist.md를 읽고 그 점검표대로 ` +
+      `.claude/skills/jam-work/references/designer-review-checklist.md를 읽고 그 점검표대로 ` +
       `위 검토 범위의 diff만 검토하라. 손대지 않은 기존 코드는 다루지 마라. 라이팅 품질은 민지가 ` +
       `동시에 게이트 리뷰에서 판정하므로 여기서 다시 보지 않는다.`,
       {
@@ -334,7 +332,7 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
 
   // ───────────────────────────────────────────────────────────────────────────
   // 1. 채원 ① 사전 판정 — ui·ds 유형만
-  //    기존 1.5단계(UI 탐색·재사용 판정)·1.6단계(모듈러-서비스 연결 범위)를 대체한다.
+  //    기존 1.5단계(UI 탐색·재사용 판정)를 대체한다.
   //    오케스트레이터가 직접 판정하던 일을 전담 에이전트로 옮긴 것이다 (티켓 20260918_0422).
   // ───────────────────────────────────────────────────────────────────────────
   phase('채원 사전 판정')
@@ -346,12 +344,9 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
     const t0 = tokensSpent()
     designDecision = await agent(
       `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n\n` +
-      `모드 ① 사전 판정으로 진행하라. 재사용/MODULAR 확장/서비스 전용을 판정하고, 쓸 컴포넌트와 ` +
+      `모드 ① 사전 판정으로 진행하라. 재사용/정본 변형 추가/새 정본을 판정하고, 쓸 컴포넌트와 ` +
       `토큰, 텍스트 배치도, 구현해야 할 상태 목록, 모션, 기기 주의사항, 시각 슬롭 경고, 완료 조건, ` +
-      `사용자 승인이 필요한 항목을 정의된 형식대로 반환하라.` +
-      `${workType === 'ds' ? `\n\`ds\` 유형이므로 ` +
-        `.claude/skills/jam-work/references/ds-connection-scope.md 기준 네 부류 중 이번 변경이 ` +
-        `어디에 해당하는지 \`scope\`에 명시하라.\n` : ''}`,
+      `사용자 승인이 필요한 항목을 정의된 형식대로 반환하라.`,
       { agentType: 'jam-designer', label: 'jam-designer-pre', schema: DESIGN_PRE }
     )
     trackTokens(tokenUsage, 'jam-designer-pre', t0)
@@ -402,8 +397,8 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
   const devT0 = tokensSpent()
   const devResult = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
-    `\n배정된 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 빠져 있다` +
-    `(티켓 20260918_1158 중단 사례: main에 없는 채원 정의를 "없다"고 오판). 티켓을 포함해 어떤 ` +
+    `\n배정된 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 빠져 있다. ` +
+    `티켓을 포함해 어떤 ` +
     `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
     `origin/staging && scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(마지막 명령은 ` +
     `기존 워크트리의 jam-web/node_modules를 심볼릭 링크로 연결한다 — npm install을 다시 돌리지 ` +

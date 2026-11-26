@@ -30,10 +30,6 @@
     { "id": 27, "request": "새 노트북이라 여기서 이어서 작업하려면 뭘 먼저 해야 해?", "expectedSkill": "jam-sync", "expectedWorkType": null },
     { "id": 28, "request": "이번 작업 내용으로 새 티켓을 만들어줘", "expectedSkill": "jam-docs", "expectedWorkType": null },
     { "id": 29, "request": "이미 끝난 티켓 상태를 닫아줘", "expectedSkill": "jam-docs", "expectedWorkType": null },
-    { "id": 30, "request": "이 화면에 쓸만한 기존 컴포넌트가 있는지 먼저 찾아봐줘", "expectedSkill": "jam-design", "expectedWorkType": null },
-    { "id": 31, "request": "이 버튼, 디자인 시스템에 새로 추가해야 할까 아니면 이 화면 전용으로 만들어야 할까?", "expectedSkill": "jam-design", "expectedWorkType": null },
-    { "id": 32, "request": "방금 바꾼 컴포넌트를 스토리북이랑 다시 맞춰줘", "expectedSkill": "jam-ds", "expectedWorkType": null },
-    { "id": 33, "request": "MODULAR 업로드본이 최신인지 확인하고 갱신해줘", "expectedSkill": "jam-ds", "expectedWorkType": null },
     { "id": 34, "request": "이 배지 이미지를 새로 만들어줘", "expectedSkill": "jam-img", "expectedWorkType": null },
     { "id": 35, "request": "기존 배지 그림에서 로고만 다시 합성해줘", "expectedSkill": "jam-img", "expectedWorkType": null }
   ]

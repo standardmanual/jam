@@ -24,7 +24,7 @@
 
 | 구분 | 스킬 |
 | --- | --- |
-| 기존 유지 | `/jam-work`(카리나) `/jam-docs` `/jam-design` `/jam-ds` `/jam-img` `/jam-ship` `/jam-sync` |
+| 기존 유지 | `/jam-work`(카리나) `/jam-docs` `/jam-img` `/jam-ship` `/jam-sync` |
 | 신규 | `/jam-plan`(혜린) `/jam-story`(윈터·윤진 협업) |
 
 ## 개발 파이프라인 (`ui`·`ds` 유형)
