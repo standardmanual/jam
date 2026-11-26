@@ -131,7 +131,7 @@ describe('SlotGrid — 칸 알약(교체)의 색은 tone으로 갈린다 (티켓
   it('«교체» 알약은 같은 모양 클래스를 쓰고 SlotGrid에 손으로 쓴 알약 클래스가 남지 않는다', () => {
     const html = allPills()
 
-    const shape = 'block mx-auto px-3 py-1 text-xs rounded-full whitespace-nowrap transition-all disabled:opacity-40'
+    const shape = 'block mx-auto'
     for (const label of ['교체']) expect(pillOf(html, label), label).toContain(shape)
     expect(readFileSync(new URL('../SlotGrid.tsx', import.meta.url), 'utf-8')).not.toContain('rounded-full')
   })

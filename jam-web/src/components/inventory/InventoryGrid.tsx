@@ -68,8 +68,8 @@ export default function InventoryGrid({
         const eager = index < FIRST_SCREEN_GRID_COUNT
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
-          // 만료 임박 칩도 ListRowChip 규격(12px·2px 8px·20px)이다. 선 칩 모양(투명 면 + --border 안쪽 선 + --muted 글자)만 유지한다(티켓 20261112_0010)
-          <ListRowChip style={{ background: 'transparent', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }}>
+          // 만료 임박 칩도 ListRowChip 규격(12px·2px 8px·20px)이다. 정본 tone «surface-muted»를 쓴다(티켓 20261126_1408)
+          <ListRowChip tone="surface-muted">
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </ListRowChip>
         ) : null

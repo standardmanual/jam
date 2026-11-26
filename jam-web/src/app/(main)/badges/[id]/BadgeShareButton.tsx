@@ -166,7 +166,7 @@ export default function BadgeShareButton({ imageUrl, badgeName, hasEarned }: Bad
         {popoverOpen && isDisabled && (
           <div
             role="tooltip"
-            className="absolute left-1/2 bottom-[calc(100%+8px)] z-50 w-[220px] -translate-x-1/2 rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
+            className="absolute left-1/2 bottom-full mb-2 z-50 w-55 -translate-x-1/2 rounded-2xl bg-[var(--background-inverse)] p-3 text-left"
           >
             <p className="text-sm font-bold text-[var(--snow)]">{d.badges.notEarnedTitle}</p>
           </div>
@@ -197,7 +197,7 @@ export default function BadgeShareButton({ imageUrl, badgeName, hasEarned }: Bad
             확대·축소 transform은 쓰지 않는다. 좌우 24px은 바텀시트 캔버스 티켓 20261110_2150 ⑦ 수치다.
           */}
           <div
-            className="relative mx-auto flex aspect-square w-full max-w-[360px] items-center justify-center overflow-hidden rounded-2xl"
+            className="relative mx-auto flex aspect-square w-full max-w-[var(--share-card-max-width)] items-center justify-center overflow-hidden rounded-2xl"
             style={{
               backgroundImage:
                 'repeating-conic-gradient(color-mix(in srgb, var(--foreground) 8%, transparent) 0% 25%, transparent 0% 50%)',
@@ -206,7 +206,7 @@ export default function BadgeShareButton({ imageUrl, badgeName, hasEarned }: Bad
           >
             {effectiveState.kind === 'ready' ? (
               // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
-              <img src={effectiveState.blobUrl} alt={badgeName} className="h-[70%] w-[70%] object-contain" />
+              <img src={effectiveState.blobUrl} alt={badgeName} className="h-[var(--share-card-image-size)] w-[var(--share-card-image-size)] object-contain" />
             ) : effectiveState.kind === 'error' ? (
               // 실제 알림은 아래 sr-only 블록(aria-live="polite")이 전담한다 — 같은 문구가 여기 시각
               // 텍스트에도 있어 aria-hidden 없이 두면 스크린 리더가 두 번 읽는다(티켓 20260911_1156).

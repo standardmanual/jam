@@ -42,8 +42,8 @@ const render = (result: TierUpRevealResult = RESULT, materials = MATERIALS) =>
 describe('마크업', () => {
   it('배경은 중심이 밝은 원형 그라데이션이고 글로우·그림자·필터가 어디에도 없다', () => {
     expect(STAGE_BACKGROUND).toContain('radial-gradient(circle farthest-corner at 50% 42%')
-    expect(STAGE_BACKGROUND).toContain('#343434 0%')
-    expect(STAGE_BACKGROUND).toContain('#1a1a1a 38%')
+    expect(STAGE_BACKGROUND).toContain('var(--base-neutral-700) 0%')
+    expect(STAGE_BACKGROUND).toContain('var(--base-neutral-900) 38%')
     const html = render()
     expect(html).toContain('background:radial-gradient(circle farthest-corner at 50% 42%')
     for (const forbidden of ['box-shadow', 'drop-shadow', 'text-shadow', 'filter', 'backdrop-filter', 'mix-blend-mode', 'glow']) {

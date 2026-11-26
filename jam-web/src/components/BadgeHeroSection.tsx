@@ -27,7 +27,7 @@ type BadgeHeroSize = 'page' | 'sheet'
 
 /** 기본 대표 이미지 상자 크기. 바깥·안쪽 여백은 DS가 `size`로 정한다 */
 const SIZE_STYLE = {
-  page: { imageBox: 'w-[200px] h-[200px]', imagePx: 200 },
+  page: { imageBox: 'w-[var(--badge-hero-size)] h-[var(--badge-hero-size)]', imagePx: 200 },
   sheet: { imageBox: 'w-44 h-44', imagePx: 176 },
 } as const
 

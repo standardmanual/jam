@@ -59,7 +59,7 @@ describe('BadgeHeroSection size (티켓 20261112_1629)', () => {
     const html = renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned />)
     expect(html).toContain('class="relative z-10 px-4 pt-0 pb-5"')
     expect(html).toContain('gap-4 p-6')
-    expect(html).toContain('w-[200px] h-[200px]')
+    expect(html).toContain('w-[var(--badge-hero-size)] h-[var(--badge-hero-size)]')
     expect(renderToStaticMarkup(<BadgeHeroSection badge={WITH_IMAGE} hasEarned size="page" />)).toBe(html)
   })
 

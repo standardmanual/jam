@@ -72,7 +72,7 @@ export default function ItemEarnHistory({
   return (
     <div className="flex flex-col gap-3">
       {/* 제목만 둔다 — 오른쪽의 «총 N회»는 걷었고 제목은 다른 배지 상세와 같은 «획득 정보»다(2026-11-09 사용자 지시) */}
-      <p className={`text-[15px] font-bold text-foreground${hideTitle ? ' sr-only' : ''}`}>{d.badges.earnInfoTitle}</p>
+      <p className={`text-sm font-bold text-foreground${hideTitle ? ' sr-only' : ''}`}>{d.badges.earnInfoTitle}</p>
 
       {/* 히어로에 일련번호가 표시된 개체의 이력 — 카드 형식 */}
       <Card>

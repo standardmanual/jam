@@ -293,7 +293,7 @@ describe('LockedItemDetail — 열린 뒤', () => {
     expect(html).toContain('href="/collections/c1"')
     expect(text).not.toContain(d.lockedItem.detail.chip)
     // 접힌 포인트 카드 안의 버튼은 남아 있어도 보이지 않고(aria-hidden) 눌리지 않는다(inert)
-    expect(html).toMatch(/<div class="grid [^"]*grid-rows-\[0fr\][^"]*" aria-hidden="true" inert="">/)
+    expect(html).toMatch(/<div class="jam-collapse [^"]*" data-collapsed="true" aria-hidden="true" inert="">/)
     expect(html.match(/<button/g) ?? []).toHaveLength(1)
   })
 
@@ -320,7 +320,7 @@ describe('LockedItemDetail — 열린 뒤', () => {
   it('포인트 블록은 접히고 보조기기에서 숨는다', () => {
     const html = openedHtml()
     expect(html).toContain('aria-hidden="true"')
-    expect(html).toContain('grid-rows-[0fr]')
+    expect(html).toContain('data-collapsed="true"')
   })
 
   it('모자람 안내는 «N 포인트» 조각만 point-text로 칠한다', () => {
@@ -435,9 +435,9 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
   it('열린 뒤 일련번호는 카드 바로 아래 가운데에, 컬렉션은 행으로 보인다', () => {
     const html = withoutStyle(openedHtml())
 
-    // 일반 상세와 같은 일련번호 블록(가운데, pt-3 pb-[32px])이 카드 다음에 온다
-    expect(html).toContain('relative z-10 flex justify-center px-4 pt-3 pb-[32px]')
-    expect(html.indexOf('</h1>')).toBeLessThan(html.indexOf('pt-3 pb-[32px]'))
+    // 일반 상세와 같은 일련번호 블록(가운데, pt-3 pb-6)이 카드 다음에 온다
+    expect(html).toContain('relative z-10 flex justify-center px-4 pt-3 pb-6')
+    expect(html.indexOf('</h1>')).toBeLessThan(html.indexOf('pt-3 pb-6'))
     // 이름이 바뀌고 «잠김» 칩이 사라진다
     expect(visibleText(html)).toContain('새벽의 첫 바퀴')
     expect(visibleText(html)).not.toContain(d.lockedItem.detail.chip)

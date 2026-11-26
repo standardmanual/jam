@@ -10,8 +10,8 @@
   /* 티켓 면 위 글자색(티켓 20261124_2253). 기본 #171717이라 배지 상세는 그대로다. 컬렉션 상세는 서버가 인라인으로 #fff·#000을 넣는다.
      머리 글자·로고·글자 상자 테두리·--muted(80%)·--border(12%)·--link가 이 값에서 나온다 */
   --ticket-text: var(--base-neutral-900);
-  --ticket-muted: rgba(23, 23, 23, 0.8);
-  --ticket-border: rgba(23, 23, 23, 0.12);
+  --ticket-muted: color-mix(in srgb, var(--ticket-text) 80%, transparent);
+  --ticket-border: color-mix(in srgb, var(--ticket-text) 12%, transparent);
   /* 카드 바탕에 섞는 티켓색 비율. 기본 70%·45%, 흰 글자 티켓에서만 서버가 낮춰 인라인으로 넣는다 */
   --card-mix: 70%;
   --card-mix-2: 45%;
@@ -27,8 +27,6 @@
 
 @supports (color: color-mix(in srgb, red, white)) {
   .ticket {
-    --ticket-muted: color-mix(in srgb, var(--ticket-text) 80%, transparent);
-    --ticket-border: color-mix(in srgb, var(--ticket-text) 12%, transparent);
     --card-bg: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
     --surface: color-mix(in srgb, var(--ticket) var(--card-mix), var(--base-white));
     --background-secondary: color-mix(in srgb, var(--ticket) var(--card-mix-2), var(--base-white));
@@ -39,8 +37,8 @@
 .ink,
 .cards {
   --foreground: var(--base-neutral-900);
-  --muted: rgba(23, 23, 23, 0.8);
-  --border: rgba(23, 23, 23, 0.12);
+  --muted: color-mix(in srgb, var(--base-neutral-900) 80%, transparent);
+  --border: color-mix(in srgb, var(--base-neutral-900) 12%, transparent);
   --link: var(--base-neutral-900);
   --point-text: var(--base-neutral-900);
   color: var(--base-neutral-900);
@@ -63,8 +61,8 @@
 .faceKeepCards :global(.bg-card-bg),
 .faceKeepCards :global(button:not(.bg-accent)) {
   --foreground: var(--base-neutral-900);
-  --muted: rgba(23, 23, 23, 0.8);
-  --border: rgba(23, 23, 23, 0.12);
+  --muted: color-mix(in srgb, var(--base-neutral-900) 80%, transparent);
+  --border: color-mix(in srgb, var(--base-neutral-900) 12%, transparent);
   --link: var(--base-neutral-900);
   --point-text: var(--base-neutral-900);
   color: var(--base-neutral-900);
@@ -176,7 +174,7 @@
   background: var(--ticket);
 }
 
-@supports (color: oklch(from red l c h)) {
+@supports (color: oklch(from red l c h)) { /* ui-allow: 기능 검사 문구 */
   .body {
     background-image: linear-gradient(180deg, var(--ticket) 0%, var(--ticket-end) 100%);
   }

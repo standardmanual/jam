@@ -227,8 +227,8 @@ describe('공유 시트 본문 소스', () => {
   it('시트는 compact이고 체크무늬 카드 한 장에 배지 이미지를 70%로 두며 확대·축소 transform을 쓰지 않는다', () => {
     expect(share).toContain('detent="compact"')
     expect(share).toContain('repeating-conic-gradient')
-    expect(share).toContain('h-[70%] w-[70%]')
-    expect(share).toContain('max-w-[360px]')
+    expect(share).toContain('h-[var(--share-card-image-size)] w-[var(--share-card-image-size)]')
+    expect(share).toContain('max-w-[var(--share-card-max-width)]')
     expect(share).not.toContain('scale(')
   })
 

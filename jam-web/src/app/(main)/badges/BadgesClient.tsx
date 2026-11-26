@@ -76,7 +76,7 @@ function tabLabel(label: string, count: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      {count > 0 && <span className="text-base tabular-nums font-bold text-[color:var(--link)] [[aria-selected=true]_&]:text-[color:inherit]">{count}</span>}
+      {count > 0 && <span className="text-base tabular-nums font-bold text-link [[aria-selected=true]_&]:text-inherit">{count}</span>}
     </span>
   )
 }

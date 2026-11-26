@@ -334,7 +334,7 @@ export default function DropsClient({ focusPoi = null }: DropsClientProps) {
       {poisLoading && (
         // TopNav 실측 높이(env(safe-area-inset-top) + 56px, TopNav.jsx height:56 고정값) 아래로
         // 이동 — 기존 top 값(safe-area-inset-top+1rem) 그대로면 TopNav 뒤에 가려진다.
-        <div className="absolute top-[calc(env(safe-area-inset-top)+56px+1rem)] left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-full px-4 py-2 flex items-center gap-2">
+        <div className="absolute top-[calc(var(--spacing-safe-top)+var(--topnav-height)+var(--spacing-16))] left-1/2 -translate-x-1/2 z-10 bg-background-inverse rounded-full px-4 py-2 flex items-center gap-2">
           <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-snow" />
           <span className="text-xs text-snow">{d.drops.exploring}</span>
         </div>

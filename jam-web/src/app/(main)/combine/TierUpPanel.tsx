@@ -153,7 +153,7 @@ export default function TierUpPanel<T extends TierUpMaterial>({
         )}
       </div>
 
-      {/* CTA — 레시피 믹서의 CTA(`CombineClient.tsx`, `max-w-[220px]` 버튼)와 같은 모양이다. 기존 `CombineClient.test.tsx`가 믹서 트리에서 이 버튼을
+      {/* CTA — 레시피 믹서의 CTA(`CombineClient.tsx`, `max-w-[var(--cta-max-width)]` 버튼)와 같은 모양이다. 기존 `CombineClient.test.tsx`가 믹서 트리에서 이 버튼을
           요소 그대로 찾아 부르므로 컴포넌트로 추출하면 시험이 깨진다 — 추출을 취소하고 복사한다(채원 판정의 취소 조건). 믹서 쪽을 고치면 이쪽도 맞춘다 */}
       <div className="px-4 pb-6 flex flex-col items-center gap-2">
         <Button
@@ -163,7 +163,7 @@ export default function TierUpPanel<T extends TierUpMaterial>({
           disabled={!canSubmit || pendingBlocked}
           aria-describedby={pendingBlocked ? 'tier-up-pending-note' : undefined}
           onClick={onSubmit}
-          className="max-w-[220px]"
+          className="max-w-[var(--cta-max-width)]"
         >
           {submitting ? d.combine.tierUp.submitLoading : d.combine.tierUp.submit}
         </Button>

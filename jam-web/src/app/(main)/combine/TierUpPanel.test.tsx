@@ -155,7 +155,7 @@ describe('TierUpPanel 등급 안내 줄과 안내 블록', () => {
 describe('TierUpPanel 제출 버튼', () => {
   function button(overrides: Partial<Parameters<typeof TierUpPanel<TierUpMaterial>>[0]> = {}) {
     const out = html(overrides)
-    const match = out.match(/<button[^>]*max-w-\[220px\][^>]*>[\s\S]*?<\/button>/)
+    const match = out.match(/<button[^>]*max-w-\[var\(--cta-max-width\)\][^>]*>[\s\S]*?<\/button>/)
     return match ? match[0] : ''
   }
 
