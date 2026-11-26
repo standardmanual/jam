@@ -47,7 +47,7 @@ code:
 | 3 | 인사말 + 검색 | 「{이름}」 인사 한 줄과 검색 아이콘(→ `/search`) |
 | 4 | 캡슐 | 어두운 트랙·오렌지 채움 게이지 한 줄과 조건부 안내 영역. 챕터 번호는 홈에 없다(2026-10-31). 인사말 바로 아래다(2026-11-04). 시트는 없다. 아래 설명 |
 | 5 | Strava 동기화 끊김 카드 | 토큰 갱신 실패·Strava 철회로 끊긴 유저에게만(전체 폭). 정상 연결·미연동·유저가 직접 끊은 경우·조회 실패에는 DOM에 없다. 아래 표 |
-| 6 | 오늘의 현황 스트립 | 2칸. 왼쪽 「진행」, 오른쪽 「팔로잉」(아래 표) |
+| 6 | 오늘의 현황 스트립 | 2칸. 왼쪽 「진행」, 오른쪽 「팔로잉」(아래 표). 칸 면은 블랙이다(2026-11-27, 티켓 20261127_0829) |
 | 7 | 투데이 카드 스택 | 제목·부제 없이 카드만 쌓는다(제목 「투데이」·부제 「오늘의 소식」은 2026-11-04에 뺐다). 노출할 카드가 0장이면 영역 전체를 그리지 않는다 |
 
 **이용 정지 배너**(티켓 20261017_1426)는 `user_suspensions`에 진행 중인 정지(`lifted_at` 없음)가 있는 유저의 홈 맨 위(상단 바 바로 아래, 인사말 줄 위)에 그린다.
@@ -78,7 +78,7 @@ code:
 
 근거: `jam-web/src/app/(main)/page.tsx`, `jam-web/src/components/strava/StravaDisconnectedCard.tsx`, `jam-web/src/lib/strava/connection-state.ts`(`resolveStravaUiState`·`showsStravaDisconnectedCard`·`showsStravaSyncCta`), `jam-web/src/components/ui/TopNav.tsx`, `jam-web/src/lib/topNavData.tsx`, 문구 `jam-web/src/lib/i18n/ko.ts`(`stravaConnection`)
 
-**오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 
+**오늘의 현황 스트립**은 큐레이션을 하지 않는다(카드 CMS와 역할이 겹치지 않게). 두 칸의 면은 블랙(`Card`의 `inverse` 톤, `--background-inverse`)이고 글자는 `--snow`다. 라벨 칩은 `--surface-on-inverse` 면에 `--snow` 글자이며, 진행 바는 정본 `ProgressCountBar`(캡슐 16px, 채움 그린)에 `onInverse`를 켠 것으로 트랙이 `--surface-on-inverse`, 「n/n」 수치가 `--snow`다(2026-11-27, 티켓 20261127_0829, 사용자 지시).
 
 | 칸 | 상태 | 표시·이동 |
 |---|---|---|

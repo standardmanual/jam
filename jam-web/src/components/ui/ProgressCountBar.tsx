@@ -7,6 +7,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
  * 채움색은 `color`로 바꿀 수 있다. 컬렉션 상세는 홈 캡슐 게이지와 같은 `--capsule-fill`을 넘긴다(2026-11-25 사용자 지시, 티켓 20261125_1345).
  * 모양은 홈 캡슐 게이지와 같은 캡슐 변형(어두운 트랙 `--capsule-track` 위 둥근 채움)이다(2026-11-14 사용자 지시, 티켓 20261114_1502).
  * 수치는 13px 굵게 `--link` 색에 숫자 폭이 같다. 바 아래에 문장을 두지 않는다.
+ * `onInverse`를 켜면 블랙 반전 면(`--background-inverse`) 위용이다: 트랙이 면과 같은 검정이라 사라지므로 트랙을 `--surface-on-inverse`로, 수치를 `--snow`로 바꾼다(홈 «오늘의 현황» 진행 칸, 2026-11-27 사용자 지시, 티켓 20261127_0829). 채움은 그대로 그린이다.
  * 바깥 간격(좌우·위)은 호출부가 `className`으로 정한다.
  *
  * @summary 진행 막대와 오른쪽 «n/n» 수치를 한 줄로 보여 준다. 컬렉션 상세와 인벤토리에서 쓴다.
@@ -17,6 +18,8 @@ export default function ProgressCountBar({
   total,
   className = '',
   color = 'var(--jam-green)',
+  onInverse = false,
+  format,
 }: {
   percent: number
   current: number
@@ -24,12 +27,16 @@ export default function ProgressCountBar({
   className?: string
   /** 바 채움색(CSS 색 값). 기본은 강조색 그린이다 */
   color?: string
+  /** 블랙 반전 면 위에서 쓴다. 트랙은 `--surface-on-inverse`, 수치는 `--snow`다 */
+  onInverse?: boolean
+  /** 수치를 글자로 바꾸는 함수. 없으면 숫자 그대로 쓴다(거리 미션의 소수 1자리처럼 자릿수 규칙이 있는 화면이 넘긴다) */
+  format?: (n: number) => string
 }) {
   return (
     <div className={`flex items-center gap-3 ${className}`.trim()}>
-      <ProgressBar shape="capsule" percent={percent} height={16} color={color} />
-      <span className="leading-none font-bold" style={{ color: 'var(--link)', fontSize: 'var(--text-xs)', fontVariantNumeric: 'tabular-nums' }}>
-        {current}/{total}
+      <ProgressBar shape="capsule" percent={percent} height={16} color={color} trackColor={onInverse ? 'var(--surface-on-inverse)' : undefined} />
+      <span className="leading-none font-bold" style={{ color: onInverse ? 'var(--snow)' : 'var(--link)', fontSize: 'var(--text-xs)', fontVariantNumeric: 'tabular-nums' }}>
+        {format ? format(current) : current}/{format ? format(total) : total}
       </span>
     </div>
   )

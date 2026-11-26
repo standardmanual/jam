@@ -99,8 +99,8 @@ code:
 | `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--scale-compact` | `0.7` | 〃 | — | 5 | 0 | 0 | 1 | 0 | — |
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
-| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 835 | 0 | 229 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 835 | 0 | 225 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 964 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 964 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base` | `1rem` | 〃 | `text-base` | 12 | 138 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -113,7 +113,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 89 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5736 | 0 | 459 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5734 | 0 | 459 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -144,7 +144,7 @@ code:
 | `--font-weight-normal` | `400` | 〃 | `font-normal` | 0 | 45 | 0 | 21 | 0 | — |
 | `--font-weight-medium` | `500` | 〃 | `font-medium` | 0 | 386 | 0 | 151 | 0 | — |
 | `--font-weight-semibold` | `600` | 〃 | `font-semibold` | 0 | 211 | 0 | 105 | 0 | — |
-| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 299 | 0 | 167 | 0 | — |
+| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 298 | 0 | 167 | 0 | — |
 | `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 2 | 0 | 1 | 0 | — |
 | `--font-weight-black` | `900` | 〃 | `font-black` | 0 | 10 | 0 | 7 | 0 | — |
 | `--tracking-tighter` | `-0.05em` | 〃 | `tracking-tighter` | 0 | 1 | 0 | 1 | 0 | — |
@@ -178,11 +178,11 @@ code:
 | `--btn-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-btn-secondary` | 1 | 4 | 0 | 3 | 1 | — |
 | `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 13 | 14 | 0 | 20 | 3 | — |
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
-| `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 1 | 0 | 0 | 1 | 2 | — |
+| `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 3 | 0 | 0 | 3 | 2 | — |
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 594 | 0 | 218 | 7 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 40 | 250 | 0 | 144 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 0 | 16 | 1 | — |
-| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 33 | 30 | 0 | 37 | 7 | — |
+| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 35 | 30 | 0 | 39 | 7 | — |
 | `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 2 | 8 | 0 | 6 | 2 | — |
 | `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 2 | 0 | 0 | 2 | 0 | — |
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 15 | 0 | 21 | 1 | — |
@@ -234,7 +234,7 @@ code:
 | `--rarity-rare-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-epic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-mystic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 5 | 0 | 0 | 4 | 0 | — |
+| `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 6 | 0 | 0 | 5 | 0 | — |
 | `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 4 | 0 | 0 | 2 | 0 | — |
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-drop-marker-active` | `var(--jam-green)` | `#59C02B` | — | 1 | 0 | 0 | 1 | 0 | — |

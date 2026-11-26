@@ -77,7 +77,8 @@ export default async function InventoryPage() {
         {/* 20261031_1821: 보이는 타이틀은 없애고, 스크린리더용 페이지 제목만 남긴다 */}
         <h1 className="sr-only">{d.inventory.title}</h1>
         {/* 슬롯 사용량 — 컬렉션 상세의 진행도 바와 같은 모양(바 오른쪽에 «사용/전체» 수치, 바 아래 문장 없음, 2026-11-09 사용자 지시) */}
-        <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} />
+        {/* 2026-11-27 사용자 지시(티켓 20261127_0829): 바 채움색을 컬렉션 상세의 진행도 바와 같은 --capsule-fill로 맞춘다 */}
+        <ProgressCountBar percent={Math.min(100, (usedSlots / maxSlots) * 100)} current={usedSlots} total={maxSlots} color="var(--capsule-fill)" />
 
         {/* 20261110: 믹스하기 버튼을 진행도 바 아래로 옮겼다(사용자 지시, 버튼 색은 그대로).
             같은 날 가로 중앙으로 옮기고 레시피 상세의 믹스하기 버튼과 같은 가차머신 아이콘을 글자 앞에 붙였다(사용자 지시, 티켓 20261110_1757).
@@ -101,7 +102,7 @@ export default async function InventoryPage() {
         )}
       </div>
 
-      {/* 아이템 그리드 */}
+      {/* 아이템 그리드 — 2026-11-27 사용자 지시(티켓 20261127_0829): 빈 슬롯은 남은 슬롯 수만큼 모두 그린다(옛 규칙은 총 6칸까지만) */}
       {items.length === 0 ? (
         <EmptyState
           icon={<ArrowDownIcon className="w-8 h-8" />}
@@ -112,7 +113,7 @@ export default async function InventoryPage() {
         <InventoryGrid
           items={gridItems}
           mode="navigate"
-          emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length))}
+          emptySlots={remainingSlots}
         />
       )}
       </div>
