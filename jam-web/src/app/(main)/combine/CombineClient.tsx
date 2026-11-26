@@ -246,14 +246,16 @@ export function RecipeDescription({ text }: { text: string }) {
         {text}
       </p>
       {(overflowing || expanded) && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
-          className="min-h-11 text-sm whitespace-nowrap text-[color:var(--link)] underline underline-offset-2"
+          className="min-h-11 break-keep wrap-break-word whitespace-nowrap"
+          style={{ minHeight: 'var(--touch-target-min)' }}
         >
           {expanded ? d.combine.descriptionLess : d.combine.descriptionMore}
-        </button>
+        </Button>
       )}
     </div>
   )
@@ -1040,7 +1042,7 @@ export default function CombineClient({
               disabled={!canSubmit || pendingBlocked}
               aria-describedby={pendingBlocked ? 'combine-pending-note' : undefined}
               onClick={handleCombine}
-              className="max-w-[220px]"
+              className="max-w-[var(--cta-max-width)]"
             >
               {loading ? d.combine.combineButtonLoading : d.combine.combineButton}
             </Button>

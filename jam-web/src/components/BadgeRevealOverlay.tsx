@@ -251,8 +251,8 @@ export default function BadgeRevealOverlay({
               }}
             >
               <p
-                className="m-0 break-keep wrap-break-word text-balance"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700 }}
+                className="m-0 break-keep wrap-break-word text-balance font-bold"
+                style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)' }}
               >
                 {headerMessage ? pointify(headerMessage) : headerMessage}
               </p>

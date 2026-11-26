@@ -687,3 +687,23 @@
   .jam-press:active { transform: none; }
 }
 
+
+/* 잠긴 아이템 배지 상세의 크로스페이드·접힘(티켓 20261126_1408). 시간·곡선은 모션 토큰 그대로다 */
+.jam-crossfade {
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-medium);
+  transition-timing-function: var(--ease-smooth-out);
+}
+.jam-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition-property: grid-template-rows, opacity;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-smooth-out);
+}
+.jam-collapse[data-collapsed="true"] {
+  grid-template-rows: 0fr;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-crossfade, .jam-collapse { transition: none; }
+}

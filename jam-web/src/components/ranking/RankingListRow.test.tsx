@@ -34,7 +34,7 @@ describe('RankingListRow — barColor·meMarker', () => {
   it('meMarker="circle"이면 이름 옆에 22px --jam-red 원이 있고 «나» 칩은 없다', () => {
     const html = render({ meMarker: 'circle' })
     expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;border-radius:50%;background:var(--jam-red);color:var(--foreground);font-size:11px;font-weight:700;line-height:1')
+    expect(html).toContain('width:22px;height:22px;border-radius:var(--radius-full);background:var(--jam-red);color:var(--foreground);font-size:var(--text-xs)')
     expect(html).not.toContain('background:var(--accent-soft)')
   })
 

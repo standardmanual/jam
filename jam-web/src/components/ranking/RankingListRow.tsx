@@ -53,17 +53,18 @@ export interface RankingListRowProps {
   meMarker?: 'chip' | 'circle'
 }
 
-/** 내 행 표식 원 — 지름 22, 글자 11px 굵게·줄 높이 1. 글자만으로 뜻이 전달되므로 접근성 이름도 같은 «나»다 */
+/** 내 행 표식 원 — 지름 22, 글자 12px 굵게·줄 높이 1. 글자만으로 뜻이 전달되므로 접근성 이름도 같은 «나»다 */
 function MeCircle() {
   return (
     <span
       role="img"
       aria-label={d.missions.statusMeChip}
+      className="leading-none font-bold"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        width: 22, height: 22, borderRadius: '50%',
+        width: 22, height: 22, borderRadius: 'var(--radius-full)',
         background: 'var(--jam-red)', color: 'var(--foreground)',
-        fontSize: 11, fontWeight: 700, lineHeight: 1,
+        fontSize: 'var(--text-xs)',
       }}
     >
       {d.missions.statusMeChip}

@@ -51,7 +51,7 @@ export default function TicketPhoto({ badge, hasEarned, silhouette, backgroundAn
         <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
           {badge.image_url ? (
             <div
-              className="w-[200px] h-[200px] flex items-center justify-center"
+              className="w-[var(--badge-hero-size)] h-[var(--badge-hero-size)] flex items-center justify-center"
               style={!hasEarned ? { filter: `url(#${SILHOUETTE_FILTER_ID})` } : undefined}
             >
               <SafeImage

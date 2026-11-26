@@ -107,7 +107,7 @@ describe('MissionStatusClient — 랭킹형', () => {
   it('내 행 표식은 칩이 아니라 --jam-red 22px 원이고 막대 채움도 --jam-red다', () => {
     const html = render(base)
     expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;border-radius:50%;background:var(--jam-red);color:var(--foreground);font-size:11px;font-weight:700;line-height:1')
+    expect(html).toContain('width:22px;height:22px;border-radius:var(--radius-full);background:var(--jam-red);color:var(--foreground);font-size:var(--text-xs)')
     // 칩 면(--accent-soft)의 «나»는 없다
     expect(html).not.toMatch(/background:var\(--accent-soft\)[^>]*>나</)
     // 막대 채움: 행 3개 모두 --jam-red

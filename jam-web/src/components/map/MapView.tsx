@@ -370,7 +370,7 @@ export default function MapView({
         position: new naver.maps.LatLng(userLat, userLng),
         map,
         icon: {
-          content: dotIconHtml('#4285F4', 20, 1),
+          content: dotIconHtml('#4285F4', 20, 1), // ui-allow: 구글 지도 내 위치 표시 색
           anchor: new naver.maps.Point(10, 10),
         },
         zIndex: 10,
@@ -381,9 +381,9 @@ export default function MapView({
         map,
         center: new naver.maps.LatLng(userLat, userLng),
         radius: 500,
-        fillColor: '#4285F4',
+        fillColor: '#4285F4', // ui-allow: 구글 지도 내 위치 표시 색
         fillOpacity: 0.08,
-        strokeColor: '#4285F4',
+        strokeColor: '#4285F4', // ui-allow: 구글 지도 내 위치 표시 색
         strokeOpacity: 0.4,
         strokeWeight: 1,
       })

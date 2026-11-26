@@ -115,7 +115,7 @@ export function UnslotAllSheetView({
                 notice.inventoryLink ? (
                   <Link
                     href="/inventory"
-                    className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)] underline underline-offset-2"
+                    className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-link underline underline-offset-2"
                   >
                     {copy.inventoryLink}
                   </Link>

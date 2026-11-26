@@ -28,7 +28,7 @@ import { pushMainScrollLock, pushTabBarHidden } from '@/lib/uiOverlay'
  * 가운뎃값 두 개(#343434·#1a1a1a)는 이 연출에만 쓰는 중간 회색이라 토큰을 새로 만들지 않고 여기 한 곳에만 둔다(채원 판정 승인 ①). 끝색은 토큰이다.
  * 결과 배지 뒤의 glow·후광은 두지 않는다.
  */
-export const STAGE_BACKGROUND = 'radial-gradient(circle farthest-corner at 50% 42%, #343434 0%, #1a1a1a 38%, var(--base-black) 100%)'
+export const STAGE_BACKGROUND = 'radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)'
 
 /** 연출 시간과 곡선(ms) — 프로토타입 v7 원문 값. 문구 등장 시간은 사용자 확정값이라 임의로 바꾸지 않는다. motion.css 토큰은 쓰지 않는다 */
 export const TIMING = {
@@ -539,14 +539,13 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
           )}
           <p
             data-reveal="item"
-            className="break-keep wrap-break-word text-balance"
+            className="break-keep wrap-break-word text-balance font-bold"
             style={{
               ...textStyle,
               opacity: 0,
               color: 'var(--base-white)',
               fontSize: 'var(--text-2xl)',
               lineHeight: 'var(--text-2xl--line-height)',
-              fontWeight: 700,
             }}
           >
             {lines.name}

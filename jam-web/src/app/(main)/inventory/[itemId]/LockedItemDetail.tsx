@@ -70,9 +70,8 @@ const OBTAIN_ROUTE_LABEL: Record<ObtainRouteKey, string> = {
 /** 큰 정사각 타일·그림의 한 변(px) — 일반 배지 상세 카드의 대표 이미지(`BadgeHeroSection`)와 같은 200이다 */
 const HERO_SIZE_PX = 200
 
-/** 모션 — 토큰으로만 쓰고 reduced-motion이면 즉시 교체한다 */
-const CROSSFADE = 'transition-[opacity,transform] duration-[var(--duration-medium)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
-const COLLAPSE = 'transition-[grid-template-rows,opacity] duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
+/** 모션 — `components/transitions.css`의 `.jam-crossfade`·`.jam-collapse`(reduced-motion이면 즉시 교체) */
+const CROSSFADE = 'jam-crossfade'
 
 /**
  * 포인트 행의 서클 lead — 미션·배지 상세의 포인트 보상 행과 같은 서클이다(`--accent` 면 + `--accent-foreground` 코인 아이콘).
@@ -194,7 +193,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
               <LockedTile size={HERO_SIZE_PX} />
             </div>
             {view && (
-              <div className={`absolute inset-0 ${CROSSFADE} ${revealed ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-0'}`}>
+              <div className={`absolute inset-0 ${CROSSFADE} ${revealed ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
                 <SafeImage
                   src={view.item.imageUrl}
                   alt={view.item.name}
@@ -216,7 +215,7 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
       {/* 열린 뒤의 일련번호 — 일반 아이템 배지 상세와 같은 자리(카드 바로 아래, 가운데)와 간격이고, 숫자가 릴처럼 돌아 멈추는 모션도 같다
           (2026-11-10 사용자 지시: 꺼 두었던 모션을 다시 켬). 열기 응답으로 이 칸이 처음 그려질 때 한 번 돈다. */}
       {serialCode !== null && (
-        <div className="relative z-10 flex justify-center px-4 pt-3 pb-[32px]">
+        <div className="relative z-10 flex justify-center px-4 pt-3 pb-6">
           <ItemSerialCode code={serialCode} height={50} />
         </div>
       )}
@@ -225,7 +224,8 @@ export default function LockedItemDetail({ itemId, rarity, pointsRequired, point
         {/* 포인트 블록 — 열리면 높이와 투명도로 접힌다. 필요 포인트를 모르면(null) 그리지 않는다 */}
         {required !== null && (
           <div
-            className={`grid ${COLLAPSE} ${isOpened ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}
+            className={`jam-collapse ${isOpened ? 'opacity-0' : 'opacity-100'}`}
+            data-collapsed={isOpened ? 'true' : undefined}
             aria-hidden={isOpened || undefined}
             // 접히는 동안 안의 «열기» 버튼이 키보드로 눌리지 않게 막는다
             inert={isOpened ? true : undefined}

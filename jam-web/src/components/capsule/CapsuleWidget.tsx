@@ -98,16 +98,17 @@ export default function CapsuleWidget({
 
   if (load === 'error' || !capsule) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        fullWidth
         onClick={() => void retryLoad()}
         aria-label={d.capsule.aria.error}
-        className="jam-press flex w-full cursor-pointer flex-col items-center justify-center rounded-full border border-border bg-surface p-4 text-foreground"
+        className="flex-col"
         style={{ height: CAPSULE_GAUGE_HEIGHT_PX }}
       >
         <span className="text-sm font-bold text-muted break-keep wrap-break-word text-balance">{d.capsule.pill.loadFailed}</span>
         <span className="mt-1 text-xs font-semibold text-link break-keep wrap-break-word">{d.capsule.pill.retry}</span>
-      </button>
+      </Button>
     )
   }
 

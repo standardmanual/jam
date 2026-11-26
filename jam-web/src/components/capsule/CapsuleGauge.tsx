@@ -61,7 +61,7 @@ const NUMBER_RISE_PX = 1
 const LABEL_LEFT_PX = 12
 const LABEL_NUMBER_GAP_PX = 8
 const LABEL_CLASS =
-  'whitespace-nowrap text-xs font-bold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
+  'whitespace-nowrap text-xs font-bold leading-none transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
 /** 게이지 높이(px)가 정해지면 채움 원의 지름이 정해진다 */
 export function gaugeCircleDiameter(height: number): number {
   return height - (BORDER_PX + PADDING_PX) * 2
@@ -173,7 +173,7 @@ export default function CapsuleGauge({ filled, required, ariaLabel, fillRef, mes
   // 채움이 시작하기 전에는 숨긴다(숫자와 같은 조건). 막힘 문구가 있으면 이름표 자체를 그리지 않는다
   const labelStyle = { transform: `translateY(-${NUMBER_RISE_PX}px)`, opacity: showNumber ? undefined : 0 }
   const numberClass = message
-    ? 'whitespace-nowrap text-base font-extrabold leading-none transition-opacity duration-[240ms] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
+    ? 'whitespace-nowrap text-base font-extrabold leading-none transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none'
     : 'whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
 
   return (

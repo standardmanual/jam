@@ -72,7 +72,7 @@ export default function PoiEarnHistory({ poiEarns, hideTitle = false }: { poiEar
   return (
     <div className="flex flex-col gap-3">
       {/* 제목만 둔다 — 오른쪽의 «총 N회»는 걷었다(2026-11-09 사용자 지시, 횟수는 히어로 카드의 방문 횟수 칩이 말한다) */}
-      <p className={`text-[15px] font-bold text-foreground break-keep wrap-break-word text-balance${hideTitle ? ' sr-only' : ''}`}>{d.badges.visitHistoryTitle}</p>
+      <p className={`text-sm font-bold text-foreground break-keep wrap-break-word text-balance${hideTitle ? ' sr-only' : ''}`}>{d.badges.visitHistoryTitle}</p>
 
       {/* 최신(첫 번째) 기록 — 카드 형식 */}
       <Card>

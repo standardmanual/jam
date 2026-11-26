@@ -121,7 +121,7 @@ export default function ItemCandidateRow({
         )}
         {shownRarity && shownRarity !== 'common' && <RarityBadge rarity={shownRarity} size="md" />}
         {expiring && candidate.expires_at && (
-          <ListRowChip style={{ background: 'transparent', color: 'var(--muted)', boxShadow: 'inset 0 0 0 1px var(--border)' }}>
+          <ListRowChip tone="surface-muted">
             <LocalDate iso={candidate.expires_at} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </ListRowChip>
         )}
