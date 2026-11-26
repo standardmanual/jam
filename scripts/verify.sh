@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + 프로토타입 번들 최신성 + 슬롭/금칙어 검사 + 정의 안 된 토큰 참조 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
+# verify — lint 전체 + typecheck + test 전체 + 프로토타입 번들 최신성 + 슬롭/금칙어 검사 + 정의 안 된 토큰 참조 검사 + 정본 컴포넌트 목록·스토리 기준선 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고
@@ -154,8 +154,16 @@ else
   rm -f "$LOG_PREFIX.token-refs"
 fi
 
+# 정본 컴포넌트 목록 문서가 최신인지, 스토리 없는 정본 파일이 기준선(scripts/stories-baseline.json) 밖으로 늘지 않았는지 확인한다
+# (티켓 20261126_0947, UI 소스 정리 6-1a회차).
+if ! ( cd "$REPO_ROOT" && node scripts/gen-component-list.mjs --check ) >"$LOG_PREFIX.component-list" 2>&1; then
+  FAILED+=("component-list")
+else
+  rm -f "$LOG_PREFIX.component-list"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs"
+  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · component-list"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

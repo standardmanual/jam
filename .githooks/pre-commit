@@ -296,6 +296,11 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     if [ -f scripts/gen-scheduled-jobs.mjs ] && ! node scripts/gen-scheduled-jobs.mjs --check >&2; then
       doclint=1
     fi
+    # 정본 컴포넌트 목록 문서(docs/service/prd/ui-components/README.md)가 최신인지, 스토리 없는 정본 파일이
+    # 기준선 밖으로 늘지 않았는지 검사한다 (티켓 20261126_0947).
+    if [ -f scripts/gen-component-list.mjs ] && ! node scripts/gen-component-list.mjs --check >&2; then
+      doclint=1
+    fi
     # 홈피드 기능 정의 문서(docs/service/prd/home-feed/PRD.md)가 today-sections.ts·targetHref.ts와
     # 같은 최신본인지, 스테이지된 홈피드 코드에 이 문서가 함께 스테이지됐는지 검사한다
     # (티켓 20260927_2036).
