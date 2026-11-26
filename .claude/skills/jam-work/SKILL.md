@@ -405,7 +405,7 @@ Workflow를 아직 부르지 않았으므로 3.0~3.1절 판정 처리는 없다.
   정한다. 민지가 FAIL이어도 채원②는 계속 진행되며 그 결과는 참고용이다. 두 호출이 동시에
   진행돼 `tokenUsage`에는 `gate+jam-designer-post` 하나로 합산해 기록한다. 채원②의 모델은 `ds`
   유형만 Sonnet, 나머지는 Haiku다(파급 범위 기준).
-- 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·ds:check·slop 등). 아현이
+- 기계 검사는 `scripts/verify.sh` 하나로 통합됐다(lint·typecheck·test·token-refs·slop 등). 아현이
   제출 전에 직접 돌리고, 리뷰 브랜치 push는 CI(GitHub Actions `verify`)가 같은 검사를 돌려
   결과를 커밋 상태로 남긴다. `wf_*` 워크트리에서의 리뷰 브랜치 push는 pre-push가 verify를
   건너뛰고 CI에 맡긴다(기준 방어 검사는 그대로 걸린다). 아현은 CI를 기다리지 않고 반환하며,

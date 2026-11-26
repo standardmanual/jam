@@ -6,6 +6,7 @@ description: 서비스 UI ↔ MODULAR 디자인시스템 ↔ Storybook ↔ claud
 # jam-ds — 네 층 동기화
 
 > claude.ai/design 업로드·동기화는 2026-11-25 사용자 결정으로 중단했다. 해당 절차는 쓰지 않는다(규칙 문서 정리는 상위 티켓 20261125_1923 10회차).
+> 2026-11-26에 MODULAR 컴포넌트가 서비스 정본 폴더로 합쳐져 이 스킬의 쌍 비교와 Story 동반 경고는 쓰지 않는다. 토큰 참조 검사는 `node scripts/check-token-refs.mjs`가 맡는다(스킬 정리는 상위 티켓 20261125_1923 10회차).
 
 JAM!의 UI는 **네 층**에 나뉘어 존재한다. 층이 갈라지면 `/jam-design`의 "탐색 → 재사용" 선순환이
 조용히 깨진다 — 카탈로그가 거짓을 말하는 순간 재사용 판단 자체가 오염되기 때문이다.
@@ -40,7 +41,7 @@ L1은 Tailwind 유틸리티, L2는 인라인 style 객체. **그래서 텍스트
 ## 1. 진단
 
 ```bash
-cd jam-web && npm run ds:check
+node scripts/check-token-refs.mjs
 ```
 
 `--json`을 붙이면 기계 판독용 출력이 나온다. 검사 항목:
@@ -149,7 +150,7 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 
 ## 6. 마무리
 
-- `npm run ds:check`를 다시 돌려 ERROR가 0인지 확인한다. 남았으면 왜 남았는지 보고한다
+- `node scripts/check-token-refs.mjs`를 다시 돌려 ERROR가 0인지 확인한다. 남았으면 왜 남았는지 보고한다
 - 커밋 → `git push origin staging` (CLAUDE.md 규칙 3)
 - 컴포넌트 스펙이 바뀌었으면 `/jam-docs`로 티켓·PRD 갱신 여부를 판단한다
 - `.design-sync/NOTES.md`에 이번 동기화에서 판단이 갈렸던 지점을 남긴다
@@ -157,7 +158,7 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 ## 언제 도는가
 
 - `/jam-work`로 UI 작업을 끝낸 직후 (특히 `src/components/ui/*` 또는 `design-system/**` 변경 시)
-- `.githooks/pre-commit`이 "Story가 함께 갱신되지 않았다"고 경고했을 때
+- `.githooks/pre-commit`이 "Story가 함께 갱신되지 않았다"고 경고했을 때 (이 경고는 5-3c에서 없앴다)
 - 배포 전 점검 — `/jam-ship` 전에 한 번
 - 정기 점검 — 드리프트는 조용히 쌓인다
 
@@ -172,7 +173,7 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 ## 참고
 
 - `/jam-design` — 재사용 판단·MODULAR 승격 기준 (이 스킬의 앞 단계)
-- `jam-web/scripts/ds-sync-check.mjs` — 진단 엔진. 검사 규칙과 한계가 주석에 있다
+- `scripts/check-token-refs.mjs` — 정의 안 된 토큰 참조 검사. 규칙이 머리 주석에 있다
 - `jam-web/scripts/ds-manifest-sync.mjs` — 색인 재생성기 (`npm run ds:manifest`)
 - `.design-sync/NOTES.md` — L4 업로드 이력과 주의사항
 - `jam-web/design-system/readme.md` — 파운데이션·색인

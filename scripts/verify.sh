@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + ds:check + 프로토타입 번들 최신성 +슬롭/금칙어 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
+# verify — lint 전체 + typecheck + test 전체 + 프로토타입 번들 최신성 + 슬롭/금칙어 검사 + 정의 안 된 토큰 참조 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고
@@ -34,7 +34,6 @@ run_step() {
 run_step lint npm run lint:ci
 run_step typecheck npm run typecheck
 run_step test npm test
-run_step ds npm run ds:check
 # 프로토타입 번들(docs/assets/prototypes/*.core.js)이 TS 원본과 어긋나면 실패한다 (티켓 20260924_2237).
 run_step asset-bundle node scripts/asset-generator/build-prototype.mjs --check
 
@@ -147,8 +146,16 @@ else
   rm -f "$LOG_PREFIX.ui-rules"
 fi
 
+# 코드가 참조하는 var(--x)가 토큰 파일·globals.css에 정의돼 있는지 확인한다
+# (티켓 20261126_0750, 옛 DS 동기화 검사의 미정의 토큰 검사를 옮겼다).
+if ! ( cd "$REPO_ROOT" && node scripts/check-token-refs.mjs ) >"$LOG_PREFIX.token-refs" 2>&1; then
+  FAILED+=("token-refs")
+else
+  rm -f "$LOG_PREFIX.token-refs"
+fi
+
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · ds:check · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules"
+  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

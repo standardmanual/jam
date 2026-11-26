@@ -109,7 +109,7 @@ rules only; the incidents behind them are in `docs/agents/team-operations.md` §
 
 ## Verification before handing off
 
-Run `scripts/verify.sh` — one command covering lint, typecheck, the full test suite, `ds:check`,
+Run `scripts/verify.sh` — one command covering lint, typecheck, the full test suite, `token-refs`,
 and the slop check. Report pass/fail and the failing items only, never the full log.
 
 **Push-time rules** (`.githooks/pre-push`). There is no bypass variable:
@@ -174,7 +174,7 @@ Return a **`StructuredOutput`** — the orchestrator branches on `status`, `bran
 - 원인:            (버그일 때만)
 - 변경 내용:       무엇을 어떻게
 - 변경 파일 목록:
-- 검증 결과:       scripts/verify.sh 결과 (lint·typecheck·test·ds:check·slop, 실패 항목만 나열).
+- 검증 결과:       scripts/verify.sh 결과 (lint·typecheck·test·token-refs·slop, 실패 항목만 나열).
                    제출 전 `definition-of-done.md`의 정확성·품질 항목을 스스로 확인한 결과도
                    함께 적는다(통과 못한 항목만 나열, 전부 통과면 "전항목 통과")
 - 추가한 테스트:   (없으면 사유)
