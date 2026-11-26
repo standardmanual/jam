@@ -1996,6 +1996,8 @@ export const ko = {
     paginationAriaLabel: '페이지 이동',
     paginationPrev: '이전',
     paginationNext: '다음',
+    // 쪽 번호 목록 대신 «현재 / 전체» 글자만 보여 주므로, 보조기기에는 이 문장으로 읽힌다 (티켓 20261126_1618)
+    paginationCurrentAria: '{total}쪽 중 {page}쪽',
     /**
      * 문의 상태 표시 라벨 (티켓 20260915_2252) — api/voc/route.ts가 이 값을 참조해
      * 화면에 노출할 status 필드를 완성한다. Google Sheets 원본 데이터값(ANSWERED_STATUS
