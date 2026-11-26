@@ -50,7 +50,7 @@ const PAGE_TITLE = 'Philosophy'
 const SECTION_HEADING_CLASS =
   'text-2xl font-medium [word-break:keep-all]'
 const FAQ_ANSWER_CLASS =
-  'text-base leading-[var(--leading-reading)] text-muted [word-break:keep-all] break-words'
+  'text-base leading-reading text-muted [word-break:keep-all] break-words'
 
 /** 확정 원고. 임의 수정·윤문 금지 (Google Docs 원문 그대로, 티켓 20260902_1347). */
 const SECTIONS: { heading?: string; paragraphs: string[] }[] = [
@@ -245,7 +245,7 @@ export default function PhilosophyPage() {
                     // (NotificationsClient·BadgeRevealCarousel의 선례와 같은 조합)
                     <p
                       key={j}
-                      className="text-base leading-[var(--leading-reading)] text-foreground [word-break:keep-all] break-words"
+                      className="text-base leading-reading text-foreground [word-break:keep-all] break-words"
                     >
                       {paragraph}
                     </p>
@@ -266,7 +266,7 @@ export default function PhilosophyPage() {
         <section className="flex flex-col gap-6">
           <h2 className={SECTION_HEADING_CLASS}>문의하기</h2>
           <div className="flex flex-col gap-4 p-4 rounded-2xl bg-[var(--accent)]">
-            <p className="text-base leading-[var(--leading-reading)] text-accent-foreground [word-break:keep-all] break-words">
+            <p className="text-base leading-reading text-accent-foreground [word-break:keep-all] break-words">
               여기서 답을 찾지 못했다면 이메일로 바로 물어보세요. 확인하는 대로 답장
               드릴게요.
             </p>

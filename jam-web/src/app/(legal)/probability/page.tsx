@@ -85,7 +85,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function P({ children }: { children: ReactNode }) {
   return (
-    <p className="text-base leading-[var(--leading-reading)] text-foreground break-keep wrap-break-word text-balance">
+    <p className="text-base leading-reading text-foreground break-keep wrap-break-word text-balance">
       {children}
     </p>
   )
@@ -281,7 +281,7 @@ function PitySection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
         <div className="flex flex-col gap-2">
           <ul className="flex flex-col gap-2 list-disc pl-6">
             {policy.data.pity.map((sentence, i) => (
-              <li key={i} className="text-base leading-[var(--leading-reading)] text-foreground break-keep wrap-break-word text-balance">
+              <li key={i} className="text-base leading-reading text-foreground break-keep wrap-break-word text-balance">
                 {sentence}
               </li>
             ))}

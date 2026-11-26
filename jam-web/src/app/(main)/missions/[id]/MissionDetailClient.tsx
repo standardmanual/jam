@@ -114,7 +114,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
         className="w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-bold tabular-nums leading-none flex-shrink-0"
         style={{
           // 달성은 레드 면에 흰 글자, 미달성은 회색 면에 검정 글자다. 서클이 놓이는 나의 진행 상황 카드는 흰 면이다(캔버스 확정, 티켓 20261112_1629)
-          background: isDone ? 'var(--jam-red)' : 'var(--btn-secondary)',
+          background: isDone ? 'var(--mission-accent)' : 'var(--btn-secondary)',
           color:      isDone ? 'var(--snow)' : 'var(--foreground)',
         }}
       >
@@ -182,7 +182,7 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
   // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.
   if (locked) {
     return (
-      <ListRowChip style={{ gap: 'var(--spacing-4)' }}>
+      <ListRowChip className="gap-1">
         {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
         <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.25} />
         {d.missions.tagLocked}
@@ -198,7 +198,7 @@ function StatusChip({ isCompleted, participating, locked, ended }: { isCompleted
 
 /* ── 등급 칩 — 칩이 실제로 그려질 때만 eyebrow로 넘긴다(common·null이면 undefined라 빈 줄이 남지 않는다) ── */
 /** 보상 영역 배지 행의 면 — 배지 보상은 레드 면이다(2026-11-11 사용자 지시, 티켓 20261111_2310). 포인트 행은 흰 면(tone default)이라 쓰지 않는다(티켓 20261112_1629). 면 위 글자는 --foreground다 */
-const REWARD_ROW_STYLE = { background: 'var(--jam-red)' }
+const REWARD_ROW_STYLE = { background: 'var(--mission-accent)' }
 
 function rarityEyebrow(rarity: BadgeRarity | null) {
   return rarity && rarity !== 'common' ? <RarityBadge rarity={rarity} size="row" /> : undefined
@@ -614,7 +614,7 @@ export default function MissionDetailClient({
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xl font-bold text-foreground tabular-nums leading-none">
-                    <span style={{ color: 'var(--jam-red)' }}>
+                    <span style={{ color: 'var(--mission-accent)' }}>
                       {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
                     </span>
                     <span className="text-base font-normal text-foreground mx-1">/</span>
@@ -624,7 +624,7 @@ export default function MissionDetailClient({
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <ProgressBar percent={isCompleted ? 100 : progressPct} height={16} color="var(--jam-red)" />
+                <ProgressBar percent={isCompleted ? 100 : progressPct} height={16} color="var(--mission-accent)" />
               </div>
             )}
           </InfoCard>

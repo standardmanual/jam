@@ -88,6 +88,7 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
   --leading-loose: 1.6;
+  --leading-reading: 1.75;
 
   /* 모서리(primitive.css와 같은 값). 어드민은 [data-admin-theme] 안에서 자기 값으로 덮는다 */
   --radius-xs: 0.125rem;

@@ -141,7 +141,6 @@ export default function TribeStep({
                   // 제출·로그아웃 중에는 onClick을 빼 클릭·키보드·포커스를 함께 막는다(Card는 onClick이 있을 때만 버튼처럼 동작한다)
                   onClick={locked ? undefined : () => onSelect(tribe.id)}
                   className="flex items-center gap-2 text-left"
-                  style={{ padding: 'var(--spacing-16)' }}
                 >
                   {showImageSlot && (
                     <div className="w-12 h-12 shrink-0">

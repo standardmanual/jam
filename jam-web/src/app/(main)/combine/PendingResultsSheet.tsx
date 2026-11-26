@@ -126,7 +126,7 @@ export default function PendingResultsSheet({ open, onClose, view, onClaim, onRe
         {status === 'loading' && (
           <div className="grid grid-cols-3 gap-2">
             {[0, 1, 2].map((i) => (
-              <Skeleton key={i} height="auto" borderRadius="var(--radius-2xl)" className="aspect-square" />
+              <Skeleton key={i} height="auto" radius="2xl" className="aspect-square" />
             ))}
           </div>
         )}

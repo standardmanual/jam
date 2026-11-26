@@ -296,14 +296,14 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
               {isCompleted ? (
                 <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-accent p-5 text-center">
                   <p
-                    className="font-bold break-keep wrap-break-word text-balance"
-                    style={{ color: 'var(--accent-foreground)', fontSize: 'var(--text-xl)' }}
+                    className="text-xl/normal font-bold break-keep wrap-break-word text-balance"
+                    style={{ color: 'var(--accent-foreground)' }}
                   >
                     {d.itembooks.completedTitle}
                   </p>
                   <p
-                    className="break-keep wrap-break-word"
-                    style={{ color: 'var(--accent-foreground)', opacity: 0.7, fontSize: 'var(--text-sm)' }}
+                    className="text-sm/normal break-keep wrap-break-word"
+                    style={{ color: 'var(--accent-foreground)', opacity: 0.7 }}
                   >
                     {d.itembooks.completedBody}
                   </p>
@@ -320,10 +320,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
             {book.story_text && (
               <TicketTone tone="face">
                 <p
+                  className="text-xs/loose"
                   style={{
                     color: 'var(--foreground)',
-                    fontSize: 'var(--text-xs)',
-                    lineHeight: 'var(--leading-loose)',
                     fontStyle: 'italic',
                     whiteSpace: 'pre-line',
                   }}
@@ -366,10 +365,10 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
             {checkinBadges.length > 0 && (
               <div className="flex flex-col gap-3">
                 <TicketTone tone="face" className="flex flex-col gap-3">
-                  <p className="font-bold leading-5" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)' }}>
+                  <p className="text-base font-bold leading-5" style={{ color: 'var(--foreground)' }}>
                     {d.itembooks.checkinSectionTitle}
                   </p>
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-xs)', textAlign: 'center' }}>
+                  <p className="text-xs/normal text-center" style={{ color: 'var(--foreground)' }}>
                     {d.itembooks.checkinHint}
                   </p>
                 </TicketTone>

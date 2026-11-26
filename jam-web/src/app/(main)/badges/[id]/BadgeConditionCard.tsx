@@ -40,11 +40,11 @@ export default function BadgeConditionCard({ text, spec, hideTitle = false }: Ba
       {spec ? (
         /* 카드에 이 줄뿐이라 굵기를 주지 않는다 — 대비할 문장이 없으면 볼드가 근거를 잃는다.
            길어지면 줄바꿈한다. 조건이 잘리면 안 되므로 말줄임(truncate)을 쓰지 않는다. */
-        <p className="text-sm text-foreground leading-[var(--leading-loose)] tabular-nums [word-break:keep-all] break-words">
+        <p className="text-sm text-foreground leading-loose tabular-nums [word-break:keep-all] break-words">
           {spec}
         </p>
       ) : (
-        <p className="text-sm text-[var(--muted)] leading-[var(--leading-loose)]">{text}</p>
+        <p className="text-sm text-[var(--muted)] leading-loose">{text}</p>
       )}
     </Card>
   )

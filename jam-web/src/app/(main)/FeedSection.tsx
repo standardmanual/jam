@@ -348,7 +348,7 @@ function FeedCard({
             {/* lead가 없으면 «×N»을 얹을 자리가 없어 칩으로 옮긴다 */}
             {!badgeImage && earnCount != null && <ListRowChip tone="neutral">{`×${earnCount}`}</ListRowChip>}
             {isLastPiece && (
-              <ListRowChip tone="neutral" style={{ gap: 'var(--spacing-4)' }}>
+              <ListRowChip tone="neutral" className="gap-1">
                 <PuzzleIcon className="w-3 h-3" />
                 {d.feed.lastPiece}
               </ListRowChip>

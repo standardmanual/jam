@@ -20,7 +20,7 @@ const declsOf = (css: string): Map<string, string> => {
 
 const THEME = declsOf(read('./jam-theme.css'))
 const PRIMITIVE = declsOf(read('../../design-system/tokens/primitive.css'))
-const SHARED = /^--(text-|radius-|ease-|leading-loose$)/
+const SHARED = /^--(text-|radius-|ease-|leading-loose$|leading-reading$)/
 
 describe('jam-theme.css', () => {
   it('Tailwind 기본 테마를 닫는다', () => {

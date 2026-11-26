@@ -91,7 +91,7 @@ export default function CapsuleWidget({
   if (load === 'loading' || (load === 'ready' && !capsule)) {
     return (
       <div role="status" aria-label={d.capsule.aria.loading} className="w-full">
-        <Skeleton height={CAPSULE_GAUGE_HEIGHT_PX} borderRadius="var(--radius-full)" className="w-full" />
+        <Skeleton height={CAPSULE_GAUGE_HEIGHT_PX} radius="full" className="w-full" />
       </div>
     )
   }

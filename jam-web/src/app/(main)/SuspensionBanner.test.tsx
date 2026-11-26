@@ -62,7 +62,7 @@ describe('SuspensionBanner — 정지 중 기본 모습', () => {
   })
 
   it('사유·정지일은 라벨 왼쪽·값 오른쪽 가로 줄이고 라벨 폭이 같다', () => {
-    expect(html.match(/<div class="flex gap-\[18px\]">/g)).toHaveLength(2)
+    expect(html.match(/<div class="flex gap-4">/g)).toHaveLength(2)
     expect(html.match(/<dt class="w-10/g)).toHaveLength(2)
   })
 
