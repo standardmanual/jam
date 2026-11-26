@@ -227,7 +227,9 @@ export function watchFooterContact(
   }
 }
 
-/** @summary 화면 아래에 고정된 다섯 칸 탭 바다. 메인 레이아웃에서 쓴다. */
+/**
+ * @summary 화면 아래에 고정된 다섯 칸 탭 바다. 메인 레이아웃에서 쓴다.
+ */
 export default function TabBar({ username, inverted: invertedProp }: TabBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()

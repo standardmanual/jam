@@ -2,40 +2,35 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { Accordion } from './Accordion';
 
-/**
- * 20260907 (티켓 20260907_0934): 토글 버튼이 평문 셰브런 → 원형 배지 버튼(pill)으로
- * 바뀌었다. props 형태(items/style/className)는 그대로라 기존 스토리는 그대로 유효하다.
- * `Default`(2번째 항목 defaultOpen)에서 열림/닫힘 배지 대비(닫힘: --background-secondary,
- * 열림: --link)를 함께 확인할 수 있다.
- *
- * 20260907 인터랙션 리뷰 반영: 헤더/배지/패널 트랜지션이 인라인 style → CSS 클래스로
- * 이동했고 prefers-reduced-motion 킬스위치·헤더 :active 피드백이 추가됐다. props 형태는
- * 그대로라 아래 스토리는 수정 없이 그대로 유효하다.
- */
+const ANSWER_CLASS = 'text-base leading-[var(--leading-reading)] text-muted [word-break:keep-all] break-words';
 
 const FAQ_ITEMS = [
   {
-    title: '배지는 어떻게 획득하나요?',
+    title: '배지는 어떻게 얻나요?',
     content: (
-      <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 'var(--text-base--line-height)' }}>
-        Strava 활동을 동기화하면 미션을 달성할 때 배지를 획득해요.
+      <p className={ANSWER_CLASS}>
+        운동을 마치고 Strava 동기화를 하면 자동으로 조건을 확인해서 배지를 드려요. 따로
+        신청할 필요는 없어요. Common부터 Mystic까지 등급이 있는 배지도 있고, 계속 올라가는
+        레벨형 배지도 있어요.
       </p>
     ),
   },
   {
-    title: '드랍 확률이란 무엇인가요?',
+    title: '운동을 마쳤는데 왜 배지가 바로 안 나오나요?',
     content: (
-      <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 'var(--text-base--line-height)' }}>
-        드랍은 미션 완료 시 확률로 떨어지는 아이템 배지예요. 활동 강도에 따라 드랍률이 달라져요.
+      <p className={ANSWER_CLASS}>
+        JAM은 활동을 자동으로 가져오지 않아요. Strava에 기록이 올라온 뒤, 홈 화면의
+        동기화 버튼을 직접 눌러야 최신 활동을 불러오고 배지 조건을 확인해요. 배지가
+        안 보인다면 동기화 버튼부터 눌러 보세요.
       </p>
     ),
-    defaultOpen: true,
   },
   {
-    title: '배지를 믹스할 수 있나요?',
+    title: '직접 입력한 기록도 인정되나요?',
     content: (
-      <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 'var(--text-base--line-height)' }}>
-        아이템 배지를 믹스하면 새로운 희귀 배지를 만들 수 있어요. 인벤토리에서 믹스해 보세요.
+      <p className={ANSWER_CLASS}>
+        아니요. JAM은 운동을 직접 재지 않아요. 손목시계나 자전거 속도계 같은 기기가 측정해
+        Strava에 올라온 기록만 가져와요. 손으로 적어 넣은 숫자는 배지로 인정하지 않아요.
       </p>
     ),
   },
@@ -50,39 +45,9 @@ const meta: Meta<typeof Accordion> = {
 export default meta;
 type Story = StoryObj<typeof Accordion>;
 
+/** 철학 화면(`philosophy/page.tsx`)의 자주 묻는 질문 — 모두 닫힌 채로 시작한다. */
 export const Default: Story = {
-  name: 'FAQ 예시',
+  name: '자주 묻는 질문',
   args: { items: FAQ_ITEMS },
-  decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
-};
-
-export const AllClosed: Story = {
-  name: '전체 닫힘',
-  args: {
-    items: [
-      { title: '항목 1', content: <p style={{ margin: 0, color: 'var(--muted)' }}>항목 1 내용입니다.</p> },
-      { title: '항목 2', content: <p style={{ margin: 0, color: 'var(--muted)' }}>항목 2 내용입니다.</p> },
-      { title: '항목 3', content: <p style={{ margin: 0, color: 'var(--muted)' }}>항목 3 내용입니다.</p> },
-    ],
-  },
-  decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
-};
-
-export const SingleItem: Story = {
-  name: '단일 항목',
-  args: {
-    items: [{ title: '단일 항목', content: <p style={{ margin: 0, color: 'var(--muted)' }}>단일 항목입니다.</p>, defaultOpen: true }],
-  },
-  decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
-};
-
-export const ManyItems: Story = {
-  name: '많은 항목 (5개)',
-  args: {
-    items: Array.from({ length: 5 }, (_, i) => ({
-      title: `항목 ${i + 1} — 질문 제목이 들어갑니다`,
-      content: <p style={{ margin: 0, color: 'var(--muted)' }}>항목 {i + 1}의 상세 내용입니다.</p>,
-    })),
-  },
   decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
 };

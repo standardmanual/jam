@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { IconButton } from './IconButton';
+import { d } from '@/lib/i18n';
 
 const ICONS = ['chevron-left', 'chevron-right', 'close', 'check', 'info', 'search', 'menu', 'share'] as const;
 
@@ -17,51 +18,8 @@ const meta: Meta<typeof IconButton> = {
 export default meta;
 type Story = StoryObj<typeof IconButton>;
 
-export const Default: Story = { args: { icon: 'chevron-left', label: '뒤로' } };
-export const Close: Story = { args: { icon: 'close', label: '닫기' } };
-export const Search: Story = { args: { icon: 'search', label: '검색' } };
-export const Check: Story = { args: { icon: 'check', label: '확인' } };
-export const Info: Story = { args: { icon: 'info', label: '정보' } };
-export const Menu: Story = { args: { icon: 'menu', label: '메뉴' } };
-export const Share: Story = { args: { icon: 'share', label: '공유' } };
-
-export const AllIcons: Story = {
-  name: '전체 아이콘',
-  render: () => (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {ICONS.map(icon => (
-        <div key={icon} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <IconButton icon={icon} label={icon} />
-          <span style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{icon}</span>
-        </div>
-      ))}
-    </div>
-  ),
-};
-
-export const Disabled: Story = {
-  name: '비활성(소프트) — 클릭은 계속 동작',
-  args: { icon: 'share', label: '공유', disabled: true, onClick: () => alert('disabled여도 onClick은 호출됩니다 — 팝오버 안내 등에 사용') },
-};
-
-export const LightSurface: Story = {
-  name: 'Light Surface (밝은 면 위, 아이콘 --foreground)',
-  render: () => (
-    <div style={{ background: 'var(--background)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
-      <IconButton icon="chevron-left" label="뒤로" surface="light" />
-      <IconButton icon="close" label="닫기" surface="light" />
-      <IconButton icon="menu" label="메뉴" surface="light" />
-    </div>
-  ),
-};
-
-export const DarkSurface: Story = {
-  name: 'Dark Surface (--background-inverse 위, 아이콘 --snow)',
-  render: () => (
-    <div style={{ background: 'var(--background-inverse)', padding: 16, borderRadius: 12, display: 'flex', gap: 8 }}>
-      <IconButton icon="chevron-left" label="뒤로" surface="dark" />
-      <IconButton icon="close" label="닫기" surface="dark" />
-      <IconButton icon="menu" label="메뉴" surface="dark" />
-    </div>
-  ),
+/** 배지 획득 연출(`BadgeRevealOverlay`)과 장소 카드 모달(`PoiCarouselModal`)의 닫기 버튼 — 밝은 면 위에 둔다. */
+export const Close: Story = {
+  name: '닫기',
+  args: { icon: 'close', label: d.common.close, surface: 'light' },
 };

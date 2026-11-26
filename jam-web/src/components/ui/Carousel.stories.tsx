@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
 import { Carousel } from './Carousel';
+import { d } from '@/lib/i18n';
 import { Card } from '@/components/ui/Card';
 import { RarityBadge } from '@/components/ui/RarityBadge';
 
@@ -61,6 +62,7 @@ function DemoCard({ name, badges, isActive }: { name: string; badges: number; is
 // 데모 카드는 배지 수(1/0/3/0/5)로 높이가 제각각이다 — Carousel 컨테이너가
 // `alignItems:'flex-end'`(하단 고정)이므로 모든 카드의 하단이 같은 기준선에서
 // 시작하고, 배지가 많은 카드(예: 5개인 'e')는 위쪽으로만 늘어난다.
+/** 지도의 장소 카드 모달(`PoiCarouselModal`) — 근처 장소가 여럿일 때 가운데 카드가 선택되고 끝에서 처음으로 이어진다. */
 export const CenterFocusInfiniteLoop: Story = {
   name: '센터 포커스 · 무한 루프',
   render: () => {
@@ -75,7 +77,7 @@ export const CenterFocusInfiniteLoop: Story = {
           activeIndex={activeIndex}
           onActiveIndexChange={setActiveIndex}
           getItemKey={(item) => item.id}
-          ariaLabel="POI 캐러셀 데모"
+          ariaLabel={d.drops.poiCarouselListAriaLabel}
           renderItem={(item, { isActive }) => (
             <DemoCard name={item.name} badges={item.badges} isActive={isActive} />
           )}
@@ -85,6 +87,7 @@ export const CenterFocusInfiniteLoop: Story = {
   },
 };
 
+/** 지도의 장소 카드 모달 — 근처 장소가 하나뿐일 때. */
 export const SingleItem: Story = {
   name: '단일 항목(루프 없음)',
   render: () => {
@@ -106,6 +109,7 @@ export const SingleItem: Story = {
   },
 };
 
+/** 지도의 장소 카드 모달 — 활성 카드가 끝에 닿으면 3장씩 더 공개한다. */
 export const ProgressiveWindowing: Story = {
   name: '3개 단위 윈도잉',
   render: () => {

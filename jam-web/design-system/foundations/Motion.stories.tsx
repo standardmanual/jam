@@ -173,7 +173,7 @@ function MotionPage() {
     <div style={{ padding: 32, background: 'var(--background)', minHeight: '100vh', color: 'var(--foreground)', fontFamily: 'var(--font-family-base)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>Motion Tokens</h1>
       <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>
-        MODULAR 모션 시스템. <strong>▶ 토글 / 재생</strong> 버튼으로 실제 애니메이션을 확인할 수 있다.
+        JAM! 모션 시스템. <strong>▶ 토글 / 재생</strong> 버튼으로 실제 애니메이션을 확인할 수 있다.
       </p>
       <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 40 }}>
         ⚠️ <code style={{ color: 'var(--link)' }}>prefers-reduced-motion</code>이 활성화되면 <code style={{ color: 'var(--link)' }}>design-system/styles.css</code>의 규칙이 모든 애니메이션과 전환을 사실상 즉시 끝낸다.

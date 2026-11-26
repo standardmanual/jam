@@ -84,7 +84,7 @@ function FontsPage() {
         <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8 }}>
           <p>• 폰트 패밀리는 항상 <code style={{ color: 'var(--link)' }}>var(--font-family-base)</code>를 통해 참조한다.</p>
           <p>• 굵기는 400·500·600·700 중에서 쓴다(<code style={{ color: 'var(--link)' }}>font-normal</code>·<code style={{ color: 'var(--link)' }}>font-medium</code>·<code style={{ color: 'var(--link)' }}>font-semibold</code>·<code style={{ color: 'var(--link)' }}>font-bold</code>). 800은 정의만 있고 서비스는 쓰지 않는다.</p>
-          <p>• MODULAR 컴포넌트 내에서 <code style={{ color: 'var(--link)' }}>font-family</code> 명시 불필요 — body에서 상속됨.</p>
+          <p>• 컴포넌트 안에서 <code style={{ color: 'var(--link)' }}>font-family</code> 명시 불필요 — body에서 상속됨.</p>
         </div>
       </div>
     </div>
