@@ -842,7 +842,6 @@ export function PoiCard({
           <EmptyState
             icon={<ArrowDownIcon className="w-8 h-8" />}
             title={d.drops.dropEmptyTitle}
-            description={d.drops.dropEmptyBody}
             style={{ padding: 0 }}
           />
         )
@@ -918,11 +917,12 @@ interface PoiBadgeCell {
  * 3열 × 2행 갤러리. 칸 높이는 내용을 따른다(칩이 없는 행은 칩 줄만큼 낮다, 티켓 20261117_1822). 본문 슬롯 높이는 칩이 있는 칸 2행 기준(`GALLERY_H`)으로 고정해 시트 크기가 바뀌지 않는다.
  * 묶음이 6개를 넘으면 이 영역 안에서만 세로 스크롤하고(`overscroll-contain`), 6개 미만이면 앞에서부터 채우며 빈 칸 자리 표시는 없다.
  * 세로 스크롤과 캐러셀 가로 스와이프는 브라우저가 제스처 방향으로 가르므로 `touch-action`을 따로 제한하지 않는다.
+ * 행 높이는 `auto-rows-max`로 내용 크기에 고정한다. 칸이 `overflow-hidden`이라 자동 행의 최소 높이가 0이 되어, 3행 이상이면 행이 컨테이너 높이에 맞춰 눌려 이름·칩이 잘린다.
  */
 function PoiBadgeGallery({ cells }: { cells: PoiBadgeCell[] }) {
   return (
     <div
-      className="grid grid-cols-3 gap-2 content-start h-full overflow-y-auto overscroll-contain"
+      className="grid grid-cols-3 auto-rows-max gap-2 content-start h-full overflow-y-auto overscroll-contain"
     >
       {cells.map((cell, index) => (
         <BadgeGridCard

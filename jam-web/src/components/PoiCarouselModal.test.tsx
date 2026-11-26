@@ -143,7 +143,7 @@ describe('갤러리 칸 배선 (티켓 20261114_2352, 이전 20261108_1625)', ()
 
   it('칸은 compact 규격이다: 3열 갤러리, 면 --background-secondary, 여백 8', () => {
     const html = renderList([base])
-    expect(html).toContain('grid grid-cols-3 gap-2')
+    expect(html).toContain('grid grid-cols-3 auto-rows-max gap-2')
     expect(html).toContain('bg-background-secondary')
     expect(html).toContain('rounded-2xl p-1 overflow-hidden')
   })
