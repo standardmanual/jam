@@ -38,7 +38,7 @@ describe('StravaDisconnectedCard — 홈 끊김 카드', () => {
   it('Card(--card-bg, 테두리 없음) 위에 LabelChip과 검정 알약 버튼(primary main, 전체 폭)이다', () => {
     expect(html).toContain('background:var(--card-bg)')
     expect(html).not.toContain('border:1px solid')
-    expect(html).toMatch(/<span class="self-start"[^>]*>Strava 동기화<\/span>/)
+    expect(html).toMatch(/<span class="font-bold self-start"[^>]*>Strava 동기화<\/span>/)
     const button = /<button[^>]*>(?:(?!<\/button>).)*<\/button>/.exec(html)?.[0] ?? ''
     expect(button).toContain('bg-background-inverse')
     expect(button).toContain('text-snow')
@@ -48,7 +48,7 @@ describe('StravaDisconnectedCard — 홈 끊김 카드', () => {
   it('제목은 «동기화가 끊겼어요»이고 칩과 제목이 한 줄(가로 flex, gap 8px)에 놓인다', () => {
     expect(copy.card.title).toBe('동기화가 끊겼어요')
     expect(html).toMatch(
-      /<div class="flex flex-row gap-2"><span class="self-start"[^>]*>Strava 동기화<\/span><p class="[^"]*font-bold[^"]*">동기화가 끊겼어요<\/p><\/div>/,
+      /<div class="flex flex-row gap-2"><span class="font-bold self-start"[^>]*>Strava 동기화<\/span><p class="[^"]*font-bold[^"]*">동기화가 끊겼어요<\/p><\/div>/,
     )
   })
 

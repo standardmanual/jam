@@ -81,10 +81,9 @@ export function EmptyState({
       {(title || description) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}>
           {title && (
-            <p style={{
+            <p className="font-medium" style={{
               margin: 0,
               fontSize: 'var(--text-2xl)',
-              fontWeight: 500,
               lineHeight: 'var(--text-2xl--line-height)',
               color: 'var(--foreground)',
             }}>

@@ -80,25 +80,32 @@ function resolveColorClass(variant: ButtonVariant, surface: ButtonSurface): stri
   return colorClasses[variant]
 }
 
-// 세로 패딩은 1px 테두리 두께를 뺀 값이다 — 14→13(md 52px 유지), arrow 24→23.
-// arrow의 `py-5.75`(= 23px)는 임의값 `py-[23px]`가 아니라 스케일 유틸리티다: 임의값끼리는 값이 큰 쪽이 CSS에서
-// 나중에 와서 이기는데, 옛 `py-6`처럼 스케일 유틸리티여야 sm·lg의 `py-[…]`가 이전처럼 arrow를 이긴다(높이 불변).
-const pillShape = 'rounded-full px-6 py-[13px] text-base'
+// 세로 패딩은 1px 테두리 두께를 뺀 4px 눈금 값이다 — md 12(높이 50px), arrow 24, sm 8(42px), lg 16(58px).
+// 같은 속성의 스케일 클래스끼리는 CSS에서 어느 쪽이 이기는지 클래스 순서로 보장되지 않는다.
+// 그래서 세로 패딩은 shapeClasses에 두지 않고 size·variant 조합으로 한 값만 고른다(verticalPadding).
+const pillShape = 'rounded-full px-6 text-base'
 
 const shapeClasses: Record<ButtonVariant, string> = {
-  primary: 'rounded-full px-8 py-[13px] text-base',
+  primary: 'rounded-full px-8 text-base', // spacing-allow: 버튼 안쪽 좌우 여백(primary 32px)은 화면 간격이 아니라 알약 모양이다(사용자 결정 2026-11-26 폭 유지)
   secondary: pillShape,
   danger: pillShape,
   outline: pillShape,
   ghost: pillShape,
-  arrow: 'rounded-full px-6 py-5.75 text-2xl',
+  arrow: 'rounded-full px-6 text-2xl',
 }
 
 const sizePadding: Record<ButtonSize, string> = {
   xs: '',
-  sm: 'px-4 py-[9px] text-base',
+  sm: 'px-4 text-base',
   md: '',
-  lg: 'py-[17px]',
+  lg: '',
+}
+
+/** sm·lg는 variant와 상관없이 자기 값, 그 밖(xs는 인라인 style이 다시 덮는다)은 variant 기본값(arrow만 24px). */
+function verticalPadding(variant: ButtonVariant, size: ButtonSize): string {
+  if (size === 'sm') return 'py-2'
+  if (size === 'lg') return 'py-4'
+  return variant === 'arrow' ? 'py-6' : 'py-3'
 }
 
 // xs는 Tailwind 클래스 우선순위 충돌(px-24/py-13 shapeClasses vs sizePadding)을 피하려고
@@ -135,9 +142,11 @@ export function getButtonClassName({
 } = {}): string {
   return [
     // 최소 44×44pt 터치 영역 + weight 400 고정 (xs는 예외 — 인라인 style로 31px 강제)
-    'inline-flex items-center justify-center gap-2 min-h-11 font-normal border',
+    // sm은 42px(사용자 결정 2026-11-26)라 최소 높이 44px(min-h-11)를 걸지 않는다
+    `inline-flex items-center justify-center gap-2 ${size === 'sm' ? '' : 'min-h-11 '}font-normal border`,
     interactive ? 'transition-transform duration-100' : '',
     shapeClasses[variant],
+    verticalPadding(variant, size),
     resolveColorClass(variant, surface),
     sizePadding[size],
     fullWidth ? 'w-full' : '',

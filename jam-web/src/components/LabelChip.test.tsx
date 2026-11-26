@@ -12,7 +12,7 @@
  * 면만 티켓 20261015_2133에서 `--background-secondary`로 올렸다(흰 카드 위 윤곽).
  * 계산값은 Tailwind v4로 컴파일해 확인했다 — `px-2.5`=`calc(var(--spacing) * 2.5)`·`py-1.5`=
  * `calc(var(--spacing) * 1.5)`이고 `--spacing: 0.25rem`(globals.css에 재정의 없음, root 16px)이라
- * 10px·6px, `leading-none`=`line-height: 1`, `font-bold`=700.
+ * 10px·6px, `leading-none`=`line-height: 1`, `font-bold`=700(7회차부터 인라인 style이 아니라 `font-bold` 클래스가 맡는다).
  *
  * 저장소에 jsdom이 없어(vitest `environment: 'node'`) `renderToStaticMarkup`으로 인라인
  * style 속성을 직접 읽는다.
@@ -37,14 +37,13 @@ function readStyle(html: string): Record<string, string> {
 }
 
 describe('LabelChip — 교체 전 Tailwind 클래스와 같은 계산 스타일', () => {
-  it('인라인 style이 정의한 열 개 값과 정확히 같다(그 밖의 속성은 없다)', () => {
+  it('인라인 style이 정의한 아홉 값과 정확히 같다(그 밖의 속성은 없다)', () => {
     const style = readStyle(renderToStaticMarkup(<LabelChip>내 진행도</LabelChip>))
     expect(style).toEqual({
       display: 'inline-flex',
       'align-items': 'center',
       'font-size': 'var(--text-xs)',
       'line-height': 'var(--text-xs--line-height)',
-      'font-weight': '700',
       'text-transform': 'uppercase',
       padding: 'var(--chip-padding)',
       'border-radius': 'var(--radius-full)',
@@ -79,7 +78,6 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
     'align-items': 'center',
     'font-size': 'var(--text-xs)',
     'line-height': 'var(--text-xs--line-height)',
-    'font-weight': '700',
     'text-transform': 'uppercase',
     padding: 'var(--chip-padding)',
     'border-radius': 'var(--radius-full)',
@@ -87,13 +85,13 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
     color: 'var(--foreground)',
   }
 
-  it('tone을 주지 않거나 default를 주면 기본 열 개 값과 출력이 같다(기존 호출부 4곳은 그대로)', () => {
+  it('tone을 주지 않거나 default를 주면 기본 아홉 값과 출력이 같다(기존 호출부 4곳은 그대로)', () => {
     const plain = renderToStaticMarkup(<LabelChip>내 진행도</LabelChip>)
     expect(renderToStaticMarkup(<LabelChip tone="default">내 진행도</LabelChip>)).toBe(plain)
     expect(readStyle(plain)).toEqual(DEFAULT_STYLE)
   })
 
-  it('inverse는 배경·글자색만 반대이고 나머지 여덟 값은 default와 같다', () => {
+  it('inverse는 배경·글자색만 반대이고 나머지 일곱 값은 default와 같다', () => {
     const style = readStyle(renderToStaticMarkup(<LabelChip tone="inverse">기사</LabelChip>))
     expect(style).toEqual({
       ...DEFAULT_STYLE,
@@ -122,7 +120,7 @@ describe('LabelChip — tone (티켓 20261001_1737, 1248)', () => {
 describe('LabelChip — props', () => {
   it('className은 그대로 전달한다(self-start 같은 배치는 호출부 몫)', () => {
     const html = renderToStaticMarkup(<LabelChip className="self-start">내 진행도</LabelChip>)
-    expect(html).toContain('class="self-start"')
+    expect(html).toContain('class="font-bold self-start"')
   })
 
   it('className을 안 주면 self-start를 붙이지 않는다 — 배치 클래스를 컴포넌트가 굳히지 않는다', () => {

@@ -468,7 +468,7 @@ export default function ProfileClient({
           <ListRow
             key={u.id}
             href={`/${u.username}`}
-            lead={<Avatar src={u.avatar_url} alt="" size={48} iconClassName="w-5 h-5 text-muted" />}
+            lead={<Avatar src={u.avatar_url} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />}
             leadShape="round"
             title={getDisplayName(u)}
             titleVariant="regular"
@@ -558,8 +558,7 @@ export default function ProfileClient({
                 src={profile?.avatar_url}
                 alt={d.profile.avatarAlt}
                 size={96}
-                iconClassName="w-10 h-10"
-                className={profile?.avatar_url ? '' : 'bg-surface text-foreground'}
+                iconClassName="w-10 h-10 text-foreground"
               />
             </Link>
           </div>
@@ -601,7 +600,7 @@ export default function ProfileClient({
         </div>
 
         {/* 팔로우/언팔로우(타인) 버튼 — 헤더 아래 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청). 편집 버튼은 챕터 줄 오른쪽 끝으로 옮겼다.
-            sm은 알약 모양의 기본 세로 여백(py-[13px])에 밀려 높이가 52px로 남으므로 쓰지 않는다.
+            sm은 42px라 이 자리에 크다(xs 약 31px를 쓴다).
             예전에는 편집이 숫자 줄 오른쪽, 팔로우가 헤더 오른쪽에 있어 숫자 줄 칸이 좁아져 줄이 바뀌었다. */}
         {!isOwnProfile && (
           <Button

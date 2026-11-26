@@ -59,11 +59,11 @@ export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default
   const isCommon = tone === 'common';
   return (
     <span
-      className={className}
+      className={`font-bold ${className}`.trim()}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width, padding: s.padding, borderRadius: 'var(--radius-full)',
-        fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: 700,
+        fontSize: s.fontSize, lineHeight: s.lineHeight,
         fontVariantNumeric: 'tabular-nums',
         color: isCommon ? 'var(--rarity-common-foreground)' : 'var(--foreground)',
         background: isCommon ? 'var(--rarity-common)' : 'var(--default-soft)',

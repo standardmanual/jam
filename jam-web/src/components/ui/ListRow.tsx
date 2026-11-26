@@ -163,13 +163,14 @@ function Lead({ lead, shape, badge, tone }: { lead: ReactNode; shape: 'tile' | '
       </span>
       {badge != null && badge !== '' && (
         <span
+          className="leading-none"
           style={{
             position: 'absolute', right: 'var(--list-row-lead-badge-offset)', bottom: 'var(--list-row-lead-badge-offset)', boxSizing: 'border-box',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             minWidth: 'var(--list-row-lead-badge-size)', height: 'var(--list-row-lead-badge-size)', padding: '0 var(--list-row-lead-badge-padding-x)', whiteSpace: 'nowrap',
             borderRadius: 'var(--radius-full)',
             background: 'var(--foreground)', color: 'var(--snow)', border: `1px solid ${t.face}`,
-            fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: ROW_WEIGHT.strong, fontVariantNumeric: 'tabular-nums',
+            fontSize: 'var(--text-xs)', fontWeight: ROW_WEIGHT.strong, fontVariantNumeric: 'tabular-nums',
           }}
         >
           {badge}
@@ -485,7 +486,7 @@ export function ListRow({
             className="ds-list-row-lead-link"
             aria-label={leadLabel || undefined}
             tabIndex={disabled ? -1 : undefined}
-            style={{ display: 'block', color: 'inherit', textDecoration: 'none', borderRadius: leadShape === 'round' ? 'var(--radius-full)' : 'var(--radius-xl)', pointerEvents: disabled ? 'none' : undefined }}
+            style={{ display: 'block', textDecoration: 'none', borderRadius: leadShape === 'round' ? 'var(--radius-full)' : 'var(--radius-xl)', pointerEvents: disabled ? 'none' : undefined }}
           >
             <Lead lead={lead} shape={leadShape} badge={leadBadge} tone={tone} />
           </Link>

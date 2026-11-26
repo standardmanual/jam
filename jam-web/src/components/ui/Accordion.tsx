@@ -86,7 +86,7 @@ function AccordionItemView({ item, index, isOpen, onToggle, headerId, panelId }:
         style={{
           width: '100%', display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', padding: 'var(--layout-element-gap)',
-          background: 'none', border: 'none', cursor: 'pointer',
+          cursor: 'pointer',
           fontSize: 'var(--text-base)', color: 'var(--foreground)',
           fontFamily: 'var(--font-family-base)', textAlign: 'left',
           minHeight: 44,

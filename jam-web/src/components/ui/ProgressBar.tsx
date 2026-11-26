@@ -151,9 +151,9 @@ export function ProgressBar({
   const label =
     labelType === 'percent' ? (
       <span
+        className="font-bold"
         style={{
           fontSize: 'var(--text-sm)',
-          fontWeight: 700,
           color: 'var(--foreground)',
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
@@ -163,9 +163,9 @@ export function ProgressBar({
       </span>
     ) : labelType === 'fraction' && current != null && total != null ? (
       <span
+        className="font-bold"
         style={{
           fontSize: 'var(--text-sm)',
-          fontWeight: 700,
           color: 'var(--link)',
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',

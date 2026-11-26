@@ -118,8 +118,6 @@ export function Input({
           style={{
             flex: 1,
             minWidth: 0,
-            border: 'none',
-            background: 'transparent',
             outline: 'none',
             padding: 0,
             fontSize: 'var(--text-base)',

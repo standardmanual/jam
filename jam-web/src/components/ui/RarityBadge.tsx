@@ -123,11 +123,11 @@ export function RarityBadge({ rarity = 'common', size = 'sm', tone = 'default', 
   const s = SIZES[size] ?? SIZES.sm;
   return (
     <span
-      className={className}
+      className={`font-bold ${className}`.trim()}
       style={{
         display: 'inline-flex', alignItems: 'center',
         padding: s.padding, borderRadius: 'var(--radius-full)',
-        fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: 700,
+        fontSize: s.fontSize, lineHeight: s.lineHeight,
         textTransform: 'uppercase',
         color: c.text, background: c.bg,
       }}

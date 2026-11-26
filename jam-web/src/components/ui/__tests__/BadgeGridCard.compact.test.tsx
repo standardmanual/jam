@@ -9,7 +9,7 @@ describe('BadgeGridCard compact', () => {
     const html = renderToStaticMarkup(<BadgeGridCard name="이름" rarity="rare" onClick={() => {}} />)
     expect(html).toContain('p-3')
     expect(html).toContain('bg-background-secondary')
-    expect(html).toContain('relative w-[calc(100%+0.75rem)] -mt-1.5')
+    expect(html).toContain('relative w-[calc(100%+var(--grid-thumb-bleed))] -mt-1.5')
     expect(html).not.toContain('max-w-[90px]')
     expect(html).toContain('text-sm font-bold')
     expect(html).not.toContain('bg-card-bg')

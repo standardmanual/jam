@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { SyncIcon } from '@/components/ui/icons'
 
 /** 아이콘이 한 바퀴 도는 시간 — 천천히 돈다(사용자 지시 2026-11-14, 티켓 20261114_1810). 기본 `animate-spin`은 1s다 */
-const SPIN_CLASS = 'animate-[spin_2.4s_linear_infinite] motion-reduce:animate-none'
+const SPIN_CLASS = 'animate-[var(--animate-sync-spin)] motion-reduce:animate-none'
 
 /**
  * TopNav 동기화 서클 (티켓 20261114_1349)

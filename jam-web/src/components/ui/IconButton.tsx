@@ -83,7 +83,6 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
       style={{
         width: 44, height: 44,
         borderRadius: 'var(--radius-full)',
-        border: 'none', background: 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: disabled ? 'not-allowed' : 'pointer', color,
         opacity: disabled ? 0.35 : 1,

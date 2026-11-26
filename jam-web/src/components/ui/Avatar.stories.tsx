@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Avatar from './Avatar';
+import { ListRow } from './ListRow';
 import { d } from '@/lib/i18n';
 
 const meta: Meta<typeof Avatar> = {
@@ -21,6 +22,15 @@ export const CircleImage: Story = {
 export const CircleFallback: Story = {
   name: '원형 · 사진 없음',
   args: { src: null, alt: '', size: 48, iconClassName: 'w-5 h-5 text-muted' },
+};
+
+/** 팔로워 목록·검색 결과 행(ListRow lead 틀 안)의 사진 없는 아바타 — 면을 칠하지 않아 틀의 회색 원이 보인다 */
+export const CircleFallbackNoFace: Story = {
+  name: '원형 · 사진 없음 · 면 없음(목록 줄 안)',
+  args: { src: null, alt: '', size: 48, face: 'none', iconClassName: 'w-5 h-5 text-muted' },
+  render: (args) => (
+    <ListRow lead={<Avatar {...args} />} leadShape="round" title="홍길동" titleVariant="regular" />
+  ),
 };
 
 /** 프로필 편집·온보딩 화면의 사진 있는 아바타 */

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useReducedMotion } from '@/lib/motion';
 
 export interface ItemSerialCodeProps {
   /** 배지 일련번호 원문. 앞 4자(알파벳 prefix)는 카드 1장씩, 나머지(숫자)는 하나의 박스로
@@ -84,21 +85,6 @@ const REEL_SPIN_BLUR_PX = 3; // --reel-spin-blur 미러링 (기준: REEL_BLUR_RE
 const REEL_BLUR_REF_FONT = 200; // 위 블러 기준 폰트 크기(Figma 스탬프 스케일) — 다른 크기는 비례 축소
 const REEL_CELL_RATIO = 1.08; // 릴 셀 높이 = fontSize * 이 비율(숫자 글리프가 클리핑되지 않을 여유)
 
-/** OS 수준 모션 축소 설정 구독 (옛 design-system 쪽 파일이어서 서비스 lib/motion.ts를 쓰지 못해
- *  BadgeRevealCarousel과 동일한 로직을 내부에 다시 구현했다. 합치기는 7회차). */
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduced(mq.matches);
-    apply();
-    mq.addEventListener?.('change', apply);
-    return () => mq.removeEventListener?.('change', apply);
-  }, []);
-  return reduced;
-}
-
 /** 자리 하나 — 0-9 스트립을 목표 숫자 위치까지 스핀 후 착지시킨다. */
 function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize, landed, reduced, filterId, blurPx }: {
   digit: number;
@@ -132,13 +118,11 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
         {cells.map((d, i) => (
           <div
             key={i}
-            className="t-reel-digit"
+            className="t-reel-digit leading-none font-bold"
             style={{
               height: cellHeight,
               fontFamily: 'var(--font-family-base)',
-              fontWeight: 700,
               fontSize,
-              lineHeight: 1,
               color: 'var(--snow)',
             }}
           >
@@ -264,7 +248,7 @@ function TileShell({ width, height, children }: { width: number; height: number;
         flexShrink: 0,
         clipPath: `path('${tilePath(width, height)}')`,
         background: [
-          'radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.19), rgba(255,255,255,0) 55%)',
+          'radial-gradient(120% 90% at 22% 12%, color-mix(in srgb, var(--snow) 20%, transparent), transparent 55%)',
           'linear-gradient(160deg, var(--base-neutral-600) 0%, var(--base-neutral-800) 100%)',
         ].join(', '),
         display: 'flex',
@@ -282,11 +266,10 @@ function Tile({ text, width, height }: { text: string; width: number; height: nu
   return (
     <TileShell width={width} height={height}>
       <span
+        className="leading-none font-bold"
         style={{
           fontFamily: 'var(--font-family-base)',
-          fontWeight: 700,
           fontSize,
-          lineHeight: 1,
           letterSpacing: fontSize * trackingRatioFor(fontSize),
           color: 'var(--snow)',
           whiteSpace: 'nowrap',

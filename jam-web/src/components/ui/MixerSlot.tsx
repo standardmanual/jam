@@ -190,7 +190,7 @@ export function MixerSlot({
       ) : fillable ? (
         <ActionCircle kind="plus" />
       ) : (
-        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, opacity: 0.4, color: 'var(--foreground)' }}>
+        <span aria-hidden="true" className="leading-none" style={{ fontSize: 'var(--text-xl)', opacity: 0.4, color: 'var(--foreground)' }}>
           +
         </span>
       )}

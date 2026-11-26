@@ -314,7 +314,7 @@ describe('LockedItemDetail — 열린 뒤', () => {
     // 일련번호 4자 + 6자리 번호가 그대로 보인다
     expect(visibleText(openedHtml())).toContain('000042')
     // 모션을 끈 정적 그림은 자리마다 숫자 칸이 하나(6개)지만, 릴은 돌아갈 숫자 칸을 더 가진다
-    expect((openedHtml().match(/class="t-reel-digit"/g) ?? []).length).toBeGreaterThan(6)
+    expect((openedHtml().match(/class="t-reel-digit leading-none font-bold"/g) ?? []).length).toBeGreaterThan(6)
   })
 
   it('포인트 블록은 접히고 보조기기에서 숨는다', () => {

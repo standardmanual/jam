@@ -7,6 +7,9 @@
  * 타이밍도 자동으로 따라옵니다.
  */
 
+// 주의: 이 파일은 react 훅(useReducedMotion)을 import한다 — 서버 컴포넌트는 이 파일을 import하지 못한다('use client' 파일에서만 쓴다).
+import { useEffect, useState } from 'react'
+
 /** `--panel-close-dur` 같은 CSS 시간 토큰을 밀리초 숫자로 읽습니다. */
 export function cssDurationMs(name: string, fallback: number): number {
   if (typeof window === 'undefined') return fallback
@@ -31,4 +34,18 @@ export function cssLengthPx(name: string, fallback: number): number {
 export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/** OS 모션 축소 설정 구독. 초기값은 false이고 마운트 뒤 효과에서 갱신한다. */
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const apply = () => setReduced(mq.matches)
+    apply()
+    mq.addEventListener?.('change', apply)
+    return () => mq.removeEventListener?.('change', apply)
+  }, [])
+  return reduced
 }

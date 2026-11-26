@@ -21,7 +21,7 @@ code:
 | 파일 | export | 설명 | 스토리 (제목·개수) |
 |---|---|---|---|
 | `Accordion.tsx` | Accordion | 한 번에 하나만 펼쳐지는 접이식 목록이다. 철학 화면의 자주 묻는 질문에서 쓴다. | UI/Navigation/Accordion (1개) |
-| `Avatar.tsx` | Avatar | 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 프로필·검색·팔로우 목록·상단 내비게이션에서 쓴다. | UI/Cards/Avatar (4개) |
+| `Avatar.tsx` | Avatar | 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 사진이 없을 때 흰 면을 칠할지는 face로 고르며, 목록 줄… | UI/Cards/Avatar (5개) |
 | `BadgeGridCard.tsx` | BadgeGridCard, BadgeGridCardPlaceholder | 배지 한 장을 정사각 썸네일과 이름·칩으로 보여 주는 격자 카드다. 배지 목록·컬렉션 상세·믹스 재료 칸에서 쓴다. | UI/Cards/BadgeGridCard (18개) |
 | `BadgeHeroSection.tsx` | BadgeHeroSection | 배지 한 장의 이미지·등급 칩·이름·설명을 가운데로 쌓은 대표 카드다. 배지 상세 페이지와 드랍 바텀시트, 잠긴 아이템 배지 상세에서 쓴다. | UI/Cards/BadgeHeroSection (7개) |
 | `BadgeLevelChip.tsx` | BadgeLevelChip | 무한레벨형 배지의 «Lv.N» 칩이다. 등급 칩 대신 홈 피드·미션 목록·배지 상세·획득 연출에서 쓴다. | UI/Cards/BadgeLevelChip (3개) |
