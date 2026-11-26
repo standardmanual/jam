@@ -24,7 +24,7 @@ const ITEMS: RevealBadge[] = [
 ]
 const SUMMARY = '이번에 잼 1,240만큼 받았어요'
 /** 헤더 패널만 가진 모서리 값(카드도 `--surface` 면을 쓰므로 면 색으로는 가를 수 없다) */
-const HEADER_PANEL = 'border-radius:0 0 var(--radius-2xl) var(--radius-2xl)'
+const HEADER_PANEL = 'rounded-b-2xl px-6 pb-4' // 헤더 패널의 아래 모서리·여백 클래스(티켓 20261126_2025에서 인라인 값을 클래스로 옮김)
 
 interface RenderOptions {
   summaryMessage?: string
