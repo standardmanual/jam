@@ -147,11 +147,11 @@ export function FeedChipLayer({ view, mode }: { view: FeedCardView; mode?: ChipA
 /** 계획된 칩 하나. 스티커는 `CategorySticker`, 알약은 코너 변형 `FeedChip`이다. 값 칩 색은 저장된 칩 색(`look.colors.chip`, `chip_color_key`), 분류 알약은 계획이 정한 검정이다. */
 function PlannedChipView({ chip, view }: { chip: PlannedChip; view: FeedCardView }) {
   if (chip.presentation === 'sticker' && chip.sticker) {
-    const { shape, pair, letter, seed, label } = chip.sticker
+    const { pair, letter, label } = chip.sticker
     // 크기 prop이 없는 부품이라 기울기·배율은 바깥 `span`의 transform으로 준다(배율을 width·height로 주면 viewBox 기하가 어긋난다)
     return (
       <span className="block" style={{ transform: `rotate(${chip.tilt}deg) scale(${chip.scale})` }}>
-        <CategorySticker shape={shape} pair={pair} letter={letter} seed={seed} label={label} />
+        <CategorySticker pair={pair} letter={letter} label={label} />
       </span>
     )
   }

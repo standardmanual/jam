@@ -94,11 +94,10 @@ describe('칩·스티커 크기 추정', () => {
     expect(width).toBeLessThan(230)
   })
 
-  it('스티커 크기는 조약돌(정원) 92×92·물결 112×92이고 배율을 곱한다', () => {
-    expect(stickerSizeOf('pebble')).toEqual({ w: 92, h: 92 })
-    expect(stickerSizeOf('wave')).toEqual({ w: 112, h: 92 })
-    expect(stickerSizeOf('pebble', 0.8).w).toBeCloseTo(73.6)
-    expect(stickerSizeOf('wave', 0.8).h).toBeCloseTo(73.6)
+  it('스티커 크기는 정원 92×92이고 배율을 곱한다', () => {
+    expect(stickerSizeOf()).toEqual({ w: 92, h: 92 })
+    expect(stickerSizeOf(0.8).w).toBeCloseTo(73.6)
+    expect(stickerSizeOf(0.8).h).toBeCloseTo(73.6)
   })
 })
 

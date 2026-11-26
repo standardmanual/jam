@@ -41,7 +41,6 @@ import {
   type ChipTextSize,
   type CornerOffset,
   type Rect,
-  type StickerShapeName,
 } from './feedChipGeometry'
 import { FEED_CORNER_TILT_RANGE } from './feedConstants'
 import { STICKER_COLOR_PAIRS, type CategoryStickerPair } from '@/components/ui/CategorySticker'
@@ -96,10 +95,8 @@ export interface ChipPlanInput {
 
 /** `CategorySticker`에 그대로 넘기는 인자. 색 짝은 R5가 카드 바탕·앞 스티커와 겹치지 않게 바꿀 수 있다. */
 interface StickerArgs {
-  shape: StickerShapeName
   pair: CategoryStickerPair
   letter: 'J' | 'a' | 'm'
-  seed: string
   label: string
 }
 
@@ -265,7 +262,7 @@ const trunc3 = (v: number) => Math.trunc(v * 1000) / 1000
 const padRect = (r: Rect, d: number): Rect => ({ l: r.l - d, t: r.t - d, r: r.r + d, b: r.b + d })
 
 function boxOf(work: PlanWork): { w: number; h: number } {
-  if (work.presentation === 'sticker' && work.sticker) return stickerSizeOf(work.sticker.shape, work.scale)
+  if (work.presentation === 'sticker' && work.sticker) return stickerSizeOf(work.scale)
   return { w: chipWidthOf(work.text, work.size), h: chipHeightOf(work.size) }
 }
 
@@ -392,7 +389,8 @@ function baseWorks(input: ChipPlanInput, rng: () => number): PlanWork[] {
       stickers += 1
     }
     // 스티커 인자는 칩마다 항상 뽑아 둔다(스티커 여부에 따라 뒤 난수가 밀리지 않는다)
-    const shape: StickerShapeName = rng() < 0.5 ? 'pebble' : 'wave'
+    // 예전에는 여기서 스티커 모양(조약돌·물결)을 뽑았다. 물결을 걷은 뒤에도 난수 한 개를 버려, 뒤의 값(짝·글자·자리·기울기)이 카드마다 밀리지 않게 한다(티켓 20261127_0756)
+    rng()
     const pair = PAIR_KEYS[Math.floor(rng() * PAIR_KEYS.length)]
     const letter = LETTERS[Math.floor(rng() * LETTERS.length)]
     const fixedTilt = draft.fixed?.tilt ?? null
@@ -407,7 +405,7 @@ function baseWorks(input: ChipPlanInput, rng: () => number): PlanWork[] {
       mag: fixedTilt === null ? 0 : Math.abs(fixedTilt),
       sign: fixedTilt !== null && fixedTilt < 0 ? -1 : 1,
       fixedCorner: draft.fixed?.corner ?? null,
-      sticker: presentation === 'sticker' ? { shape, pair, letter, seed: `${input.seed}:sticker:${index}`, label: draft.text.trim() } : null,
+      sticker: presentation === 'sticker' ? { pair, letter, label: draft.text.trim() } : null,
     } satisfies PlanWork
   })
 }
@@ -511,13 +509,13 @@ function tiltBandOf(tilt: number): 'a' | 'b' | 'c' {
 }
 
 /**
- * 계획의 서명 — «앞 카드와 같은 배치»를 비교하는 문자열. 칩마다 `종류(L분류·V값) + 모양(p알약·sp조약돌·sw물결) : 자리(+내림 ~) : 기울기 방향+구간`.
+ * 계획의 서명 — «앞 카드와 같은 배치»를 비교하는 문자열. 칩마다 `종류(L분류·V값) + 모양(p알약·sp스티커) : 자리(+내림 ~) : 기울기 방향+구간`.
  * 같은 서명이면 사람이 보기에 같은 배치다(정확한 각도·안쪽 오프셋은 보지 않는다). 칩이 없거나 흐름 줄(목록형)이면 빈 문자열이라 «건너뛰는 카드»를 뜻한다.
  */
 export function signatureOf(plan: ChipPlan): string {
   return plan.chips
     .map((chip) => {
-      const form = chip.presentation === 'sticker' && chip.sticker ? `s${chip.sticker.shape === 'wave' ? 'w' : 'p'}` : 'p'
+      const form = chip.presentation === 'sticker' && chip.sticker ? 'sp' : 'p'
       return `${chip.kind === 'label' ? 'L' : 'V'}${form}:${chip.corner}${chip.lowered ? '~' : chip.edge ? '^' : ''}:${chip.tilt < 0 ? '-' : '+'}${tiltBandOf(chip.tilt)}`
     })
     .join('|')

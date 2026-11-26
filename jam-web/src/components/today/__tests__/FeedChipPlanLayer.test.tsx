@@ -104,7 +104,7 @@ describe('FeedChipPlanLayer — 계획을 그린다', () => {
   })
 
   it('스티커: role="img"와 분류 문구 aria-label이 붙고 알약은 그리지 않는다. 기울기·배율은 바깥 span의 transform이다', () => {
-    const sticker = { shape: 'pebble' as const, pair: 'yellow-purple' as const, letter: 'J' as const, seed: '1:sticker:0', label: 'MISSION' }
+    const sticker = { pair: 'yellow-purple' as const, letter: 'J' as const, label: 'MISSION' }
     const html = render(
       withPlan(viewOf('hero_box'), [chipOf({ presentation: 'sticker', text: 'MISSION', black: false, tilt: -6, scale: 0.8, sticker, box: { w: 92.8, h: 67.2 } })]),
     )

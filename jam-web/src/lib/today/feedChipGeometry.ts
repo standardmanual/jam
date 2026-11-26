@@ -27,7 +27,7 @@ import {
   FEED_STAMP_TILT,
   FEED_TEXT_BOX_TITLE_STEPS,
 } from './feedConstants'
-import { PEBBLE_SIZE, WAVE_SIZE } from '@/components/ui/CategorySticker'
+import { PEBBLE_SIZE } from '@/components/ui/CategorySticker'
 
 /** 칩 배치 계산 대상 유형 7개. 전체 배경 이미지(`full_image`)는 서비스에서 꺼져 있어 뺀다. */
 export const CHIP_GEOMETRY_TYPES = [
@@ -105,7 +105,6 @@ export interface Rect {
   b: number
 }
 export type ChipTextSize = 'lg' | 'sm'
-export type StickerShapeName = 'pebble' | 'wave'
 
 // ── 칩·스티커 크기 추정 ─────────────────────────────────────
 
@@ -145,10 +144,9 @@ export function chipHeightOf(size: ChipTextSize): number {
   return cornerSpecOf(size).height
 }
 
-/** 스티커 기본 크기(`CategorySticker.jsx`의 `PEBBLE_SIZE`·`WAVE_SIZE`)에 배율을 곱한 크기. */
-export function stickerSizeOf(shape: StickerShapeName, scale = 1): { w: number; h: number } {
-  const base = shape === 'wave' ? WAVE_SIZE : PEBBLE_SIZE
-  return { w: base.width * scale, h: base.height * scale }
+/** 스티커 기본 크기(`CategorySticker`의 `PEBBLE_SIZE`)에 배율을 곱한 크기. */
+export function stickerSizeOf(scale = 1): { w: number; h: number } {
+  return { w: PEBBLE_SIZE.width * scale, h: PEBBLE_SIZE.height * scale }
 }
 
 /** 기울어진 직사각형(w×h, 각도 deg)이 차지하는 경계 상자. 각도의 부호는 상관없다. */

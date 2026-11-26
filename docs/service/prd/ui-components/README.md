@@ -42,7 +42,7 @@ code:
 | `Button.tsx` | Button | 변형·크기·면을 고르는 기본 버튼이다. 로그인·팔로우·배지 상세 등 거의 모든 화면에서 쓴다. | UI/Buttons/Button (18개) |
 | `Card.tsx` | Card | 흰 면의 둥근 카드 틀이다. 서비스 화면 대부분의 묶음 면이며 tint는 카드 안 구획, inverse는 선택·안내 신호에 쓴다. | UI/Cards/Card (3개) |
 | `Carousel.tsx` | Carousel | 가운데 카드가 선택되는 무한 순환 가로 캐러셀이다. 지도의 장소 카드 모달에서 쓴다. | UI/Navigation/Carousel (3개) |
-| `CategorySticker.tsx` | CategorySticker | 홈 피드 카드 모서리에 붙는 분류 스티커다. 조약돌·물결 모양 바탕에 분류 문구와 JAM 로고 글자를 얹는다. | UI/Cards/CategorySticker (3개) |
+| `CategorySticker.tsx` | CategorySticker | 홈 피드 카드 모서리에 붙는 분류 스티커다. 정원 바탕에 분류 문구와 JAM 로고 글자를 얹는다. | UI/Cards/CategorySticker (3개) |
 | `Checkbox.tsx` | Checkbox | 라벨이 붙은 체크박스다. 온보딩의 만 14세 이상 확인에서 쓴다. | UI/Forms/Checkbox (2개) |
 | `CollectionGridCard.tsx` | CollectionGridCard | 컬렉션 한 개를 수집 진행도와 함께 보여 주는 격자 카드다. 배지 목록의 컬렉션 탭에서 쓴다. | UI/Cards/CollectionGridCard (4개) |
 | `CountLabelButton.tsx` | CountLabelButton | 숫자 위·이름 아래로 쌓은 누르는 칸이다. 프로필의 팔로워·팔로잉·포인트 칸에서 쓴다. | UI/Buttons/CountLabelButton (3개) |
