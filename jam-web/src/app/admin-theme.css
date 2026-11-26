@@ -116,11 +116,10 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* 이름 없는 단계(shadow·blur·drop-shadow·backdrop-blur·rounded)의 기본값. 변수로 내보내지 않고 클래스에만 값을 채운다.
+/* 이름 없는 단계(shadow·blur·backdrop-blur·rounded)의 기본값. 변수로 내보내지 않고 클래스에만 값을 채운다.
    --radius는 어드민 shadcn 변수(globals.css [data-admin-theme])와 이름이 같지만 이쪽은 reference라 변수가 되지 않는다. */
 @theme inline reference {
   --blur: 8px;
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --drop-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 1px 1px rgb(0 0 0 / 0.06);
   --radius: 0.25rem;
 }
