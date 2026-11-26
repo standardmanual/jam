@@ -164,17 +164,17 @@ async function runGateReview({ ticketPath, workType, devResult, designDecisionTe
   const commitRange = devResult?.baseSha && devResult?.commitSha
     ? `${devResult.baseSha}..${devResult.commitSha}` : null
   // 게이트 에이전트는 격리 워크트리에서 돈다(티켓 20261002_1905). 첫 명령으로 리뷰 커밋을
-  // 체크아웃하게 하므로 범위 지시에는 fetch 문장을 따로 두지 않는다. 범위가 없으면 리뷰 커밋을
-  // 특정할 수 없어 origin/staging을 체크아웃한다. 브랜치 이름이 비어 있으면 `git fetch origin`이
-  // 모든 브랜치를 가져온다.
+  // 체크아웃하게 하므로 범위 지시에는 fetch 문장을 따로 두지 않는다. 리뷰 브랜치는 로컬에만 있고
+  // 워크트리는 같은 저장소라 fetch 없이 SHA가 보인다(티켓 20261126_2309). 범위가 없으면 리뷰
+  // 커밋을 특정할 수 없어 로컬 staging을 체크아웃한다.
   const firstCommand = commitRange
-    ? `git fetch origin${devResult.branch ? ` ${devResult.branch}` : ''} && git checkout --detach ${devResult.commitSha}`
-    : 'git fetch origin staging && git checkout --detach origin/staging'
+    ? `git checkout --detach ${devResult.commitSha}`
+    : 'git checkout --detach staging'
   const rangeInstruction = commitRange
     ? `\n검토 범위는 \`${commitRange}\`다. \`git diff --numstat ${commitRange} -- jam-web\`으로 ` +
       `비교하고, \`reviewedRange\`에 \`${commitRange}\`를 그대로 적어라.\n`
-    : `\n커밋 범위를 채우지 못했다 — review 브랜치를 \`git fetch origin <review 브랜치>\`로 가져온 뒤 ` +
-      `\`git diff --numstat <review 브랜치> origin/staging -- jam-web\`으로 비교하고, ` +
+    : `\n커밋 범위를 채우지 못했다 — 로컬 review 브랜치 기준으로 ` +
+      `\`git diff --numstat staging <review 브랜치> -- jam-web\`으로 비교하고, ` +
       `\`reviewedRange\`에 실제로 비교한 범위를 적어라.\n`
 
   // 2026-09-18부터는 채원② 사후 리뷰 생략 판단에만 쓴다 — 개선 리뷰 단계 자체가 사라졌기
@@ -399,16 +399,18 @@ async function runSingleTicket({ ticketPath, userRequest, workType, reuseDecisio
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
     `\n배정된 워크트리는 기본 브랜치(main) 기준으로 만들어져 staging에만 있는 변경이 빠져 있다. ` +
     `티켓을 포함해 어떤 ` +
-    `파일도 읽기 전에, **첫 명령으로** \`git fetch origin staging && git checkout --detach ` +
-    `origin/staging && scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(마지막 명령은 ` +
+    `파일도 읽기 전에, **첫 명령으로** \`git checkout --detach staging && ` +
+    `scripts/workspace-setup.sh link "$(pwd)"\`를 실행하라(fetch하지 않는다 — 로컬 \`staging\`이 기준이다. ` +
+    `로컬 \`staging\`이 없으면 멈추고 보고하라. 마지막 명령은 ` +
     `기존 워크트리의 jam-web/node_modules를 심볼릭 링크로 연결한다 — npm install을 다시 돌리지 ` +
     `않는다). 문서 폴더 docs/ 는 같은 저장소의 폴더라 워크트리에 그대로 따라오므로 ` +
     `필요하면 직접 고쳐 커밋한다. 그 전에 본 파일 내용은 무효다. 브랜치는 그 뒤 정의의 5번 규칙대로 만든다.\n` +
     `${designDecisionText ? `\n채원 사전 판정(이대로 따를 것):\n${designDecisionText}\n` : ''}` +
     `${retryBranch ? `\n재시도다. 새 브랜치를 만들지 말고 기존 review 브랜치를 이어서 쓴다: ` +
-      `\`git fetch origin ${retryBranch} && git checkout ${retryBranch}\`. 직전 시도가 남긴 낡은 ` +
-      `워크트리가 같은 브랜치명을 점유하고 있지 않은지 먼저 확인하라(있으면 제거 후 진행, 정의의 ` +
-      `5번 규칙 참고). 이 브랜치 위에 커밋을 이어서 쌓고 같은 브랜치로 다시 push한다.\n` : ''}` +
+      `\`git checkout ${retryBranch}\`(원격이 아니라 로컬 브랜치). 직전 시도가 남긴 낡은 ` +
+      `워크트리가 같은 브랜치명을 점유하고 있지 않은지 먼저 확인하라(있으면 \`scripts/cleanup-stale-worktree.sh\`로 ` +
+      `브랜치를 풀고 진행, 정의의 5번 규칙 참고). 이 브랜치 위에 커밋을 이어서 쌓는다. ` +
+      `리뷰 브랜치는 로컬에만 두므로 push하지 않는다.\n` : ''}` +
     `${retryReason ? `\n이전 리뷰 재작업 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
     `${KOREAN_WRITING_TYPES.includes(workType) ? `\n신규·변경되는 사용자 노출 한국어 문구(UI 카피, 배지·미션·POI 설명, 알림·토스트 등)를 ` +
       `작성할 때는 .claude/output-styles/fluent-korean.md를 읽고 그 지침을 따라 작성하라.\n` : ''}` +

@@ -10,15 +10,12 @@
 #
 # 동작:
 #   1. <branch>를 점유한 워크트리를 찾는다. 없으면 할 일이 없으므로 종료 코드 0.
-#   2. 그 워크트리에 미커밋 변경이 있으면 제거하지 않고 종료 코드 2.
-#   3. origin에 <branch>가 없거나, 워크트리의 HEAD가 origin/<branch>의 조상이 아니면
-#      (= 아직 push되지 않은 커밋이 있으면) 제거하지 않고 종료 코드 2.
-#   4. 위 조건을 모두 통과하면 `git worktree remove`로 제거하고 종료 코드 0.
+#   2. 그 워크트리에 커밋하지 않은 변경이 있으면 건드리지 않고 종료 코드 2.
+#   3. 변경이 없으면 `checkout --detach`로 브랜치만 풀고 종료 코드 0. 커밋은 브랜치에 남는다.
+#      리뷰 브랜치는 로컬에만 두므로 origin push 여부는 거절 조건이 아니다(티켓 20261126_2309).
 #
-# 종료 코드: 0 = 할 일 없음/제거 완료, 1 = 사용법 오류, 2 = 거부(미커밋 변경 또는 미푸시 커밋)
-# 예기치 않은 명령 실패(git 조회 실패 등)는 set -e로 즉시 종료 코드 1을 낸다. 의도적으로
-# 실패를 허용하는 지점(git fetch, rev-parse --verify, merge-base --is-ancestor)은 if/|| 로 가드한다.
-# (티켓 20260922_1214)
+# 종료 코드: 0 = 할 일 없음/브랜치 해제 완료, 1 = 사용법 오류, 2 = 거부(커밋하지 않은 변경)
+# 예기치 않은 명령 실패(git 조회 실패 등)는 set -e로 즉시 종료 코드 1을 낸다. (티켓 20260922_1214)
 set -euo pipefail
 
 BRANCH="${1:-}"
@@ -59,20 +56,7 @@ if [ -n "$STATUS" ]; then
   exit 2
 fi
 
-git -C "$REPO_ROOT" fetch origin "$BRANCH" >/dev/null 2>&1 || true
-
-if ! git -C "$REPO_ROOT" rev-parse --verify -q "refs/remotes/origin/$BRANCH" >/dev/null; then
-  echo "거부(origin에 이 브랜치가 없음, 미푸시): $WT_PATH" >&2
-  exit 2
-fi
-
-LOCAL_HEAD="$(git -C "$WT_PATH" rev-parse HEAD)"
-REMOTE_HEAD="$(git -C "$REPO_ROOT" rev-parse "refs/remotes/origin/$BRANCH")"
-
-if ! git -C "$REPO_ROOT" merge-base --is-ancestor "$LOCAL_HEAD" "$REMOTE_HEAD"; then
-  echo "거부(미푸시 커밋 있음): $WT_PATH" >&2
-  exit 2
-fi
-
-git worktree remove "$WT_PATH"
-echo "제거: $WT_PATH"
+# 커밋은 브랜치에 남으므로 작업 폴더를 지우지 않고 HEAD만 분리해 브랜치를 푼다.
+# (작업 폴더 삭제는 기존 정리 루틴 몫. 리뷰 브랜치는 로컬에만 두므로 push 여부는 보지 않는다)
+git -C "$WT_PATH" checkout --detach -q
+echo "브랜치 해제(detached): $WT_PATH"
