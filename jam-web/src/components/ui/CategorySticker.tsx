@@ -4,12 +4,12 @@ import type { CSSProperties, SVGAttributes } from 'react';
 /**
  * CategorySticker — 홈피드 «분류 스티커». 티켓 20261122_2227(상위 20261122_2217 확정 결정 §4).
  *
- * 문구·시드·색 짝만 받는 정적 장식 SVG다. 조약돌(96×92)과 물결 덩어리(112×92) 두 모양이고,
- * 윤곽은 시드로 정해져 같은 (shape, seed)는 늘 같은 path 문자열이 나온다(Math.random·Date 미사용,
+ * 문구·시드·색 짝만 받는 정적 장식 SVG다. 조약돌(정원 92×92)과 물결 덩어리(112×92) 두 모양이고,
+ * 물결 덩어리의 윤곽은 시드로 정해져 같은 (shape, seed)는 늘 같은 path 문자열이 나온다(조약돌은 시드와 무관한 정원이다)(Math.random·Date 미사용,
  * 좌표는 소수 둘째 자리 반올림). 계산은 순수 함수 `pebbleShape`·`waveShape`·`fitRingText`로 분리했고
  * 컴포넌트는 그 결과를 그리기만 한다.
  *
- * 기하 수치(96×92 · 112×92 · 글자 선 15px·15px · 혹 4~8.5px · 테두리 2px · 로고 외곽선 1.6px)는
+ * 기하 수치(92×92 · 112×92 · 글자 선 15px·15px · 혹 4~8.5px · 테두리 2px · 로고 외곽선 1.6px)는
  * 장식 도형의 기하라 간격 토큰 대상이 아니고 아래 상수로 둔다.
  */
 
@@ -25,7 +25,7 @@ export type CategoryStickerPair =
   | 'yellow-blue';
 
 export interface CategoryStickerProps extends Omit<SVGAttributes<SVGSVGElement>, 'children'> {
-  /** 모양. `pebble`(조약돌 96×92) · `wave`(물결 덩어리 112×92). 크기는 모양별로 고정이라 `size` prop이 없다 */
+  /** 모양. `pebble`(조약돌, 정원 92×92) · `wave`(물결 덩어리 112×92). 크기는 모양별로 고정이라 `size` prop이 없다 */
   shape?: 'pebble' | 'wave';
   /** 윤곽을 정하는 시드(카드 id 등). 같은 (shape, seed)는 늘 같은 모양이다 */
   seed?: string | number;
@@ -69,11 +69,9 @@ export interface RingText {
 type Pt = [number, number];
 
 /* ───────── 확정 사양 상수 ───────── */
-export const PEBBLE_SIZE = { width: 96, height: 92 };
+export const PEBBLE_SIZE = { width: 92, height: 92 };
 export const WAVE_SIZE = { width: 112, height: 92 };
 const PEBBLE_RING_INSET = 15;
-/** 조약돌 글자 선의 반지름을 이동평균하는 이웃 수(앞뒤 각각). 점 120개 기준 */
-const PEBBLE_RING_SMOOTH = 9;
 const WAVE_RING_INSET = 15;
 const PEBBLE_FONT_SIZE = 11;
 const WAVE_FONT_SIZE = 10;
@@ -217,20 +215,6 @@ export function isSelfIntersecting(pts: Pt[]): boolean {
   return false;
 }
 
-function bounds(pts: Pt[]) {
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  for (const [x, y] of pts) {
-    if (x < x0) x0 = x;
-    if (x > x1) x1 = x;
-    if (y < y0) y0 = y;
-    if (y > y1) y1 = y;
-  }
-  return { x0, y0, x1, y1 };
-}
-
 /** 점열을 위쪽 중앙에서 시작하도록 돌린다(둘레 글자가 윗줄 가운데서 읽히게) */
 function startAtTop(pts: Pt[], cx: number, cy: number): Pt[] {
   let best = 0;
@@ -246,53 +230,42 @@ function startAtTop(pts: Pt[], cx: number, cy: number): Pt[] {
 }
 
 /* ───────── 모양 ───────── */
-const PEBBLE_POINTS = 120;
 const WAVE_SAMPLES = 180;
 
 /**
- * 조약돌 — 거의 정원(96×92)에 낮은 차수(2·3차) 굴곡과 살짝 기울임을 더한 «둥근 불규칙 원».
- * 각도마다 반지름이 조금씩 달라 호의 굽기가 시드마다 다르다. 상자(1px 안쪽)에 꽉 차게 맞춘다.
- * 글자 선은 윤곽을 중심으로 줄이되 반지름을 이동평균해 매끈하게 만든 선이다(가장자리에서 15px 안쪽 안팎).
- * 티켓 20261124_2214(사용자 시안 «안 A» 확정).
+ * 조약돌 — 정확한 원(92×92). 지름은 상자에서 테두리 폭만큼 안쪽이고, 글자 선은 같은 중심의 원(가장자리에서 15px 안쪽)이다.
+ * 이전에는 시드마다 굴곡·기울임이 다른 «둥근 불규칙 원»이었으나 사용자 지시로 정원으로 바꿨다(티켓 20261127_0746).
+ * 그래서 모양은 시드와 무관하다(`seed`는 `wave`와 호출 형태를 맞추려고 남겨 둔 매개변수다). 윤곽·글자 선은 SVG 호(arc)로 그려 어떤 배율에서도 완전한 원이다.
+ * `points`·`ringPoints`는 시험·배치 계산용 표본점이다.
  */
-export function pebbleShape(seed: string | number): StickerShape {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 시드와 무관한 정원이지만 wave와 호출 형태를 맞춘다
+export function pebbleShape(_seed?: string | number): StickerShape {
   const { width, height } = PEBBLE_SIZE;
-  const rnd = stickerRandom(`pebble:${seed}`);
-  const exp = 2.1 + rnd() * 0.4; // 1.0이면 마름모, 2면 정타원, 클수록 네모에 가깝다
-  const tilt = ((rnd() - 0.5) * 2 * 3 * Math.PI) / 180;
-  const wob = [2, 3].map((k) => ({ a: 0.025 + rnd() * 0.025, p: rnd() * Math.PI * 2, k }));
-  const raw: Pt[] = [];
-  for (let i = 0; i < PEBBLE_POINTS; i++) {
-    const t = (i / PEBBLE_POINTS) * Math.PI * 2 - Math.PI / 2; // 위에서 시작, 시계 방향
-    const c = Math.cos(t);
-    const s = Math.sin(t);
-    const k = 1 + wob.reduce((acc, w) => acc + w.a * Math.cos(w.k * t + w.p), 0);
-    const x = Math.sign(c) * Math.pow(Math.abs(c), 2 / exp) * k * (width / 2);
-    const y = Math.sign(s) * Math.pow(Math.abs(s), 2 / exp) * k * (height / 2);
-    raw.push([x * Math.cos(tilt) - y * Math.sin(tilt), x * Math.sin(tilt) + y * Math.cos(tilt)]);
-  }
-  const b = bounds(raw);
-  const half = BORDER_WIDTH / 2;
-  const sx = (width - BORDER_WIDTH) / (b.x1 - b.x0);
-  const sy = (height - BORDER_WIDTH) / (b.y1 - b.y0);
-  const pts = raw.map(([x, y]): Pt => [r2(half + (x - b.x0) * sx), r2(half + (y - b.y0) * sy)]);
   const cx = width / 2;
   const cy = height / 2;
-  // 법선 방향으로 들이면 굴곡 안쪽에서 선이 겹치므로, 중심 기준으로 줄이고 반지름을 이동평균한다
-  const radii = pts.map(([x, y]) => Math.hypot(x - cx, y - cy));
-  const n = pts.length;
-  const smoothR = radii.map((_, i) => {
-    let sum = 0;
-    for (let j = -PEBBLE_RING_SMOOTH; j <= PEBBLE_RING_SMOOTH; j++) sum += radii[(i + j + n) % n];
-    return sum / (2 * PEBBLE_RING_SMOOTH + 1);
-  });
-  const ringAll = pts.map(([x, y], i): Pt => {
-    const ang = Math.atan2(y - cy, x - cx);
-    const r = Math.max(8, smoothR[i] - PEBBLE_RING_INSET);
-    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
-  });
-  const ringPts = startAtTop(ringAll, cx, cy);
-  return finishShape('pebble', width, height, pts, smoothClosedPath(pts), ringPts, PEBBLE_GLYPH_HEIGHT, null, 4);
+  const r = (Math.min(width, height) - BORDER_WIDTH) / 2;
+  const rr = r - PEBBLE_RING_INSET;
+  const circlePoints = (radius: number, count: number): Pt[] =>
+    Array.from({ length: count }, (_, i): Pt => {
+      const t = (i / count) * Math.PI * 2 - Math.PI / 2; // 위에서 시작, 시계 방향
+      return [r2(cx + radius * Math.cos(t)), r2(cy + radius * Math.sin(t))];
+    });
+  // 위쪽 중앙에서 시작해 시계 방향으로 한 바퀴를 도는 호 두 개로 닫는다(글자가 윗줄 가운데서 읽힌다)
+  const arcPath = (radius: number) =>
+    `M${r2(cx)} ${r2(cy - radius)}A${r2(radius)} ${r2(radius)} 0 1 1 ${r2(cx)} ${r2(cy + radius)}A${r2(radius)} ${r2(radius)} 0 1 1 ${r2(cx)} ${r2(cy - radius)}Z`;
+  return {
+    shape: 'pebble',
+    width,
+    height,
+    points: circlePoints(r, 120),
+    outlineD: arcPath(r),
+    ringPoints: circlePoints(rr, 72),
+    ringD: arcPath(rr),
+    ringLength: r2(2 * Math.PI * rr),
+    center: [cx, cy],
+    glyphHeight: PEBBLE_GLYPH_HEIGHT,
+    humps: null,
+  };
 }
 
 /**

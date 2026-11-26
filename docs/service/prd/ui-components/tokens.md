@@ -172,14 +172,14 @@ code:
 | 이름 | 정의 값 | 최종 값 | 클래스 | var() | 클래스 사용 | 문자열 | 쓰는 파일 | 토큰 안 참조 | 비고 |
 |---|---|---|---|---|---|---|---|---|---|
 | `--background` | `var(--base-neutral-100)` | `#f5f5f5` | `*-background` | 12 | 74 | 0 | 50 | 1 | — |
-| `--background-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-background-secondary` | 13 | 11 | 0 | 16 | 1 | — |
+| `--background-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-background-secondary` | 12 | 11 | 0 | 15 | 1 | — |
 | `--page-bg` | `var(--base-neutral-200)` | `#e5e5e5` | `*-page-bg` | 2 | 0 | 0 | 1 | 3 | — |
 | `--card-bg` | `var(--base-white)` | `#ffffff` | `*-card-bg` | 10 | 11 | 0 | 20 | 2 | — |
 | `--btn-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-btn-secondary` | 1 | 4 | 0 | 3 | 1 | — |
 | `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 13 | 14 | 0 | 20 | 3 | — |
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 1 | 0 | 0 | 1 | 2 | — |
-| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 78 | 594 | 0 | 218 | 7 | — |
+| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 594 | 0 | 218 | 7 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 40 | 250 | 0 | 144 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 0 | 16 | 1 | — |
 | `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 33 | 30 | 0 | 37 | 7 | — |
@@ -463,7 +463,7 @@ code:
 | `--shadow` | `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)` | 〃 | `shadow` | 0 | 2 | 0 | 1 | 0 | — |
 | `--radius` | `0.25rem` | 〃 | `rounded` | 0 | 79 | 0 | 45 | 6 | reference 정의(클래스 값만)와 별개로 globals.css에 변수 정의가 있음 |
 | `--background` | `oklch(1 0 0)` | 〃 | `*-background` | 12 | 74 | 0 | 50 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 78 | 594 | 0 | 218 | 7 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 77 | 594 | 0 | 218 | 7 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--card` | `oklch(1 0 0)` | 〃 | `*-card` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover` | `oklch(1 0 0)` | 〃 | `*-popover` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover-foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-popover-foreground` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |

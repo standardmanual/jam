@@ -28,28 +28,32 @@ describe('시드 결정성', () => {
     expect(waveShape('a').outlineD).toBe(waveShape('a').outlineD)
     expect(pebbleShape(7).ringD).toBe(pebbleShape('7').ringD)
   })
-  it('다른 시드는 다른 모양이다', () => {
-    const p = new Set(SEEDS.map((s) => pebbleShape(s).outlineD))
+  it('물결 덩어리는 다른 시드마다 다른 모양이다', () => {
     const w = new Set(SEEDS.map((s) => waveShape(s).outlineD))
-    expect(p.size).toBe(SEEDS.length)
     expect(w.size).toBe(SEEDS.length)
   })
 })
 
 describe('조약돌', () => {
-  it('96×92 상자 안에 있고 윤곽·글자 선이 자기 교차하지 않는다', () => {
+  // 사용자 지시(2026-11-27, 티켓 20261127_0746): 배지 바탕을 정확한 원으로 그린다. 시드와 무관하다.
+  it('92×92 정원이다: 모든 윤곽점이 중심에서 같은 거리(반지름 45)에 있고 시드가 달라도 같은 모양이다', () => {
+    const base = pebbleShape('a')
     for (const s of SEEDS) {
       const g = pebbleShape(s)
-      expect([g.width, g.height]).toEqual([96, 92])
-      for (const [x, y] of g.points) {
-        expect(x).toBeGreaterThanOrEqual(0.99)
-        expect(x).toBeLessThanOrEqual(95.01)
-        expect(y).toBeGreaterThanOrEqual(0.99)
-        expect(y).toBeLessThanOrEqual(91.01)
-      }
+      expect([g.width, g.height]).toEqual([92, 92])
+      expect(g.outlineD).toBe(base.outlineD)
+      expect(g.ringD).toBe(base.ringD)
+      for (const [x, y] of g.points) expect(Math.hypot(x - 46, y - 46)).toBeCloseTo(45, 1)
+      for (const [x, y] of g.ringPoints) expect(Math.hypot(x - 46, y - 46)).toBeCloseTo(30, 1)
       expect(isSelfIntersecting(g.points)).toBe(false)
       expect(isSelfIntersecting(g.ringPoints)).toBe(false)
     }
+  })
+  it('윤곽과 글자 선은 SVG 호(A)로 그려 곡선 근사가 아니다', () => {
+    const g = pebbleShape('a')
+    expect(g.outlineD).toMatch(/^M46 1A45 45 0 1 1 46 91A45 45 0 1 1 46 1Z$/)
+    expect(g.ringD).toMatch(/^M46 16A30 30 0 1 1 46 76A30 30 0 1 1 46 16Z$/)
+    expect(g.ringLength).toBeCloseTo(2 * Math.PI * 30, 1)
   })
 })
 
