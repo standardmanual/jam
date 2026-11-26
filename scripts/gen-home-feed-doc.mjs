@@ -9,6 +9,7 @@
 // 이 스크립트가 두 가지 검사를 겸한다.
 //   ① 생성 구간이 코드와 같은 최신본인지 (--check)
 //   ② 스테이지된 홈피드 코드 변경에 문서(code: 목록 아래 경로)가 함께 스테이지됐는지 (--staged)
+//      시험 파일·스토리 파일(*.stories.*)과, 주석·import·export 표기·공백만 바뀐 파일은 감시에서 뺀다(티켓 20261126_0948)
 // 머지 커밋은 pre-commit을 거치지 않는다(이 저장소에 pre-merge-commit 훅 없음, 2026-09-27
 // .githooks/ 확인) — staging으로 머지될 때는 이 스크립트가 돌지 않는다.
 //
@@ -21,6 +22,7 @@
 //   node scripts/gen-home-feed-doc.mjs           생성 구간을 갱신한다
 //   node scripts/gen-home-feed-doc.mjs --check   생성 구간이 최신인지만 판정한다 (다르면 종료 코드 1)
 //   node scripts/gen-home-feed-doc.mjs --staged  스테이지된 홈피드 코드에 문서가 함께 있는지 검사한다
+//                                                (스토리 파일과 주석·import·export 표기만 바뀐 파일은 제외)
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -227,6 +229,26 @@ export function isTestFile(filePath) {
   return /(^|\/)__tests__\//.test(filePath) || /\.test\.[^/.]+$/.test(filePath)
 }
 
+export function isStoryFile(filePath) {
+  return /\.stories\.[^/.]+$/.test(filePath)
+}
+
+// 동작 비교용 정규화(티켓 20261126_0948): 주석·import 선언·re-export 줄·선언 앞 export 표기·공백을 걷는다.
+export function stripNeutral(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '') // 블록 주석(JSX {/* */} 포함)
+    .replace(/(^|\s)\/\/[^\n]*/g, '$1') // 줄 주석 — 'https://' 처럼 앞이 공백이 아닌 //는 건드리지 않는다
+    .replace(/^[ \t]*import\b(?!\s*[(.])[^'"]*?['"][^'"\n]*['"][ \t]*;?/gm, '') // import 선언(여러 줄·type·부수효과)
+    .replace(/^[ \t]*export\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"\n]*['"][ \t]*;?/gm, '') // re-export
+    .replace(/\bexport\s+(?:default\s+)?(?=(?:async\s+function|function|const|let|class|type|interface|enum)\b)/g, '')
+    .replace(/\s+/g, '')
+}
+
+export function isBehaviorNeutral(before, after) {
+  if (typeof before !== 'string' || typeof after !== 'string') return false
+  return stripNeutral(before) === stripNeutral(after)
+}
+
 export function underCodePaths(filePath, codePaths) {
   return codePaths.some((c) => filePath === c || filePath.startsWith(`${c}/`))
 }
@@ -247,17 +269,62 @@ if (isMain) {
   }
 }
 
+function gitShow(repo, spec) {
+  try {
+    return execFileSync('git', ['show', spec], { encoding: 'utf8', cwd: repo, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 })
+  } catch {
+    return null
+  }
+}
+
+// `git diff --cached --name-status -M -z` 출력을 (상태, 옛 경로, 새 경로)로 나눈다.
+function parseNameStatus(raw) {
+  const tokens = raw.split('\0')
+  const out = []
+  for (let i = 0; i < tokens.length; i++) {
+    const status = tokens[i]
+    if (!status) continue
+    if (status[0] === 'R' || status[0] === 'C') {
+      out.push({ status: status[0], oldPath: tokens[i + 1], newPath: tokens[i + 2] })
+      i += 2
+    } else {
+      out.push({ status: status[0], oldPath: tokens[i + 1], newPath: tokens[i + 1] })
+      i += 1
+    }
+  }
+  return out
+}
+
 function runStagedCheck(repo, docFile) {
-  const staged = execFileSync('git', ['diff', '--cached', '--name-only'], { encoding: 'utf8', cwd: repo })
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
+  const entries = parseNameStatus(
+    execFileSync('git', ['diff', '--cached', '--name-status', '-M', '-z'], { encoding: 'utf8', cwd: repo })
+  )
+  const staged = entries.flatMap((e) => [e.oldPath, e.newPath])
 
   if (staged.includes(DOC_PATH)) process.exit(0)
   if (!existsSync(docFile)) process.exit(0) // 문서가 아직 없으면(이 티켓 병합 전) 검사할 게 없다
 
   const codePaths = parseCodePaths(readFileSync(docFile, 'utf8'))
-  const hits = staged.filter((f) => underCodePaths(f, codePaths) && !isTestFile(f))
+  const candidates = entries.filter((e) => {
+    const paths = [e.oldPath, e.newPath]
+    if (!paths.some((f) => underCodePaths(f, codePaths))) return false
+    return !paths.every((f) => isTestFile(f) || isStoryFile(f))
+  })
+
+  const neutral = []
+  const hits = []
+  for (const e of candidates) {
+    const paired = e.status === 'M' || e.status === 'R'
+    const before = paired ? gitShow(repo, `HEAD:${e.oldPath}`) : null
+    const after = paired ? gitShow(repo, `:${e.newPath}`) : null
+    if (isBehaviorNeutral(before, after)) neutral.push(e.newPath)
+    else hits.push(e.newPath)
+  }
+
+  if (neutral.length > 0) {
+    console.error('안내(pre-commit): 주석·import·export 표기만 바뀌어 홈피드 문서 동반을 요구하지 않습니다')
+    for (const f of neutral) console.error(`    - ${f}`)
+  }
   if (hits.length === 0) process.exit(0)
 
   console.error('')
@@ -268,8 +335,8 @@ function runStagedCheck(repo, docFile) {
   console.error('  4·5·6·7절 표(노출 태그·템플릿·카드 유형·이동 목적지)가 바뀌었다면:')
   console.error('    node scripts/gen-home-feed-doc.mjs')
   console.error('  그 외 서술이 바뀌었다면 해당 절을 직접 고쳐서 함께 스테이지하세요.')
-  console.error('  동작이 바뀌지 않은 변경(리팩터링 등)이면 JAM_SKIP_DOCLINT=1로 우회하고')
-  console.error('  커밋 메시지에 사유를 남기세요.')
+  console.error('  주석·import·export 표기만 바뀐 파일은 자동으로 제외된다. 그 밖의 동작 무변경 리팩터링이면')
+  console.error('  JAM_SKIP_DOCLINT=1로 우회하고 커밋 메시지에 사유를 남기세요.')
   process.exit(1)
 }
 
