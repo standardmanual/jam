@@ -1,5 +1,5 @@
-// scripts/check-spacing.mjs 의 위반 규칙·면제 주석·기준선 비교를 확인한다 (티켓 20261108_2140).
-// 파일 시스템 시험은 임시 폴더에 가짜 루트를 만들어 --root·--baseline 으로 돌리고, 끝나면 지운다.
+// scripts/check-spacing.mjs 의 위반 규칙·면제 주석·위반 목록을 확인한다 (티켓 20261108_2140).
+// 파일 시스템 시험은 임시 폴더에 가짜 루트를 만들어 --root 로 돌리고, 끝나면 지운다.
 // 실행: node scripts/check-spacing.test.mjs
 
 import assert from 'node:assert/strict'
@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compare, countLine, countViolations, scan } from './check-spacing.mjs'
+import { toFailures, countLine, countViolations, scan } from './check-spacing.mjs'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-spacing.mjs')
 
@@ -53,27 +53,10 @@ assert.equal(countViolations('<p className="gap-8"> {/* spacing-allow: 사유 */
 assert.equal(countViolations('a { /* gap: var(--spacing-32) */ }', 'css').total, 0, 'CSS 주석은 세지 않음')
 assert.equal(countViolations('a { gap: var(--spacing-32); }', 'css').total, 1, 'CSS 선언은 센다')
 
-// --- 기준선 비교
+// --- 위반 목록: 기준선 없이 하나라도 있으면 실패
 const cur = (total) => ({ total, lines: [1] })
-{
-  const r = compare({ 'a.tsx': cur(2) }, { 'a.tsx': 2 })
-  assert.equal(r.failures.length, 0, '같으면 통과')
-  assert.equal(r.shrunk.length, 0)
-}
-{
-  const r = compare({ 'a.tsx': cur(3) }, { 'a.tsx': 2 })
-  assert.equal(r.failures.length, 1, '기준선보다 늘면 실패')
-  assert.deepEqual([r.failures[0].file, r.failures[0].base, r.failures[0].now], ['a.tsx', 2, 3])
-}
-{
-  const r = compare({ 'a.tsx': cur(1), 'new.tsx': cur(1) }, { 'a.tsx': 1 })
-  assert.deepEqual(r.failures.map((f) => f.file), ['new.tsx'], '기준선에 없는 새 파일은 실패')
-}
-{
-  const r = compare({ 'a.tsx': cur(1) }, { 'a.tsx': 3, 'gone.tsx': 2 })
-  assert.equal(r.failures.length, 0, '줄어드는 것은 허용')
-  assert.deepEqual(r.shrunk.map((s) => s.file), ['a.tsx', 'gone.tsx'], '줄어든 파일과 사라진 파일을 안내')
-}
+assert.equal(toFailures({}).length, 0, '위반이 없으면 통과')
+assert.deepEqual(toFailures({ 'b.tsx': cur(1), 'a.tsx': cur(2) }).map((f) => [f.file, f.now]), [['a.tsx', 2], ['b.tsx', 1]], '1건도 실패, 파일 순')
 
 // --- 파일 시스템: 대상 폴더·제외 규칙, CLI 종료 코드
 const dir = mkdtempSync(join(tmpdir(), 'check-spacing-'))
@@ -104,30 +87,22 @@ try {
     '대상 폴더의 .tsx·.css만 세고 test·stories·__tests__·admin·dev-sample·spike·.md는 뺀다',
   )
 
-  const baseline = join(dir, 'baseline.json')
-  const run = (...extra) =>
-    spawnSync('node', [SCRIPT, '--root', dir, '--baseline', baseline, ...extra], { encoding: 'utf8' })
+  const run = (...extra) => spawnSync('node', [SCRIPT, '--root', dir, ...extra], { encoding: 'utf8' })
 
-  assert.equal(run('--write-baseline').status, 0)
-  const ok = run()
-  assert.equal(ok.status, 0, `기준선 생성 직후엔 통과해야 한다:\n${ok.stdout}${ok.stderr}`)
-
-  put('jam-web/src/app/(main)/home/page.tsx', bad + '<p className="pt-[32px]" />\n')
-  const worse = run()
-  assert.equal(worse.status, 1, '위반을 하나 더하면 실패해야 한다')
-  assert.match(worse.stderr, /home\/page\.tsx: 기준선 1 → 현재 2/)
+  const first = run()
+  assert.equal(first.status, 1, '위반 1건이면 종료 코드 1')
+  assert.match(first.stderr, /home\/page\.tsx: 1건 \(줄 1\)/)
 
   put('jam-web/src/app/(main)/home/page.tsx', bad + '<p className="pt-[32px]" /> {/* spacing-allow: 시험 */}\n')
-  assert.equal(run().status, 0, '면제 주석을 달면 다시 통과')
+  assert.equal(run().status, 1, '예외 주석 없는 줄이 남아 있으면 실패')
 
-  put('jam-web/src/app/(main)/home/Other.tsx', bad)
-  assert.equal(run().status, 1, '기준선에 없는 새 파일의 위반은 실패')
-  rmSync(join(dir, 'jam-web/src/app/(main)/home/Other.tsx'))
+  put('jam-web/src/app/(main)/home/page.tsx', '<p className="pt-[32px]" /> {/* spacing-allow: 시험 */}\n')
+  rmSync(join(dir, 'jam-web/src/components/map/Pin.css'))
+  const ok = run()
+  assert.equal(ok.status, 0, `사유가 있는 예외만 남으면 통과해야 한다:\n${ok.stdout}${ok.stderr}`)
 
-  put('jam-web/src/app/(main)/home/page.tsx', '<div className="gap-2" />\n')
-  const shrunk = run()
-  assert.equal(shrunk.status, 0, '줄어들면 실패하지 않는다')
-  assert.match(shrunk.stdout, /기준선을 줄이세요/)
+  put('jam-web/src/app/(main)/home/page.tsx', '<p className="pt-[32px]" /> {/* spacing-allow: */}\n')
+  assert.equal(run().status, 1, '사유가 비면 위반')
 } finally {
   rmSync(dir, { recursive: true, force: true })
 }

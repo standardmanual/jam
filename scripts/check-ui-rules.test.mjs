@@ -1,14 +1,14 @@
 // scripts/check-ui-rules.mjs 의 규칙 네 가지·면제 주석·기준선 비교·실행 방식을 확인한다 (티켓 20261125_2012).
-// 파일 시스템 시험은 임시 폴더에 가짜 루트를 만들어 --root·--baseline 으로 돌리고, 끝나면 지운다.
+// 파일 시스템 시험은 임시 폴더에 가짜 루트를 만들어 --root 로 돌리고, 끝나면 지운다.
 // 실행: node scripts/check-ui-rules.test.mjs
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compare, findHits, isTarget, scan, summarize } from './check-ui-rules.mjs'
+import { findHits, isTarget, scan, summarize, toFailures } from './check-ui-rules.mjs'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-ui-rules.mjs')
 const P = 'jam-web/src/components/Foo.tsx'
@@ -93,22 +93,22 @@ assert.equal(isTarget('jam-web/src/components/today/feed/feedStoryFixtures.tsx')
 assert.equal(isTarget('jam-web/src/components/a/xStoryFixtures.ts'), false)
 assert.equal(isTarget('jam-web/src/components/a/StoryFixturesHelper.tsx'), true, '이름 끝이 아니면 대상')
 
-// --- 기준선 비교
+// --- 위반 목록: 기준선 없이 하나라도 있으면 실패
 const cur = (counts) => ({ counts, lines: Object.fromEntries(Object.keys(counts).map((k) => [k, [1]])) })
 {
-  const r = compare({ 'a.tsx': cur({ arbitrary: 2 }) }, { 'a.tsx': { arbitrary: 2 } })
-  assert.equal(r.failures.length + r.shrunk.length, 0, '같으면 통과')
-  const up = compare({ 'a.tsx': cur({ arbitrary: 3 }) }, { 'a.tsx': { arbitrary: 2 } })
-  assert.equal(up.failures.length, 1, '늘면 실패')
-  assert.match(up.failures[0].fix, /카리나/)
-  assert.equal(compare({ 'n.tsx': cur({ 'raw-element': 1 }) }, {}).failures.length, 1, '기준선 밖 파일은 실패')
-  assert.equal(compare({ 'a.tsx': cur({ 'raw-element': 1 }) }, { 'a.tsx': { arbitrary: 2 } }).failures.length, 1, '다른 규칙이 새로 생기면 실패')
-  const down = compare({ 'a.tsx': cur({ arbitrary: 1 }) }, { 'a.tsx': { arbitrary: 2 } })
-  assert.equal(down.failures.length, 0)
-  assert.equal(down.shrunk.length, 1, '줄면 안내')
-  assert.equal(compare({}, { 'a.tsx': { arbitrary: 2 } }).shrunk.length, 1, '사라진 파일은 안내')
-  assert.equal(compare({}, { 'a.tsx': { arbitrary: 2 } }, ['b.tsx']).shrunk.length, 0, 'onlyFiles 밖 기준선은 보지 않음')
+  assert.equal(toFailures({}).length, 0, '위반이 없으면 통과')
+  const one = toFailures({ 'a.tsx': cur({ 'raw-element': 1 }) })
+  assert.equal(one.length, 1, '위반 1건도 실패')
+  assert.match(one[0].fix, /정본 컴포넌트/)
+  assert.equal(toFailures({ 'a.tsx': cur({ arbitrary: 2, 'raw-element': 1 }) }).length, 2, '규칙별로 나눈다')
 }
+// --- 토큰 없는 계산식은 리터럴 값이다
+assert.equal(findHits('<p className="scale-[calc(0.96)]">', P).length, 1)
+assert.equal(findHits('<p className="w-[calc(100%)]">', P).length, 1)
+assert.equal(findHits('<p className="w-[calc(100%-var(--x))]">', P).length, 0, '토큰이 있으면 조합으로 본다')
+// --- ui-allow: 사유가 있으면 통과, 비면 위반
+assert.equal(findHits('<p className="text-[13px]"> {/* ui-allow: 견본 */}', P).length, 0)
+assert.equal(findHits('<p className="text-[13px]"> {/* ui-allow: */}', P).length, 1)
 assert.deepEqual(summarize(findHits('<button>\n<button>', P)).counts, { 'raw-element': 2 })
 
 // --- 파일 시스템·CLI
@@ -125,41 +125,42 @@ try {
   const scanned = scan(tmp)
   assert.deepEqual(Object.keys(scanned).sort(), ['jam-web/src/app/(main)/한글/p.tsx', 'jam-web/src/components/A.tsx'], '테스트·admin 제외, 한글 경로')
 
-  const base = join(tmp, 'baseline.json')
   const run = (args, input) =>
-    spawnSync('node', [SCRIPT, '--root', tmp, '--baseline', base, ...args], { encoding: 'utf8', input })
+    spawnSync('node', [SCRIPT, '--root', tmp, ...args], { encoding: 'utf8', input })
 
-  assert.equal(run(['--write-baseline']).status, 0)
-  assert.deepEqual(JSON.parse(readFileSync(base, 'utf8'))['jam-web/src/components/A.tsx'], { arbitrary: 1 })
-  assert.equal(run([]).status, 0, '기준선과 같으면 통과')
-
-  // 위반을 새로 넣으면 실패하고 파일·줄·규칙 키·고치는 방법이 나온다
-  writeFileSync(join(comp, 'A.tsx'), '<p className="text-[13px]">\n<button>\n')
+  // 위반 1건이면 종료 코드 1, 파일·줄·규칙 키·고치는 방법이 나온다
   let r = run([])
+  assert.equal(r.status, 1, '기준선 없이 위반 1건도 실패')
+  writeFileSync(join(comp, 'A.tsx'), '<p className="text-[13px]">\n<button>\n')
+  r = run([])
   assert.equal(r.status, 1)
   assert.match(r.stderr, /A\.tsx \[raw-element\].*줄 2/)
   assert.match(r.stderr, /고치는 방법: .*정본 컴포넌트/)
   const j = JSON.parse(run(['--json']).stdout)
   assert.equal(j.ok, false)
-  assert.equal(j.failures[0].rule, 'raw-element')
+  assert.ok(j.failures.some((f) => f.rule === 'raw-element'))
 
   // --files: 주어진 파일만, 비대상·없는 파일은 무시
   assert.equal(run(['--files', 'jam-web/src/components/A.tsx']).status, 1)
   assert.equal(run(['--files', 'jam-web/src/components/A.test.tsx', 'jam-web/src/components/없음.tsx']).status, 0)
 
   // --stdin-file: 디스크(위반 있음)가 아니라 표준 입력 내용으로 판정
-  r = run(['--stdin-file', 'jam-web/src/components/A.tsx'], '<p className="text-[13px]">\n')
+  r = run(['--stdin-file', 'jam-web/src/components/A.tsx'], '<p className="text-sm">\n')
   assert.equal(r.status, 0, '디스크는 위반이지만 입력이 깨끗하면 통과')
   r = run(['--stdin-file', 'jam-web/src/components/A.tsx'], '<p style={{ color: "#000" }}>\n')
   assert.equal(r.status, 1, '입력의 위반을 잡는다')
   assert.match(r.stderr, /inline-visual/)
   assert.equal(run(['--stdin-file', join(tmp, 'jam-web/src/components/New.tsx')], '<button>').status, 1, '절대 경로·새 파일도 판정')
 
-  // 줄어든 파일은 안내만
+  // 한글 경로의 위반도 남아 있으므로 지우고 나면 통과, 줄 단위 예외도 통과
   writeFileSync(join(comp, 'A.tsx'), 'ok\n')
+  writeFileSync(join(tmp, 'jam-web/src/app/(main)/한글/p.tsx'), "const c = '#fff' // ui-allow: 시험\n")
+  rmSync(join(tmp, 'jam-web/src/app/(main)/admin'), { recursive: true, force: true })
   r = run([])
   assert.equal(r.status, 0)
-  assert.match(r.stdout, /기준선을 줄이세요/)
+  assert.match(r.stdout, /통과/)
+  writeFileSync(join(tmp, 'jam-web/src/app/(main)/한글/p.tsx'), "const c = '#fff' // ui-allow:\n")
+  assert.equal(run([]).status, 1, '사유가 비면 위반')
 } finally {
   rmSync(tmp, { recursive: true, force: true })
 }

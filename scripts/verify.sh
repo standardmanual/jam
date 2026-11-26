@@ -130,16 +130,16 @@ else
   rm -f "$LOG_PREFIX.client-server-imports"
 fi
 
-# 서비스 화면 소스에 눈금 밖 간격(임의 px, 32px 이상 단계, 큰 눈금 변수)이 늘었는지 기준선과 견준다
-# (티켓 20261108_2140, 간격 5회차). 기준선은 scripts/spacing-baseline.json.
+# 서비스 화면 소스에 눈금 밖 간격(임의 px, 32px 이상 단계, 큰 눈금 변수)이 있는지 검사한다
+# (티켓 20261108_2140, 간격 5회차). 위반은 예외 없이 실패한다(줄 단위 예외는 spacing-allow).
 if ! ( cd "$REPO_ROOT" && node scripts/check-spacing.mjs ) >"$LOG_PREFIX.spacing" 2>&1; then
   FAILED+=("spacing")
 else
   rm -f "$LOG_PREFIX.spacing"
 fi
 
-# 서비스 화면 소스에 DS 밖 값(임의값 클래스·색 리터럴·인라인 시각 style·원시 폼 요소)이 늘었는지 기준선과 견준다
-# (티켓 20261125_2012, UI 소스 정리 2-1회차). 기준선은 scripts/ui-rules-baseline.json.
+# 서비스 화면 소스에 DS 밖 값(임의값 클래스·색 리터럴·인라인 시각 style·원시 폼 요소)이 있는지 검사한다
+# (티켓 20261125_2012, UI 소스 정리 2-1회차). 위반은 예외 없이 실패한다(줄 단위 예외는 ui-allow).
 if ! ( cd "$REPO_ROOT" && node scripts/check-ui-rules.mjs ) >"$LOG_PREFIX.ui-rules" 2>&1; then
   FAILED+=("ui-rules")
 else

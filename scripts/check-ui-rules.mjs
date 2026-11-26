@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // check-ui-rules — 서비스 화면 소스에서 DS 밖 값을 찾는 규칙 엔진 (티켓 20261125_2012, UI 소스 정리 2-1회차, 상위 20261125_1923).
 //
-// 규칙 네 가지(규칙 키는 기준선·출력에 그대로 쓴다):
+// 규칙 네 가지(규칙 키는 출력에 그대로 쓴다):
 //   arbitrary      Tailwind 임의값 클래스 `접두-[값]`. 토큰만으로 이뤄진 값은 위반이 아니다: `var(--이름)` 하나, 형식 힌트가 붙은
 //                  `color:var(--이름)`, 그리고 calc(·min(·max(·clamp( 식에서 var(--이름)·100%·100dvh 같은 화면 단위·단위 없는 숫자·
 //                  연산자·괄호·쉼표·`_`만 남는 것. `var(--x,1rem)`처럼 대체값이 있거나 `calc(100%+8px)`처럼 리터럴 길이가 섞이면 위반이다.
@@ -13,16 +13,14 @@
 // 같은 줄에 `ui-allow: <사유>` 주석이 있으면 세지 않는다(사유가 비면 예외가 아니다). 예외 주석은 원래 줄에서 읽는다.
 // 파일 이름이 StoryFixtures.ts·StoryFixtures.tsx로 끝나는 스토리 전용 견본 파일은 검사하지 않는다.
 //
-// 남아 있는 위반은 scripts/ui-rules-baseline.json에 { "경로": { "규칙 키": 개수 } }로 고정한다(7회차에 0까지 고치는 임시 장치).
-// 기준선보다 늘어난 파일·기준선에 없는 파일의 위반은 실패(종료 코드 1), 줄어든 파일은 「기준선을 줄이세요」 안내만 낸다.
+// 위반은 예외 없이 실패한다(종료 코드 1). 줄 단위 예외는 같은 줄의 `ui-allow: <사유>` 주석뿐이다.
 //
 // 사용법: node scripts/check-ui-rules.mjs                      대상 전체 검사
 //         --files <경로…>                                       주어진 파일만 검사(pre-commit용)
 //         --stdin-file <경로>                                   표준 입력 내용을 그 경로의 새 내용으로 보고 검사(클로드 코드 훅용, 디스크를 읽지 않음)
-//         --write-baseline                                      현재 개수로 기준선을 다시 쓴다
 //         --json                                                결과를 JSON으로 낸다
-//         --root <dir> --baseline <file>                        시험용
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+//         --root <dir>                                          시험용
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stripComments } from './strip-code-comments.mjs'
@@ -63,6 +61,8 @@ const CALC_ALLOWED = /(?:calc|min|max|clamp)\(|var\(--[\w-]+\)|100(?:%|dvh|svh|l
 function isTokenOnly(value) {
   if (VAR_ONLY.test(value)) return true
   if (!CALC_FN.test(value) || !value.endsWith(')')) return false
+  // 계산식은 var(--…) 토큰이 적어도 하나 있어야 토큰 조합이다(calc(0.96)·calc(100%)는 리터럴 값이다).
+  if (!/var\(--[\w-]+\)/.test(value)) return false
   return value.replace(CALC_ALLOWED, '').length === 0
 }
 const COLOR = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])|\b(?:rgba?|hsla?|oklch)\(/g
@@ -213,31 +213,16 @@ export function scanContent(root, p, text) {
   return Object.keys(s.counts).length > 0 ? { [rel]: s } : {}
 }
 
-// 기준선과 견준다. onlyFiles가 있으면 그 파일만 본다(없는 파일의 기준선을 «줄었다»로 오판하지 않기 위해).
-export function compare(current, baseline, onlyFiles) {
+// 위반을 파일·규칙별 실패 목록으로 바꾼다(기준선 없이 위반이 하나라도 있으면 실패).
+export function toFailures(current) {
   const failures = []
-  const shrunk = []
-  const files = new Set([...Object.keys(current), ...(onlyFiles ? onlyFiles : Object.keys(baseline))])
-  for (const file of [...files].sort()) {
-    const cur = current[file]?.counts ?? {}
-    const base = baseline[file] ?? {}
+  for (const file of Object.keys(current).sort()) {
     for (const rule of RULES) {
-      const now = cur[rule] ?? 0
-      const b = base[rule] ?? 0
-      if (now > b) failures.push({ file, rule, base: b, now, lines: current[file].lines[rule], fix: FIXES[rule] })
-      else if (now < b) shrunk.push({ file, rule, base: b, now })
+      const now = current[file].counts[rule] ?? 0
+      if (now > 0) failures.push({ file, rule, now, lines: current[file].lines[rule], fix: FIXES[rule] })
     }
   }
-  return { failures, shrunk }
-}
-
-function toBaseline(current) {
-  const out = {}
-  for (const file of Object.keys(current).sort()) {
-    out[file] = {}
-    for (const rule of RULES) if (current[file].counts[rule]) out[file][rule] = current[file].counts[rule]
-  }
-  return out
+  return failures
 }
 
 function main() {
@@ -247,33 +232,9 @@ function main() {
     return i >= 0 && args[i + 1] ? args[i + 1] : fallback
   }
   const root = path.resolve(opt('--root', path.join(SCRIPT_DIR, '..')))
-  const baselinePath = path.resolve(opt('--baseline', path.join(SCRIPT_DIR, 'ui-rules-baseline.json')))
   const json = args.includes('--json')
 
-  if (args.includes('--write-baseline')) {
-    const b = toBaseline(scan(root))
-    writeFileSync(baselinePath, JSON.stringify(b, null, 2) + '\n')
-    const totals = Object.fromEntries(RULES.map((r) => [r, 0]))
-    for (const v of Object.values(b)) for (const [r, n] of Object.entries(v)) totals[r] += n
-    console.log(
-      `check-ui-rules: 기준선을 썼습니다 — 파일 ${Object.keys(b).length}개, ` +
-        RULES.map((r) => `${r} ${totals[r]}건`).join(', ') + ` (${path.basename(baselinePath)})`,
-    )
-    return 0
-  }
-
-  let baseline = {}
-  if (existsSync(baselinePath)) {
-    try {
-      baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
-    } catch (e) {
-      console.error(`check-ui-rules: 기준선이 올바른 JSON이 아닙니다 — ${e.message}`)
-      return 1
-    }
-  }
-
   let current
-  let only
   const stdinIdx = args.indexOf('--stdin-file')
   const filesIdx = args.indexOf('--files')
   if (stdinIdx >= 0) {
@@ -283,30 +244,24 @@ function main() {
       return 1
     }
     current = scanContent(root, target, readFileSync(0, 'utf8'))
-    only = [normalizePath(root, target)]
   } else if (filesIdx >= 0) {
     const paths = []
     for (let i = filesIdx + 1; i < args.length && !args[i].startsWith('--'); i++) paths.push(args[i])
     current = scanFiles(root, paths)
-    only = paths.map((p) => normalizePath(root, p)).filter(isTarget)
   } else {
     current = scan(root)
   }
 
-  const { failures, shrunk } = compare(current, baseline, only)
+  const failures = toFailures(current)
 
   if (json) {
-    console.log(JSON.stringify({ ok: failures.length === 0, failures, shrunk }, null, 2))
+    console.log(JSON.stringify({ ok: failures.length === 0, failures }, null, 2))
     return failures.length === 0 ? 0 : 1
   }
-  if (shrunk.length > 0) {
-    console.log('check-ui-rules: 위반이 줄었습니다. 기준선을 줄이세요 (node scripts/check-ui-rules.mjs --write-baseline):')
-    for (const s of shrunk) console.log(`  ${s.file} [${s.rule}]: ${s.base} → ${s.now}`)
-  }
   if (failures.length > 0) {
-    console.error('check-ui-rules: DS 밖 값이 늘었습니다. 불가피하면 같은 줄에 `ui-allow: <사유>` 주석을 답니다.')
+    console.error('check-ui-rules: DS 밖 값이 있습니다. 불가피하면 같은 줄에 `ui-allow: <사유>` 주석을 답니다.')
     for (const f of failures) {
-      console.error(`  ${f.file} [${f.rule}]: 기준선 ${f.base} → 현재 ${f.now} (줄 ${f.lines.join(', ')})`)
+      console.error(`  ${f.file} [${f.rule}]: ${f.now}건 (줄 ${f.lines.join(', ')})`)
       console.error(`    고치는 방법: ${f.fix}`)
     }
     return 1

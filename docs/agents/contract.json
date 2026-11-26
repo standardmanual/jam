@@ -96,7 +96,6 @@
       "scripts/check-skills.test.mjs",
       "scripts/check-spacing.mjs",
       "scripts/check-spacing.test.mjs",
-      "scripts/spacing-baseline.json",
       "scripts/skill-eval.mjs",
       "scripts/skill-eval.test.mjs",
       "scripts/skill-eval-cases.json",
