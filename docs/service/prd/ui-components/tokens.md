@@ -17,7 +17,7 @@ code:
 정본 컴포넌트 목록은 [README](README.md)에 있다.
 
 <!-- BEGIN generated: gen-token-catalog -->
-토큰 483개 · 기본값 (primitive) 133개 · 의미 (semantic) 61개 · 컴포넌트 (component) 150개 · 어드민 (admin) 139개 · 쓰는 곳 0인 토큰 114개
+토큰 446개 · 기본값 (primitive) 133개 · 의미 (semantic) 50개 · 컴포넌트 (component) 124개 · 어드민 (admin) 139개 · 쓰는 곳 0인 토큰 77개
 
 **층 규칙**: 색·px·ms 같은 직접 값은 기본값 층에만 둔다. 의미 층과 컴포넌트 층은 기본값을 참조한다.
 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·정본 폴더 등 일부뿐이다.
@@ -34,19 +34,19 @@ code:
 
 | 이름 | 정의 값 | 최종 값 | 클래스 | var() | 클래스 사용 | 쓰는 파일 | 토큰 안 참조 | 비고 |
 |---|---|---|---|---|---|---|---|---|
-| `--base-white` | `#ffffff` | 〃 | — | 0 | 0 | 0 | 7 | — |
+| `--base-white` | `#ffffff` | 〃 | — | 0 | 0 | 0 | 6 | — |
 | `--base-snow` | `#fcfcfc` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--base-black` | `#000000` | 〃 | — | 0 | 0 | 0 | 9 | — |
 | `--base-neutral-50` | `#fafafa` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--base-neutral-100` | `#f5f5f5` | 〃 | — | 0 | 0 | 0 | 2 | — |
-| `--base-neutral-200` | `#e5e5e5` | 〃 | — | 0 | 0 | 0 | 9 | — |
+| `--base-neutral-200` | `#e5e5e5` | 〃 | — | 0 | 0 | 0 | 7 | — |
 | `--base-neutral-300` | `#d4d4d4` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--base-neutral-400` | `#a3a3a3` | 〃 | — | 0 | 0 | 0 | 1 | — |
-| `--base-neutral-500` | `#737373` | 〃 | — | 0 | 0 | 0 | 3 | — |
-| `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 1 | 3 | — |
+| `--base-neutral-500` | `#737373` | 〃 | — | 0 | 0 | 0 | 2 | — |
+| `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 1 | 1 | — |
 | `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--base-neutral-800` | `#262626` | 〃 | — | 1 | 0 | 1 | 0 | — |
-| `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 11 | — |
+| `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 10 | — |
 | `--base-neutral-950` | `#0a0a0a` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--base-danger-red` | `#d61f1f` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--base-point-orange` | `#ff4400` | 〃 | — | 0 | 0 | 0 | 1 | — |
@@ -72,32 +72,32 @@ code:
 | `--radius-3xl` | `1.5rem` | 〃 | `rounded-3xl` | 0 | 1 | 1 | 0 | jam-theme.css에도 정의됨 (값 같음) |
 | `--radius-4xl` | `2rem` | 〃 | `rounded-4xl` | 0 | 0 | 0 | 0 | jam-theme.css에도 정의됨 (값 같음) |
 | `--radius-full` | `9999px` | 〃 | — | 19 | 0 | 11 | 0 | — |
-| `--spacing-4` | `4px` | 〃 | — | 6 | 0 | 3 | 1 | — |
-| `--spacing-8` | `8px` | 〃 | — | 8 | 0 | 4 | 3 | — |
-| `--spacing-12` | `12px` | 〃 | — | 3 | 0 | 2 | 5 | — |
-| `--spacing-16` | `16px` | 〃 | — | 3 | 0 | 2 | 8 | — |
-| `--spacing-20` | `20px` | 〃 | — | 0 | 0 | 0 | 1 | — |
-| `--spacing-24` | `24px` | 〃 | — | 5 | 0 | 1 | 3 | — |
+| `--spacing-4` | `4px` | 〃 | — | 6 | 0 | 3 | 0 | — |
+| `--spacing-8` | `8px` | 〃 | — | 8 | 0 | 4 | 1 | — |
+| `--spacing-12` | `12px` | 〃 | — | 3 | 0 | 2 | 3 | — |
+| `--spacing-16` | `16px` | 〃 | — | 3 | 0 | 2 | 5 | — |
+| `--spacing-20` | `20px` | 〃 | — | 0 | 0 | 0 | 0 | — |
+| `--spacing-24` | `24px` | 〃 | — | 5 | 0 | 1 | 2 | — |
 | `--spacing-32` | `32px` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--spacing-40` | `40px` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--spacing-48` | `48px` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--spacing-64` | `64px` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--spacing-96` | `96px` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--duration-micro` | `80ms` | 〃 | — | 6 | 0 | 5 | 2 | — |
-| `--duration-quick` | `150ms` | 〃 | — | 6 | 0 | 5 | 3 | — |
-| `--duration-fast` | `250ms` | 〃 | — | 10 | 0 | 3 | 7 | — |
+| `--duration-micro` | `80ms` | 〃 | — | 6 | 0 | 5 | 1 | — |
+| `--duration-quick` | `150ms` | 〃 | — | 6 | 0 | 5 | 2 | — |
+| `--duration-fast` | `250ms` | 〃 | — | 10 | 0 | 3 | 5 | — |
 | `--duration-medium` | `350ms` | 〃 | — | 1 | 0 | 1 | 3 | — |
 | `--duration-slow` | `400ms` | 〃 | — | 3 | 0 | 2 | 3 | — |
 | `--duration-stagger` | `40ms` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--duration-very-slow` | `500ms` | 〃 | — | 0 | 0 | 0 | 7 | — |
+| `--duration-very-slow` | `500ms` | 〃 | — | 0 | 0 | 0 | 2 | — |
 | `--ease-linear` | `linear` | 〃 | — | 1 | 0 | 1 | 0 | — |
-| `--ease-smooth-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | 〃 | — | 16 | 0 | 6 | 14 | — |
+| `--ease-smooth-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | 〃 | — | 16 | 0 | 6 | 9 | — |
 | `--ease-bounce` | `cubic-bezier(0.34, 1.36, 0.64, 1)` | 〃 | — | 0 | 0 | 0 | 1 | — |
 | `--ease-out` | `ease-out` | 〃 | `ease-out` | 11 | 16 | 11 | 1 | jam-theme.css에도 정의됨 (값 같음) |
 | `--ease-in-out` | `ease-in-out` | 〃 | `ease-in-out` | 0 | 4 | 3 | 2 | jam-theme.css에도 정의됨 (값 같음) |
 | `--scale-press` | `0.96` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--scale-press-card` | `0.98` | 〃 | — | 3 | 0 | 3 | 0 | — |
-| `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 1 | — |
+| `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--scale-compact` | `0.7` | 〃 | — | 5 | 0 | 1 | 0 | — |
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 14 | 0 | 11 | 1 | — |
 | `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 835 | 229 | 0 | jam-theme.css에도 정의됨 (값 같음) |
@@ -179,7 +179,6 @@ code:
 | `--btn-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-btn-secondary` | 1 | 4 | 3 | 1 | — |
 | `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 13 | 14 | 20 | 3 | — |
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 16 | 14 | 20 | 2 | — |
-| `--surface-transparent` | `color-mix(in srgb, var(--base-white) 0%, transparent)` | `color-mix(in srgb, #ffffff 0%, transparent)` | — | 0 | 0 | 0 | 0 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 1 | 0 | 1 | 2 | — |
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 75 | 594 | 217 | 7 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 40 | 250 | 144 | 2 | — |
@@ -190,7 +189,6 @@ code:
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 15 | 21 | 1 | — |
 | `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 12 | 4 | 12 | 1 | — |
 | `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 2 | 0 | 2 | 1 | — |
-| `--accent-soft-hover` | `var(--base-neutral-200)` | `#e5e5e5` | `*-accent-soft-hover` | 0 | 0 | 0 | 1 | — |
 | `--border` | `var(--base-neutral-200)` | `#e5e5e5` | `*-border` | 11 | 346 | 137 | 1 | — |
 | `--field-border` | `var(--base-neutral-400)` | `#a3a3a3` | `*-field-border` | 2 | 0 | 2 | 1 | — |
 | `--separator` | `var(--base-neutral-200)` | `#e5e5e5` | `*-separator` | 2 | 0 | 2 | 1 | — |
@@ -207,19 +205,10 @@ code:
 | `--layout-card-padding` | `var(--spacing-24)` | `24px` | — | 3 | 0 | 3 | 0 | — |
 | `--layout-section-gap` | `var(--spacing-48)` | `48px` | — | 1 | 0 | 1 | 0 | — |
 | `--layout-element-gap` | `var(--spacing-16)` | `16px` | — | 4 | 0 | 2 | 0 | — |
-| `--page-x` | `var(--spacing-16)` | `16px` | — | 0 | 0 | 0 | 0 | — |
 | `--page-top` | `var(--spacing-16)` | `16px` | — | 4 | 0 | 3 | 0 | — |
 | `--page-bottom` | `var(--spacing-24)` | `24px` | — | 1 | 0 | 1 | 0 | — |
-| `--gap-section` | `var(--spacing-20)` | `20px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-section-lg` | `var(--spacing-24)` | `24px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-group` | `var(--spacing-12)` | `12px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-text` | `var(--spacing-8)` | `8px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-label` | `var(--spacing-4)` | `4px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-card` | `var(--spacing-8)` | `8px` | — | 0 | 0 | 0 | 0 | — |
 | `--gap-card-detail` | `var(--spacing-12)` | `12px` | — | 1 | 0 | 1 | 0 | — |
 | `--card-padding` | `var(--spacing-16)` | `16px` | — | 1 | 0 | 1 | 0 | — |
-| `--card-padding-row` | `var(--spacing-12) var(--spacing-16)` | `12px 16px` | — | 0 | 0 | 0 | 0 | — |
-| `--gap-field` | `var(--spacing-16)` | `16px` | — | 0 | 0 | 0 | 0 | — |
 | `--gap-actions` | `var(--spacing-8)` | `8px` | — | 1 | 0 | 1 | 0 | — |
 | `--touch-target-min` | `44px` | 〃 | — | 7 | 0 | 4 | 0 | — |
 | `--spacing-safe-top` | `env(safe-area-inset-top, 0px)` | 〃 | — | 2 | 0 | 2 | 0 | — |
@@ -246,12 +235,6 @@ code:
 | `--rarity-rare-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 1 | 0 | — |
 | `--rarity-epic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 1 | 0 | — |
 | `--rarity-mystic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 1 | 0 | — |
-| `--progress-short` | `var(--base-neutral-500)` | `#737373` | — | 0 | 0 | 0 | 1 | — |
-| `--progress-done` | `var(--base-neutral-900)` | `#171717` | — | 0 | 0 | 0 | 1 | — |
-| `--progress-latest` | `var(--base-neutral-600)` | `#525252` | — | 0 | 0 | 0 | 0 | — |
-| `--progress-latest-soft` | `color-mix(in srgb, var(--base-neutral-600) 18%, transparent)` | `color-mix(in srgb, #525252 18%, transparent)` | — | 0 | 0 | 0 | 0 | — |
-| `--progress-track` | `var(--base-neutral-200)` | `#e5e5e5` | — | 0 | 0 | 0 | 0 | — |
-| `--progress-sweep` | `linear-gradient(90deg in oklab, var(--progress-short), var(--progress-done))` | `linear-gradient(90deg in oklab, #737373, #171717)` | — | 0 | 0 | 0 | 0 | — |
 | `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 5 | 0 | 4 | 0 | — |
 | `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 4 | 0 | 2 | 0 | — |
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 1 | 0 | — |
@@ -324,29 +307,11 @@ code:
 | `--text-swap-translate-y` | `4px` | 〃 | — | 2 | 0 | 1 | 0 | — |
 | `--text-swap-blur` | `2px` | 〃 | — | 2 | 0 | 1 | 0 | — |
 | `--text-swap-ease` | `var(--ease-in-out)` | `ease-in-out` | — | 3 | 0 | 1 | 0 | — |
-| `--modal-open-dur` | `var(--duration-fast)` | `250ms` | — | 0 | 0 | 0 | 0 | — |
-| `--modal-close-dur` | `var(--duration-quick)` | `150ms` | — | 0 | 0 | 0 | 0 | — |
-| `--modal-scale-close` | `var(--scale-modal)` | `0.96` | — | 0 | 0 | 0 | 0 | — |
-| `--modal-ease` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 0 | 0 | 0 | 0 | — |
 | `--panel-open-dur` | `var(--duration-slow)` | `400ms` | — | 4 | 0 | 1 | 0 | — |
 | `--panel-close-dur` | `var(--duration-medium)` | `350ms` | — | 4 | 0 | 1 | 0 | — |
 | `--panel-translate-y` | `100px` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--panel-blur` | `2px` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--panel-ease` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 8 | 0 | 1 | 0 | — |
-| `--check-opacity-dur` | `var(--duration-very-slow)` | `500ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-rotate-dur` | `var(--duration-very-slow)` | `500ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-rotate-from` | `80deg` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--check-bob-dur` | `var(--duration-very-slow)` | `500ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-y-amount` | `40px` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--check-blur-dur` | `var(--duration-very-slow)` | `500ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-blur-from` | `10px` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--check-path-dur` | `var(--duration-very-slow)` | `500ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-path-delay` | `var(--duration-micro)` | `80ms` | — | 0 | 0 | 0 | 0 | — |
-| `--check-ease-out` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 0 | 0 | 0 | 0 | — |
-| `--check-ease-opacity` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 0 | 0 | 0 | 0 | — |
-| `--check-ease-rotate` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 0 | 0 | 0 | 0 | — |
-| `--check-ease-bob` | `cubic-bezier(0.34, 1.35, 0.64, 1)` | 〃 | — | 0 | 0 | 0 | 0 | — |
-| `--check-ease-path` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 0 | 0 | 0 | 0 | — |
 | `--shake-distance` | `6px` | 〃 | — | 2 | 0 | 1 | 0 | — |
 | `--shake-overshoot` | `4px` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--shake-dur-a` | `var(--duration-micro)` | `80ms` | — | 1 | 0 | 1 | 0 | — |
@@ -367,7 +332,6 @@ code:
 | `--tabs-pill-bg` | `var(--background-inverse)` | `#171717` | — | 1 | 0 | 1 | 0 | — |
 | `--acc-expand` | `var(--duration-fast)` | `250ms` | — | 3 | 0 | 1 | 0 | — |
 | `--acc-collapse` | `var(--duration-fast)` | `250ms` | — | 3 | 0 | 1 | 0 | — |
-| `--acc-chevron` | `var(--duration-fast)` | `250ms` | — | 0 | 0 | 0 | 0 | — |
 | `--acc-ease` | `var(--ease-smooth-out)` | `cubic-bezier(0.22, 1, 0.36, 1)` | — | 6 | 0 | 1 | 0 | — |
 | `--toast-open` | `var(--duration-medium)` | `350ms` | — | 4 | 0 | 1 | 0 | — |
 | `--toast-close` | `var(--duration-fast)` | `250ms` | — | 4 | 0 | 1 | 0 | — |
@@ -379,7 +343,6 @@ code:
 | `--toast-scrim-blur` | `4px` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--reel-dur` | `1400ms` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--reel-cell` | `30px` | 〃 | — | 3 | 0 | 1 | 0 | — |
-| `--reel-spin-blur` | `3px` | 〃 | — | 0 | 0 | 0 | 0 | — |
 | `--reel-stagger` | `90ms` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--reel-ease` | `cubic-bezier(0.16, 1, 0.3, 1)` | 〃 | — | 1 | 0 | 1 | 0 | — |
 | `--capsule-fade-dur` | `var(--duration-fast)` | `250ms` | — | 2 | 0 | 1 | 0 | — |
@@ -539,17 +502,17 @@ code:
 
 | 이름 | 층 | 토큰 안 참조 |
 |---|---|---|
-| `--base-white` | 기본값 (primitive) | 7 |
+| `--base-white` | 기본값 (primitive) | 6 |
 | `--base-snow` | 기본값 (primitive) | 1 |
 | `--base-black` | 기본값 (primitive) | 9 |
 | `--base-neutral-50` | 기본값 (primitive) | 0 |
 | `--base-neutral-100` | 기본값 (primitive) | 2 |
-| `--base-neutral-200` | 기본값 (primitive) | 9 |
+| `--base-neutral-200` | 기본값 (primitive) | 7 |
 | `--base-neutral-300` | 기본값 (primitive) | 0 |
 | `--base-neutral-400` | 기본값 (primitive) | 1 |
-| `--base-neutral-500` | 기본값 (primitive) | 3 |
+| `--base-neutral-500` | 기본값 (primitive) | 2 |
 | `--base-neutral-700` | 기본값 (primitive) | 1 |
-| `--base-neutral-900` | 기본값 (primitive) | 11 |
+| `--base-neutral-900` | 기본값 (primitive) | 10 |
 | `--base-neutral-950` | 기본값 (primitive) | 1 |
 | `--base-danger-red` | 기본값 (primitive) | 1 |
 | `--base-point-orange` | 기본값 (primitive) | 1 |
@@ -561,16 +524,16 @@ code:
 | `--jam-chip-white` | 기본값 (primitive) | 1 |
 | `--radius-xs` | 기본값 (primitive) | 0 |
 | `--radius-4xl` | 기본값 (primitive) | 0 |
-| `--spacing-20` | 기본값 (primitive) | 1 |
+| `--spacing-20` | 기본값 (primitive) | 0 |
 | `--spacing-32` | 기본값 (primitive) | 0 |
 | `--spacing-40` | 기본값 (primitive) | 0 |
 | `--spacing-48` | 기본값 (primitive) | 1 |
 | `--spacing-64` | 기본값 (primitive) | 0 |
 | `--spacing-96` | 기본값 (primitive) | 0 |
 | `--duration-stagger` | 기본값 (primitive) | 0 |
-| `--duration-very-slow` | 기본값 (primitive) | 7 |
+| `--duration-very-slow` | 기본값 (primitive) | 2 |
 | `--ease-bounce` | 기본값 (primitive) | 1 |
-| `--scale-modal` | 기본값 (primitive) | 1 |
+| `--scale-modal` | 기본값 (primitive) | 0 |
 | `--text-lg--line-height` | 기본값 (primitive) | 0 |
 | `--leading-loose` | 기본값 (primitive) | 0 |
 | `--leading-reading` | 기본값 (primitive) | 0 |
@@ -610,43 +573,6 @@ code:
 | `--default-font-family` | 기본값 (primitive) | 0 |
 | `--default-mono-font-family` | 기본값 (primitive) | 0 |
 | `--page-bg` | 의미 (semantic) | 3 |
-| `--surface-transparent` | 의미 (semantic) | 0 |
-| `--accent-soft-hover` | 의미 (semantic) | 1 |
-| `--page-x` | 의미 (semantic) | 0 |
-| `--gap-section` | 의미 (semantic) | 0 |
-| `--gap-section-lg` | 의미 (semantic) | 0 |
-| `--gap-group` | 의미 (semantic) | 0 |
-| `--gap-text` | 의미 (semantic) | 0 |
-| `--gap-label` | 의미 (semantic) | 0 |
-| `--gap-card` | 의미 (semantic) | 0 |
-| `--card-padding-row` | 의미 (semantic) | 0 |
-| `--gap-field` | 의미 (semantic) | 0 |
-| `--progress-short` | 컴포넌트 (component) | 1 |
-| `--progress-done` | 컴포넌트 (component) | 1 |
-| `--progress-latest` | 컴포넌트 (component) | 0 |
-| `--progress-latest-soft` | 컴포넌트 (component) | 0 |
-| `--progress-track` | 컴포넌트 (component) | 0 |
-| `--progress-sweep` | 컴포넌트 (component) | 0 |
-| `--modal-open-dur` | 컴포넌트 (component) | 0 |
-| `--modal-close-dur` | 컴포넌트 (component) | 0 |
-| `--modal-scale-close` | 컴포넌트 (component) | 0 |
-| `--modal-ease` | 컴포넌트 (component) | 0 |
-| `--check-opacity-dur` | 컴포넌트 (component) | 0 |
-| `--check-rotate-dur` | 컴포넌트 (component) | 0 |
-| `--check-rotate-from` | 컴포넌트 (component) | 0 |
-| `--check-bob-dur` | 컴포넌트 (component) | 0 |
-| `--check-y-amount` | 컴포넌트 (component) | 0 |
-| `--check-blur-dur` | 컴포넌트 (component) | 0 |
-| `--check-blur-from` | 컴포넌트 (component) | 0 |
-| `--check-path-dur` | 컴포넌트 (component) | 0 |
-| `--check-path-delay` | 컴포넌트 (component) | 0 |
-| `--check-ease-out` | 컴포넌트 (component) | 0 |
-| `--check-ease-opacity` | 컴포넌트 (component) | 0 |
-| `--check-ease-rotate` | 컴포넌트 (component) | 0 |
-| `--check-ease-bob` | 컴포넌트 (component) | 0 |
-| `--check-ease-path` | 컴포넌트 (component) | 0 |
-| `--acc-chevron` | 컴포넌트 (component) | 0 |
-| `--reel-spin-blur` | 컴포넌트 (component) | 0 |
 | `--blur` | 어드민 (admin) | 0 |
 | `--shadow` | 어드민 (admin) | 0 |
 | `--drop-shadow` | 어드민 (admin) | 0 |

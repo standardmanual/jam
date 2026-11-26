@@ -28,7 +28,7 @@ const CASES: Record<string, Props> = {
     percent: 0.5 * 100,
     height: 6,
     color: 'var(--accent)',
-    trackColor: 'var(--accent-soft-hover)',
+    trackColor: 'var(--border)',
     radius: '3px',
   },
   'RankingListRow(108)': {
@@ -66,7 +66,7 @@ const EXPECTED: Record<string, string> = {
   'MissionDetailClient 완료(632)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:100%;height:100%;border-radius:var(--radius-full);background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'MissionStatusClient(292)':
-    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:3px;overflow:hidden;background:var(--accent-soft-hover)"><div style="position:absolute;inset:0;left:0;width:50%;height:100%;border-radius:3px;background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
+    '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:3px;overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:50%;height:100%;border-radius:3px;background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'RankingListRow(108)':
     '<div class="" style="width:100%"><div style="flex:1;position:relative;height:6px;border-radius:3px;overflow:hidden;background:var(--border)"><div style="position:absolute;inset:0;left:0;width:80%;height:100%;border-radius:3px;background:var(--accent);transition:width var(--duration-slow) var(--ease-smooth-out)"></div></div></div>',
   'CollectionGridCard(85)':

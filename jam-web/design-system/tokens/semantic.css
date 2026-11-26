@@ -16,7 +16,6 @@
   --btn-secondary: var(--base-neutral-200);     /* Button secondary·outline 면. 카드 위 연한 면이 필요하면 이 값을 쓴다 */
   --background-inverse: var(--base-neutral-900);
   --surface: var(--base-white);
-  --surface-transparent: color-mix(in srgb, var(--base-white) 0%, transparent); /* 완전 투명 */
   --surface-on-inverse: color-mix(in srgb, var(--snow) 15%, transparent); /* 반전 면 위 한 단계 밝은 면(썸네일 박스 등). --snow 15% */
 
   /* ── 글자 ─────────────────────────────────────────────────── */
@@ -31,7 +30,6 @@
   --accent: var(--base-neutral-900);            /* 면 채우기 전용 */
   --accent-foreground: var(--snow);             /* accent 면 위 글자 */
   --accent-soft: var(--base-neutral-100);
-  --accent-soft-hover: var(--base-neutral-200);
 
   /* ── 선·면 ────────────────────────────────────────────────── */
   --border: var(--base-neutral-200);
@@ -65,19 +63,10 @@
   --layout-element-gap: var(--spacing-16);
 
   /* 간격 역할 토큰 (티켓 20261108_1928) — 주석은 대응하는 Tailwind 기본 클래스 */
-  --page-x: var(--spacing-16); /* px-4 */
   --page-top: var(--spacing-16); /* pt-4 */
   --page-bottom: var(--spacing-24); /* pb-6 */
-  --gap-section: var(--spacing-20); /* gap-5 · space-y-5 */
-  --gap-section-lg: var(--spacing-24); /* gap-6 */
-  --gap-group: var(--spacing-12); /* gap-3 */
-  --gap-text: var(--spacing-8); /* gap-2 */
-  --gap-label: var(--spacing-4); /* gap-1 */
-  --gap-card: var(--spacing-8); /* gap-2 */
   --gap-card-detail: var(--spacing-12); /* gap-3 */
   --card-padding: var(--spacing-16); /* p-4 */
-  --card-padding-row: var(--spacing-12) var(--spacing-16); /* py-3 px-4 */
-  --gap-field: var(--spacing-16); /* gap-4 */
   --gap-actions: var(--spacing-8); /* gap-2 */
 
   /* Touch target minimum (iOS HIG) */
