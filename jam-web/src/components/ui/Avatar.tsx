@@ -12,6 +12,8 @@ export interface AvatarProps {
   shape?: 'circle' | 'rounded'
   /** 폴백 `UserIcon` 크기·색 클래스(예: `w-4 h-4`, `w-10 h-10 text-muted`). 기본값은 지름의 약 절반. */
   iconClassName?: string
+  /** 사진 없을 때의 면 — 기본 `'surface'`(`bg-surface` 흰 면을 칠함), `'none'`은 면을 칠하지 않아 감싸는 자리(예: ListRow lead 틀)의 면이 그대로 보인다. */
+  face?: 'surface' | 'none'
   /** 컨테이너 배경·테두리 등 추가 클래스. */
   className?: string
   /** 컨테이너 인라인 스타일. */
@@ -25,7 +27,7 @@ export interface AvatarProps {
  * 서비스 전역에 중복돼 있던 `rounded-full/rounded-2xl overflow-hidden + Image / UserIcon` 패턴을
  * 한 컴포넌트로 통합한다. 호출부별 크기(`size`)·모양(`shape`)·배경/테두리(`className`)는 기존 값을 그대로 유지한다.
  *
- * @summary 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 프로필·검색·팔로우 목록·상단 내비게이션에서 쓴다.
+ * @summary 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 사진이 없을 때 흰 면을 칠할지는 face로 고르며, 목록 줄 안에서는 면 없음을 쓴다. 프로필·검색·팔로우 목록·상단 내비게이션에서 쓴다.
  */
 export default function Avatar({
   src,
@@ -33,6 +35,7 @@ export default function Avatar({
   size,
   shape = 'circle',
   iconClassName,
+  face = 'surface',
   className = '',
   style,
   unoptimized = false,
@@ -42,7 +45,7 @@ export default function Avatar({
 
   return (
     <span
-      className={['relative', radiusClass, 'overflow-hidden flex items-center justify-center shrink-0', src ? '' : 'bg-surface', className].filter(Boolean).join(' ')}
+      className={['relative', radiusClass, 'overflow-hidden flex items-center justify-center shrink-0', src || face === 'none' ? '' : 'bg-surface', className].filter(Boolean).join(' ')}
       style={{ width: size, height: size, ...style }}
     >
       {src ? (

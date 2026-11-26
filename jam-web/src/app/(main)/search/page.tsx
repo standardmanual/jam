@@ -121,7 +121,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <ListRow
                   key={u.id}
                   href={`/${u.username}`}
-                  lead={<Avatar src={u.avatar_url} alt="" size={48} iconClassName="w-5 h-5 text-muted" />}
+                  lead={<Avatar src={u.avatar_url} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />}
                   leadShape="round"
                   title={displayName}
                   titleVariant="regular"
