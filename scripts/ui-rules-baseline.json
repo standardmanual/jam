@@ -16,45 +16,8 @@
   "jam-web/src/app/(main)/UserSearchBar.tsx": {
     "arbitrary": 1
   },
-  "jam-web/src/app/(main)/badges/BadgesClient.tsx": {
-    "arbitrary": 1
-  },
-  "jam-web/src/app/(main)/badges/[id]/BadgeShareButton.tsx": {
-    "arbitrary": 5
-  },
-  "jam-web/src/app/(main)/badges/[id]/BadgeTicket.module.css": {
-    "color-literal": 7
-  },
-  "jam-web/src/app/(main)/badges/[id]/ItemEarnHistory.tsx": {
-    "arbitrary": 1
-  },
-  "jam-web/src/app/(main)/badges/[id]/PoiEarnHistory.tsx": {
-    "arbitrary": 1
-  },
   "jam-web/src/app/(main)/badges/[id]/ShareActionButtons.tsx": {
     "raw-element": 1
-  },
-  "jam-web/src/app/(main)/badges/[id]/TicketPhoto.tsx": {
-    "arbitrary": 2
-  },
-  "jam-web/src/app/(main)/collections/[id]/SlotActionPill.tsx": {
-    "raw-element": 1
-  },
-  "jam-web/src/app/(main)/collections/[id]/page.tsx": {
-    "inline-visual": 7
-  },
-  "jam-web/src/app/(main)/combine/CombineClient.tsx": {
-    "arbitrary": 1,
-    "raw-element": 1
-  },
-  "jam-web/src/app/(main)/combine/TierUpPanel.tsx": {
-    "arbitrary": 1
-  },
-  "jam-web/src/app/(main)/drops/DropsClient.tsx": {
-    "arbitrary": 1
-  },
-  "jam-web/src/app/(main)/inventory/[itemId]/LockedItemDetail.tsx": {
-    "arbitrary": 5
   },
   "jam-web/src/app/(main)/layout.tsx": {
     "arbitrary": 1
@@ -85,40 +48,11 @@
     "arbitrary": 6,
     "raw-element": 2
   },
-  "jam-web/src/components/BadgeHeroSection.tsx": {
-    "arbitrary": 2
-  },
-  "jam-web/src/components/BadgeRevealOverlay.tsx": {
-    "inline-visual": 1
-  },
   "jam-web/src/components/NavigationLoader.tsx": {
     "arbitrary": 1
   },
-  "jam-web/src/components/TierUpRevealOverlay.tsx": {
-    "color-literal": 2,
-    "inline-visual": 1
-  },
-  "jam-web/src/components/capsule/CapsuleGauge.tsx": {
-    "arbitrary": 2
-  },
-  "jam-web/src/components/capsule/CapsuleWidget.tsx": {
-    "raw-element": 1
-  },
-  "jam-web/src/components/inventory/InventoryGrid.tsx": {
-    "inline-visual": 1
-  },
-  "jam-web/src/components/inventory/ItemCandidateRow.tsx": {
-    "inline-visual": 1
-  },
   "jam-web/src/components/map/MapView.tsx": {
-    "color-literal": 3,
     "raw-element": 1
-  },
-  "jam-web/src/components/ranking/RankingListRow.tsx": {
-    "inline-visual": 4
-  },
-  "jam-web/src/components/strava/PendingItemsPickOverlay.tsx": {
-    "inline-visual": 3
   },
   "jam-web/src/components/today/FeedStamp.tsx": {
     "inline-visual": 1

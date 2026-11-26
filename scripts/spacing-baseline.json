@@ -5,7 +5,6 @@
   "jam-web/src/app/(legal)/probability/page.tsx": 3,
   "jam-web/src/app/(main)/[username]/followers/page.tsx": 1,
   "jam-web/src/app/(main)/[username]/following/page.tsx": 1,
-  "jam-web/src/app/(main)/inventory/[itemId]/LockedItemDetail.tsx": 1,
   "jam-web/src/app/(main)/search/page.tsx": 1,
   "jam-web/src/app/(main)/voc/page.tsx": 1,
   "jam-web/src/app/(onboarding)/onboarding/TribeStep.tsx": 3,
