@@ -29,7 +29,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-2xl font-medium">
         {title}
       </h2>
-      <div className="flex flex-col gap-8">{children}</div>
+      <div className="flex flex-col gap-5">{children}</div>
     </section>
   )
 }
@@ -87,7 +87,7 @@ export default function LocationTermsPage() {
     <div className="min-h-full text-foreground">
       <LegalTopNav title={PAGE_TITLE} />
 
-      <article className="px-4 pt-16 pb-16 flex flex-col gap-12">
+      <article className="px-4 pt-4 pb-6 flex flex-col gap-5">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-medium">
             {PAGE_TITLE}

@@ -39,7 +39,7 @@ describe('LegalLayout', () => {
       </LegalLayout>,
     )
     expect(html).toContain('본문')
-    expect(html).toContain('max-w-[430px]')
+    expect(html).toContain('max-w-[var(--app-max-width)]')
     // 라이트 전환 뒤 마지막 정지점 #3d3d3d가 남아 하단이 어두워진 결함(채원② 중대 2)의 회귀 방지
     expect(html).toContain('background:var(--background)')
     expect(html).not.toContain('#3d3d3d')

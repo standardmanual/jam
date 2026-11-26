@@ -384,12 +384,12 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                 )}
                 {reward.length > 0 && (
                   <span
+                    className="font-bold"
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
                       fontSize: 'var(--text-xs)',
-                      fontWeight: 700,
                       lineHeight: 'var(--text-xs--line-height)',
                       marginTop: m.locked ? 'var(--spacing-4)' : undefined,
                     }}

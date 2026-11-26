@@ -56,7 +56,7 @@ const render = (view: FeedCardView, link?: boolean) =>
   )
 
 const LINK_CLASS_ATTR =
-  'class="block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]"'
+  'class="block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"'
 
 describe('CardFrame — 계측 정보(tracking)가 없으면 안쪽만 그린다(미리보기)', () => {
   it('href가 있어도 트래커·링크·눌림·포커스 윤곽선이 모두 없다', () => {

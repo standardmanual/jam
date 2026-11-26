@@ -317,7 +317,7 @@ export default async function ProbabilityPage() {
     <div className="min-h-full text-foreground">
       <LegalTopNav title={PAGE_TITLE} />
 
-      <article className="px-4 pt-16 pb-16 flex flex-col gap-12">
+      <article className="px-4 pt-4 pb-6 flex flex-col gap-5">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-medium break-keep wrap-break-word text-balance">{PAGE_TITLE}</h1>
           <P>

@@ -39,7 +39,7 @@ export default function UserSearchBar({ defaultValue = '', size = 'default' }: U
         onChange={(e) => setQ(e.target.value)}
         placeholder={d.today.searchPlaceholder}
         aria-label={d.today.searchAriaLabel}
-        containerClassName="focus-within:border-link focus-within:shadow-[inset_0_0_0_1px_var(--link)]"
+        containerClassName="focus-within:border-link focus-within:inset-ring focus-within:inset-ring-link"
         containerStyle={{ padding: isCompact ? '4px 4px 4px 12px' : '6px 6px 6px 16px' }}
         className="placeholder:text-muted"
         leading={<SearchIcon className="w-5 h-5 shrink-0 text-muted" />}

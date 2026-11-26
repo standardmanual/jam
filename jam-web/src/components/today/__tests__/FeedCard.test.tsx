@@ -228,14 +228,14 @@ describe('짙은 초록 바탕 — 바탕 위 글자는 --snow, 박스 안 글�
 })
 
 describe('텍스트(text_box)', () => {
-  it('정사각형(aspect-square)이고 높이 숫자(440·408)가 없으며, 큰 글자 48/1.1 굵기 900 가운데 정렬', () => {
+  it('정사각형(aspect-square)이고 높이 숫자(440·408)가 없으며, 큰 글자 48/행간 1 굵기 900 가운데 정렬', () => {
     const html = render(feedView('text_box', { title: '잠긴 채\n온 배지,\n열어\n볼까요', box_shape: 'round' }))
     expect(html).toContain('aspect-square')
     expect(html).not.toContain('min-height')
     expect(html).not.toContain('min-height:440px')
     expect(html).not.toContain('min-height:408px')
     expect(html).toContain('text-[14.7cqw]')
-    expect(html).toContain('leading-[1.1]')
+    expect(html).toContain('leading-none')
     expect(html).toContain('font-black')
     expect(html).toContain('text-center')
     expect(html).toContain('whitespace-pre-line')

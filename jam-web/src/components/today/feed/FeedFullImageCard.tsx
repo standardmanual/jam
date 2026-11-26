@@ -48,7 +48,7 @@ export default function FeedFullImageCard({ view }: { view: FeedCardView }) {
         size="lg"
         colors={titleChips.colors}
         tilts={titleChips.tilts}
-        className="absolute inset-x-4 bottom-4 text-3xl font-black tracking-[-0.02em] text-foreground whitespace-pre-line"
+        className="absolute inset-x-4 bottom-4 text-3xl font-black tracking-tight text-foreground whitespace-pre-line"
       />
       <FeedChipLayer view={view} />
       <FeedStampLayer view={view} />

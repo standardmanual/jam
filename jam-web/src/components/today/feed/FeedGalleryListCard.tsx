@@ -24,7 +24,7 @@ import { FeedCardShell, FeedTextBlock } from './FeedCardParts'
 const CELL_CLASS = 'flex flex-col gap-1'
 /** `CardFrame`의 `CardLink`와 같은 눌림·키보드 포커스 윤곽선(`--link`)을 칸 단위로 건다. 윤곽선이 칸 모서리를 따라 둥글게 그려지도록 `rounded-xl`이다. */
 const LINK_CLASS =
-  'rounded-xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]'
+  'rounded-xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link'
 const NAME_CLASS = 'line-clamp-2 text-center text-xs font-bold break-keep wrap-break-word'
 const TILE_CLASS = 'relative flex aspect-square items-center justify-center overflow-hidden rounded-xl'
 

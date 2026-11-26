@@ -89,7 +89,7 @@ export function PointHistoryList({ items, cursor, loading, loadingMore, error, o
   return (
     <>
       {loading && (
-        <div className="py-10 text-center text-muted text-base">{d.points.loading}</div>
+        <div className="py-6 text-center text-muted text-base">{d.points.loading}</div>
       )}
 
       {!loading && error && (

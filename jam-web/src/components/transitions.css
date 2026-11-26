@@ -397,8 +397,8 @@
 .t-reel { display: inline-flex; align-items: center; height: var(--reel-cell); font-variant-numeric: tabular-nums; }
 .t-reel-col {
   position: relative; height: var(--reel-cell); overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); /* ui-allow: 마스크 알파용 검정 */
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%); /* ui-allow: 마스크 알파용 검정 */
 }
 .t-reel-strip { display: flex; flex-direction: column; will-change: transform, filter; }
 .t-reel-digit { height: var(--reel-cell); display: flex; align-items: center; justify-content: center; }

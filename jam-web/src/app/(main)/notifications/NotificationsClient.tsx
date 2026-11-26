@@ -201,11 +201,11 @@ function SectionHeader({ label }: { label: string }) {
 function NewDivider({ count }: { count: number }) {
   return (
     <div className="flex items-center gap-2 py-2">
-      <span className="h-px flex-1 bg-[color:var(--border)]" />
+      <span className="h-px flex-1 bg-border" />
       <span className="text-xs text-muted shrink-0">
         {t(d.notifications.newDivider, { count })}
       </span>
-      <span className="h-px flex-1 bg-[color:var(--border)]" />
+      <span className="h-px flex-1 bg-border" />
     </div>
   )
 }
