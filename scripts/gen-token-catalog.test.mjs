@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { classOf, collect, parseDeclarations, resolveValue } from './gen-token-catalog.mjs'
+import { classOf, collect, contrastRatio, contrastRows, parseColor, parseDeclarations, plainRulesOf, resolveValue } from './gen-token-catalog.mjs'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'gen-token-catalog.mjs')
 
@@ -30,7 +30,25 @@ assert.equal(resolveValue('var(--loop)', [map]), null)
 
 // 클래스 이름
 assert.equal(classOf('--color-muted').display, '*-muted')
-assert.equal(classOf('--text-xs--line-height'), null)
+assert.equal(classOf('--text-xs--line-height').display, 'text-xs') // 글자 크기 쌍의 행간은 text-xs가 읽는다
+// Tailwind 유틸리티 경유 사용
+assert.ok('font-bold'.match(classOf('--font-weight-bold').re))
+assert.ok('tracking-wide'.match(classOf('--tracking-wide').re))
+assert.ok('leading-loose'.match(classOf('--leading-loose').re))
+assert.ok('animate-spin'.match(classOf('--animate-spin').re))
+assert.ok('aspect-video'.match(classOf('--aspect-video').re))
+assert.ok('px-4 gap-2 -mt-3'.match(classOf('--spacing').re).length === 3)
+assert.ok('rounded'.match(classOf('--radius').re))
+assert.equal('rounded-lg'.match(classOf('--radius').re), null)
+assert.ok('shadow'.match(classOf('--shadow').re))
+assert.ok('backdrop-blur'.match(classOf('--blur').re))
+// 일반 규칙 선언만 남기고 토큰 정의는 뺀다
+assert.equal(plainRulesOf('body { background: var(--page-bg); --x: var(--y); } @theme inline { --color-a: var(--a); }'), 'background: var(--page-bg)')
+// 대비: 흰 바탕 위 검정은 21, 반투명 글자는 바탕에 얹어 계산, 못 읽는 색은 null
+assert.equal(contrastRatio(parseColor('#000000'), parseColor('#ffffff')).toFixed(1), '21.0')
+assert.equal(parseColor('color-mix(in srgb, #ffffff 50%, transparent)').a, 0.5)
+assert.equal(parseColor('oklch(1 0 0)'), null)
+assert.ok(contrastRows([{ layer: 'semantic', name: '--muted', final: '#737373' }, { layer: 'semantic', name: '--background', final: '#f5f5f5' }]).find((r) => r.fg === '--muted' && r.bg === '--background').ratio.toFixed(2) === '4.35')
 assert.equal(classOf('--jam-red'), null)
 
 // 임시 저장소: 층 분류·사용 수·--check
@@ -40,10 +58,10 @@ const put = (rel, body) => {
   writeFileSync(join(root, rel), body)
 }
 try {
-  put('jam-web/design-system/tokens/primitive.css', ':root { --base-ink: #111111; --text-xs: 0.75rem; }')
-  put('jam-web/design-system/tokens/semantic.css', ':root { --fg: var(--base-ink); --fg-soft: color-mix(in srgb, var(--fg) 70%, transparent); }')
+  put('jam-web/design-system/tokens/primitive.css', ':root { --base-ink: #111111; --base-spare: #333333; --base-none: #444444; --text-xs: 0.75rem; --radius-md: 0.375rem; }')
+  put('jam-web/design-system/tokens/semantic.css', ':root { --fg: var(--base-ink); --fg-soft: color-mix(in srgb, var(--fg) 70%, transparent); --fg-edge: var(--base-spare); }')
   put('jam-web/design-system/tokens/component.css', ':root { --chip-bg: var(--fg); }\n@media (prefers-contrast: more) { :root { --chip-bg: #000; } }')
-  put('jam-web/src/app/jam-theme.css', '@theme { --text-xs: 0.75rem; }')
+  put('jam-web/src/app/jam-theme.css', '@theme { --text-xs: 0.75rem; }\n@theme inline reference { --radius-md: var(--radius-md); }')
   put('jam-web/src/app/admin-theme.css', '@theme { --color-red-500: #f00; }')
   put('jam-web/src/app/globals.css', '@theme inline { --color-fg: var(--fg); }\n[data-admin-theme] { --fg: #222; }')
   put(
@@ -52,6 +70,7 @@ try {
       '// var(--chip-bg) 는 주석이라 세지 않는다',
       'export const A = () => <div className="text-fg text-xs bg-red-500" style={{ color: "var(--chip-bg)" }} />',
       'export const B = "var(--fg) var(--fg) bg-fg"',
+      'export const D = ["--fg-edge"]',
     ].join('\n'),
   )
   put('jam-web/src/components/A.test.tsx', 'const t = "var(--chip-bg) text-fg"')
@@ -78,6 +97,14 @@ try {
   // 덮어쓰기·중복 정의
   assert.deepEqual(row('component', '--chip-bg').overrides, ['@media (prefers-contrast: more) > :root'])
   assert.equal(row('primitive', '--text-xs').dups[0].same, true)
+  // 문자열로 적은 이름, 쓰이는 토큰의 재료, 아무도 안 쓰는 토큰
+  assert.equal(row('semantic', '--fg-edge').strUses, 1)
+  assert.equal(row('primitive', '--base-spare').material, true)
+  assert.equal(row('primitive', '--base-none').material, false)
+  // reference 블록이 같은 이름을 var()로 가리키면 값이 다른 중복이 아니라 «이름만 알림»이다
+  assert.equal(row('primitive', '--radius-md').dups.length, 0)
+  assert.equal(row('primitive', '--radius-md').pointers.length, 1)
+  assert.equal(row('primitive', '--radius-md').classes[0], 'rounded-md')
   assert.equal(row('primitive', '--text-xs').classes[0], 'text-xs')
   assert.equal(row('primitive', '--text-xs').classUses, 1)
 
