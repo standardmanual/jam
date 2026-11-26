@@ -10,6 +10,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   STAGE_BACKGROUND,
   TIMING,
@@ -41,11 +43,14 @@ const render = (result: TierUpRevealResult = RESULT, materials = MATERIALS) =>
 
 describe('마크업', () => {
   it('배경은 중심이 밝은 원형 그라데이션이고 글로우·그림자·필터가 어디에도 없다', () => {
-    expect(STAGE_BACKGROUND).toContain('radial-gradient(circle farthest-corner at 50% 42%')
-    expect(STAGE_BACKGROUND).toContain('var(--base-neutral-700) 0%')
-    expect(STAGE_BACKGROUND).toContain('var(--base-neutral-900) 38%')
+    expect(STAGE_BACKGROUND).toBe('var(--tierup-stage-bg)')
+    const css = readFileSync(resolve(process.cwd(), 'design-system/tokens/component.css'), 'utf8')
+    const stage = css.match(/--tierup-stage-bg:\s*([^;]+);/)?.[1] ?? ''
+    expect(stage).toContain('radial-gradient(circle farthest-corner at 50% 42%')
+    expect(stage).toContain('var(--base-neutral-700) 0%')
+    expect(stage).toContain('var(--base-neutral-900) 38%')
     const html = render()
-    expect(html).toContain('background:radial-gradient(circle farthest-corner at 50% 42%')
+    expect(html).toContain('background:var(--tierup-stage-bg)')
     for (const forbidden of ['box-shadow', 'drop-shadow', 'text-shadow', 'filter', 'backdrop-filter', 'mix-blend-mode', 'glow']) {
       expect(html, forbidden).not.toContain(forbidden)
     }
@@ -101,7 +106,7 @@ describe('마크업', () => {
     const html = render()
     expect(html).toContain('/jam-logo-white.png')
     expect(html).toContain('aspect-ratio:2610 / 865')
-    expect(html).toContain('left:var(--spacing-16);right:var(--spacing-16)')
+    expect(html).toContain('class="left-4 right-4"')
   })
 })
 

@@ -33,6 +33,11 @@
   --capsule-track: var(--base-neutral-900);     /* 트랙 면 */
   --capsule-ring: var(--base-neutral-950);      /* 트랙 바깥 테두리 */
 
+  /* ── 지도·연출 (티켓 20261126_2025, 사용자 승인 2026-11-26) ── */
+  --map-drop-marker-active: var(--jam-green);   /* 지도 배지 지점 마커 면 */
+  --map-label-bg: color-mix(in srgb, var(--base-black) 65%, transparent); /* 지도 지점 이름표 바탕 */
+  --tierup-stage-bg: radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%); /* 티어업 연출 무대 바탕 */
+
   /* ── 탭바 아이콘 (면 재질은 아래 :root 블록) ──────────────── */
   --tabbar-icon: var(--base-neutral-900);
   --tabbar-icon-active: var(--foreground);      /* 디자인시스템의 검정. 활성은 채운 아이콘+선택 필로 구분한다  */
@@ -225,4 +230,12 @@
   --reel-spin-blur: 3px;
   --reel-stagger: 90ms;
   --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 화면 전용 움직임 (티켓 20261126_2025) ── */
+  --capsule-fade-dur: var(--duration-fast);
+  --capsule-ease: var(--ease-smooth-out);
+  --poi-carousel-dur: var(--duration-medium);
+  --poi-carousel-ease: var(--ease-smooth-out);
+  --pick-overlay-fade-dur: var(--duration-quick);
+  --pick-overlay-fade-ease: var(--ease-out);
 }

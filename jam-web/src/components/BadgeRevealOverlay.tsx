@@ -197,6 +197,7 @@ export default function BadgeRevealOverlay({
         <div
           role="dialog"
           aria-modal="true"
+          className="gap-6 p-6"
           style={{
             position: 'fixed',
             inset: 0,
@@ -206,18 +207,15 @@ export default function BadgeRevealOverlay({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 'var(--spacing-24)',
-            padding: 'var(--spacing-24)',
             background: 'var(--backdrop)',
             backdropFilter: 'blur(var(--scrim-blur))',
             WebkitBackdropFilter: 'blur(var(--scrim-blur))',
           }}
         >
           <p
+            className="text-base"
             style={{
-              color: 'var(--base-white)',
-              fontSize: 'var(--text-base)',
-              lineHeight: 'var(--text-base--line-height)',
+              color: 'var(--overlay-foreground)',
               textAlign: 'center',
             }}
           >
@@ -243,16 +241,16 @@ export default function BadgeRevealOverlay({
           headerMessage ? (
             // 흰 글자를 --backdrop 위에 직접 놓으면 크림 바탕 위에서 대비가 모자라 --surface 패널에 올린다(보류 고르기 헤더와 같은 방식).
             <div
+              className="rounded-b-2xl px-6 pb-4"
               style={{
                 background: 'var(--surface)',
-                borderRadius: '0 0 var(--radius-2xl) var(--radius-2xl)',
-                padding: 'max(var(--spacing-16), env(safe-area-inset-top)) var(--spacing-24) var(--spacing-16)',
+                paddingTop: 'max(var(--page-top), env(safe-area-inset-top))',
                 textAlign: 'left',
               }}
             >
               <p
-                className="m-0 break-keep wrap-break-word text-balance font-bold"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)' }}
+                className="m-0 break-keep wrap-break-word text-balance text-base font-bold"
+                style={{ color: 'var(--foreground)' }}
               >
                 {headerMessage ? pointify(headerMessage) : headerMessage}
               </p>

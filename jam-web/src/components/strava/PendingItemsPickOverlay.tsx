@@ -71,10 +71,10 @@ function footerLayerStyle(active: boolean) {
     overflow: active ? undefined : 'hidden',
     opacity: active ? 1 : 0,
     visibility: active ? 'visible' : 'hidden',
-    transition: `opacity var(--duration-quick) var(--ease-out), visibility 0s linear ${active ? 0 : FADE_MS}ms`,
+    transition: `opacity var(--pick-overlay-fade-dur) var(--pick-overlay-fade-ease), visibility 0s linear ${active ? 0 : FADE_MS}ms`,
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--spacing-8)',
+    gap: 'var(--gap-actions)',
   } as const
 }
 
@@ -411,6 +411,7 @@ export function PendingItemsPickView({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
+          className="p-6"
           style={{
             position: 'fixed',
             inset: 0,
@@ -419,41 +420,39 @@ export function PendingItemsPickView({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 'var(--spacing-24)',
             background: 'var(--backdrop)',
             backdropFilter: 'blur(var(--scrim-blur))',
             WebkitBackdropFilter: 'blur(var(--scrim-blur))',
-            fontFamily: 'var(--font-family-base)',
           }}
         >
           <Card
             className="w-full flex flex-col gap-4"
-            style={{ padding: 'var(--spacing-24)' }}
+            style={{ padding: 'var(--layout-card-padding)' }} // 정본 Card가 여백을 인라인으로 넣어 클래스(p-6)로는 덮이지 않는다
           >
             <p
               id={titleId}
-              className="m-0 break-keep wrap-break-word text-balance font-bold"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
+              className="m-0 break-keep wrap-break-word text-balance text-lg font-bold"
+              style={{ color: 'var(--foreground)' }}
             >
               {d.syncPending.pick.fullTitle}
             </p>
             <p
-              className="m-0 break-keep wrap-break-word text-balance"
-              style={{ color: 'var(--muted)', fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)' }}
+              className="m-0 break-keep wrap-break-word text-balance text-base"
+              style={{ color: 'var(--muted)' }}
             >
               {t(d.syncPending.pick.fullBody, { total })}
             </p>
             {errorText && (
               <p
                 role="alert"
-                className="m-0 break-keep wrap-break-word text-balance"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
+                className="m-0 break-keep wrap-break-word text-balance text-sm"
+                style={{ color: 'var(--foreground)' }}
               >
                 {errorText}
               </p>
             )}
             {/* 두 버튼은 같은 폭·같은 높이(시각 무게가 같다). 좁으면 위아래로 쌓인다(각 130px 이상 유지) */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-8)' }}>
+            <div className="gap-2" style={{ display: 'flex', flexWrap: 'wrap' }}>
               <div ref={laterButtonRef} style={{ flex: '1 1 130px', minWidth: 0 }}>
                 <Button
                   variant="secondary"
@@ -501,25 +500,24 @@ export function PendingItemsPickView({
           // 헤더 글자를 --backdrop 위에 직접 놓으면 흰 글자 대비가 크림 바탕 위에서 약 4.1:1(4.5:1 미달)이라 --surface 패널에 올린다.
           <div
             ref={headerRef}
+            className="gap-1 rounded-b-2xl px-6 pb-4"
             style={{
               background: 'var(--surface)',
-              borderRadius: '0 0 var(--radius-2xl) var(--radius-2xl)',
-              padding: 'max(var(--spacing-16), env(safe-area-inset-top)) var(--spacing-24) var(--spacing-16)',
+              paddingTop: 'max(var(--page-top), env(safe-area-inset-top))',
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--spacing-4)',
               textAlign: 'left',
             }}
           >
             <p
-              className="m-0 break-keep wrap-break-word text-balance font-bold"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
+              className="m-0 break-keep wrap-break-word text-balance text-lg font-bold"
+              style={{ color: 'var(--foreground)' }}
             >
               {t(d.syncPending.pick.title, { n: chooseCount })}
             </p>
             <p
-              className="m-0 break-keep wrap-break-word text-balance"
-              style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
+              className="m-0 break-keep wrap-break-word text-balance text-sm"
+              style={{ color: 'var(--muted)' }}
             >
               {t(d.syncPending.pick.subtitle, { total })}
             </p>
@@ -528,21 +526,20 @@ export function PendingItemsPickView({
         footer={
           <div
             ref={footerRef}
+            className="gap-2 rounded-t-2xl px-6 pt-4"
             style={{
               background: 'var(--surface)',
-              borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
-              padding: 'var(--spacing-16) var(--spacing-24) max(var(--spacing-16), env(safe-area-inset-bottom))',
+              paddingBottom: 'max(var(--page-top), env(safe-area-inset-bottom))',
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--spacing-8)',
               textAlign: 'left',
             }}
           >
             {errorText && (
               <p
                 role="alert"
-                className="m-0 break-keep wrap-break-word text-balance"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
+                className="m-0 break-keep wrap-break-word text-balance text-sm"
+                style={{ color: 'var(--foreground)' }}
               >
                 {errorText}
               </p>
@@ -565,21 +562,21 @@ export function PendingItemsPickView({
               {/* 확정 확인 */}
               <div style={footerLayerStyle(confirming)} inert={!confirming}>
                 <p
-                  className="m-0 break-keep wrap-break-word text-balance font-bold"
-                  style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
+                  className="m-0 break-keep wrap-break-word text-balance text-lg font-bold"
+                  style={{ color: 'var(--foreground)' }}
                 >
                   {t(d.syncPending.pick.confirmTitle, { n: chooseCount })}
                 </p>
                 {unselected > 0 && (
                   <p
-                    className="m-0 break-keep wrap-break-word text-balance"
-                    style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 'var(--text-sm--line-height)' }}
+                    className="m-0 break-keep wrap-break-word text-balance text-sm"
+                    style={{ color: 'var(--muted)' }}
                   >
                     {t(d.syncPending.pick.confirmBody, { m: unselected })}
                   </p>
                 )}
                 {/* 두 버튼은 같은 폭·같은 높이. 좁으면 위아래로 쌓인다(각 130px 이상 유지) */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-8)' }}>
+                <div className="gap-2" style={{ display: 'flex', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 130px', minWidth: 0 }}>
                     <Button
                       variant="secondary"

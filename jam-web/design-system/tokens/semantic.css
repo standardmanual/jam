@@ -25,6 +25,7 @@
   --link: var(--base-neutral-900);              /* 본문 글자와 같은 검정. 색만으로 링크를 구분하지 않는다 */
   --snow: var(--base-snow);                     /* 반전 면(--background-inverse) 위 글자 */
   --muted-on-inverse: color-mix(in srgb, var(--snow) 70%, transparent); /* 반전 면 위 보조 글자. --background-inverse 위 약 8.9:1(계산값, 티켓 20261106_2003) */
+  --overlay-foreground: var(--base-white);      /* 어두운 막·연출 무대 위 흰 글자(배지 공개·티어업 연출, 티켓 20261126_2025) */
 
   /* ── 강조 ─────────────────────────────────────────────────── */
   --accent: var(--base-neutral-900);            /* 면 채우기 전용 */

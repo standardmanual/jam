@@ -185,6 +185,15 @@ describe('선택 단계', () => {
   })
 })
 
+describe('가득 참 안내', () => {
+  it('안내 카드 안쪽 여백은 24px(--layout-card-padding)이다 — 정본 Card의 기본 16px가 덮지 않는다 (티켓 20261126_2025)', () => {
+    const html = view({ phase: 'full' })
+    const title = html.indexOf('id="title-id"') // 라이브 리전 안내문이 같은 문구를 먼저 담으므로 카드 제목 요소로 찾는다
+    const card = html.slice(html.lastIndexOf('<div', title), title)
+    expect(card).toContain('padding:var(--layout-card-padding)')
+  })
+})
+
 describe('잠긴 카드 가림 (티켓 20261018_0051 2회)', () => {
   const lockedPayload = (): PendingItemsPayload =>
     payload({

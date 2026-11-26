@@ -857,17 +857,17 @@ export function PoiCard({
   return (
     <Card
       tone="default"
+      className="gap-4"
       style={{
         width: '100%',
         maxWidth: 360,
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--spacing-16)',
         opacity: isActive ? 1 : 0.55,
         transform: isActive ? 'scale(1)' : 'scale(0.92)',
         transition:
-          'transform var(--duration-medium) var(--ease-smooth-out), opacity var(--duration-medium) var(--ease-smooth-out)',
+          'transform var(--poi-carousel-dur) var(--poi-carousel-ease), opacity var(--poi-carousel-dur) var(--poi-carousel-ease)',
       }}
     >
       {/* 헤더 — 닫기 버튼을 카드 안쪽 우측 상단에 배치(20260820_023, 사용자 요청).

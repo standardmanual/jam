@@ -176,7 +176,7 @@ const DROP_MARKER_GLYPH_RATIO = 0.8
  * 배지(드랍)가 있는 지점 마커의 면·아이콘 색 — 강조색 그린(사용자 지시 2026-11-11, 티켓 20261111_1034).
  * 밝은 그린 위라 아이콘은 흰색이 아니라 검정(--foreground, 약 7.7:1)이다(새 초록 #59C02B 기준, 2026-11-23 계산값).
  */
-const DROP_MARKER_ACTIVE_BG = 'var(--jam-green)'
+const DROP_MARKER_ACTIVE_BG = 'var(--map-drop-marker-active)'
 const DROP_MARKER_ACTIVE_GLYPH = 'var(--foreground)'
 
 /**
@@ -262,7 +262,7 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
   // 상자 폭은 글자 길이를 따른다(width:max-content). max-width:100%(마커 콘텐츠 폭 72px)로 묶으면 긴 이름이
   // nowrap 글자만 상자 밖으로 삐져나와 배경이 이름 뒤를 다 못 채웠다(티켓 20261122_1910). 콘텐츠 열이 flex 가운데 정렬이라
   // 상자가 72px보다 넓어져도 양쪽으로 똑같이 늘어나 서클 중심 좌표(anchor.x)는 그대로다.
-  const label = `<div style="margin-top:2px;width:max-content;max-width:none;flex-shrink:0;padding:2px 6px;border-radius:8px;background:color-mix(in srgb, var(--base-black) 65%, transparent);color:var(--snow);font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
+  const label = `<div style="margin-top:2px;width:max-content;max-width:none;flex-shrink:0;padding:2px 6px;border-radius:8px;background:var(--map-label-bg);color:var(--snow);font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
 
   return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${badge}${label}</div>`
 }
