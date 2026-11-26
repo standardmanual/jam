@@ -5,9 +5,8 @@
  *   primitive.css  기본값  원재료 눈금. 색 hex·px·ms·곡선 같은 직접 값은 이 파일에만 둔다.
  *   semantic.css   의미    쓰임새 이름(--background, --muted, --page-x …). 색은 반드시 기본값을 참조한다.
  *   component.css  컴포넌트 한 컴포넌트 전용(--tabbar-*, --capsule-*, --rarity-*, 모션 레시피 …).
- * 화면(컴포넌트·페이지)은 의미·컴포넌트 토큰을 쓴다. --base-*를 직접 쓰는 예외는 세 범주뿐이다: 이미지·지도 위 막이
- * --base-black을 섞는 곳, --backdrop 위 오버레이 글자(--base-white), 시리얼 인장 면 재질(--base-neutral-*). 근거는 문서 11 5.7절이다.
- * 현재 목록은 grep -rn "var(--base-" jam-web/src jam-web/design-system/components 로 확인한다.
+ * 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·jam-theme.css·admin-theme.css·
+ * globals.css·정본 폴더(src/components/ui)·src/components/transitions.css·스토리북 토큰 소개뿐이다(티켓 20261126_2024·2025, 9-4 검사기가 막는다).
  *
  * 값의 원천: 피그마 `JAM-Modulor-V2`(Base 컬렉션)와 docs/plan/jam2/11 JAM 2.0 디자인 시스템.md 2~4절.
  *
@@ -66,7 +65,7 @@
 
   /* ── 반경 눈금 ────────────────────────────────────────────── */
   /* 티켓 20261015_2131: 카드·pill·입력창 같은 옛 역할 이름의 반경 토큰을 지웠다.
-     클래스 문자열은 Tailwind 기본 유틸리티(rounded-2xl·rounded-full …)를 쓰고, 클래스가 아닌 곳은
+     클래스 문자열은 Tailwind 기본 유틸리티(rounded-2xl·rounded-full …)를 쓰고, 정본 폴더·토큰 파일 안에서는
      피그마 `dimensions/radius`와 같은 값의 이 눈금을 var()로 참조한다.
      Tailwind 4 기본 테마와 같은 값·표기(rem). 어드민은 [data-admin-theme] 안에서 다시 정의하고,
      어드민 안의 서비스 미리보기는 [data-service-theme]로 이 값을 되찾는다. */
@@ -83,8 +82,8 @@
 
 :root {
   /* ── 간격 눈금 (4px base unit) ────────────────────────────── */
-  /* 클래스 문자열은 Tailwind 기본 유틸리티(p-4·gap-2 …)를 쓰고, 이 눈금은 인라인 style·CSS·calc() 안처럼
-     클래스가 아닌 곳이 참조한다. 이름은 px 값이다(--spacing-16 = 16px). Tailwind 단계 번호(p-4 = 16px)와 다르다.
+  /* 클래스 문자열은 Tailwind 기본 유틸리티(p-4·gap-2 …)를 쓰고, 이 눈금은 정본 폴더·토큰 파일 안에서
+     참조한다. 이름은 px 값이다(--spacing-16 = 16px). Tailwind 단계 번호(p-4 = 16px)와 다르다.
      클래스 안에서는 이 변수를 쓰지 않는다. */
   --spacing-4: 4px;
   --spacing-8: 8px;
@@ -128,7 +127,7 @@
 
   /* ── 글자 ─────────────────────────────────────────────────── */
   /* 티켓 20261015_2131: body·caption·h4 같은 옛 역할 이름의 글자·행간 토큰과 자간·굵기 토큰을 지웠다.
-     클래스 문자열은 Tailwind 기본 유틸리티(text-xs·text-base …)를 쓴다. 인라인 style·CSS처럼 클래스가 아닌 곳이 참조하도록
+     클래스 문자열은 Tailwind 기본 유틸리티(text-xs·text-base …)를 쓴다. 정본 폴더·토큰 파일 안에서 참조하도록
      피그마 `dimensions/font`·`dimensions/leading`과 같은 값의 평문 눈금만 남긴다. 자간은 새 시스템에서 모두 0이다.
      서체(--font-family-base)는 티켓 20261015_2132에서 Noto Sans KR로 교체했다.
      기본 텍스트 설정: 디자인 시스템(styles.css)과 서비스(globals.css) 전역에 text-wrap: balance, word-break: keep-all이 적용된다. */
