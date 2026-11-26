@@ -200,7 +200,7 @@ function IconCatalog({ className = '', style = {} }: { className?: string; style
 }
 
 const meta: Meta<typeof IconCatalog> = {
-  title: 'MODULAR/Icons/IconCatalog',
+  title: 'UI/Icons/IconCatalog',
   component: IconCatalog,
   parameters: { layout: 'padded' },
 };

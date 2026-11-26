@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import { ProgressBar, PROGRESS_TRACK_GRADIENT } from './ProgressBar';
 
 const meta: Meta<typeof ProgressBar> = {
-  title: 'MODULAR/Feedback/ProgressBar',
+  title: 'UI/Feedback/ProgressBar',
   component: ProgressBar,
   parameters: { layout: 'centered' },
   argTypes: {

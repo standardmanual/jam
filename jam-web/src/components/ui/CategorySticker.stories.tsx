@@ -4,7 +4,7 @@ import { CategorySticker, STICKER_COLOR_PAIRS } from './CategorySticker';
 import type { CategoryStickerPair } from './CategorySticker';
 
 const meta: Meta<typeof CategorySticker> = {
-  title: 'MODULAR/Cards/CategorySticker',
+  title: 'UI/Cards/CategorySticker',
   component: CategorySticker,
   parameters: {
     layout: 'padded',

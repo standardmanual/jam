@@ -92,7 +92,7 @@ function FontsPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Fonts',
+  title: 'Foundations/Fonts',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

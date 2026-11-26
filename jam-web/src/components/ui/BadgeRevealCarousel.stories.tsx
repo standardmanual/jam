@@ -6,7 +6,7 @@ import Button from './Button';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
 const meta: Meta<typeof BadgeRevealCarousel> = {
-  title: 'MODULAR/Patterns/BadgeRevealCarousel',
+  title: 'UI/Patterns/BadgeRevealCarousel',
   component: BadgeRevealCarousel,
   parameters: {
     layout: 'fullscreen',

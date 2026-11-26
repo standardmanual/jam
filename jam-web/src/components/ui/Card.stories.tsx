@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from './Card';
 
 const meta: Meta<typeof Card> = {
-  title: 'MODULAR/Cards/Card',
+  title: 'UI/Cards/Card',
   component: Card,
   parameters: { layout: 'centered' },
   argTypes: {

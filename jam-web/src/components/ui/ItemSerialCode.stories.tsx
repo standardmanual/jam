@@ -3,7 +3,7 @@ import React from 'react';
 import { ItemSerialCode } from './ItemSerialCode';
 
 const meta: Meta<typeof ItemSerialCode> = {
-  title: 'MODULAR/Patterns/ItemSerialCode',
+  title: 'UI/Patterns/ItemSerialCode',
   component: ItemSerialCode,
   parameters: {
     layout: 'centered',

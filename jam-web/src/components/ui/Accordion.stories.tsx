@@ -42,7 +42,7 @@ const FAQ_ITEMS = [
 ];
 
 const meta: Meta<typeof Accordion> = {
-  title: 'MODULAR/Navigation/Accordion',
+  title: 'UI/Navigation/Accordion',
   component: Accordion,
   parameters: { layout: 'centered' },
 };

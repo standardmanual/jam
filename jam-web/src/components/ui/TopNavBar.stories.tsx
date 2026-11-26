@@ -9,7 +9,7 @@ import { BellIcon } from './icons';
 // (logoSlot→logo, style→headerStyle, avatarSlot 제거·rightSlot 합성, 타이포 오버라이드
 // prop 4종 제거 — 서비스가 항상 넘기던 고정값을 기본값으로 흡수).
 const meta: Meta<typeof TopNavBar> = {
-  title: 'MODULAR/Navigation/TopNav',
+  title: 'UI/Navigation/TopNavBar',
   component: TopNavBar,
   parameters: { layout: 'fullscreen' },
 };

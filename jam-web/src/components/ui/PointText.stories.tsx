@@ -3,7 +3,7 @@ import React from 'react';
 import { PointText } from './PointText';
 
 const meta: Meta<typeof PointText> = {
-  title: 'MODULAR/Patterns/PointText',
+  title: 'UI/Patterns/PointText',
   component: PointText,
   parameters: {
     layout: 'centered',

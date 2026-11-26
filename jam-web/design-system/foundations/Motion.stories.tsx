@@ -214,7 +214,7 @@ function MotionPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Motion',
+  title: 'Foundations/Motion',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

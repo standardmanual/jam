@@ -8,11 +8,10 @@ const __dirname = path.dirname(__filename);
 
 const config: StorybookConfig = {
   stories: [
-    // 서비스 stories (src/stories/ 기본 예제 디렉토리 제외)
+    // 서비스 stories
     '../src/**/*.mdx',
     '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
-    '!../src/stories/**',
-    // MODULAR design-system stories
+    // 토큰 소개(Foundations) 스토리
     '../design-system/**/*.stories.@(js|jsx|mjs|ts|tsx)',
     '../design-system/**/*.mdx',
   ],
@@ -24,11 +23,13 @@ const config: StorybookConfig = {
     '@storybook/addon-mcp',
   ],
   framework: '@storybook/nextjs-vite',
+  // 컴포넌트 매니페스트(manifests/components.json)를 만든다 — 티켓 20261126_0947
+  features: { componentsManifest: true },
   // 스토리북은 로컬 `npm run storybook`(:6006) 전용이다 — 어떤 환경에도 배포하지 않는다
   // (2026-09-06 확정, 티켓 20260906_1142). 그래서 여기는 dev 편의만 생각하면 된다.
   staticDirs: [
     '../public',
-    // MODULAR 로고·이미지 자산 → /ds-assets/* 경로로 접근
+    // 로고·이미지 자산 → /ds-assets/* 경로로 접근
     { from: '../design-system/assets', to: '/ds-assets' },
   ],
   viteFinal: async (viteConfig) => {
@@ -44,7 +45,7 @@ const config: StorybookConfig = {
         alias: {
           // @ds/tokens·@ds/foundations 형태로 import 가능
           '@ds': path.resolve(__dirname, '../design-system'),
-          // 티켓 20261126_0002: MODULAR 컴포넌트가 서비스 정본(src/components/ui)을 `@/components/ui/<이름>`으로 가져온다
+          // `@`는 서비스 소스(src) 별칭이다. 스토리가 정본을 `@/components/ui/<이름>`으로 가져온다
           '@': path.resolve(__dirname, '../src'),
         },
       },

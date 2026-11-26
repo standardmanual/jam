@@ -10,7 +10,7 @@ import { Card } from './Card';
  * 반전 색조(`tone="inverse"`) Story는 반대로 **크림 바탕 위**에서 보여준다(기사 화면 칩, 어두운 알약).
  */
 const meta: Meta<typeof LabelChip> = {
-  title: 'MODULAR/Cards/LabelChip',
+  title: 'UI/Cards/LabelChip',
   component: LabelChip,
   parameters: {
     layout: 'centered',

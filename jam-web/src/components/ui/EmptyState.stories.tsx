@@ -3,7 +3,7 @@ import React from 'react';
 import { EmptyState } from './EmptyState';
 
 const meta: Meta<typeof EmptyState> = {
-  title: 'MODULAR/Feedback/EmptyState',
+  title: 'UI/Feedback/EmptyState',
   component: EmptyState,
   parameters: { layout: 'centered' },
 };

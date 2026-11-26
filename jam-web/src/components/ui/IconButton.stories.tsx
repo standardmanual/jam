@@ -5,7 +5,7 @@ import { IconButton } from './IconButton';
 const ICONS = ['chevron-left', 'chevron-right', 'close', 'check', 'info', 'search', 'menu', 'share'] as const;
 
 const meta: Meta<typeof IconButton> = {
-  title: 'MODULAR/Buttons/IconButton',
+  title: 'UI/Buttons/IconButton',
   component: IconButton,
   parameters: { layout: 'centered' },
   argTypes: {

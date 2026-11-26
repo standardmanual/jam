@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { WanderingEyesLoader } from './WanderingEyesLoader';
 
 const meta: Meta<typeof WanderingEyesLoader> = {
-  title: 'MODULAR/Feedback/WanderingEyesLoader',
+  title: 'UI/Feedback/WanderingEyesLoader',
   component: WanderingEyesLoader,
   parameters: { layout: 'centered' },
   argTypes: {

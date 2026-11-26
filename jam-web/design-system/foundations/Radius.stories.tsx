@@ -87,7 +87,7 @@ function RadiusPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Radius',
+  title: 'Foundations/Radius',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

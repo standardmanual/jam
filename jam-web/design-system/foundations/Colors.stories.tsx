@@ -219,7 +219,7 @@ function ColorsPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Colors',
+  title: 'Foundations/Colors',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

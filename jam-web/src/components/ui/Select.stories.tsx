@@ -11,7 +11,7 @@ const ACTIVITY_OPTIONS = [
 ];
 
 const meta: Meta<typeof Select> = {
-  title: 'MODULAR/Forms/Select',
+  title: 'UI/Forms/Select',
   component: Select,
   parameters: { layout: 'centered' },
   argTypes: {
