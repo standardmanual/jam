@@ -23,8 +23,8 @@ h1, h2, h3, h4, h5, h6, p {
   text-wrap: balance;
   word-break: keep-all;
 }
-a { color: var(--link); }
-a:hover { color: color-mix(in srgb, var(--link) 80%, black); }
+/* 링크 전역 색 규칙은 두지 않는다(티켓 20261126_1617). 서비스 globals.css에는 이 규칙이 없고, 레이어 밖 규칙이라
+   Tailwind 글자색 유틸리티(text-snow 등)를 덮어 링크형 버튼 글자가 면과 같은 색이 됐다. 링크 색은 컴포넌트가 정한다. */
 
 /* v2: Global focus-visible — keyboard & screen reader navigation.
    WCAG 2.1 SC 2.4.7 (Level AA). Each component may override outline-offset. */
