@@ -151,7 +151,7 @@ function TypographyPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Typography',
+  title: 'Foundations/Typography',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

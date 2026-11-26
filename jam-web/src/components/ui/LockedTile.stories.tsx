@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import { LockedTile } from './LockedTile';
 
 const meta: Meta<typeof LockedTile> = {
-  title: 'MODULAR/Cards/LockedTile',
+  title: 'UI/Cards/LockedTile',
   component: LockedTile,
   parameters: {
     layout: 'centered',

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { RarityBadge } from '@/components/ui/RarityBadge';
 
 const meta: Meta<typeof Carousel> = {
-  title: 'MODULAR/Navigation/Carousel',
+  title: 'UI/Navigation/Carousel',
   component: Carousel,
   parameters: { layout: 'fullscreen' },
 };

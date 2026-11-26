@@ -5,7 +5,7 @@ import { BadgeLevelChip } from './BadgeLevelChip';
 import { RarityBadge } from './RarityBadge';
 
 const meta: Meta<typeof BadgeLevelChip> = {
-  title: 'MODULAR/Cards/BadgeLevelChip',
+  title: 'UI/Cards/BadgeLevelChip',
   component: BadgeLevelChip,
   parameters: {
     layout: 'centered',

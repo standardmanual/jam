@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Input } from './Input';
 
 const meta: Meta<typeof Input> = {
-  title: 'MODULAR/Forms/Input',
+  title: 'UI/Forms/Input',
   component: Input,
   parameters: { layout: 'centered' },
   argTypes: {

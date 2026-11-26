@@ -3,7 +3,7 @@ import React from 'react';
 import { Skeleton } from './Skeleton';
 
 const meta: Meta<typeof Skeleton> = {
-  title: 'MODULAR/Feedback/Skeleton',
+  title: 'UI/Feedback/Skeleton',
   component: Skeleton,
   parameters: { layout: 'centered' },
 };

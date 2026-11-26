@@ -6,7 +6,7 @@ import { SlotOutline } from './SlotOutline';
 const SAMPLE = '/badges/sample/s331.png';
 
 const meta: Meta<typeof SlotOutline> = {
-  title: 'MODULAR/Cards/SlotOutline',
+  title: 'UI/Cards/SlotOutline',
   component: SlotOutline,
   parameters: {
     layout: 'centered',

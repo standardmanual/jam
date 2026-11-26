@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import { MixerSlot } from './MixerSlot';
 
 const meta: Meta<typeof MixerSlot> = {
-  title: 'MODULAR/Patterns/MixerSlot',
+  title: 'UI/Patterns/MixerSlot',
   component: MixerSlot,
   parameters: {
     layout: 'centered',

@@ -168,7 +168,7 @@ function SpacingPage() {
 }
 
 const meta: Meta = {
-  title: 'MODULAR/Foundations/Spacing',
+  title: 'Foundations/Spacing',
   parameters: {
     layout: 'fullscreen',
     docs: { canvas: { sourceState: 'none' } },

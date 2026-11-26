@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import { RarityBadge, getRarityLabel } from './RarityBadge';
 
 const meta: Meta<typeof RarityBadge> = {
-  title: 'MODULAR/Cards/RarityBadge',
+  title: 'UI/Cards/RarityBadge',
   component: RarityBadge,
   parameters: {
     layout: 'centered',

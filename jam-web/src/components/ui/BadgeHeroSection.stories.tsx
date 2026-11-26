@@ -9,7 +9,7 @@ import { MedalIcon } from '@/components/ui/icons';
 const SAMPLE = '/badges/sample/s331.png';
 
 const meta: Meta<typeof BadgeHeroSection> = {
-  title: 'MODULAR/Cards/BadgeHeroSection',
+  title: 'UI/Cards/BadgeHeroSection',
   component: BadgeHeroSection,
   parameters: {
     layout: 'centered',
