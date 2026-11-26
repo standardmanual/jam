@@ -19,6 +19,7 @@ mkdirSync(join(repo, 'scripts'), { recursive: true })
 mkdirSync(join(repo, 'jam-web/src/components'), { recursive: true })
 mkdirSync(join(repo, 'jam-web/src/app/admin'), { recursive: true })
 copyFileSync(ENGINE, join(repo, 'scripts/check-ui-rules.mjs'))
+copyFileSync(join(HERE, 'strip-code-comments.mjs'), join(repo, 'scripts/strip-code-comments.mjs'))
 writeFileSync(join(repo, 'scripts/ui-rules-baseline.json'), '{}\n')
 
 const target = join(repo, 'jam-web/src/components/Foo.tsx')
