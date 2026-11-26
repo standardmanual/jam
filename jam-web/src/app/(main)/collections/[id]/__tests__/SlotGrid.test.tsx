@@ -158,7 +158,7 @@ describe('SlotGrid — 등급이 없는 칸(tierUndecided)', () => {
   it('장착 모드에서는 «추가»가 있는 칸만 하이라이트한다', () => {
     const html = renderToStaticMarkup(<SlotGrid itemBookId="book-1" badgeSlots={badgeSlots} tierUndecided slotMode />)
 
-    expect(count(html, 'inset_0_0_0_2px_var(--link)')).toBe(1)
+    expect(count(html, 'inset-ring-link')).toBe(1)
   })
 })
 
@@ -315,7 +315,7 @@ describe('SlotGrid — 이미지 정중앙 추가 원 버튼 (2026-11-09 사용�
     const frame = html.match(/<div class="pointer-events-none[^"]*"><div class="[^"]*"><button[^>]*aria-label="추가"/)?.[0] ?? ''
 
     expect(frame).toContain('pointer-events-none absolute z-10 inset-x-3 top-3')
-    expect(frame).toContain('relative mx-auto flex aspect-square w-full max-w-[90px] items-center justify-center')
+    expect(frame).toContain('relative mx-auto flex aspect-square w-full max-w-[var(--grid-cell-max-width)] items-center justify-center')
   })
 
   it('넣을 수 있는 칸은 회색 이미지 위에 윤곽 점선이 겹치고, 빈 칸은 이미지 없이 점선만이다', () => {

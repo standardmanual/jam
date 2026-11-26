@@ -42,7 +42,7 @@ export default function FooterLogo() {
   return (
     <div ref={frameRef} className="w-full overflow-hidden">
       <div
-        className="jam-logo-mark w-full bg-[color:var(--snow)]"
+        className="jam-logo-mark w-full bg-snow"
         role="img"
         aria-label="JAM!"
         style={{

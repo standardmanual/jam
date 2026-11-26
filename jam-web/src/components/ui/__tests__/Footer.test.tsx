@@ -2,7 +2,7 @@
  * 전역 푸터 링크 (티켓 20261021_1250 1회, 운영 로직 18.3절 — 확률 안내 페이지는 푸터의 서비스 소개·방침·약관 링크 옆에 둔다)
  *
  * 고정하는 것: 링크 순서(Philosophy → 개인정보처리방침 → 위치기반서비스 이용약관 → 확률 안내 → 문의), «확률 안내»가 /probability로, «문의»가 /voc로 가고
- * 나머지 링크와 같은 서식(15px/28px, 밑줄, active 투명도)을 쓴다. `/drops`·`/philosophy`에서는 푸터가 없다.
+ * 나머지 링크와 같은 서식(14px/28px, 밑줄, active 투명도)을 쓴다. `/drops`·`/philosophy`에서는 푸터가 없다.
  *
  * 실행: cd jam-web && npx vitest run src/components/ui/__tests__/Footer.test.tsx
  */
@@ -33,11 +33,11 @@ describe('Footer 링크', () => {
     expect(d.common.footerInquiry).toBe('문의')
   })
 
-  it('나머지 링크와 같은 서식(15px/28px, 밑줄, active 투명도 전환)이다', () => {
+  it('나머지 링크와 같은 서식(14px/28px, 밑줄, active 투명도 전환)이다', () => {
     const found = links(renderToStaticMarkup(<Footer />))
     const probability = found.find((l) => l.href === '/probability')
     expect(probability?.className).toBe(found.find((l) => l.href === '/location-terms')?.className)
-    expect(probability?.className).toContain('text-[15px] leading-[28px]')
+    expect(probability?.className).toContain('text-sm leading-7')
     expect(probability?.className).toContain('underline underline-offset-2')
     expect(probability?.className).toContain('active:opacity-60')
     expect(probability?.className).toContain('duration-[var(--duration-micro)]')
@@ -50,7 +50,7 @@ describe('Footer 링크', () => {
     const html = renderToStaticMarkup(<Footer />)
     // 서버 렌더(모션 전)에서는 로고가 숨지 않고 제자리에 있다 — JS가 없어도 보인다
     const logo =
-      '<div class="w-full overflow-hidden"><div class="jam-logo-mark w-full bg-[color:var(--snow)]" role="img" aria-label="JAM!" style="transform:translateY(0);transition:none"></div></div>'
+      '<div class="w-full overflow-hidden"><div class="jam-logo-mark w-full bg-snow" role="img" aria-label="JAM!" style="transform:translateY(0);transition:none"></div></div>'
     expect(html.endsWith(`${logo}</footer>`)).toBe(true)
     expect(html.indexOf(d.common.footerCopyright)).toBeLessThan(html.indexOf(logo))
     // 푸터 좌우 패딩(px-4)을 넘지 않는다 — 음수 마진으로 뚫지 않는다

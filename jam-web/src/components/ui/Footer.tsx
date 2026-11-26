@@ -49,7 +49,7 @@ export default function Footer() {
     // 2026-11-08 사용자 요청으로 네거티브로 바꿨다: 반전 면(--background-inverse) 위에
     // 글자는 반전 면 보조 글자(--muted-on-inverse), 로고는 흰색(--snow, FooterLogo)이다.
     <footer data-jam-footer className="relative z-10 flex flex-col items-start justify-center gap-6 pt-6 pb-0 px-4 bg-background-inverse">
-      <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] whitespace-pre-line">{d.common.footerSlogan}</span>
+      <span className="text-sm leading-7 font-normal text-muted-on-inverse whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
@@ -58,7 +58,7 @@ export default function Footer() {
           20260909_2319: Figma 디자인이 두 링크를 세로로 쌓으므로 flex-row → flex-col로 변경.
           당시 min-h-11(44px)로 터치 영역을 확보했던 것은 캡션 12px 기준(히트박스가 약
           72×12px로 WCAG 2.2 AA 24×24조차 못 미치던 시절)의 유산이었는데, 이번 Figma 반영으로
-          폰트가 15px/line-height 28px로 커지면서 텍스트 자체 높이(28px)가 이미 AA 최소
+          폰트가 line-height 28px로 커지면서 텍스트 자체 높이(28px)가 이미 AA 최소
           기준(24×24)을 넘는다. 실기기 확인 후 "슬로건처럼 줄바꿈 수준으로 붙여 달라"는
           피드백을 받아 min-h-11을 제거했다 — 44px 히트박스(AAA 권장치)를 버리고 텍스트 크기
           그대로(28px, AA 기준 충족)를 히트박스로 쓴다. gap-0과 결합해 두 링크가 슬로건의
@@ -73,11 +73,11 @@ export default function Footer() {
         {FOOTER_LINKS.map((link, i) => (
           <Fragment key={link.href}>
             {i > 0 && (
-              <span aria-hidden="true" className="text-[15px] leading-[28px] text-[color:var(--muted-on-inverse)]">·</span>
+              <span aria-hidden="true" className="text-sm leading-7 text-muted-on-inverse">·</span>
             )}
             <Link
               href={link.href}
-              className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)] underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+              className="text-sm leading-7 font-normal text-muted-on-inverse underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
             >
               {link.label()}
             </Link>
@@ -85,7 +85,7 @@ export default function Footer() {
         ))}
       </div>
       {/* 20260909_2319: 로고 이미지를 걷고 저작권 텍스트만 남겼다(Figma 사양). */}
-      <span className="text-[15px] leading-[28px] font-normal text-[color:var(--muted-on-inverse)]">{d.common.footerCopyright}</span>
+      <span className="text-sm leading-7 font-normal text-muted-on-inverse">{d.common.footerCopyright}</span>
       {/* 20261104_1642: 저작권 아래, 푸터의 마지막 요소로 JAM! 로고를 서비스 영역의 좌우 패딩(px-4) 안쪽 폭 100%로 채운다.
           새 이미지 없이 .jam-logo-mark(알파 마스크 + --foreground)를 쓴다. items-start라 폭은 w-full로 정한다.
           로고 아래면이 페이지 맨 끝(브라우저 끝)에 닿도록 푸터 아래쪽 패딩과 (main)/layout의 하단 여백이 모두 0이다

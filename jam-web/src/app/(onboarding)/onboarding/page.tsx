@@ -365,7 +365,6 @@ function OnboardingContent() {
                 size={96}
                 shape="rounded"
                 iconClassName="w-10 h-10 text-muted"
-                className={avatarUrl ? '' : 'bg-surface'}
               />
               {uploading && (
                 <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">

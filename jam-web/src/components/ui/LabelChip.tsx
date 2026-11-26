@@ -52,13 +52,12 @@ export function LabelChip({ tone = 'default', children, className = '', style = 
   if (children == null || children === '') return null;
   return (
     <span
-      className={className}
+      className={`font-bold ${className}`.trim()}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         fontSize: 'var(--text-xs)',
         lineHeight: 'var(--text-xs--line-height)',
-        fontWeight: 700,
         textTransform: 'uppercase',
         padding: 'var(--chip-padding)',
         borderRadius: 'var(--radius-full)',

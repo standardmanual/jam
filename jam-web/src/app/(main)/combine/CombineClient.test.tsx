@@ -1014,7 +1014,7 @@ describe('RecipeRewardRow — 획득 포인트 표기 (티켓 20261104_2315)', (
     const html = renderToStaticMarkup(<RecipeRewardRow title="레시피" slotCount={2} badges={[]} points={1200} />)
     const num = /<span class="([^"]*)" style="([^"]*)">1,200<\/span>/.exec(html)
     expect(num?.[1]).toContain('text-point-text')
-    expect(num?.[2]).toContain('font-weight:700')
+    expect(num?.[1]).toContain('font-bold')
     expect(num?.[2]).toContain('font-size:var(--text-base)')
     expect(num?.[2]).toContain('color:var(--point-text)')
     const unit = /<span class="([^"]*)" style="([^"]*)">포인트<\/span>/.exec(html)

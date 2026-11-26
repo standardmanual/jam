@@ -405,7 +405,7 @@ export default function TabBar({ username, inverted: invertedProp }: TabBarProps
       // 20261109_1153: 면은 두 겹(밝은 면 .jam-tabbar-chrome, 반전 면 .jam-tabbar-chrome-inverse)이라
       // nav 자신은 배경 없이 data-inverted만 들고 있고 두 레이어 opacity를 교차시킨다(transitions.css).
       data-inverted={inverted ? 'true' : 'false'}
-      className="jam-tabbar fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-full flex items-center justify-between px-1 z-40"
+      className="jam-tabbar fixed left-1/2 -translate-x-1/2 w-[var(--floating-bar-width)] max-w-[var(--floating-bar-max-width)] h-[var(--tabbar-height)] rounded-full flex items-center justify-between px-1 z-40"
       // 20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
       // 최소 여백 10px로 재조정. 식은 DS 토큰 --tabbar-bottom(tokens/spacing.css)에 있다(티켓 20261125_1840).
       style={{ bottom: 'var(--tabbar-bottom)' }}

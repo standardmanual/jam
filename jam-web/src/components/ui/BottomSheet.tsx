@@ -382,7 +382,7 @@ export default function BottomSheet({
              플로팅 탭바(z-40)나 뒷배경이 노출된다(이 시트 자체는 z-50이라
              탭바보다 위에 있어야 정상). dvh는 실제 보이는 뷰포트 기준이라
              이 틈이 생기지 않는다. */
-          topGapPx === undefined ? (detent === 'full' ? 'h-[92dvh]' : 'max-h-[75dvh]') : '',
+          topGapPx === undefined ? (detent === 'full' ? 'h-[var(--sheet-full-height)]' : 'max-h-[var(--sheet-max-height)]') : '',
         ].join(' ')}
         style={{
           transform: `translateY(${sheetDragY}px)`,
@@ -432,7 +432,7 @@ export default function BottomSheet({
             {footer}
           </div>
         ) : (
-          <div className="shrink-0 pb-[env(safe-area-inset-bottom,1rem)]" />
+          <div className="shrink-0 pb-[var(--spacing-safe-bottom)]" />
         )}
       </div>
       </div>

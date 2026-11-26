@@ -170,7 +170,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     <Link href="/" aria-label="홈으로 이동" className="shrink-0">
       {/* 로고 PNG는 흰색 한 색이라 크림 위 1.05:1이다 — 알파만 마스크로 쓰고 색은 --foreground(17.07:1)로 칠한다.
           접근 가능한 이름은 바깥 Link의 aria-label이 맡는다. */}
-      <span aria-hidden="true" className="jam-logo-mark block h-[26px]" />
+      <span aria-hidden="true" className="jam-logo-mark block h-6" />
     </Link>
   ) : null
 

@@ -193,11 +193,11 @@ describe('인벤토리 페이지 — 슬롯 사용량 표시', () => {
     expect(html).not.toContain('드랍하기')
   })
 
-  it('컬렉션 상세의 진행도 바와 같은 부품이다(바 16px + 13px 굵은 link 색 수치)', async () => {
+  it('컬렉션 상세의 진행도 바와 같은 부품이다(바 16px + 12px 굵은 link 색 수치)', async () => {
     state.inventory = withUsed(46)
     const html = await render()
     expect(html).toContain('height:16px')
-    expect(html).toMatch(/<span style="color:var\(--link\);font-size:13px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums">46\/50<\/span>/)
+    expect(html).toMatch(/<span class="leading-none font-bold" style="color:var\(--link\);font-size:var\(--text-xs\);font-variant-numeric:tabular-nums">46\/50<\/span>/)
     // 수치는 바 오른쪽(같은 줄, 바 다음)에 있다
     expect(html.indexOf('height:16px')).toBeLessThan(html.indexOf('>46/50</span>'))
   })

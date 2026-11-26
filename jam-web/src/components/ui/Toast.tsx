@@ -85,7 +85,7 @@ export function ToastScrim({ active }: { active: boolean }) {
     <div
       aria-hidden="true"
       data-toast-scrim={active ? 'on' : 'off'}
-      className={['t-toast-scrim fixed inset-0 z-[59] pointer-events-none', active ? 'is-open' : ''].filter(Boolean).join(' ')}
+      className={['t-toast-scrim fixed inset-0 z-[var(--z-toast-scrim)] pointer-events-none', active ? 'is-open' : ''].filter(Boolean).join(' ')}
     />
   )
 }
@@ -196,12 +196,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {/*
-        20260825_039: 토스트는 모달·바텀시트보다 위에 뜨는 최상위 피드백 레이어다(z-[60]).
+        20260825_039: 토스트는 모달·바텀시트보다 위에 뜨는 최상위 피드백 레이어다(--z-toast = 60).
         BottomSheet·Radix Dialog/Sheet 등은 document.body '맨 뒤'로 포털링되므로 같은 z-50에서는
         DOM 순서가 뒤인 오버레이가 이겨 토스트가 시트 뒤로 숨었다.
         (실제 회귀: 지도 → POI 캐러셀 → 드랍 픽업 실패 시 실패 사유가 보이지 않음)
 
-        20260826_005: 그때의 z-[60]은 "앱 셸 div가 z-index:auto라 스태킹 컨텍스트를 만들지
+        20260826_005: 그때의 z 값 60은 "앱 셸 div가 z-index:auto라 스태킹 컨텍스트를 만들지
         않는다"는, 주석에만 존재하는 불변식에 기대고 있었다 — 셸에 transform·filter·isolation·z-*를
         하나라도 붙이면 같은 버그가 조용히 재발한다. 컨테이너를 document.body로 포털링해 그 의존을
         없앤다. 이제 토스트와 BottomSheet는 **둘 다 body 직속 = 같은 루트 스태킹 컨텍스트**이므로
@@ -221,7 +221,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <>
           <ToastScrim active={toasts.some((t) => !t.closing)} />
           <div
-            className="fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-[calc(100%-42px)] max-w-[388px] pointer-events-none"
+            className="fixed left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex flex-col gap-2 w-[var(--floating-bar-width)] max-w-[var(--floating-bar-max-width)] pointer-events-none"
             style={{ bottom: toastBottom(reservedBottom, overlayGapPx()) }}
           >
             {toasts.map((t) => (

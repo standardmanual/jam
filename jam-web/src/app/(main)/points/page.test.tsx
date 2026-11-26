@@ -284,9 +284,9 @@ describe('포인트 화면 — 내역 행', () => {
     expect(html).toContain('>30</span>')
     expect(html).toContain('>−1,500</span>')
     // 적립 행은 숫자·단위 두 칸이 오렌지, 차감 행은 두 칸이 회색이다
-    expect(html.match(/<span class="text-point-text"/g)).toHaveLength(2)
-    expect(html.match(/<span class="text-muted"/g)).toHaveLength(2)
-    expect(html).toMatch(/<span class="text-muted"[^>]*>−1,500<\/span>/)
+    expect(html.match(/<span class="text-point-text( font-bold)?"/g)).toHaveLength(2)
+    expect(html.match(/<span class="text-muted( font-bold)?"/g)).toHaveLength(2)
+    expect(html).toMatch(/<span class="text-muted font-bold"[^>]*>−1,500<\/span>/)
     expect(html.match(/>포인트<\/span>/g)).toHaveLength(2)
     // 잔액 숫자 칸은 같은 토큰의 클래스를 직접 쓴다(자릿수 팝인 예외)
     expect(html).toMatch(/<p class="[^"]*text-point-text[^"]*"/)

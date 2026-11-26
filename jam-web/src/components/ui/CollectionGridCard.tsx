@@ -76,7 +76,7 @@ export default function CollectionGridCard({
       </div>
 
       {/* 타이틀 */}
-      <p className={`text-[15px] font-bold leading-[18px] truncate ${completed ? 'text-accent-foreground' : 'text-foreground'}`}>{name}</p>
+      <p className={`text-sm font-bold leading-4 truncate ${completed ? 'text-accent-foreground' : 'text-foreground'}`}>{name}</p>
 
       {/* 맨 아래 한 행 — 높이는 칩 높이(20px)로 맞춰 완성·미완성 카드의 높이가 같다.
           완성: 바·숫자 없이 등급 칩들(왼쪽 정렬, 이름과 같은 시작선, 낮은 등급부터, Common은 칩이 없다). «완성» 칩은 없앴다 — 검정 면이 완성을 알린다
@@ -91,7 +91,7 @@ export default function CollectionGridCard({
               {/* 캡슐 모양 바 — 어두운 트랙과 채움색이 홈 캡슐 게이지와 같다(채움 `--capsule-fill`, 2026-11-25 사용자 지시, 티켓 20261125_1113).
                   모양은 티켓 20261114_1502. 컬렉션 상세·인벤토리의 바는 강조색 그린 채움 그대로다. */}
               <ProgressBar shape="capsule" percent={pct} height={16} color="var(--capsule-fill)" />
-              <span className="text-xs text-[color:var(--link)] font-bold leading-none tabular-nums shrink-0">
+              <span className="text-xs text-link font-bold leading-none tabular-nums shrink-0">
                 {collected}/{total}
               </span>
             </>

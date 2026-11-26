@@ -107,6 +107,6 @@ describe('ToastScrim — 토스트 뒤 화면 막 (티켓 20261112_2338)', () =>
   })
 
   it('컨테이너(z-60) 바로 아래 층(z-59)이다', () => {
-    expect(renderToStaticMarkup(<ToastScrim active />)).toContain('z-[59]')
+    expect(renderToStaticMarkup(<ToastScrim active />)).toContain('z-[var(--z-toast-scrim)]')
   })
 })

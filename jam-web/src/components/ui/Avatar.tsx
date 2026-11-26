@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { UserIcon } from '@/components/ui/icons'
 
 export interface AvatarProps {
-  /** 이미지 주소. 없거나 null이면 `UserIcon` 폴백을 그린다. */
+  /** 이미지 주소. 없거나 null이면 `bg-surface` 면 위에 `UserIcon` 폴백을 그린다(면은 이 컴포넌트가 칠한다). */
   src?: string | null
   alt: string
   /** 지름/한 변(px). `next/image` width/height와 컨테이너 크기를 일치시킨다. */
@@ -42,7 +42,7 @@ export default function Avatar({
 
   return (
     <span
-      className={`relative ${radiusClass} overflow-hidden flex items-center justify-center shrink-0 ${className}`.trim()}
+      className={['relative', radiusClass, 'overflow-hidden flex items-center justify-center shrink-0', src ? '' : 'bg-surface', className].filter(Boolean).join(' ')}
       style={{ width: size, height: size, ...style }}
     >
       {src ? (

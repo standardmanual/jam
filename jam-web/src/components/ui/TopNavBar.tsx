@@ -83,7 +83,7 @@ export function TopNavBar({
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '0 16px', height: 56,
+        padding: '0 16px', height: 'var(--topnav-height)',
       }}>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
           {logo ? logo : (
@@ -94,7 +94,7 @@ export function TopNavBar({
                     href={backHref}
                     aria-label="뒤로"
                     style={{
-                      width: 44, height: 44, border: 'none', background: 'transparent',
+                      width: 44, height: 44,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'var(--foreground)', flexShrink: 0,
                       // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
@@ -114,7 +114,7 @@ export function TopNavBar({
                     aria-label="뒤로"
                     onClick={onBack}
                     style={{
-                      width: 44, height: 44, border: 'none', background: 'transparent',
+                      width: 44, height: 44,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'var(--foreground)', flexShrink: 0,
                       // 제목이 chevron 바로 옆에 붙도록 오른쪽 여백을 당긴다(띄어쓰기 한 칸 정도). 터치 영역 44×44는 그대로 두려고
@@ -131,12 +131,10 @@ export function TopNavBar({
                   </button>
                 )
               )}
-              <h1 style={{
+              <h1 className="font-normal tracking-normal" style={{
                 margin: 0,
                 fontSize: 'var(--text-base)',
                 lineHeight: 'var(--text-base--line-height)',
-                fontWeight: 400,
-                letterSpacing: 'normal',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 color: 'var(--foreground)',
                 // 한글 글자 모양은 줄 상자 안에서 아래로 치우쳐 chevron보다 1px 낮게 보인다. 모양 중심을 chevron 중심에 맞춘다

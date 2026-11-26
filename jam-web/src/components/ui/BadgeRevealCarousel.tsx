@@ -6,6 +6,7 @@ import Button from './Button';
 import { LockedTile } from '@/components/ui/LockedTile';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Rarity } from '@/components/ui/RarityBadge';
+import { useReducedMotion } from '@/lib/motion';
 
 /** 캐러셀 카드 1장이 그리는 배지 데이터 */
 export interface BadgeRevealItem {
@@ -247,20 +248,6 @@ const FALLBACK_ICON = (
     <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
   </svg>
 );
-
-/** OS 모션 축소 설정 구독 (예전엔 design-system 쪽 파일이라 서비스 lib/motion.ts를 쓰지 못해 따로 구현했다. 합치기는 7회차) */
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => setReduced(mq.matches);
-    apply();
-    mq.addEventListener?.('change', apply);
-    return () => mq.removeEventListener?.('change', apply);
-  }, []);
-  return reduced;
-}
 
 /**
  * 활성 카드 기준 상대 위치.
@@ -803,13 +790,14 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }: { i
         {level != null ? <BadgeLevelChip level={level} size="md" /> : <RarityBadge rarity={item?.rarity} size="md" />}
         {earnCount > 1 && (
           <span
+            className="leading-none font-bold"
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               minWidth: 18, height: 18, padding: '0 4px',
               borderRadius: 'var(--radius-full)',
               background: 'var(--surface)',
               border: '1px solid var(--border)',
-              fontSize: 'var(--text-xs)', lineHeight: 1, fontWeight: 700,
+              fontSize: 'var(--text-xs)',
               color: 'var(--foreground)',
             }}
           >
@@ -819,14 +807,13 @@ function BadgeCard({ item, foldedCount = 1, cardWidth, selectable = false }: { i
       </div>
 
       <p
+        className="font-bold leading-tight"
         style={{
           margin: 0,
           width: '100%',
           flexShrink: 0,
           textAlign: 'center',
           fontSize: 'var(--text-2xl)',
-          fontWeight: 700,
-          lineHeight: 1.25,
           color: 'var(--foreground)',
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -889,7 +876,7 @@ function MoreCard({ count, label, message, onClick }: { count: number; label: st
         style={{
           width: 56,
           height: 56,
-          borderRadius: '50%',
+          borderRadius: 'var(--radius-full)',
           background: 'var(--accent)',
           color: 'var(--accent-foreground)',
           display: 'flex',
@@ -915,14 +902,13 @@ function MoreCard({ count, label, message, onClick }: { count: number; label: st
       <button
         type="button"
         onClick={onClick}
+        className="font-semibold"
         style={{
           padding: '10px 24px',
           borderRadius: 'var(--radius-full)',
-          border: 'none',
           background: 'var(--accent)',
           color: 'var(--accent-foreground)',
           fontSize: 'var(--text-sm)',
-          fontWeight: 600,
           fontFamily: 'var(--font-family-base)',
           cursor: 'pointer',
         }}
@@ -970,7 +956,7 @@ function SelectionLayer({ selected, isCenter, full, reduced, selectLabel, select
         style={{
           position: 'absolute',
           inset: 0,
-          borderRadius: 'inherit',
+          borderRadius: 'var(--radius-2xl)',
           boxShadow: 'inset 0 0 0 2px var(--link)',
           opacity: selected ? 1 : 0,
           transform: markTransform(selected),
@@ -986,7 +972,7 @@ function SelectionLayer({ selected, isCenter, full, reduced, selectLabel, select
           left: 12,
           width: 28,
           height: 28,
-          borderRadius: '50%',
+          borderRadius: 'var(--radius-full)',
           background: 'var(--accent)',
           color: 'var(--accent-foreground)',
           display: 'flex',

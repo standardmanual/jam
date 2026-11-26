@@ -13,7 +13,7 @@
  *    이 면에 적용하지 않았고, 그래서 sub primary(`--accent`)와 갈라진 채 남는다(알려진 임시 결함, 고정)
  * ③ `outline`의 뜻이 「외곽선」이고 옛 「테두리 없는 보조 채움」은 `secondary`다(이름 재사용 함정)
  * ④ surface는 primary에서만 색을 바꾼다
- * ⑤ 모든 변형에 1px 테두리가 있고 세로 패딩이 그만큼 줄어 높이가 그대로다(md 52px)
+ * ⑤ 모든 변형에 1px 테두리가 있고 세로 패딩이 그만큼 줄어 높이는 4px 눈금으로 옮겼다(md 50px, 7회차 사용자 결정)
  * ⑥ `surface="dark"`의 면·글자·테두리 토큰 쌍
  * ⑦ 소스에 다크 전용 값(흰색·검정 반투명 직접 지정)이 없다
  *
@@ -132,7 +132,7 @@ describe('surface는 primary에서만 색을 바꾼다', () => {
   })
 })
 
-describe('1px 테두리와 세로 패딩 — 높이가 그대로다', () => {
+describe('1px 테두리와 세로 패딩 — 4px 눈금 높이', () => {
   it('서비스: 모든 변형에 border 1px 클래스가 있다', () => {
     for (const { variant } of PAIRS) {
       expect(classesOf(renderService(variant))).toContain('border')
@@ -141,21 +141,39 @@ describe('1px 테두리와 세로 패딩 — 높이가 그대로다', () => {
     expect(classesOf(arrow)).toContain('border')
   })
 
-  it('서비스 md: 세로 패딩 13px + 테두리 1px씩 + 줄 높이 24px = 52px(옛 패딩 14px)', () => {
+  it('서비스 md: 세로 패딩 12px + 테두리 1px씩 + 줄 높이 24px = 50px', () => {
     for (const { variant } of PAIRS) {
       const c = classesOf(renderService(variant))
-      expect(c).toContain('py-[13px]')
-      expect(c).not.toContain('py-[14px]')
+      expect(c).toContain('py-3')
+      expect(c).not.toContain('py-[13px]')
     }
-    expect(2 * 13 + 2 * 1 + 24).toBe(2 * 14 + 24)
+    expect(2 * 12 + 2 * 1 + 24).toBe(50)
   })
 
-  it('서비스 sm·lg·xs도 테두리 두께만큼 세로 패딩이 줄었다', () => {
-    expect(classesOf(renderService('secondary', { size: 'sm' }))).toContain('py-[9px]')
-    expect(classesOf(renderService('secondary', { size: 'lg' }))).toContain('py-[17px]')
+  it('서비스 sm 42px·lg 58px·xs: 6 variant × 4 size 전 조합에서 세로 패딩 클래스가 하나뿐이다', () => {
+    const verticalOf = (html: string) => classesOf(html).filter((c) => /^py-/.test(c))
+    const expected = { xs: undefined, sm: 'py-2', md: undefined, lg: 'py-4' } as const
+    for (const variant of [...PAIRS.map((p) => p.variant), 'arrow'] as const) {
+      for (const size of ['xs', 'sm', 'md', 'lg'] as const) {
+        const html = renderToStaticMarkup(
+          <ServiceButton variant={variant} surface="sub" size={size}>확인</ServiceButton>
+        )
+        const py = verticalOf(html)
+        expect(py, `${variant}/${size}`).toHaveLength(1)
+        const want = expected[size] ?? (variant === 'arrow' ? 'py-6' : 'py-3')
+        expect(py[0], `${variant}/${size}`).toBe(want)
+      }
+    }
+    expect(2 * 8 + 2 + 24).toBe(42)
+    expect(2 * 16 + 2 + 24).toBe(58)
     const xs = renderService('secondary', { size: 'xs' })
     expect(xs).toContain('padding-top:calc(12px * var(--scale-compact) - 1px)')
     expect(xs).toContain('padding-bottom:calc(12px * var(--scale-compact) - 1px)')
+  })
+
+  it('sm은 최소 높이 44px(min-h-11)를 걸지 않아 42px로 남는다', () => {
+    expect(classesOf(renderService('secondary', { size: 'sm' }))).not.toContain('min-h-11')
+    expect(classesOf(renderService('secondary', { size: 'md' }))).toContain('min-h-11')
   })
 
   it('서비스 outline은 크기별 높이 클래스·인라인 패딩이 secondary와 같다(보조 버튼을 outline으로 바꿔도 높이 불변)', () => {
@@ -171,10 +189,11 @@ describe('1px 테두리와 세로 패딩 — 높이가 그대로다', () => {
     }
   })
 
-  it('서비스 arrow: 세로 패딩 23px(py-5.75, 스케일 유틸리티) + 테두리 1px(옛 py-6 = 24px)', () => {
+  it('서비스 arrow: 세로 패딩 24px(py-6) + 테두리 1px — 높이 82px(줄 높이 32px)', () => {
     const html = renderToStaticMarkup(<ServiceButton variant="arrow">확인</ServiceButton>)
-    expect(classesOf(html)).toContain('py-5.75')
+    expect(classesOf(html)).toContain('py-6')
     expect(classesOf(html)).toContain('border-transparent')
+    expect(2 * 24 + 2 + 32).toBe(82)
   })
 })
 

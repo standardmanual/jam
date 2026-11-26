@@ -28,7 +28,7 @@ export default function ProgressCountBar({
   return (
     <div className={`flex items-center gap-3 ${className}`.trim()}>
       <ProgressBar shape="capsule" percent={percent} height={16} color={color} />
-      <span style={{ color: 'var(--link)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+      <span className="leading-none font-bold" style={{ color: 'var(--link)', fontSize: 'var(--text-xs)', fontVariantNumeric: 'tabular-nums' }}>
         {current}/{total}
       </span>
     </div>

@@ -77,8 +77,8 @@ export function PointText({ value, unit = '포인트', layout = 'inline', tone =
         {...rest}
       >
         <span
-          className={toneClass}
-          style={{ fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', fontWeight: 700, color: COLOR }}
+          className={`${toneClass} font-bold`}
+          style={{ fontSize: 'var(--text-base)', lineHeight: 'var(--text-base--line-height)', color: COLOR }}
         >
           {text}
         </span>

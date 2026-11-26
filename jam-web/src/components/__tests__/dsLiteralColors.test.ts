@@ -100,7 +100,7 @@ const TEXT_COLOR_KEY = /(?<![A-Za-z-])color\s*:\s*(?!'?inherit)/
 const ALLOWED_OPACITY: { file: string; snippet: RegExp; reason: string }[] = [
   {
     file: 'MixerSlot.tsx',
-    snippet: /fontSize:\s*20,\s*lineHeight:\s*1,\s*opacity:\s*0\.4/,
+    snippet: /fontSize:\s*'var\(--text-xl\)',\s*opacity:\s*0\.4/,
     reason: '잠긴 슬롯의 「+」 — 채울 후보가 없다는 비활성 표현이라 대비 대상이 아니다',
   },
   {

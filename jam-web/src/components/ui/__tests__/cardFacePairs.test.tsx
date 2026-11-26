@@ -120,7 +120,7 @@ describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
   })
 
   it('카운트 글자는 --link다', () => {
-    expect(renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)).toContain('text-[color:var(--link)]')
+    expect(renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)).toContain('text-link')
   })
 })
 

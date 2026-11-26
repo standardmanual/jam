@@ -170,7 +170,7 @@ export default function BadgeGridCard({
     selected && 'ring-2 ring-foreground',
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
-    highlighted && 'shadow-[inset_0_0_0_2px_var(--link)]',
+    highlighted && 'inset-ring-2 inset-ring-link',
     className,
   ]
     .filter(Boolean)
@@ -227,7 +227,7 @@ export default function BadgeGridCard({
           )}
           {showCount && (
             <span
-              className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center"
+              className="absolute -bottom-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface border border-border text-xs leading-none font-bold text-foreground flex items-center justify-center"
               aria-hidden="true"
             >
               ×{count}
@@ -235,7 +235,7 @@ export default function BadgeGridCard({
           )}
         </div>
         <div className="flex flex-col items-center gap-1 pt-2 w-full">
-          <p className={`text-xs font-bold ${nameMuted ? 'text-muted opacity-60' : 'text-foreground'} text-center line-clamp-2 min-h-[30px] w-full leading-tight break-keep wrap-break-word`}>
+          <p className={`text-xs font-bold ${nameMuted ? 'text-muted opacity-60' : 'text-foreground'} text-center line-clamp-2 min-h-7 w-full leading-tight break-keep wrap-break-word`}>
             {locked ? d.lockedItem.card.name : name}
           </p>
           {showCount && (
@@ -261,7 +261,7 @@ export default function BadgeGridCard({
         thumbnailCls(w-full)가 부모의 100%를 요구하는 순환 참조가 생겨 0×0으로 collapse된다
         (티켓 20260907_2138, 직전 시도 게이트 리뷰 FAIL 사유).
       */}
-      <div className="relative w-[calc(100%+0.75rem)] -mt-1.5">
+      <div className="relative w-[calc(100%+var(--grid-thumb-bleed))] -mt-1.5">
         {locked ? (
           // 잠긴 개체는 어떤 배지인지 알 수 있는 그림을 그리지 않는다(운영 로직 7.3절). 호출부가 URL을 넘겨도 쓰지 않는다
           <LockedTile size={128} style={{ width: '100%' }} />
@@ -279,7 +279,7 @@ export default function BadgeGridCard({
                 height={90}
                 eager={eager}
                 // 면이 커져도 그림이 면에서 차지하는 비율(약 91%)과 점선 윤곽(`SlotOutline`의 inset 4/90)이 그대로 맞도록 여백을 비율로 준다
-                className="w-full h-full object-contain p-[4.4%]"
+                className="w-full h-full object-contain p-[var(--grid-thumb-inset)]"
                 fallback={<MedalIcon className="w-12 h-12 text-muted" />}
               />
             </div>
@@ -293,7 +293,7 @@ export default function BadgeGridCard({
           // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
           // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
           <span
-            className={`absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface border border-[color:var(--border)] text-xs leading-none font-bold text-foreground flex items-center justify-center`}
+            className={`absolute -bottom-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface border border-border text-xs leading-none font-bold text-foreground flex items-center justify-center`}
             aria-hidden="true"
           >
             ×{count}
@@ -322,14 +322,14 @@ export default function BadgeGridCard({
 }
 
 /**
- * 인벤토리 빈 슬롯 플레이스홀더 — 일반 `BadgeGridCard`와 동일한 썸네일(`w-[calc(100%+0.75rem)] aspect-square`)·
+ * 인벤토리 빈 슬롯 플레이스홀더 — 일반 `BadgeGridCard`와 동일한 썸네일(`w-[calc(100%+var(--grid-thumb-bleed))] aspect-square`)·
  * 이름(`text-sm font-bold`)·칩(`h-6`) 기하를 공유해 채운 카드와 행 높이가 정확히 일치한다(사용자 결정 2026-11-25, 티켓 20261125_1444).
  * 면은 채운 카드와 같은 `--background-secondary`를 옅게(30%) 깐다 — 카드 면이 회색 단색으로 바뀐 티켓 20261125_1649와 맞춘다.
  */
 export function BadgeGridCardPlaceholder({ className = '' }: { className?: string }) {
   return (
     <div className={`${BASE} bg-background-secondary opacity-30${className ? ` ${className}` : ''}`} aria-hidden="true">
-      <div className="relative w-[calc(100%+0.75rem)] -mt-1.5">
+      <div className="relative w-[calc(100%+var(--grid-thumb-bleed))] -mt-1.5">
         <div className="w-full aspect-square rounded-2xl" />
       </div>
       <div className="flex flex-col items-center gap-1 pt-2 w-full">

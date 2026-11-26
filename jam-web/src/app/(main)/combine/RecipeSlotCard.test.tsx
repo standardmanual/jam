@@ -47,7 +47,7 @@ describe('RecipeSlotCard', () => {
   it('addable: «+»는 카드 모서리가 아니라 이미지 상자 정중앙의 틀 안에 있고, 4열(dense)이면 틀 여백이 줄어든다', () => {
     const html = render()
     expect(html).toContain('pointer-events-none absolute z-10 inset-x-3 top-3')
-    expect(html).toContain('relative mx-auto flex aspect-square w-full max-w-[90px] items-center justify-center')
+    expect(html).toContain('relative mx-auto flex aspect-square w-full max-w-[var(--grid-cell-max-width)] items-center justify-center')
     expect(html).toContain('pointer-events-auto relative')
     expect(html).not.toContain('right-1.5 top-1.5')
     const dense = render({ dense: true })

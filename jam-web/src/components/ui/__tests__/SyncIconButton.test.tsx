@@ -32,7 +32,7 @@ describe('SyncIconButton', () => {
     expect(html).toContain('aria-busy="true"')
     expect(html).toContain('disabled=""')
     // 천천히 도는 한 바퀴 2.4초(기본 animate-spin의 1초보다 느리다, 티켓 20261114_1810)
-    expect(html).toContain('animate-[spin_2.4s_linear_infinite] motion-reduce:animate-none')
+    expect(html).toContain('animate-[var(--animate-sync-spin)] motion-reduce:animate-none')
     expect(html).toContain('motion-reduce:opacity-60')
   })
 
