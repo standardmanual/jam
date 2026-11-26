@@ -36,7 +36,6 @@ export interface ProgressBarProps {
    * 어떤 태그로 그릴지. 기본 'div'(기존 마크업 그대로).
    * 'span'은 `<a>`·`<button>`·`Link` 같은 클릭 영역 안(phrasing 요건)에 놓을 때 켠다.
    * span 경로에서만 바깥·트랙에 `display:block`이 붙어 높이·폭이 div와 같다.
-   * `labelPosition`('inline'·'top')과 조합해도 래퍼는 flex를 유지하고 모양은 같다.
    * `role`·`aria-*`는 더하지 않는다(태그만 바꾼다).
    */
   as?: ProgressBarAs;
