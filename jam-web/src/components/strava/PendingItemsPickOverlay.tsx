@@ -426,7 +426,8 @@ export function PendingItemsPickView({
           }}
         >
           <Card
-            className="w-full flex flex-col gap-4 p-6"
+            className="w-full flex flex-col gap-4"
+            style={{ padding: 'var(--layout-card-padding)' }} // 정본 Card가 여백을 인라인으로 넣어 클래스(p-6)로는 덮이지 않는다
           >
             <p
               id={titleId}
