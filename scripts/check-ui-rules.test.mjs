@@ -111,6 +111,27 @@ assert.equal(findHits('<p className="text-[13px]"> {/* ui-allow: 견본 */}', P)
 assert.equal(findHits('<p className="text-[13px]"> {/* ui-allow: */}', P).length, 1)
 assert.deepEqual(summarize(findHits('<button>\n<button>', P)).counts, { 'raw-element': 2 })
 
+// --- 층 규칙: primitive-ref·palette-class (티켓 20261126_2115, 9-4회차). 이름은 실제 저장소 파일에서 읽는다.
+assert.equal(count('color: var(--base-white)', 'primitive-ref'), 1, '기본값 직접 참조 적발')
+assert.equal(count('color: var(--base-white, #fff)', 'primitive-ref'), 1, '대체값이 있어도 적발')
+assert.equal(count('width: var(--text-xs)', 'primitive-ref'), 1, 'jam-theme.css @theme 이름도 기본값')
+assert.equal(count('color: var(--background) var(--page-x)', 'primitive-ref'), 0, '의미 토큰은 통과')
+assert.equal(count('// var(--base-white)', 'primitive-ref'), 0, '주석 안은 세지 않음')
+assert.equal(count('color: var(--base-white)', 'primitive-ref', 'jam-web/src/components/ui/Button.tsx'), 0, '정본 폴더는 통과')
+assert.equal(count('a: var(--base-white)', 'primitive-ref', 'jam-web/src/components/transitions.css'), 0, 'transitions.css는 통과')
+assert.equal(count('color: var(--base-white) /* ui-allow: 사유 */', 'primitive-ref'), 1, 'ui-allow 예외를 받지 않음')
+assert.equal(count('<p className="bg-red-500 hover:text-gray-700/80">', 'palette-class'), 2, '팔레트 클래스·변형·불투명도')
+assert.equal(count('<p className="text-primary bg-destructive border-input ring-ring">', 'palette-class'), 4, '어드민 shadcn 이름')
+assert.equal(count('<p className="bg-jam-red border-t-white shadow-sm">', 'palette-class'), 3, '강조색·방향 접두·그림자')
+assert.equal(count('<p className="bg-card-bg text-foreground bg-accent text-muted border-border bg-card-bg/50">', 'palette-class'), 0, '서비스 의미 토큰 클래스는 통과')
+assert.equal(count('<p className="bg-red-500">', 'palette-class', 'jam-web/src/components/ui/Button.tsx'), 0, '정본 폴더는 통과')
+assert.equal(count('<p className="bg-red-500"> {/* ui-allow: 사유 */}', 'palette-class'), 1, 'ui-allow 예외를 받지 않음')
+assert.equal(count('// bg-red-500', 'palette-class'), 0, '주석 안은 세지 않음')
+{
+  const f = toFailures({ 'a.tsx': { counts: { 'palette-class': 1 }, lines: { 'palette-class': [3] } } })
+  assert.match(f[0].fix, /카리나에게 토큰 추가 승인/)
+}
+
 // --- 파일 시스템·CLI
 const tmp = mkdtempSync(join(tmpdir(), 'ui-rules-'))
 try {
@@ -159,6 +180,20 @@ try {
   r = run([])
   assert.equal(r.status, 0)
   assert.match(r.stdout, /통과/)
+
+  // 층 규칙 이름은 --root 아래 파일에서 읽는다: 파일이 없으면 아무것도 잡지 않고, 있으면 그 이름으로 잡는다
+  writeFileSync(join(comp, 'L.tsx'), '<p className="bg-lime-950 text-primary" style={{ margin: "var(--base-zzz)" }}>\n')
+  assert.equal(run(['--files', 'jam-web/src/components/L.tsx']).status, 0, '이름 파일이 없는 root에서는 층 규칙이 잡지 않음')
+  mkdirSync(join(tmp, 'jam-web/design-system/tokens'), { recursive: true })
+  mkdirSync(join(tmp, 'jam-web/src/app'), { recursive: true })
+  writeFileSync(join(tmp, 'jam-web/design-system/tokens/primitive.css'), ':root { --base-zzz: 1px; }\n')
+  writeFileSync(join(tmp, 'jam-web/src/app/admin-theme.css'), '@theme { --color-lime-950: #000; }\n')
+  writeFileSync(join(tmp, 'jam-web/src/app/globals.css'), '@theme inline {\n  /* shadcn 이름 — 어드민 전용 */\n  --color-primary: var(--primary);\n}\n')
+  r = run(['--files', 'jam-web/src/components/L.tsx'])
+  assert.equal(r.status, 1)
+  assert.match(r.stderr, /\[primitive-ref\]/)
+  assert.match(r.stderr, /\[palette-class\]: 2건/)
+  rmSync(join(comp, 'L.tsx'))
   writeFileSync(join(tmp, 'jam-web/src/app/(main)/한글/p.tsx'), "const c = '#fff' // ui-allow:\n")
   assert.equal(run([]).status, 1, '사유가 비면 위반')
 } finally {

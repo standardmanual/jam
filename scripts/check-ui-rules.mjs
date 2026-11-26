@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // check-ui-rules — 서비스 화면 소스에서 DS 밖 값을 찾는 규칙 엔진 (티켓 20261125_2012, UI 소스 정리 2-1회차, 상위 20261125_1923).
 //
-// 규칙 네 가지(규칙 키는 출력에 그대로 쓴다):
+// 규칙 여섯 가지(규칙 키는 출력에 그대로 쓴다):
 //   arbitrary      Tailwind 임의값 클래스 `접두-[값]`. 토큰만으로 이뤄진 값은 위반이 아니다: `var(--이름)` 하나, 형식 힌트가 붙은
 //                  `color:var(--이름)`, 그리고 calc(·min(·max(·clamp( 식에서 var(--이름)·100%·100dvh 같은 화면 단위·단위 없는 숫자·
 //                  연산자·괄호·쉼표·`_`만 남는 것. `var(--x,1rem)`처럼 대체값이 있거나 `calc(100%+8px)`처럼 리터럴 길이가 섞이면 위반이다.
@@ -9,8 +9,13 @@
 //   color-literal  `#rgb`~`#rrggbbaa`, rgb(·rgba(·hsl(·hsla(·oklch(.
 //   inline-visual  style={{ … }} 안에서 시각 속성에 리터럴 값(숫자 또는 var( 없는 문자열)을 준 것. 변수·식은 세지 않는다.
 //   raw-element    JSX <button·<input·<select·<textarea. 정본 컴포넌트 폴더(jam-web/src/components/ui/) 안은 세지 않는다.
+//   primitive-ref 기본값(primitive.css·jam-theme.css @theme에 정의된 이름)을 `var(--이름)`으로 직접 참조(`var(--이름, 대체값)` 포함). 이름은 실행할 때 파일에서 읽는다.
+//   palette-class 기본 팔레트·어드민 층·강조색 클래스(`bg-red-500`·`text-primary`·`bg-jam-red`·`shadow-sm` 등, 변형 접두·`/50` 접미 포함).
+//                  이름은 실행할 때 admin-theme.css의 --color-*·--shadow-*, globals.css의 «shadcn 이름 — 어드민 전용» 묶음·--color-jam-*에서 읽는다.
+// 두 새 규칙(primitive-ref·palette-class)은 정본 폴더(jam-web/src/components/ui/)와 jam-web/src/components/transitions.css 안은 세지 않고,
+// `ui-allow` 줄 예외도 받지 않는다(예외 없는 규칙, 티켓 20261126_2115, UI 소스 정리 9-4회차).
 // 네 규칙 모두 주석(`//`·`/* */`·JSDoc·JSX `{/* */}`) 안의 글자는 세지 않는다(scripts/strip-code-comments.mjs로 지운 본문에서 센다).
-// 같은 줄에 `ui-allow: <사유>` 주석이 있으면 세지 않는다(사유가 비면 예외가 아니다). 예외 주석은 원래 줄에서 읽는다.
+// 같은 줄에 `ui-allow: <사유>` 주석이 있으면 세지 않는다(사유가 비면 예외가 아니다. 위 두 새 규칙은 제외). 예외 주석은 원래 줄에서 읽는다.
 // 파일 이름이 StoryFixtures.ts·StoryFixtures.tsx로 끝나는 스토리 전용 견본 파일은 검사하지 않는다.
 //
 // 위반은 예외 없이 실패한다(종료 코드 1). 줄 단위 예외는 같은 줄의 `ui-allow: <사유>` 주석뿐이다.
@@ -38,14 +43,78 @@ const EXT = /\.(tsx|ts|css)$/
 const SKIP_FILE = /\.(test|stories)\.|StoryFixtures\.tsx?$/
 const SKIP_DIRS = new Set(['admin', '__tests__', 'dev-sample', 'spike', 'node_modules'])
 const CANONICAL_UI_DIR = 'jam-web/src/components/ui/'
+const TRANSITIONS_CSS = 'jam-web/src/components/transitions.css'
+const PRIMITIVE_CSS = 'jam-web/design-system/tokens/primitive.css'
+const JAM_THEME_CSS = 'jam-web/src/app/jam-theme.css'
+const ADMIN_THEME_CSS = 'jam-web/src/app/admin-theme.css'
+const GLOBALS_CSS = 'jam-web/src/app/globals.css'
 
-export const RULES = ['arbitrary', 'color-literal', 'inline-visual', 'raw-element']
+function readOr(root, rel) {
+  const f = path.join(root, rel)
+  return existsSync(f) ? readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')) : ''
+}
+
+// 층 규칙이 쓰는 이름을 실행할 때 파일에서 읽는다(하드코딩하지 않는다). root 아래 파일이 없으면 빈 집합이라 그 규칙은 아무것도 잡지 않는다.
+//   primitives: primitive.css의 모든 `--이름:` 선언 + jam-theme.css `@theme { }` 안 선언
+//   palette:    클래스 이름 조각(`red-500`, `primary` …) — admin-theme.css `--color-*`, globals.css 어드민 shadcn 묶음·`--color-jam-*`
+//   shadows:    admin-theme.css `--shadow-*`의 크기 이름
+export function loadLayerNames(root) {
+  const primitives = new Set()
+  for (const m of readOr(root, PRIMITIVE_CSS).matchAll(/(--[\w-]+)\s*:/g)) primitives.add(m[1])
+  const theme = readOr(root, JAM_THEME_CSS)
+  for (const b of theme.matchAll(/@theme\b[^{]*\{([^}]*)\}/g)) {
+    for (const m of b[1].matchAll(/(--[\w-]+)\s*:/g)) primitives.add(m[1])
+  }
+  const palette = new Set()
+  const shadows = new Set()
+  for (const m of readOr(root, ADMIN_THEME_CSS).matchAll(/--(color|shadow)-([\w-]+)\s*:/g)) {
+    ;(m[1] === 'color' ? palette : shadows).add(m[2])
+  }
+  const globalsRaw = existsSync(path.join(root, GLOBALS_CSS)) ? readFileSync(path.join(root, GLOBALS_CSS), 'utf8') : ''
+  const marker = globalsRaw.indexOf('shadcn 이름 — 어드민 전용')
+  if (marker >= 0) {
+    const end = globalsRaw.indexOf('}', marker)
+    for (const m of globalsRaw.slice(marker, end).matchAll(/--color-([\w-]+)\s*:/g)) palette.add(m[1])
+  }
+  for (const m of globalsRaw.matchAll(/--color-(jam-[\w-]+)\s*:/g)) palette.add(m[1])
+  return { primitives, palette, shadows }
+}
+
+const COLOR_PREFIX = '(?:bg|text|border(?:-[xytblrse])?|fill|stroke|from|via|to|ring-offset|ring|outline|decoration|accent|caret|divide|placeholder)'
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// 클래스 정규식은 이름 목록이 바뀔 때만 다시 만든다.
+const classRegexCache = new WeakMap()
+function paletteRegex(names) {
+  let re = classRegexCache.get(names)
+  if (re === undefined) {
+    const parts = []
+    if (names.palette.size > 0) {
+      parts.push(`${COLOR_PREFIX}-(?:${[...names.palette].sort((a, b) => b.length - a.length).map(esc).join('|')})`)
+    }
+    if (names.shadows.size > 0) parts.push(`shadow-(?:${[...names.shadows].sort((a, b) => b.length - a.length).map(esc).join('|')})`)
+    re = parts.length > 0 ? new RegExp(`(?<![\\w-])(?:${parts.join('|')})(?![\\w-])`, 'g') : null
+    classRegexCache.set(names, re)
+  }
+  return re
+}
+const namesByRoot = new Map()
+function namesFor(root) {
+  if (!namesByRoot.has(root)) namesByRoot.set(root, loadLayerNames(root))
+  return namesByRoot.get(root)
+}
+const VAR_REF = /var\(\s*(--[\w-]+)/g
+
+export const RULES = ['arbitrary', 'color-literal', 'inline-visual', 'raw-element', 'primitive-ref', 'palette-class']
+const LAYER_FIX =
+  '의미·컴포넌트 토큰이나 서비스 눈금 클래스를 쓰세요. 맞는 토큰이 없으면 새로 만들지 말고 카리나에게 토큰 추가 승인을 요청하세요(이 규칙은 ui-allow 예외를 받지 않습니다).'
 
 export const FIXES = {
   arbitrary: '토큰 클래스나 정본 컴포넌트의 variant를 쓰세요. 맞는 토큰이 없으면 새로 만들지 말고 카리나에게 토큰 추가 승인을 요청하세요.',
   'color-literal': '색은 DS 색 토큰(var(--…) 또는 토큰 클래스)으로 쓰세요. 맞는 토큰이 없으면 새로 만들지 말고 카리나에게 토큰 추가 승인을 요청하세요.',
   'inline-visual': '시각 속성은 토큰 클래스나 정본 컴포넌트의 variant로 옮기세요. 값이 필요하면 var(--…) 토큰을 참조하세요.',
   'raw-element': '`@/components/ui`의 정본 컴포넌트(Button 등)를 쓰세요.',
+  'primitive-ref': LAYER_FIX,
+  'palette-class': LAYER_FIX,
 }
 
 const ALLOW = /ui-allow:\s*(?!\*\/|-->|\}|$)\S/
@@ -77,7 +146,7 @@ const VISUAL_PROP = new RegExp(
 )
 
 // 텍스트와 경로로 위반 목록을 낸다: [{ rule, line }]
-export function findHits(rawText, relPath) {
+export function findHits(rawText, relPath, names = namesFor(path.join(SCRIPT_DIR, '..'))) {
   // 주석 안의 글자는 세지 않는다. 같은 길이로 지우므로 줄 번호가 같고, 예외 주석은 원래 줄에서 읽는다.
   const text = stripComments(rawText, path.posix.extname(relPath))
   const lines = text.split('\n')
@@ -88,6 +157,9 @@ export function findHits(rawText, relPath) {
     if (!allowed(i)) hits.push({ rule, line: i + 1 })
   }
   const isCanonical = relPath.startsWith(CANONICAL_UI_DIR)
+  // 층 규칙은 ui-allow 예외를 받지 않는다. 정본 폴더와 transitions.css는 기본값을 쓸 수 있는 구역이다.
+  const layerExempt = isCanonical || relPath === TRANSITIONS_CSS
+  const paletteRe = layerExempt ? null : paletteRegex(names)
 
   lines.forEach((line, i) => {
     for (const m of line.matchAll(ARBITRARY)) {
@@ -99,6 +171,12 @@ export function findHits(rawText, relPath) {
     for (const _ of line.matchAll(COLOR)) add('color-literal', i)
     if (!isCanonical) {
       for (const _ of line.matchAll(RAW_ELEMENT)) add('raw-element', i)
+    }
+    if (!layerExempt) {
+      for (const m of line.matchAll(VAR_REF)) {
+        if (names.primitives.has(m[1])) hits.push({ rule: 'primitive-ref', line: i + 1 })
+      }
+      if (paletteRe) for (const _ of line.matchAll(paletteRe)) hits.push({ rule: 'palette-class', line: i + 1 })
     }
   })
 
@@ -175,7 +253,7 @@ function walk(dir, out) {
 }
 
 function scanFile(root, rel, text) {
-  return summarize(findHits(text, rel))
+  return summarize(findHits(text, rel, namesFor(root)))
 }
 
 // 대상 전체: { "경로": { counts, lines } } (위반 있는 파일만)
@@ -259,7 +337,7 @@ function main() {
     return failures.length === 0 ? 0 : 1
   }
   if (failures.length > 0) {
-    console.error('check-ui-rules: DS 밖 값이 있습니다. 불가피하면 같은 줄에 `ui-allow: <사유>` 주석을 답니다.')
+    console.error('check-ui-rules: DS 밖 값이 있습니다. 불가피하면 같은 줄에 `ui-allow: <사유>` 주석을 답니다(primitive-ref·palette-class는 예외 없음).')
     for (const f of failures) {
       console.error(`  ${f.file} [${f.rule}]: ${f.now}건 (줄 ${f.lines.join(', ')})`)
       console.error(`    고치는 방법: ${f.fix}`)
