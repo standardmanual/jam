@@ -252,7 +252,7 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
     <dt>쓰기</dt><dd><span class="chip ">없음</span></dd>
     <dt>관여</dt><dd>UI·DS 작업 시</dd>
     <dt>실행 위치</dt><dd><span class="chip dashed">격리 워크트리</span></dd>
-    <dt>스킬</dt><dd><code>/jam-design</code> <code>/jam-work</code></dd>
+    <dt>스킬</dt><dd><code>/jam-work</code></dd>
   </dl>
   <footer><code>.claude/agents/jam-designer.md</code></footer>
 </article>
@@ -532,14 +532,12 @@ ul.hooks{margin:var(--spacing-4) 0 0;padding-left:18px}
 <h2>5. 스킬 콜사인 <code>/jam-*</code></h2>
 <p class="sub">카리나(메인 세션)가 부른다. 「부르는 에이전트」는 각 <code>SKILL.md</code>가 이름으로 언급하는 서브에이전트다.</p>
 <div class="tw"><table class="skills"><thead><tr><th>콜사인</th><th>부르는 에이전트</th><th>용도</th></tr></thead><tbody>
-<tr><td><code>/jam-design</code></td><td><a href="#agent-jam-designer">채원</a> <code>jam-designer</code></td><td>JAM! 디자인 시스템 MODULAR과 Storybook 카탈로그를 탐색해 기존 컴포넌트 재사용 여부를 판단하고, 신규 UI가 필요할 때 MODULAR 확장 vs 서비스 전용 구현을 결정한다. UI·화면·컴포넌트를 새로 만들거나 고칠 때, &quot;이런 컴포넌트 있어?&quot;, &quot;디자인 시스템에 추가할까?&quot;, &quot;Storybook 확인해줘&quot; 같은 요청에 사용.</td></tr>
 <tr><td><code>/jam-docs</code></td><td><span class="muted">카리나 직접</span></td><td>JAM! 프로젝트의 문서 체계(① PRD ② 티켓 ③ 컨텐츠 ④ 배지엔진 ⑤ 서비스플랜) 작성·갱신 절차. 티켓 생성/CLOSED 처리, PRD 갱신, 컨텐츠 문서 수정, 배지엔진 문서 수정, 서비스플랜 버전 갱신이 필요할 때 사용한다. &quot;티켓 만들어줘&quot;, &quot;문서 갱신해줘&quot;, &quot;PRD 업데이트&quot;, &quot;티켓 닫아줘&quot; 같은 요청에 사용.</td></tr>
-<tr><td><code>/jam-ds</code></td><td><span class="muted">카리나 직접</span></td><td>서비스 UI ↔ MODULAR 디자인시스템 ↔ Storybook ↔ claude.ai/design 네 층의 정합성을 진단하고 어긋난 곳을 맞춘다. UI 작업을 끝낸 뒤, &quot;디자인시스템 동기화&quot;, &quot;스토리북이랑 맞춰줘&quot;, &quot;MODULAR 최신화&quot;, &quot;업로드본 갱신&quot; 같은 요청에 사용. /jam-work의 UI 작업 마무리 단계에서도 호출한다.</td></tr>
 <tr><td><code>/jam-img</code></td><td><span class="muted">카리나 직접</span></td><td>JAM! 배지 이미지 제작 파이프라인. Recraft 생성 → 로고 합성 → 배경 제거 → DB 반영까지 단계별로 사용자 확인을 받으며 처리한다. &quot;배지 이미지 만들어줘&quot;, &quot;이 배지 그림 생성해줘&quot;, &quot;/jam-img&quot; 같은 요청에 사용.</td></tr>
 <tr><td><code>/jam-plan</code></td><td><a href="#agent-jam-pm">혜린</a> <code>jam-pm</code><br><a href="#agent-jam-ops">카즈하</a> <code>jam-ops</code></td><td>JAM! 기획 워크플로우. 한 문장짜리 아이디어를 질문으로 구체화하고, 만들 가치가 있는지 따져 기획서와 티켓 분해안까지 만든다. &quot;이런 기능 어때?&quot;, &quot;이거 만들까?&quot;, &quot;기획해줘&quot;, &quot;타당성 검토해줘&quot;, 배지·포인트 경제 수치를 바꾸려는 요청에 사용.</td></tr>
 <tr><td><code>/jam-ship</code></td><td><a href="#agent-jam-reviewer">민지</a> <code>jam-reviewer</code></td><td>JAM! staging 검증 후 프로덕션(main) 배포. staging 미반영 변경 확인 → 배포 전 점검표 → 롤백 계획 → 병렬 점검(민지 보안·테스트) → main 승격 → Vercel 배포 Ready·alias 검증 → 배포 후 검증 → 결과 보고까지 처리한다. &quot;배포해줘&quot;, &quot;프로덕션에 올려줘&quot;, &quot;스테이징 확인했어 배포하자&quot;, &quot;/jam-ship&quot; 같은 요청에 사용.</td></tr>
 <tr><td><code>/jam-story</code></td><td><a href="#agent-jam-tribe">윈터</a> <code>jam-tribe</code><br><a href="#agent-jam-marketer">윤진</a> <code>jam-marketer</code></td><td>JAM! 세계관과 마케팅 워크플로우. 트라이브 설정 관리·검수, 아이템/컬렉션 서사 창작, 캠페인 기획, 홈피드·시즌 운영 초안을 만든다. &quot;이 배지 설정에 맞아?&quot;, &quot;아이템 설명 써줘&quot;, &quot;트라이브 추가할까?&quot;, &quot;홈피드 뭐 올리지?&quot;, &quot;시즌 이벤트 기획해줘&quot;, &quot;새 컬렉션 런칭 기획하자&quot; 같은 요청에 사용.</td></tr>
-<tr><td><code>/jam-sync</code></td><td><span class="muted">카리나 직접</span></td><td>JAM! 프로젝트를 로컬(여러 PC)과 GitHub 사이에 동기화한다. PC에서 작업을 마무리할 때(커밋+push) 또는 새 PC·오랜만에 여는 세션에서 작업을 이어갈 때(pull + 시크릿 링크 점검) 양방향으로 쓴다. &quot;동기화해줘&quot;, &quot;깃허브랑 맞춰줘&quot;, &quot;여기서 이어서 작업할게&quot;, &quot;작업 끝났으니 올려줘&quot;, &quot;/jam-sync&quot; 같은 요청에 사용.</td></tr>
+<tr><td><code>/jam-sync</code></td><td><span class="muted">카리나 직접</span></td><td>JAM! 프로젝트를 로컬(여러 PC)과 GitHub 사이에 동기화한다. 작업을 마무리하며 올릴 때(«올려줘·푸시해», 커밋+push) 또는 새 PC·오랜만에 여는 세션에서 작업을 이어갈 때(pull + 시크릿 링크 점검) 양방향으로 쓴다. «동기화해줘»만 있으면 상태 진단과 pull만 한다. &quot;동기화해줘&quot;, &quot;깃허브랑 맞춰줘&quot;, &quot;여기서 이어서 작업할게&quot;, &quot;작업 끝났으니 올려줘&quot;, &quot;/jam-sync&quot; 같은 요청에 사용.</td></tr>
 <tr><td><code>/jam-work</code></td><td><a href="#agent-jam-developer">아현</a> <code>jam-developer</code><br><a href="#agent-jam-reviewer">민지</a> <code>jam-reviewer</code><br><a href="#agent-jam-designer">채원</a> <code>jam-designer</code></td><td>JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·기능 개선·디자인 시스템·컨텐츠·DB·문서 등 모든 작업 요청을 유형별로 라우팅해 티켓 검토 → 채원 사전 판정 → 구현 → 게이트 리뷰 → 채원 사후 리뷰 → 승인 후 머지·문서 갱신까지 처리한다. &quot;/jam-work&quot;, &quot;이거 고쳐줘&quot;, &quot;이 기능 추가해줘&quot;, &quot;리뷰 파이프라인으로 처리해줘&quot; 같은 요청에 사용.</td></tr>
 </tbody></table></div>
 </section>

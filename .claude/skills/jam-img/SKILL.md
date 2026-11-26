@@ -26,11 +26,8 @@ description: JAM! 배지 이미지 제작 파이프라인. Recraft 생성 → �
 ⑨ 결과 확인 ──사용자──▶ ⑩ DB 반영 ──Claude Code──▶ 완료
 ```
 
-> **2026-09-13 갱신**: 2026-08-22에 폐지했던 Recraft API 자동 생성을 다시 도입한다. 배경
-> 투명화도 사용자의 수동 후처리 대신 Recraft `removeBackground` API로 Claude Code가 직접
-> 처리한다 (`remove-background.js`, 아래 ⑦ 참조). Gemini 수동 입력 방식은 더 이상 쓰지 않는다.
-> 로고 합성은 여전히 필수 단계가 아니며, 필요할 때만(⑧ 분기) 스크립트 또는 피그마로 처리한다.
-> 히스토리는 `docs/assets/image-production/00-workflow/워크플로우_확정.md` 3절 참조.
+> 로고 합성은 필수 단계가 아니며 필요할 때만(⑧ 분기) 처리한다. 도구 선택 이력은
+> `docs/assets/image-production/00-workflow/워크플로우_확정.md` 3절에 있다.
 
 ## 0. 시작 전 확인
 
@@ -198,13 +195,12 @@ node jam-web/scripts/recraft/register-badge-images.js "<컬렉션 폴더 절대�
 
 - `recraft_badge_mapping.json`(아이템별 파일명 → badge id 목록)을 읽어 Storage 업로드 +
   `badges.image_url` UPDATE. 이때 제작 경로 `badges.image_source = 'jam-img'`도 함께 기록한다
-  (어드민 배지 목록의 "아이콘 파이프라인" 라벨·필터, 티켓 20260925_0352).
+  (어드민 배지 목록의 "아이콘 파이프라인" 라벨·필터가 이 값을 쓴다).
 - 다건 작업이 여러 실제 컬렉션에 걸쳤다면, 컬렉션별로 이 스크립트를 각각 실행한다.
 - 재업로드 시에도 이 스크립트가 자동으로 `?v=<timestamp>` 캐시버스팅 쿼리스트링을 붙인다
   (Vercel Image Optimization 엣지 캐시가 예전 이미지를 서빙하는 문제 방지).
 - 실행한 UPDATE문은 스크립트가 컬렉션 폴더에 `seed_{collection_id}_badge_images.sql`로 자동
-  저장한다. 이 파일과 이미지 파일들은 `docs/assets/` 아래에 있고 같은 저장소이므로 다른 변경과
-  함께 `git push origin staging` 한 번으로 올린다 (2026-09-20 재통합, 티켓 20260920_1412).
+  저장한다. 이 파일과 이미지 파일들은 `docs/assets/` 아래에 있으므로 다른 변경과 같은 커밋에 담는다.
 - 컬렉션 대표 이미지(`item_books.image_url`)를 함께 갱신해야 하면(보통 등록이 끝난 컬렉션은
   첫 번째 아이템 이미지를 대표 이미지로도 반영하는 것이 기본 규칙) 별도 UPDATE 후 SQL로 기록한다.
 
@@ -220,6 +216,6 @@ node jam-web/scripts/recraft/test-connection.js
 
 ## 완료 후
 
-- 커밋+push는 CLAUDE.md 절대 규칙 3에 따라 항상 수행한다. 이미지·브리프·시드 SQL 기록과
-  스크립트 등 코드 변경은 같은 저장소의 staging에 함께 커밋한다.
+- 이미지·브리프·시드 SQL 기록과 스크립트 등 코드 변경은 staging에 함께 커밋한다. push는 사용자가
+  요청할 때만 한다(`CLAUDE.md` 규칙 3).
 - main 배포는 사용자의 명시적 요청이 있을 때만 `/jam-ship`으로 처리한다.
