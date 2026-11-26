@@ -44,6 +44,21 @@ try {
   const clean = run(PROBE_REL)
   assert.equal(clean.status, 0, `금칙어가 없으면 통과해야 한다: ${clean.stderr}`)
 
+  // 패턴의 `~`는 «아무 글자»다: 앞("~을 통해")·중간("이 글에서는 ~에 대해 자세히 알아보겠습니다.")·끝("결론적으로 말하자면~")에 있어도 잡는다 (티켓 20261126_2224).
+  const tildeCases = [
+    ['앞 ~', '// 이 기능을 통해 확인한다\n', /을 통해/],
+    ['중간 ~', '// 이 글에서는 홈피드에 대해 자세히 알아보겠습니다.\n', /알아보겠습니다/],
+    ['끝 ~', '// 결론적으로 말하자면 같다\n', /결론적으로 말하자면/],
+  ]
+  for (const [label, body, pattern] of tildeCases) {
+    writeFileSync(PROBE, body)
+    const hit = run(PROBE_REL)
+    assert.equal(hit.status, 1, `${label} 패턴을 잡아야 한다: ${hit.stderr}`)
+    assert.match(hit.stderr, pattern)
+  }
+  writeFileSync(PROBE, '// 이 글에서는 자세히 알아보겠습니다.\n')
+  assert.equal(run(PROBE_REL).status, 0, '중간 ~ 자리에 글자가 없으면 잡지 않는다')
+
   // 미추적 바이너리(널 바이트 포함)는 금칙어 바이트가 섞여 있어도 건너뛰어야 한다.
   writeFileSync(BIN, Buffer.concat([Buffer.from('진짜 금칙어'), Buffer.from([0, 1, 2, 255])]))
   const bin = run(BIN_REL)
