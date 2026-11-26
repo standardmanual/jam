@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import TopNav from '@/components/ui/TopNav'
 import { Input } from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
-import Avatar from '@/components/ui/Avatar'
+import AvatarPickButton from '@/components/ui/AvatarPickButton'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import StravaSettingsSection, { type StravaSettingsState } from '@/components/strava/StravaSettingsSection'
@@ -258,30 +258,18 @@ export default function ProfileEditPage() {
       <div className="flex-1 flex flex-col px-4 pt-4 pb-6 gap-5">
         {/* 프로필 사진 */}
         <div className="flex flex-col items-center gap-4">
-          <button
+          <AvatarPickButton
+            src={avatarUrl}
+            alt={d.onboarding.avatarAlt}
+            label={d.profileEdit.changePhotoAlt}
+            uploading={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="relative active:scale-95 transition-transform duration-100"
-            disabled={uploading}
-            aria-label={d.profileEdit.changePhotoAlt}
-          >
-            <Avatar
-              src={avatarUrl}
-              alt={d.onboarding.avatarAlt}
-              size={96}
-              shape="rounded"
-              iconClassName="w-10 h-10 text-muted"
-            />
-            {uploading && (
-              <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
-                <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-          </button>
+          />
           <p className="text-muted text-base">{d.profileEdit.changePhoto}</p>
           {uploadError && (
             <p className="text-base text-center">{uploadError}</p>
           )}
-          <input
+          <input // ui-allow: 화면에 보이지 않는 파일 선택 창 열기용
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -377,14 +365,17 @@ export default function ProfileEditPage() {
           </div>
           {/* 티켓 20261021_1249 3회(채원 사전 판정): 탈퇴 진입. 바로 위 «취소»와 짝처럼 읽히지 않도록 일부러 작게, 밑줄로, 16px를 더 띄운다
               (gap 8px + mt-4 16px = 약 24px). 설명 캡션은 두지 않는다 — 시트가 지워지는 것을 설명한다. 닫히면 포커스가 이 버튼으로 돌아온다. */}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setWithdrawSheetOpen(true)}
             aria-haspopup="dialog"
-            className="mt-4 self-center min-h-11 px-4 text-sm text-muted underline underline-offset-4 break-keep wrap-break-word whitespace-nowrap active:opacity-70 transition-opacity"
+            className="mt-4 self-center min-h-11 break-keep wrap-break-word whitespace-nowrap"
+            style={{ minHeight: 'var(--touch-target-min)' }}
           >
             {d.profileEdit.withdrawButton}
-          </button>
+          </Button>
         </div>
       </div>
 

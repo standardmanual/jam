@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
+import CountLabelButton from '@/components/ui/CountLabelButton'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { PointHistorySection } from '@/components/points/PointHistoryList'
 import { compactCount } from '@/lib/format/compactCount'
@@ -509,20 +510,13 @@ export default function ProfileClient({
       {statItems.map(({ key, label, value }) => {
         const selected = isTabView && activeTab === key
         return (
-          <button
+          <CountLabelButton
             key={key}
-            type="button"
-            aria-pressed={selected}
+            label={label}
+            value={key === 'followers' ? <PopInNumber value={value} /> : value}
+            selected={selected}
             onClick={() => handleTabClick(key)}
-            className="flex flex-col items-start min-w-0 min-h-11 text-left whitespace-nowrap break-keep active:scale-95 transition-transform duration-100 motion-reduce:transition-none cursor-pointer"
-          >
-            <strong className="text-xl leading-tight font-bold tabular-nums text-foreground">
-              {key === 'followers' ? <PopInNumber value={value} /> : value}
-            </strong>
-            <span className={`text-sm transition-colors duration-150 motion-reduce:transition-none ${selected ? 'text-foreground' : 'text-muted'}`}>
-              {label}
-            </span>
-          </button>
+          />
         )
       })}
     </div>

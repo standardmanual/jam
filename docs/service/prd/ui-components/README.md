@@ -16,12 +16,13 @@ code:
 스토리가 없는 정본 파일은 허용하지 않는다(`verify`의 `component-list` 단계와 pre-commit이 검사). 새 정본 컴포넌트는 같은 이름의 스토리 파일과 함께 들어와야 한다.
 
 <!-- BEGIN generated: component-list -->
-정본 컴포넌트 파일 46개 · 스토리 있음 46개 · 없음 0개
+정본 컴포넌트 파일 49개 · 스토리 있음 49개 · 없음 0개
 
 | 파일 | export | 설명 | 스토리 (제목·개수) |
 |---|---|---|---|
 | `Accordion.tsx` | Accordion | 한 번에 하나만 펼쳐지는 접이식 목록이다. 철학 화면의 자주 묻는 질문에서 쓴다. | UI/Navigation/Accordion (1개) |
 | `Avatar.tsx` | Avatar | 프로필 사진을 원이나 둥근 사각형 안에 그리고 사진이 없으면 사용자 아이콘을 보여 주는 아바타다. 사진이 없을 때 흰 면을 칠할지는 face로 고르며, 목록 줄… | UI/Cards/Avatar (5개) |
+| `AvatarPickButton.tsx` | AvatarPickButton | 아바타를 감싼 «사진 고르기» 버튼이다. 올리는 중에는 덮개가 씌워진다. 프로필 편집·온보딩에서 쓴다. | UI/Buttons/AvatarPickButton (2개) |
 | `BadgeGridCard.tsx` | BadgeGridCard, BadgeGridCardPlaceholder | 배지 한 장을 정사각 썸네일과 이름·칩으로 보여 주는 격자 카드다. 배지 목록·컬렉션 상세·믹스 재료 칸에서 쓴다. | UI/Cards/BadgeGridCard (18개) |
 | `BadgeHeroSection.tsx` | BadgeHeroSection | 배지 한 장의 이미지·등급 칩·이름·설명을 가운데로 쌓은 대표 카드다. 배지 상세 페이지와 드랍 바텀시트, 잠긴 아이템 배지 상세에서 쓴다. | UI/Cards/BadgeHeroSection (7개) |
 | `BadgeLevelChip.tsx` | BadgeLevelChip | 무한레벨형 배지의 «Lv.N» 칩이다. 등급 칩 대신 홈 피드·미션 목록·배지 상세·획득 연출에서 쓴다. | UI/Cards/BadgeLevelChip (3개) |
@@ -33,10 +34,12 @@ code:
 | `CategorySticker.tsx` | CategorySticker | 홈 피드 카드 모서리에 붙는 분류 스티커다. 조약돌·물결 모양 바탕에 분류 문구와 JAM 로고 글자를 얹는다. | UI/Cards/CategorySticker (3개) |
 | `Checkbox.tsx` | Checkbox | 라벨이 붙은 체크박스다. 온보딩의 만 14세 이상 확인에서 쓴다. | UI/Forms/Checkbox (2개) |
 | `CollectionGridCard.tsx` | CollectionGridCard | 컬렉션 한 개를 수집 진행도와 함께 보여 주는 격자 카드다. 배지 목록의 컬렉션 탭에서 쓴다. | UI/Cards/CollectionGridCard (4개) |
+| `CountLabelButton.tsx` | CountLabelButton | 숫자 위·이름 아래로 쌓은 누르는 칸이다. 프로필의 팔로워·팔로잉·포인트 칸에서 쓴다. | UI/Buttons/CountLabelButton (3개) |
 | `EmptyState.tsx` | EmptyState | 내용이 없을 때 제목·설명·버튼을 보여 주는 안내 블록이다. 배지·친구·컬렉션 등 목록 화면에서 쓴다. | UI/Feedback/EmptyState (3개) |
 | `Footer.tsx` | Footer | 전역 하단 푸터다. 메인·온보딩 레이아웃에서 쓴다. | UI/Navigation/Footer (1개) |
 | `FooterLogo.tsx` | FooterLogo | 푸터 맨 아래에서 올라오는 JAM! 로고다. Footer가 쓴다. | UI/Navigation/FooterLogo (1개) |
-| `IconButton.tsx` | IconButton | 아이콘만 담은 44px 원형 버튼이다. 배지 획득 연출과 장소 카드 모달에서 쓴다. | UI/Buttons/IconButton (1개) |
+| `IconButton.tsx` | IconButton | 아이콘만 담은 44px 원형 버튼이다. 배지 획득 연출·장소 카드 모달·지도 내 위치에서 쓴다. | UI/Buttons/IconButton (3개) |
+| `IconLabelButton.tsx` | IconLabelButton | 동그라미 아이콘 아래에 글자를 둔 세로 버튼이다. 배지 공유 시트의 복사하기·저장하기·더보기에서 쓴다. | UI/Buttons/IconLabelButton (4개) |
 | `InlineNotice.tsx` | InlineNotice | 지금은 안 되는 까닭을 한두 문장으로 알리는 안내 블록이다. 로그인·컬렉션·조합·드랍 시트에서 쓴다. | UI/Feedback/InlineNotice (3개) |
 | `Input.tsx` | Input | 캡슐 모양의 글자 입력칸이다. 프로필 편집·사용자 검색·온보딩·탈퇴 시트에서 쓴다. | UI/Forms/Input (6개) |
 | `ItemSerialCode.tsx` | ItemSerialCode | 아이템 배지의 일련번호를 앞 4자 카드와 숫자 상자로 그리는 스탬프다. 배지 상세와 드랍 바텀시트, 잠긴 배지 상세에서 쓴다. | UI/Patterns/ItemSerialCode (2개) |

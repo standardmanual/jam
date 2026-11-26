@@ -24,10 +24,10 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center bg-[color:var(--base-black)] text-snow px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-[var(--base-black)] text-snow px-4 pt-[var(--spacing-safe-top)] pb-[var(--spacing-safe-bottom)]">
       {/* 로고 — 검정 바탕 위라 흰색(--snow)으로 칠한다(FooterLogo와 같은 방식). 캔버스 값 204×67·아래 간격 88을 토큰에 가까운 h-16(64)·mb-24(96)로 옮겼다(티켓 20261112_2254). 이름은 role="img"가 맡는다. */}
-      <div className="text-center mb-24">
-        <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-16 bg-[color:var(--snow)]" />
+      <div className="text-center mb-6">
+        <span role="img" aria-label={d.auth.wordmark} className="jam-logo-mark inline-block align-bottom h-16 bg-snow" />
       </div>
 
       {/* 에러 메시지 */}
@@ -51,19 +51,19 @@ function LoginContent() {
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              fill="#4285F4"
+              fill="#4285F4" // ui-allow: 구글 로고 공식 색
             />
             <path
               d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              fill="#34A853"
+              fill="#34A853" // ui-allow: 구글 로고 공식 색
             />
             <path
               d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              fill="#FBBC05"
+              fill="#FBBC05" // ui-allow: 구글 로고 공식 색
             />
             <path
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              fill="#EA4335"
+              fill="#EA4335" // ui-allow: 구글 로고 공식 색
             />
           </svg>
           {d.auth.googleLogin}
@@ -71,18 +71,21 @@ function LoginContent() {
 
         {/* 로컬 개발 전용 — 프로덕션/프리뷰 빌드에서는 NODE_ENV가 'development'가 아니므로 렌더링 안 됨 */}
         {process.env.NODE_ENV === 'development' && (
-          <button
+          <Button
+            variant="secondary"
+            surface="dark"
+            fullWidth
             onClick={() => {
               window.location.href = '/api/dev-login'
             }}
-            className="w-full mt-4 flex items-center justify-center gap-3 border border-snow/30 text-snow rounded-full min-h-11 py-[14px] px-6 text-base active:scale-95 transition-transform duration-100"
+            className="mt-4"
           >
             {d.auth.devLogin}
-          </button>
+          </Button>
         )}
       </div>
 
-      <p className="mt-8 text-snow text-xs text-center">
+      <p className="mt-6 text-snow text-xs text-center">
         {d.auth.terms}
       </p>
     </main>
@@ -93,7 +96,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-dvh flex items-center justify-center bg-[color:var(--base-black)] text-snow">
+        <main className="min-h-dvh flex items-center justify-center bg-[var(--base-black)] text-snow">
           <div className="text-3xl">{d.auth.wordmark}</div>
         </main>
       }

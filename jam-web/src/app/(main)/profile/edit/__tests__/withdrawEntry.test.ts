@@ -20,8 +20,8 @@ const source = readFileSync(path.resolve(__dirname, '../page.tsx'), 'utf-8')
 const entryButton = (() => {
   const label = '{d.profileEdit.withdrawButton}'
   const end = source.indexOf(label)
-  const start = source.lastIndexOf('<button', end)
-  return source.slice(start, source.indexOf('</button>', end) + '</button>'.length)
+  const start = source.lastIndexOf('<Button', end)
+  return source.slice(start, source.indexOf('</Button>', end) + '</Button>'.length)
 })()
 
 describe('프로필 편집 — 탈퇴하기 진입', () => {
@@ -31,16 +31,14 @@ describe('프로필 편집 — 탈퇴하기 진입', () => {
     expect(source).not.toContain('withdrawCaption')
   })
 
-  it('일반 button이고 가운데 놓이며 작은 밑줄 텍스트다 — 위험한 진입을 ghost(초록)로 그리지 않는다', () => {
+  it('Button ghost xs이고 가운데 놓이며 누르는 높이 44px을 유지한다(티켓 20261126_1540)', () => {
     expect(entryButton).toContain('type="button"')
+    expect(entryButton).toContain('variant="ghost"')
+    expect(entryButton).toContain('size="xs"')
     expect(entryButton).toContain('self-center')
-    expect(entryButton).toContain('text-sm')
-    expect(entryButton).toContain('text-muted')
-    expect(entryButton).toContain('underline underline-offset-4')
-    expect(entryButton).toContain('min-h-11 px-4')
-    expect(entryButton).toContain('active:opacity-70')
+    expect(entryButton).toContain('min-h-11')
+    expect(entryButton).toContain("minHeight: 'var(--touch-target-min)'")
     expect(entryButton).toContain('aria-haspopup="dialog"')
-    expect(entryButton).not.toContain('<Button')
     expect(entryButton).not.toMatch(/text-link|text-danger|text-red/)
   })
 

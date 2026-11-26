@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
 import { d } from '@/lib/i18n'
 import { optimizedImageUrl } from '@/lib/imageSrc'
-import { LocateIcon } from '@/components/ui/icons'
+import { IconButton } from '@/components/ui/IconButton'
 import { dropMarkerGlyphSvg } from '@/components/map/dropMarkerGlyph'
 
 export interface PoiMarker {
@@ -635,16 +635,12 @@ export default function MapView({
        * 처리하므로 패닝 동작 자체는 영향받지 않는다.
        */}
       <div ref={mapRef} className="w-full h-full touch-none" />
-      <button
-        type="button"
-        onClick={handleLocateClick}
-        aria-label={d.map.myLocationButtonAriaLabel}
-        disabled={locating}
-        className="absolute right-4 z-10 w-11 h-11 rounded-full bg-surface border border-border flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+      <div
+        className="absolute right-4 z-10 rounded-full bg-surface inset-ring inset-ring-border"
         style={{ bottom: LOCATE_BUTTON_BOTTOM }}
       >
-        <LocateIcon width={22} height={22} className="text-muted" />
-      </button>
+        <IconButton icon="locate" label={d.map.myLocationButtonAriaLabel} disabled={locating} onClick={handleLocateClick} />
+      </div>
     </div>
   )
 }

@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from 'react';
 
 export type IconButtonIcon =
   | 'chevron-left' | 'chevron-right'
-  | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share';
+  | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share' | 'locate';
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: IconButtonIcon;
@@ -21,7 +21,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 
 /**
  * IconButton — 44×44 circular icon-only touch target.
- * icon: 'chevron-left' | 'chevron-right' | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share'
+ * icon: 'chevron-left' | 'chevron-right' | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share' | 'locate'
  * surface: 'light' | 'dark'
  *
  * v2 changes:
@@ -45,7 +45,9 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
  *     --background-inverse 면 위에 놓이므로 이전 값은 배경과 같은 색(1.00:1)이었다.
  *     밝은 면(--background·--surface) 위에서는 surface="light"를 쓴다.
  *
- * @summary 아이콘만 담은 44px 원형 버튼이다. 배지 획득 연출과 장소 카드 모달에서 쓴다.
+ * v5 changes (티켓 20261126_1540): 'locate'(내 위치) 아이콘을 더했다. 지도 «내 위치» 버튼이 쓴다.
+ *
+ * @summary 아이콘만 담은 44px 원형 버튼이다. 배지 획득 연출·장소 카드 모달·지도 내 위치에서 쓴다.
  */
 
 const ICON_PATHS = {
@@ -55,6 +57,7 @@ const ICON_PATHS = {
   'check':         <polyline points="20 6 9 17 4 12" />,
   'info':          <><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><circle cx="12" cy="8" r="0.5" fill="currentColor" /></>,
   'search':        <><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
+  'locate':        <><line x1="12" y1="2.25" x2="12" y2="5" /><line x1="12" y1="19" x2="12" y2="21.75" /><line x1="2.25" y1="12" x2="5" y2="12" /><line x1="19" y1="12" x2="21.75" y2="12" /><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /></>,
   'menu':          <><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></>,
   // 20260821_003: Material Symbols `ios_share`(원본 viewBox `0 -960 960 960`, 채워진 path)를
   // 이 컴포넌트의 24x24 좌표계로 옮겨 오기 위해 transform으로 변환한다.

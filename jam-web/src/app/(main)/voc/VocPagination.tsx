@@ -1,5 +1,6 @@
 'use client'
 
+import Button from '@/components/ui/Button'
 import { d } from '@/lib/i18n'
 
 interface VocPaginationProps {
@@ -41,41 +42,48 @@ export default function VocPagination({ page, totalPages, onChange }: VocPaginat
       aria-label={d.voc.paginationAriaLabel}
       className="flex items-center justify-center gap-2 mt-6"
     >
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="xs"
         onClick={() => onChange(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="min-h-11 px-3 rounded-full text-base text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+        className="min-h-11 break-keep wrap-break-word"
+        style={{ minHeight: 'var(--touch-target-min)' }}
       >
         {d.voc.paginationPrev}
-      </button>
+      </Button>
       {pageList.map((p, i) =>
         p === 'ellipsis' ? (
           <span key={`e${i}`} className="px-1 text-base text-muted">
             …
           </span>
         ) : (
-          <button
+          <Button
             key={p}
             type="button"
+            variant={p === page ? 'secondary' : 'ghost'}
+            size="xs"
             onClick={() => onChange(p)}
             aria-current={p === page ? 'page' : undefined}
-            className={`min-w-11 min-h-11 px-2 rounded-full text-base ${
-              p === page ? 'bg-surface text-foreground font-bold' : 'text-muted'
-            }`}
+            className="min-w-11 min-h-11 break-keep wrap-break-word"
+            style={{ minHeight: 'var(--touch-target-min)' }}
           >
             {p}
-          </button>
+          </Button>
         )
       )}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="xs"
         onClick={() => onChange(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="min-h-11 px-3 rounded-full text-base text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+        className="min-h-11 break-keep wrap-break-word"
+        style={{ minHeight: 'var(--touch-target-min)' }}
       >
         {d.voc.paginationNext}
-      </button>
+      </Button>
     </nav>
   )
 }
