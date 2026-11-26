@@ -50,6 +50,9 @@ const SIZES = {
   row: { fontSize: 'var(--text-xs)', padding: '2px 0', lineHeight: 'var(--text-xs--line-height)' },
 };
 
+/**
+ * @summary 무한레벨형 배지의 «Lv.N» 칩이다. 등급 칩 대신 홈 피드·미션 목록·배지 상세·획득 연출에서 쓴다.
+ */
 export function BadgeLevelChip({ level, size = 'sm', width = 52, tone = 'default', className = '', style = {} }: BadgeLevelChipProps) {
   if (level == null) return null;
   const s = SIZES[size] ?? SIZES.sm;

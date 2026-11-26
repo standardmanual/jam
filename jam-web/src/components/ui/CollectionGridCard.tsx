@@ -38,6 +38,9 @@ const BASE = 'flex flex-col gap-2 rounded-2xl p-3'
 const FACE_DEFAULT = 'bg-card-bg'
 const FACE_COMPLETED = 'bg-accent'
 
+/**
+ * @summary 컬렉션 한 개를 수집 진행도와 함께 보여 주는 격자 카드다. 배지 목록의 컬렉션 탭에서 쓴다.
+ */
 export default function CollectionGridCard({
   name,
   imageUrl,

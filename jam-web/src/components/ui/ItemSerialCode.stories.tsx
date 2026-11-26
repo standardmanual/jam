@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import React from 'react';
 import { ItemSerialCode } from './ItemSerialCode';
 
 const meta: Meta<typeof ItemSerialCode> = {
@@ -28,82 +27,14 @@ const meta: Meta<typeof ItemSerialCode> = {
 export default meta;
 type Story = StoryObj<typeof ItemSerialCode>;
 
+/** 아이템 배지 상세 페이지(설명과 획득 이력 사이)와 잠긴 아이템 배지를 연 뒤의 상세에서 나오는 일련번호 */
 export const Default: Story = {
-  name: '기본 (실제 포맷 — 6자리)',
-  args: { code: 'ABCD000042', height: 160 },
-};
-
-export const FigmaScale: Story = {
-  name: 'Figma 원본 스케일 (height 400)',
-  args: { code: 'WWWW99999', height: 400 },
-};
-
-export const Compact: Story = {
-  // height 50 — badges/[id] 상세 페이지(설명↔획득이력 사이) 샘플에서 430px 모바일 폭에
-  // 맞춰 실측 검증한 값 (dev-sample/item-badge-serial, 티켓 20260903_1414).
-  name: '컴팩트 (배지 상세 페이지 실측값)',
+  name: '배지 상세 — height 50',
   args: { code: 'ABCD000042', height: 50 },
 };
 
+/** 지도 드랍 바텀시트(`BadgeDetailSheet`)에서 나오는 일련번호. 이 크기에서는 자간이 자동으로 풀린다. */
 export const DropSheetScale: Story = {
-  // height 40 — drops/BadgeDetailSheet.tsx(지도 드랍 바텀시트)에 실제 적용된 최소 지원 사이즈
-  // (티켓 20260903_1423). 이 크기에서는 자간이 자동으로 양수(+8%)로 풀려 작은 글씨에서도
-  // 판독성을 유지한다 — trackingRatioFor() 참고.
-  name: '드랍 바텀시트 실측값 (height 40, 자간 자동 완화)',
+  name: '드랍 바텀시트 — height 40',
   args: { code: 'ABCD000042', height: 40 },
-};
-
-export const StaticNoReel: Story = {
-  // height 40 · animate=false — 컬렉션 장착 개체 선택 시트(SlotGrid)에 실제 적용된 조합
-  // (티켓 20260907_2059). 시트를 여는 목적이 "이미 가진 번호들을 읽고 비교해서 고르는 것"이라
-  // 릴 연출(약 1.9초 회전)과 목적이 반대다. 스핀 없이 즉시 최종 값을 그린다.
-  name: '릴 정지 (선택 시트 실측값 — height 40, animate=false)',
-  args: { code: 'MMBT829356', height: 40, animate: false },
-}
-
-export const ReelVsStatic: Story = {
-  name: '릴 재생 vs 릴 정지 비교',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
-      <div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>animate 기본값(true) — 마운트 시 스핀</p>
-        <ItemSerialCode code="MMBT829356" height={40} />
-      </div>
-      <div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>animate=false — 즉시 최종 값</p>
-        <ItemSerialCode code="MMBT829356" height={40} animate={false} />
-      </div>
-    </div>
-  ),
-}
-
-export const FiveDigitPlaceholder: Story = {
-  name: 'Figma 원본 자리 수 (숫자 5자리)',
-  args: { code: 'WWWW99999', height: 160 },
-};
-
-export const SixDigitReal: Story = {
-  name: '실제 스펙 자리 수 (숫자 6자리)',
-  args: { code: 'ZQKX000007', height: 160 },
-};
-
-export const MissingPrefix: Story = {
-  name: 'prefix 없음 (????  폴백)',
-  args: { code: '000123', height: 160 },
-};
-
-export const SideBySideDigitCounts: Story = {
-  name: '5자리 vs 6자리 나란히 비교',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
-      <div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>Figma 원본 (5자리): WWWW99999</p>
-        <ItemSerialCode code="WWWW99999" height={120} />
-      </div>
-      <div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>실제 스펙 (6자리): ABCD000042</p>
-        <ItemSerialCode code="ABCD000042" height={120} />
-      </div>
-    </div>
-  ),
 };

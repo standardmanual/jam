@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
+import { d } from '@/lib/i18n';
+import { tPoint } from '@/lib/i18n/tPoint';
 import { PointText } from './PointText';
 
 const meta: Meta<typeof PointText> = {
@@ -26,14 +28,14 @@ const meta: Meta<typeof PointText> = {
 export default meta;
 type Story = StoryObj<typeof PointText>;
 
-const Frame = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
+const Frame = ({ children }: { children: React.ReactNode }) => (
   <div
     style={{
       padding: 16,
       borderRadius: 'var(--radius-2xl)',
-      background: dark ? '#1c1917' : 'var(--surface)',
-      border: dark ? undefined : '1px solid var(--border)',
-      color: dark ? 'var(--snow)' : 'var(--foreground)',
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      color: 'var(--foreground)',
       minWidth: 160,
     }}
   >
@@ -41,9 +43,10 @@ const Frame = ({ children, dark = false }: { children: React.ReactNode; dark?: b
   </div>
 );
 
+/** 레시피 보상 행(`RecipeRewardRow`)의 우측 보상 칸 */
 export const StackedLarge: Story = {
-  name: 'stacked — 큰 수',
-  args: { value: 1200, layout: 'stacked' },
+  name: '보상 칸 — 위아래로 쌓기',
+  args: { value: 1200, unit: d.combine.pointsUnit, layout: 'stacked' },
   render: (args) => (
     <Frame>
       <PointText {...args} />
@@ -51,101 +54,10 @@ export const StackedLarge: Story = {
   ),
 };
 
-export const StackedZero: Story = {
-  name: 'stacked — 0 (그린다, 숨김은 호출부 몫)',
-  args: { value: 0, layout: 'stacked' },
-  render: (args) => (
-    <Frame>
-      <PointText {...args} />
-    </Frame>
-  ),
-};
-
-export const StackedEmpty: Story = {
-  name: 'stacked — 값 없음 (아무것도 그리지 않음)',
-  args: { value: null, layout: 'stacked' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>아래 칸이 비어 있어요</p>
-      <PointText {...args} />
-    </Frame>
-  ),
-};
-
-export const InlineLarge: Story = {
-  name: 'inline — 큰 수 (문장 속)',
-  args: { value: 1200, layout: 'inline' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0 }}>
-        보상으로 <PointText {...args} />를 받았어요.
-      </p>
-    </Frame>
-  ),
-};
-
-export const InlineZero: Story = {
-  name: 'inline — 0',
-  args: { value: 0, layout: 'inline' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0 }}>
-        지금 <PointText {...args} />예요.
-      </p>
-    </Frame>
-  ),
-};
-
-export const InlineEmpty: Story = {
-  name: 'inline — 값 없음 (아무것도 그리지 않음)',
-  args: { value: undefined, layout: 'inline' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0 }}>
-        보상:<PointText {...args} />
-      </p>
-    </Frame>
-  ),
-};
-
-export const InlineNegative: Story = {
-  name: 'inline — 차감 (부호까지 같은 덩어리)',
-  args: { value: '-300', layout: 'inline' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0 }}>
-        <PointText {...args} />이 빠져나갔어요.
-      </p>
-    </Frame>
-  ),
-};
-
-export const InlineValueOnly: Story = {
-  name: 'inline — unit="" (값만, 라벨이 포인트를 말하는 행)',
-  args: { value: 1200, unit: '', layout: 'inline' },
-  render: (args) => (
-    <Frame>
-      <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-        <span style={{ color: 'var(--muted)' }}>가진 포인트</span>
-        <PointText {...args} />
-      </p>
-    </Frame>
-  ),
-};
-
-export const StackedValueOnly: Story = {
-  name: 'stacked — unit="" (값만)',
-  args: { value: 1200, unit: '', layout: 'stacked' },
-  render: (args) => (
-    <Frame>
-      <PointText {...args} />
-    </Frame>
-  ),
-};
-
+/** 포인트 내역(`PointHistoryList`)의 차감 행 — 값과 «포인트» 모두 회색 */
 export const StackedMuted: Story = {
-  name: 'stacked — tone="muted" (차감, 값과 «포인트» 모두 회색)',
-  args: { value: '−1,500', layout: 'stacked', tone: 'muted' },
+  name: '내역 차감 — 회색',
+  args: { value: '−1,500', unit: d.points.unitSuffix, layout: 'stacked', tone: 'muted' },
   render: (args) => (
     <Frame>
       <PointText {...args} />
@@ -153,11 +65,12 @@ export const StackedMuted: Story = {
   ),
 };
 
-export const OnDarkSurface: Story = {
-  name: '어두운 면 위 (같은 토큰, 약 4.98:1)',
+/** 홈 피드(`FeedSection`)의 «배지와 포인트를 획득했어요» 문장 속 포인트 조각 */
+export const InlineSentence: Story = {
+  name: '문장 속 — 한 덩어리',
   render: () => (
-    <Frame dark>
-      <PointText value={1200} layout="stacked" />
+    <Frame>
+      <p style={{ margin: 0 }}>{tPoint(d.feed.groupBadgesWithPoints, { count: 3, points: '1,200' })}</p>
     </Frame>
   ),
 };

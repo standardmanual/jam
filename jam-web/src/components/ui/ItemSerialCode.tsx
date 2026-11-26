@@ -310,6 +310,9 @@ function DigitTile({ digits, width, height, animate }: { digits: string; width: 
   );
 }
 
+/**
+ * @summary 아이템 배지의 일련번호를 앞 4자 카드와 숫자 상자로 그리는 스탬프다. 배지 상세와 드랍 바텀시트, 잠긴 배지 상세에서 쓴다.
+ */
 export function ItemSerialCode({ code, height = 160, animate = true, className = '', style = {} }: ItemSerialCodeProps) {
   const letters = code.slice(0, 4).padEnd(4, '?').split('');
   const digits = code.slice(4);

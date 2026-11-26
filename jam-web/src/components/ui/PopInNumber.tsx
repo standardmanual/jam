@@ -21,6 +21,8 @@ function totalAnimationMs(): number {
  * `playOnMount`를 주면 처음 나타날 때도 한 번 재생합니다(호출부가 나타날 시점에 맞춰 마운트하는 경우, 캡슐 게이지의 채운 양 숫자).
  *
  * 사용처: 팔로워 수, 포인트 잔액 등.
+ *
+ * @summary 숫자가 바뀔 때 각 자리가 블러와 함께 아래에서 들어오는 숫자 전환이다. 프로필의 팔로워 수와 캡슐 게이지의 채운 양에서 쓴다.
  */
 export default function PopInNumber({
   value,

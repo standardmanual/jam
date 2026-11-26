@@ -130,6 +130,9 @@ const BASE =
 // compact: 여백 4, 면은 호출부 카드 면(--card-bg)과 겹치지 않게 --background-secondary(위 containerCls)
 const BASE_COMPACT = 'flex flex-col items-center rounded-2xl p-1 overflow-hidden'
 
+/**
+ * @summary 배지 한 장을 정사각 썸네일과 이름·칩으로 보여 주는 격자 카드다. 배지 목록·컬렉션 상세·믹스 재료 칸에서 쓴다.
+ */
 export default function BadgeGridCard({
   name = '',
   imageUrl,

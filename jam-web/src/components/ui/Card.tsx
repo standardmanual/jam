@@ -30,6 +30,8 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
  *   - radius prop 없음 — 항상 --radius-2xl
  *   - ...rest spread로 className, data-*, aria-*를 통과시킨다
  *   - 테두리를 그리지 않는다
+ *
+ * @summary 흰 면의 둥근 카드 틀이다. 서비스 화면 대부분의 묶음 면이며 tint는 카드 안 구획, inverse는 선택·안내 신호에 쓴다.
  */
 export function Card({ tone = 'default', children, className = '', style = {}, onClick, ...rest }: CardProps) {
   const interactive = Boolean(onClick);

@@ -290,6 +290,9 @@ const STATIC_CSS = `
 @media (prefers-reduced-motion: reduce){.ds-slot-outline-path{animation:none}}
 `;
 
+/**
+ * @summary 컬렉션 슬롯에서 아직 없는 배지의 윤곽을 점선으로만 그리는 외곽선이다. 배지 격자 카드의 빈 칸에서 쓴다.
+ */
 export function SlotOutline({
   /** 추적할 이미지 주소 — 있는 그대로 쓴다 */
   src,

@@ -240,6 +240,8 @@ export interface ListRowProps extends Omit<HTMLAttributes<HTMLElement>, 'title' 
  * ListRow — 슬롯 구성으로 계열을 만드는 목록 행.
  *
  * `role`·`aria-*`·`data-*`는 클릭 영역(<a>/<button>)으로 전달된다. `className`·`style`은 행 바깥 면으로 간다.
+ *
+ * @summary 왼쪽 이미지·제목·보조 문구·오른쪽 값을 슬롯으로 조합하는 목록 행이다. 홈 피드·팔로우 목록·획득 이력·레시피 보상 등 여러 목록에서 쓴다.
  */
 export function ListRow({
   variant = 'default',

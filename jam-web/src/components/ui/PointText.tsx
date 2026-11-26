@@ -61,6 +61,9 @@ function formatValue(value: number | string) {
   return typeof value === 'number' ? value.toLocaleString('ko-KR') : String(value);
 }
 
+/**
+ * @summary 포인트 값과 «포인트» 단위를 주황색 한 덩어리로 보여 준다. 미션·레시피 보상, 포인트 내역, 문장 속 포인트에서 쓴다.
+ */
 export function PointText({ value, unit = '포인트', layout = 'inline', tone = 'point', className = '', style = {}, ...rest }: PointTextProps) {
   if (value == null) return null;
   const text = formatValue(value);
