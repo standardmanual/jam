@@ -57,7 +57,7 @@ export default function FeedStamp({ color, className }: { color: FeedColorKey; c
         fontSize={9}
         fontWeight={800}
         letterSpacing={2.4}
-        style={{ fill: 'var(--foreground)', fontFamily: 'inherit' }}
+        style={{ fill: 'var(--foreground)' }}
       >
         <textPath href={`#${pathId}`} startOffset={4}>
           {TEXT}

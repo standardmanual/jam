@@ -202,7 +202,7 @@ describe('(main)/layout — 흰 페이지 면 (티켓 20261104_1642)', () => {
     expect(MAIN_PAGE_BACKGROUND.background).toBe('var(--background)')
     expect(String(main.props.className)).not.toContain('pb-')
 
-    const wrappers = findByType(tree, 'div').filter((el) => String(el.props.className ?? '').includes('max-w-[430px]'))
+    const wrappers = findByType(tree, 'div').filter((el) => String(el.props.className ?? '').includes('max-w-[var(--app-max-width)]'))
     expect(wrappers).toHaveLength(1)
     expect(String(wrappers[0].props.className)).not.toContain('pb-')
     // 서비스 열 전체가 흰색이므로 바깥 래퍼도 같은 배경을 건다

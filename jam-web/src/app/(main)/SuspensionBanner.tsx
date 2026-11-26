@@ -41,12 +41,12 @@ export default function SuspensionBanner({ reason, suspendedAt }: { reason: stri
         <dl className="flex flex-col gap-1">
           {trimmedReason && (
             <div className={ROW_CLASS}>
-              <dt className="w-[39px] shrink-0 text-sm text-muted break-keep">{copy.bannerReasonLabel}</dt>
+              <dt className="w-10 shrink-0 text-sm text-muted break-keep">{copy.bannerReasonLabel}</dt>
               <dd className="min-w-0 flex-1 text-base text-foreground break-keep wrap-break-word whitespace-pre-line">{trimmedReason}</dd>
             </div>
           )}
           <div className={ROW_CLASS}>
-            <dt className="w-[39px] shrink-0 text-sm text-muted break-keep">{copy.bannerSuspendedOnLabel}</dt>
+            <dt className="w-10 shrink-0 text-sm text-muted break-keep">{copy.bannerSuspendedOnLabel}</dt>
             <dd className="min-w-0 flex-1 text-base text-foreground break-keep">
               <LocalDate iso={suspendedAt} korean={{ year: true }} />
             </dd>

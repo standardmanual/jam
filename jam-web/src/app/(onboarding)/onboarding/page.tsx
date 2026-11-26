@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PencilIcon } from '@/components/ui/icons'
-import Avatar from '@/components/ui/Avatar'
+import AvatarPickButton from '@/components/ui/AvatarPickButton'
 import { Input } from '@/components/ui/Input'
 import { Checkbox } from '@/components/ui/Checkbox'
 import Button from '@/components/ui/Button'
@@ -344,8 +344,8 @@ function OnboardingContent() {
 
   if (step === 'account') {
     return (
-      <div className="min-h-full text-foreground flex flex-col items-center justify-start px-6 py-12">
-        <div className="w-full max-w-sm flex flex-col items-center gap-8">
+      <div className="min-h-full text-foreground flex flex-col items-center justify-start px-6 pt-4 pb-6">
+        <div className="w-full max-w-sm flex flex-col items-center gap-5">
 
           <h1 className="text-3xl text-center whitespace-pre-line">
             {d.onboarding.step1Title}
@@ -353,32 +353,20 @@ function OnboardingContent() {
 
           {/* 프로필 이미지 — 우측 상단에 편집 픽토그램 오버레이, 안내 텍스트 없이 아이콘만으로 변경 유도 */}
           <div className="relative shrink-0">
-            <button
+            <AvatarPickButton
+              src={avatarUrl}
+              alt={d.onboarding.avatarAlt}
+              label={d.profileEdit.changePhotoAlt}
+              uploading={uploading}
               onClick={() => fileInputRef.current?.click()}
-              className="relative block active:scale-95 transition-transform duration-100"
-              disabled={uploading}
-              aria-label={d.profileEdit.changePhotoAlt}
-            >
-              <Avatar
-                src={avatarUrl}
-                alt={d.onboarding.avatarAlt}
-                size={96}
-                shape="rounded"
-                iconClassName="w-10 h-10 text-muted"
-              />
-              {uploading && (
-                <div className="absolute inset-0 rounded-2xl bg-background/70 flex items-center justify-center">
-                  <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-            </button>
+            />
             <span
               aria-hidden="true"
-              className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-full bg-surface shadow-[inset_0_0_0_1px_var(--separator)] flex items-center justify-center pointer-events-none"
+              className="absolute -top-2 -right-2 size-5 rounded-full bg-surface inset-ring inset-ring-separator flex items-center justify-center pointer-events-none"
             >
               <PencilIcon className="w-2.5 h-2.5" />
             </span>
-            <input
+            <input // ui-allow: 화면에 보이지 않는 파일 선택 창 열기용
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -391,7 +379,7 @@ function OnboardingContent() {
           )}
 
           {/* 아이디 입력 — 가로 70%로 축소 */}
-          <div className={`t-input-wrap w-[70%] flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
+          <div className={`t-input-wrap w-7/10 flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
             <Input
               type="text"
               value={input}
@@ -422,7 +410,7 @@ function OnboardingContent() {
           </div>
 
           {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값. 가로 70%로 축소 */}
-          <div className="w-[70%] flex flex-col gap-2">
+          <div className="w-7/10 flex flex-col gap-2">
             <Input
               type="text"
               value={nameInput}
@@ -452,7 +440,7 @@ function OnboardingContent() {
             loading={submittingStep1}
             disabled={!canProceedStep1}
             onClick={handleStep1Next}
-            className="w-[70%]"
+            className="w-7/10"
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
           </Button>

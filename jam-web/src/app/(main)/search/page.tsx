@@ -96,7 +96,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <div className="min-h-full text-foreground">
       <TopNav title={d.common.back} />
 
-      <div className="px-4 pt-6 pb-8 flex flex-col gap-6">
+      <div className="px-4 pt-6 pb-6 flex flex-col gap-6">
         {/* 재검색 */}
         <UserSearchBar defaultValue={q ?? ''} size="compact" />
 

@@ -88,7 +88,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           <div
             // 하단 여백을 두지 않는다 — 푸터 로고의 아래면이 페이지 맨 끝(브라우저 끝)에 닿는다. 하단 탭 바(fixed)는
             // 스크롤 끝에서 로고 아래쪽에 겹친다. 서비스 열 전체가 이 래퍼의 회색 바탕이다(티켓 20261104_1642, 20261108_1940).
-            className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative bg-background"
+            className="min-h-dvh flex flex-col w-full max-w-[var(--app-max-width)] mx-auto relative bg-background"
             style={MAIN_PAGE_BACKGROUND}
           >
             {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정.

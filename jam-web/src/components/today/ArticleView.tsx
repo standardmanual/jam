@@ -23,7 +23,7 @@ export default function ArticleView({ view }: { view: ArticleViewData }) {
   const { cta } = view
 
   return (
-    <div className="text-foreground pb-10">
+    <div className="text-foreground pb-6">
       {/* 20260824_004: 홈 카드와 같은 cover_image_url(어드민 자유 입력)이라 SafeImage 경유.
           앱 열이 최대 430px이라 `sizes`를 주지 않으면 100vw로 가정해 과대 다운로드한다 */}
       {view.coverUrl && (

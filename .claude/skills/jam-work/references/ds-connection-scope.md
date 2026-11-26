@@ -43,6 +43,7 @@ cd jam-web && npm run storybook   # http://localhost:6006
   `Button` · `IconButton` · `Card` · `RarityBadge` · `BadgeLevelChip` · `LabelChip` · `LockedTile` · `SlotOutline` · `BadgeHeroSection` ·
   `EmptyState` · `ProgressBar` · `Skeleton` · `WanderingEyesLoader` · `Accordion` · `Carousel` · `TopNav` · `Select` · `Input` ·
   `BadgeRevealCarousel` · `ItemSerialCode` · `MixerSlot` · `PointText`
+  (티켓 20261126_1540에서 `src/components/ui/`의 정본 `IconLabelButton`(공유 시트 버튼)·`CountLabelButton`(프로필 숫자 칸)·`AvatarPickButton`(사진 고르기)을 새로 두었고 서비스가 직접 import하는 단일 구현이다(병존 구현 아님). `IconButton`은 «내 위치» 아이콘이 늘었다.
   (`SlotOutline`은 티켓 20261112_1627에서 신설한 슬롯 점선 외곽선이다 — 서비스 `BadgeGridCard`(병존 구현)가 import하므로
   DS의 `SlotOutline`을 고치면 컬렉션 칸·믹스 칸에 즉시 반영된다. `LockedTile`도 같은 방식으로 `BadgeGridCard`가 import한다.
   `BadgeHeroSection`은 티켓 20261112_1818에서 서비스 `src/components/BadgeHeroSection.tsx`의 마크업을 DS로 승격한 것이다 —

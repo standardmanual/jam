@@ -206,10 +206,10 @@ describe('ArticleView — CTA', () => {
 })
 
 describe('ArticleView — 바깥 틀', () => {
-  it('아래 여백 40px을 루트가 가진다(미리보기에서도 같은 여백)', () => {
+  it('아래 여백 24px을 루트가 가진다(미리보기에서도 같은 여백)', () => {
     // 커버가 있으면 우선 로드 <link>가 앞에 붙으므로 루트 div를 찾아 본다
-    expect(render()).toContain('<div class="text-foreground pb-10"><div class="relative w-full aspect-video')
-    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-foreground pb-10">/)
+    expect(render()).toContain('<div class="text-foreground pb-6"><div class="relative w-full aspect-video')
+    expect(renderToStaticMarkup(<ArticleView view={without('coverUrl')} />)).toMatch(/^<div class="text-foreground pb-6">/)
   })
 
   it('본문 안쪽 여백은 좌우 16px·위 24px이다', () => {

@@ -25,7 +25,7 @@ import type { CardView } from '@/lib/today/cardView'
  * 이 클래스 상수는 `CardLink`로만 내보낸다 — 행형 제목 링크가 같은 윤곽선·눌림을 쓰되 값을 두 곳에 적지 않는다.
  */
 const LINK_CLASS =
-  'block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--link)]'
+  'block rounded-2xl jam-press focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link'
 
 /** 틀과 같은 링크(둥근 윤곽·눌림·포커스 윤곽선). 틀 안쪽에서 일부 영역만 링크로 감쌀 때(행형 제목 영역) 쓴다. */
 export function CardLink({ href, children }: { href: string; children: ReactNode }) {

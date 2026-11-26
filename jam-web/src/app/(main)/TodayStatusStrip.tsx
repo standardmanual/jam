@@ -14,7 +14,7 @@ import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
  */
 
 const CELL_CLASS =
-  'h-full min-h-[92px] flex flex-col gap-2 jam-press'
+  'h-full min-h-23 flex flex-col gap-2 jam-press'
 const CELL_BODY_CLASS = 'flex-1 flex flex-col justify-center gap-2'
 
 /**

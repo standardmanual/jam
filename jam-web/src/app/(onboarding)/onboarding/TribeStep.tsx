@@ -77,8 +77,8 @@ export default function TribeStep({
   const showImageSlot = tribes.some((tribe) => Boolean(tribe.image_url))
 
   return (
-    <div className="min-h-full text-foreground flex flex-col items-center px-6 py-12">
-      <div className="w-full max-w-sm flex flex-col items-center gap-8">
+    <div className="min-h-full text-foreground flex flex-col items-center px-6 pt-4 pb-6">
+      <div className="w-full max-w-sm flex flex-col items-center gap-5">
 
         <div className="flex flex-col items-center gap-4">
           <h1 id={TRIBE_STEP_TITLE_ID} className={`text-3xl text-center whitespace-pre-line text-balance ${KO_BREAK}`}>
@@ -100,7 +100,7 @@ export default function TribeStep({
         </div>
 
         {tribesState.kind === 'loading' && (
-          <div className="w-full flex items-center justify-center py-8">
+          <div className="w-full flex items-center justify-center py-6">
             <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
           </div>
         )}

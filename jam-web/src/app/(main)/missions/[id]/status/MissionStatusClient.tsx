@@ -99,7 +99,7 @@ function MyHero({ avatarUrl, name, children }: { avatarUrl: string | null; name:
         style={{
           width: 114,
           height: 114,
-          borderRadius: '50%',
+          borderRadius: 'var(--radius-full)',
           border: '3px solid var(--card-bg)',
           boxSizing: 'border-box',
           background: 'var(--accent-soft)',
@@ -203,7 +203,7 @@ export default function MissionStatusClient({
             라우트 전환 시 뜨는 전체화면 NavigationLoader(화면 정중앙)와 위치가 어긋나 보이지 않도록,
             TopNav(56px)를 제외한 나머지 영역 정중앙에 배치한다. */}
         {showLoader && (
-          <div className="min-h-[calc(100dvh-56px)] flex items-center justify-center">
+          <div className="min-h-[calc(100dvh-var(--topnav-height))] flex items-center justify-center">
             <WanderingEyesLoader />
           </div>
         )}

@@ -15,8 +15,8 @@ import { PAGE_GRADIENT_BACKGROUND } from '@/lib/pageBackground'
  */
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative text-foreground" style={PAGE_GRADIENT_BACKGROUND}>
-      <main className="flex-1 pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-dvh flex flex-col w-full max-w-[var(--app-max-width)] mx-auto relative text-foreground" style={PAGE_GRADIENT_BACKGROUND}>
+      <main className="flex-1 pb-[var(--spacing-safe-bottom)]">
         {/* sticky footer: 컨텐츠 래퍼가 뷰포트 높이(dvh)를 확보해 짧은 화면에서도 푸터가 그 아래로 밀려난다((main)/layout.tsx와 같은 방식) */}
         <div className="min-h-dvh">{children}</div>
         <Footer />

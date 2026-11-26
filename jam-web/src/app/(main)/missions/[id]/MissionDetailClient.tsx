@@ -111,7 +111,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
       <span
         key={i}
         aria-hidden="true"
-        className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[12px] font-bold tabular-nums leading-none flex-shrink-0"
+        className="w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-bold tabular-nums leading-none flex-shrink-0"
         style={{
           // 달성은 레드 면에 흰 글자, 미달성은 회색 면에 검정 글자다. 서클이 놓이는 나의 진행 상황 카드는 흰 면이다(캔버스 확정, 티켓 20261112_1629)
           background: isDone ? 'var(--jam-red)' : 'var(--btn-secondary)',
@@ -132,7 +132,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
       {total > 0 && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           {circle(total - 1)}
-          <span aria-hidden="true" className="text-[14px] leading-none text-foreground">{unit}</span>
+          <span aria-hidden="true" className="text-sm leading-none text-foreground">{unit}</span>
         </span>
       )}
     </div>
@@ -142,7 +142,7 @@ function CountCircles({ total, done, unit, completed }: { total: number; done: n
 /* ── 섹션 레이블 — 배지 상세 '획득 조건'과 동일한 토큰 ── */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[15px] font-bold text-foreground">
+    <p className="text-sm font-bold text-foreground">
       {children}
     </p>
   )
@@ -167,8 +167,8 @@ function ConditionRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-foreground">
-      <span aria-hidden="true" className="text-base leading-[1.2] flex-shrink-0 mt-px text-[var(--link)]">
+    <div className="flex items-start gap-2 text-sm leading-5 text-foreground">
+      <span aria-hidden="true" className="text-base leading-5 flex-shrink-0 mt-px text-link">
         •
       </span>
       <span className={breakKeep ? 'break-keep wrap-break-word' : undefined}>{children}</span>
@@ -419,11 +419,11 @@ export default function MissionDetailClient({
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-[36px] font-bold leading-[1.2] text-foreground text-balance">
+            <h1 className="text-4xl font-bold leading-11 text-foreground text-balance">
               {mission.title}
             </h1>
             {mission.description && (
-              <p className="text-[15px] leading-[1.47] text-muted whitespace-pre-line">{mission.description}</p>
+              <p className="text-sm leading-5 text-muted whitespace-pre-line">{mission.description}</p>
             )}
           </div>
 
@@ -440,7 +440,7 @@ export default function MissionDetailClient({
         {!claimed && pendingList.length > 0 && (
           <InfoCard>
             <SectionLabel>{d.missions.pendingCard.title}</SectionLabel>
-            <p className="text-[14px] leading-[1.43] text-muted break-keep wrap-break-word text-balance">
+            <p className="text-sm leading-5 text-muted break-keep wrap-break-word text-balance">
               {t(d.missions.pendingCard.intro, { count: pendingList.length })}
             </p>
             <div className="flex flex-col gap-0">
@@ -465,7 +465,7 @@ export default function MissionDetailClient({
                   claimNotice.kind === 'short' ? (
                     <Link
                       href="/inventory"
-                      className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-[color:var(--link)] underline underline-offset-2"
+                      className="inline-flex min-h-11 items-center self-start break-keep wrap-break-word whitespace-nowrap text-base text-link underline underline-offset-2"
                     >
                       {d.missions.pendingCard.inventoryLink}
                     </Link>
@@ -497,7 +497,7 @@ export default function MissionDetailClient({
         {locked && (
           <InfoCard>
             <SectionLabel>{d.missions.lockedTitle}</SectionLabel>
-            <p className="text-[14px] leading-[1.43] text-muted">
+            <p className="text-sm leading-5 text-muted">
               {requiredBadge
                 ? t(d.missions.lockedBody, {
                     badge: requiredBadge.name,
@@ -603,7 +603,7 @@ export default function MissionDetailClient({
               /* 달성형(체크인·아이템 픽업·복합 조건). 복합 조건은 «미션 완료» 라벨이 달성 조건 카드와 겹쳐 칩만 둔다 */
               <div className="flex items-center justify-between">
                 {mission.mission_type !== 'engine_condition' && (
-                  <p className="text-[14px] leading-[1.43] text-foreground">{goal.label}</p>
+                  <p className="text-sm leading-5 text-foreground">{goal.label}</p>
                 )}
                 <ListRowChip tone={achieved ? 'done' : 'gray'}>
                   {achieved ? d.missions.achieved : d.missions.notAchieved}
@@ -613,14 +613,14 @@ export default function MissionDetailClient({
               /* 수치 + 프로그레스 바 */
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[22px] font-bold text-foreground tabular-nums leading-none">
+                  <span className="text-xl font-bold text-foreground tabular-nums leading-none">
                     <span style={{ color: 'var(--jam-red)' }}>
                       {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
                     </span>
-                    <span className="text-[16px] font-normal text-foreground mx-1">/</span>
+                    <span className="text-base font-normal text-foreground mx-1">/</span>
                     {goal.target}{goal.unit}
                   </span>
-                  <span className="text-[14px] font-bold text-foreground tabular-nums">
+                  <span className="text-sm font-bold text-foreground tabular-nums">
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>

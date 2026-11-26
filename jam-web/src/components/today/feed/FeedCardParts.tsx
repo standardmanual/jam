@@ -37,9 +37,9 @@ import FeedStamp from '../FeedStamp'
  */
 
 /** 제목 글자 클래스(30/36). 큰 글자 변형은 텍스트 박스가 쓰는 48/1.1이다. */
-const TITLE_CLASS = 'text-3xl font-black tracking-[-0.02em] whitespace-pre-line'
+const TITLE_CLASS = 'text-3xl font-black tracking-tight whitespace-pre-line'
 /** 큰 글자 변형(텍스트형). 글자 크기는 제목 길이에 따라 `feedTextBoxTitleSizeClass`가 2~3단계로 고른다(기본 48). */
-const BIG_TITLE_CLASS = 'leading-[1.1] font-black tracking-[-0.02em] whitespace-pre-line text-center'
+const BIG_TITLE_CLASS = 'leading-none font-black tracking-tight whitespace-pre-line text-center'
 
 /** 카드 면. 최소 높이는 유형별 샘플 높이(`FEED_CARD_MIN_HEIGHT`)이고 내용이 길면 늘어난다. `minHeight`를 생략하면 높이를 `className`이 정한다(텍스트형은 `aspect-square`). `markRoot`가 참이면 카드 루트 표식을 단다(생략하면 마크업이 그대로다). */
 export function FeedCardShell({

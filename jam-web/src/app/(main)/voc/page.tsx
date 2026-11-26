@@ -66,7 +66,7 @@ function VocCard({ item }: { item: VocItem }) {
         <span className={STATUS_CHIP_CLASS[item.status] ?? CHIP_CLASS}>{item.status}</span>
         <span className={CHIP_CLASS}>
           {SEVERITY_PREFIX}
-          <strong className="font-bold text-[color:var(--link)]">{item.severity}</strong>
+          <strong className="font-bold text-link">{item.severity}</strong>
           {SEVERITY_SUFFIX}
         </span>
         <span className="text-xs leading-none text-muted">{formatDateTime(item.submittedAt)}</span>
@@ -203,7 +203,7 @@ function VocPageContent() {
           </div>
 
           {loading && (
-            <div className="py-10 text-center text-muted text-base">
+            <div className="py-6 text-center text-muted text-base">
               {d.voc.loading}
             </div>
           )}
