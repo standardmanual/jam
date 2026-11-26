@@ -20,8 +20,19 @@ const DICT_PATH = 'docs/service/writing/SLOP_DICTIONARY.md'
 const CONTENT_DATA_FILE =
   /^(jam-web\/scripts\/jam2-content\/pairing\.json|docs\/service\/content\/ITEMBOOK_REPLACEMENT_MAP\.md|jam-web\/supabase\/migrations\/\d+_(content_overwrite_backup|tribe_content_[a-z0-9_]+)\.sql)$/
 
+// 금칙 패턴의 `~`는 «아무 글자»다. 앞·끝의 `~`는 떼어 내고(그 앞뒤에 무엇이 오든 맞는다), 중간의 `~`는 한 글자 이상이 오는 자리로 둔다
+// (티켓 20261126_2224: 예전에는 끝의 `~`만 지워서 앞·중간에 `~`가 든 패턴이 글자 그대로만 맞아 아무 줄도 잡지 못했다).
 function extractQuoted(text) {
-  return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1].replace(/~$/, '').trim())
+  return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1].replace(/^~+|~+$/g, '').trim())
+}
+
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// 패턴 하나가 줄에 맞는지 판정하는 함수를 만든다. 중간에 `~`가 없으면 부분 문자열 비교 그대로다.
+function toMatcher(pattern) {
+  if (!pattern.includes('~')) return (content) => content.includes(pattern)
+  const re = new RegExp(pattern.split('~').map(escapeRe).join('.+'))
+  return (content) => re.test(content)
 }
 
 function loadPatterns() {
@@ -125,12 +136,13 @@ function collectAddedLines() {
 }
 
 const patterns = loadPatterns()
+const matchers = patterns.map((p) => [p, toMatcher(p)])
 const addedLines = collectAddedLines()
 
 const findings = []
 for (const { file, line, content } of addedLines) {
-  for (const p of patterns) {
-    if (content.includes(p)) {
+  for (const [p, matches] of matchers) {
+    if (matches(content)) {
       findings.push({ file, line, pattern: p })
     }
   }

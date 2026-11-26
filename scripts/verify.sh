@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify — lint 전체 + typecheck + test 전체 + 프로토타입 번들 최신성 + 슬롭/금칙어 검사 + 정의 안 된 토큰 참조 검사 + 정본 컴포넌트 목록·스토리 기준선 검사 + 루트 scripts·.claude/workflows 테스트를 한 번에 실행한다.
+# verify — 20단계를 한 번에 실행한다: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · ticket-index · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · admin-palette · component-list · token-catalog.
 # (티켓 20260918_0421, 근거: JAM-WORK/05_자동화목록.md A1)
 #
 # 출력은 통과/실패와 실패 항목만 남긴다(20줄 이내). 단계별 전체 로그는 임시 파일에 남기고
@@ -178,7 +178,7 @@ else
 fi
 
 if [ ${#FAILED[@]} -eq 0 ]; then
-  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · admin-palette · component-list · token-catalog"
+  echo "verify 통과: lint · typecheck · test · asset-bundle · slop · scripts-test · contract · team-doc · team-map · ticket-index · scheduled-jobs · home-feed-doc · skills · client-server-imports · spacing · ui-rules · token-refs · admin-palette · component-list · token-catalog"
   exit 0
 else
   echo "verify 실패: ${FAILED[*]}"

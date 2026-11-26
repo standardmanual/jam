@@ -1,9 +1,9 @@
 #!/bin/bash
 # review 브랜치(claude/jamwork-*)에서 티켓 status를 CLOSED로 커밋하는 것을 차단한다.
 #
-# 배경: jam-developer(트레일메이커)가 조사/구현을 마친 뒤 스스로 티켓을 CLOSED로 마킹하는
+# 배경: 아현(jam-developer)이 조사/구현을 마친 뒤 스스로 티켓을 CLOSED로 마킹하는
 # 프로세스 이탈이 프롬프트 규칙만으로는 3회 반복됐다 (티켓 009, 010, 011). CLOSED 처리는
-# 사용자 승인 후 오케스트레이터(베이스캠프)가 main 브랜치에서만 하도록 설계돼 있으므로,
+# 사용자 승인 후 오케스트레이터(카리나)가 main 브랜치에서만 하도록 설계돼 있으므로,
 # 프롬프트가 아니라 git 레벨에서 기계적으로 막는다.
 
 branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
@@ -237,7 +237,8 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
 
   # ⑦ 문서 링크·참조 검사 (티켓 20260919_1245, docs/DOCUMENT_SCHEMA.md §5).
   #    커밋에서 추가된 줄의 링크와, 삭제·이동된 파일을 가리키는 모든 문서를 검사한다.
-  #    새로 깨지는 링크(마크다운 링크)는 차단하고, 백틱 경로·frontmatter는 경고만 한다.
+  #    새로 깨지는 링크·백틱 경로·frontmatter 필드 오류의 차단 여부는 scripts/doc-check.config.json의
+#    severity가 정한다(현재 link·codespan·field는 error, unresolvable은 warn).
   #    기존에 깨진 링크는 건드리지 않는다(추가된 줄만 보므로 기준선 목록이 없다).
   #    엔진이 스스로 실패하면(위반 코드 10이 아닌 비정상 종료) 경고만 내고 통과시킨다 —
   #    검사기 오류가 모든 커밋을 막아서는 안 된다.
@@ -311,18 +312,25 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
     # 홈피드 기능 정의 문서(docs/service/prd/home-feed/PRD.md)가 today-sections.ts·targetHref.ts와
     # 같은 최신본인지, 스테이지된 홈피드 코드에 이 문서가 함께 스테이지됐는지 검사한다
     # (티켓 20260927_2036).
-    if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --check >&2; then
-      doclint=1
-    fi
-    if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --staged >&2; then
-      doclint=1
+    # 전용 우회: JAM_SKIP_HOMEFEED_DOC=1 은 이 홈피드 검사 둘만 건너뛴다. 다른 문서 검사는 그대로 돈다
+    # (티켓 20261126_2224). 사유는 커밋 메시지에 남긴다.
+    if [ "${JAM_SKIP_HOMEFEED_DOC:-0}" = "1" ]; then
+      echo "안내(pre-commit): JAM_SKIP_HOMEFEED_DOC=1 — 홈피드 PRD 동반 검사를 건너뜁니다. 사유를 커밋 메시지에 남기세요." >&2
+    else
+      if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --check >&2; then
+        doclint=1
+      fi
+      if [ -f scripts/gen-home-feed-doc.mjs ] && ! node scripts/gen-home-feed-doc.mjs --staged >&2; then
+        doclint=1
+      fi
     fi
   fi
 
   if [ "$doclint" -eq 1 ]; then
     echo "" >&2
     echo "  문서 체계 규칙: docs/README.md '폴더 지도와 쓰기 규칙' 절 참조" >&2
-    echo "  정당한 예외라면 JAM_SKIP_DOCLINT=1 git commit ... 로 우회하고 사유를 남기세요." >&2
+    echo "  홈피드 PRD 동반 검사만 막혔다면 JAM_SKIP_HOMEFEED_DOC=1 git commit ... 으로 그 검사만 건너뛰고," >&2
+    echo "  그 밖의 정당한 예외라면 JAM_SKIP_DOCLINT=1 git commit ... 로 우회하세요. 어느 쪽이든 사유를 커밋 메시지에 남기세요." >&2
     exit 1
   fi
 fi

@@ -132,6 +132,24 @@ assert.equal(count('// bg-red-500', 'palette-class'), 0, '주석 안은 세지 �
   assert.match(f[0].fix, /카리나에게 토큰 추가 승인/)
 }
 
+// --- card-padding: 정본 Card는 여백을 인라인 style로 넣어 className의 여백 클래스가 무시된다 (티켓 20261126_2224)
+assert.equal(count('<Card className="p-4">x</Card>', 'card-padding'), 1, '문자열 className의 p-*')
+assert.equal(count('<Card className="rounded-lg px-3 pb-2">', 'card-padding'), 2, '여러 여백 클래스는 각각 센다')
+assert.equal(count('<Card className="md:pt-4 -ml-2 ps-2 pe-2 pl-1 pr-1 py-1">', 'card-padding'), 6, '변형 접두·방향·논리 방향(-ml은 마진이라 제외)')
+assert.equal(count('<Card className={cn("p-4", x)}>', 'card-padding'), 1, 'cn() 식 안')
+assert.equal(count('<Card className={`flex ${a} px-2`}>', 'card-padding'), 1, '템플릿 문자열 안')
+assert.equal(count('<Card\n  tone="a"\n  className="p-4"\n>', 'card-padding'), 1, '여러 줄 태그')
+assert.deepEqual(findHits('<Card\n  tone="a"\n  className="p-4"\n>', P).map((h) => h.line), [3], '줄 번호는 className 줄')
+assert.equal(count('<Card className="flex gap-2 pointer-events-none placeholder-x">', 'card-padding'), 0, 'pointer-events 등은 여백이 아님')
+assert.equal(count('<Card className="m-4 gap-2 rounded-lg">', 'card-padding'), 0, '마진·간격은 통과')
+assert.equal(count('<Card style={{ padding: "var(--x)" }} className="flex">', 'card-padding'), 0, 'style로 덮는 방식은 이 규칙 대상이 아님')
+assert.equal(count('<CardHeader className="p-4"> <Cardinal className="p-4">', 'card-padding'), 0, '이름이 이어진 태그는 아님')
+assert.equal(count('<div className="p-4"> <Card tone="a">', 'card-padding'), 0, 'Card가 아닌 태그의 p-*는 통과')
+assert.equal(count('<Card onClick={() => go()} className="p-4">', 'card-padding'), 1, '앞 속성의 화살표 함수가 있어도 className을 읽는다')
+assert.equal(count('<Card className="p-4"> {/* ui-allow: 사유 */}', 'card-padding'), 0, 'ui-allow가 있는 줄은 빠짐')
+assert.equal(count('{/* <Card className="p-4"> */}', 'card-padding'), 0, '주석 안은 세지 않음')
+assert.match(toFailures({ 'a.tsx': cur({ 'card-padding': 1 }) })[0].fix, /Card/)
+
 // --- 파일 시스템·CLI
 const tmp = mkdtempSync(join(tmpdir(), 'ui-rules-'))
 try {
