@@ -59,12 +59,12 @@ function MeCircle() {
     <span
       role="img"
       aria-label={d.missions.statusMeChip}
-      className="leading-none"
+      className="leading-none font-bold"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         width: 22, height: 22, borderRadius: 'var(--radius-full)',
         background: 'var(--jam-red)', color: 'var(--foreground)',
-        fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)',
+        fontSize: 'var(--text-xs)',
       }}
     >
       {d.missions.statusMeChip}

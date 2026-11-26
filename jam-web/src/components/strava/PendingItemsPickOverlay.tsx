@@ -432,8 +432,8 @@ export function PendingItemsPickView({
           >
             <p
               id={titleId}
-              className="m-0 break-keep wrap-break-word text-balance"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)', fontWeight: 'var(--font-weight-bold)' }}
+              className="m-0 break-keep wrap-break-word text-balance font-bold"
+              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
             >
               {d.syncPending.pick.fullTitle}
             </p>
@@ -512,8 +512,8 @@ export function PendingItemsPickView({
             }}
           >
             <p
-              className="m-0 break-keep wrap-break-word text-balance"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)', fontWeight: 'var(--font-weight-bold)' }}
+              className="m-0 break-keep wrap-break-word text-balance font-bold"
+              style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
             >
               {t(d.syncPending.pick.title, { n: chooseCount })}
             </p>
@@ -565,8 +565,8 @@ export function PendingItemsPickView({
               {/* 확정 확인 */}
               <div style={footerLayerStyle(confirming)} inert={!confirming}>
                 <p
-                  className="m-0 break-keep wrap-break-word text-balance"
-                  style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)', fontWeight: 'var(--font-weight-bold)' }}
+                  className="m-0 break-keep wrap-break-word text-balance font-bold"
+                  style={{ color: 'var(--foreground)', fontSize: 'var(--text-lg)', lineHeight: 'var(--text-lg--line-height)' }}
                 >
                   {t(d.syncPending.pick.confirmTitle, { n: chooseCount })}
                 </p>

@@ -539,14 +539,13 @@ export function TierUpRevealStage({ materials, result, onConfirm }: { materials:
           )}
           <p
             data-reveal="item"
-            className="break-keep wrap-break-word text-balance"
+            className="break-keep wrap-break-word text-balance font-bold"
             style={{
               ...textStyle,
               opacity: 0,
               color: 'var(--base-white)',
               fontSize: 'var(--text-2xl)',
               lineHeight: 'var(--text-2xl--line-height)',
-              fontWeight: 'var(--font-weight-bold)',
             }}
           >
             {lines.name}
