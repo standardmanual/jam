@@ -322,6 +322,27 @@ describe('피할 영역', () => {
     expect(stamp.t).toBeLessThan(16 + 12)
   })
 
+  it('배지 소개의 도장 자리는 배지 그림이 아니라 카드 모서리 안쪽(12px)이다 (티켓 20261127_0750)', () => {
+    for (const width of [320, 358, 430]) {
+      const without = cardGeometryOf(inputOf('badge_intro', width))
+      for (const corner of ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const) {
+        const g = cardGeometryOf(inputOf('badge_intro', width, { stampCorner: corner }))
+        const zone = g.avoid[g.avoid.length - 1]
+        expect(g.avoid).toHaveLength(without.avoid.length + 1)
+        // 피할 영역은 도장 상자(60)에 기울기 몫과 여유를 더한 것이라 카드 모서리에서 12px 떨어진 도장 상자를 품는다
+        const left = corner.endsWith('left')
+        const top = corner.startsWith('top')
+        if (left) expect(zone.l).toBeLessThan(12)
+        else expect(zone.r).toBeGreaterThan(width - 12)
+        if (top) expect(zone.t).toBeLessThan(12)
+        else expect(zone.b).toBeGreaterThan(g.height - 12)
+        // 도장 상자 안쪽 끝은 카드 모서리에서 12 + 60 = 72px 근처다(배지 그림 모서리 기준이면 훨씬 안쪽이다)
+        if (left) expect(zone.r).toBeLessThan(12 + 60 + 20)
+        else expect(zone.l).toBeGreaterThan(width - 12 - 60 - 20)
+      }
+    }
+  })
+
   it('추가로 피할 영역은 카드 비율(0~1)로 받아 px로 바꾼다', () => {
     const g = cardGeometryOf(inputOf('hero_box', 288, { hasImage: false, extraAvoid: [{ l: 0.25, t: 0.5, r: 0.75, b: 1 }] }))
     const last = g.avoid[g.avoid.length - 1]

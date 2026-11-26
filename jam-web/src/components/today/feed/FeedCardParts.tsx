@@ -169,7 +169,7 @@ function PlannedChipView({ chip, view }: { chip: PlannedChip; view: FeedCardView
  *
  * - 층은 `pointer-events-none`이다(카드 전체가 링크라 칩이 터치를 가로채지 않는다). 칩·스티커는 장식이 아니라서 `aria-hidden`은 걸지 않는다(스티커는 `role="img"`+분류 문구).
  * - `view.look.chipPlan`이 없으면(`toCardViews`가 아닌 단건 경로: 스토리·미리보기) 앞 카드 없음 계획을 즉석에서 만든다. 칩이 없는 카드(`[]`)와 흐름 줄 카드(목록형)는 아무것도 그리지 않는다.
- * - 도장(`FeedStampLayer`)은 앵커 안의 모서리 슬롯을 그대로 쓰고, 계획이 도장 자리를 피한다.
+ * - 도장(`FeedStampLayer`)은 앵커 안의 모서리 슬롯을 그대로 쓰고(배지 소개는 앵커가 카드 전체), 계획이 도장 자리를 피한다.
  */
 export function FeedChipPlanLayer({ view }: { view: FeedCardView }) {
   const plan: ChipPlan | undefined = view.look.chipPlan ?? planFeedChips([chainInputOf(view)])[0]
@@ -206,9 +206,8 @@ export function FeedStampLayer({ view }: { view: FeedCardView }) {
  * 배지 그림 앵커 — 배지 소개·배지만이 함께 쓰는 208×208 칸.
  * 그림은 카드에 걸린 첫 배지의 그림(`badgeImageUrl`), 없으면 카드 이미지(`imageUrl`)다. 둘 다 없으면 같은 크기의 빈 칸을 남긴다(높이가 흔들리지 않는다).
  * `alt`는 배지 이름(`badgeName`)이고 없으면 비어 있다(제목이 글자로 보인다). 박스·외곽선이 없고 그림을 자르지 않는다(`object-contain`).
- * `children`(도장 층)은 이 칸을 앵커로 놓는다.
  */
-export function FeedBadgeArt({ view, children }: { view: FeedCardView; children?: ReactNode }) {
+export function FeedBadgeArt({ view }: { view: FeedCardView }) {
   const src = view.badgeImageUrl ?? view.imageUrl
   return (
     <div className="relative shrink-0" style={{ width: FEED_BADGE_SIZE, height: FEED_BADGE_SIZE }}>
@@ -219,7 +218,6 @@ export function FeedBadgeArt({ view, children }: { view: FeedCardView; children?
         height={FEED_BADGE_SIZE}
         className="h-full w-full object-contain"
       />
-      {children}
     </div>
   )
 }

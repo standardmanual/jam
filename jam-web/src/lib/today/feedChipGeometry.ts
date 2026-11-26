@@ -300,12 +300,16 @@ export function dropPickupBoundsOf(cardWidth: number, count: number): Rect[] {
   })
 }
 
-/** 도장이 놓이는 기준 상자(칩의 앵커와 같은 상자). */
-function stampAnchorOf(type: ChipGeometryType, width: number, art: Rect | null, textBox: Rect | null): Rect | null {
+/**
+ * 도장이 놓이는 기준 상자. 배지 소개만 카드 전체(네 모서리가 카드 모서리)이고, 나머지는 칩의 앵커와 같은 상자다.
+ * 배지 소개의 도장은 배지 그림이 아니라 카드 모서리에 붙는다(사용자 지시 2026-11-27, 티켓 20261127_0750).
+ */
+function stampAnchorOf(type: ChipGeometryType, width: number, height: number, art: Rect | null, textBox: Rect | null): Rect | null {
   if (type === 'hero_box') return { l: PAD, t: PAD, r: width - PAD, b: PAD + FEED_HERO_IMAGE_HEIGHT }
   if (type === 'drop_pickup') return { l: PAD, t: PAD, r: width - PAD, b: PAD + dropPickupAreaHeightOf(width) }
   if (type === 'text_box') return textBox
-  if (type === 'badge_intro' || type === 'collection_intro') return art
+  if (type === 'badge_intro') return { l: 0, t: 0, r: width, b: height }
+  if (type === 'collection_intro') return art
   return null
 }
 
@@ -380,7 +384,7 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
   }
 
   if (input.stampCorner) {
-    const anchor = stampAnchorOf(type, w, art, textBox)
+    const anchor = stampAnchorOf(type, w, height, art, textBox)
     if (anchor) {
       const grow = (tiltedBounds(FEED_STAMP_SIZE, FEED_STAMP_SIZE, FEED_STAMP_TILT).w - FEED_STAMP_SIZE) / 2
       const left = input.stampCorner.endsWith('left')
