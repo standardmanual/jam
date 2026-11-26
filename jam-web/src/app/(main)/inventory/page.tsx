@@ -102,7 +102,7 @@ export default async function InventoryPage() {
         )}
       </div>
 
-      {/* 아이템 그리드 — 2026-11-27 사용자 지시(티켓 20261127_0829): 빈 슬롯은 남은 슬롯 수만큼 모두 그린다(옛 규칙은 총 6칸까지만) */}
+      {/* 아이템 그리드 — 2026-11-27 사용자 지시(티켓 20261127_0829): 빈 슬롯은 화면 높이만큼만 그린다(남은 슬롯 수가 상한, 옛 규칙은 총 6칸) */}
       {items.length === 0 ? (
         <EmptyState
           icon={<ArrowDownIcon className="w-8 h-8" />}
@@ -114,6 +114,7 @@ export default async function InventoryPage() {
           items={gridItems}
           mode="navigate"
           emptySlots={remainingSlots}
+          fillScreen
         />
       )}
       </div>

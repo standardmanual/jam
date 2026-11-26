@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import LocalDate from '@/components/LocalDate'
 import BadgeGridCard, { BadgeGridCardPlaceholder } from '@/components/ui/BadgeGridCard'
 import { FIRST_SCREEN_GRID_COUNT } from '@/lib/imageSrc'
@@ -41,9 +42,20 @@ interface InventoryGridProps {
   /** navigate: /inventory/[id]로 이동(기존 인벤토리 동작) · select: onSelect(item) 콜백(드랍 바텀시트) */
   mode: 'navigate' | 'select'
   onSelect?: (item: InventoryGridItem) => void
-  /** 빈 슬롯 placeholder 개수(인벤토리 페이지에서만 사용) */
+  /** 빈 슬롯 placeholder 개수(인벤토리 페이지에서만 사용). `fillScreen`이 켜져 있으면 그릴 수 있는 최대 개수다 */
   emptySlots?: number
+  /**
+   * 빈 슬롯을 화면 높이만큼만 그린다(2026-11-27 사용자 지시, 티켓 20261127_0829). 켜면 `emptySlots`는 상한이 되고,
+   * 그리드 위쪽 여백과 한 줄 높이를 실측해 «화면 아래 끝까지 줄을 채우는 데 필요한 칸»만 남긴다(마지막 줄은 3칸을 채운다).
+   * 첫 렌더(서버 포함)는 옛 규칙(총 6칸)으로 그리고 마운트 직후 페인트 전에 계산값으로 바꾼다.
+   */
+  fillScreen?: boolean
 }
+
+const GRID_COLUMNS = 3
+const GRID_GAP_PX = 8
+/** `fillScreen` 첫 렌더에 쓰는 총 칸 수 — 옛 규칙과 같다 */
+const FILL_SCREEN_INITIAL_TOTAL = 6
 
 /**
  * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
@@ -61,9 +73,41 @@ export default function InventoryGrid({
   mode,
   onSelect,
   emptySlots = 0,
+  fillScreen = false,
 }: InventoryGridProps) {
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [fillCount, setFillCount] = useState<number | null>(null)
+
+  // 화면 높이 실측: 스크롤 영역(`main`)의 위쪽에서 그리드까지의 거리와 첫 줄 높이로, 화면 아래 끝까지 덮는 줄 수를 구한다.
+  // 첫 칸의 높이를 한 줄 높이로 본다(그리드가 한 줄 안 칸 높이를 같게 맞춘다). 칸 수에 기대지 않아 빈 칸을 더해도 값이 흔들리지 않는다.
+  const measure = useCallback(() => {
+    const grid = gridRef.current
+    const firstCell = grid?.firstElementChild as HTMLElement | null
+    if (!grid || !firstCell) return
+    const scroller = grid.closest('main') as HTMLElement | null
+    const scrollerTop = scroller ? scroller.getBoundingClientRect().top : 0
+    const scrollTop = scroller ? scroller.scrollTop : window.scrollY
+    const gridTop = grid.getBoundingClientRect().top - scrollerTop + scrollTop
+    const visibleHeight = window.innerHeight - scrollerTop
+    const rowPitch = firstCell.offsetHeight + GRID_GAP_PX
+    if (rowPitch <= GRID_GAP_PX) return
+    const rows = Math.max(1, Math.ceil((visibleHeight - gridTop + GRID_GAP_PX) / rowPitch))
+    setFillCount(rows * GRID_COLUMNS)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!fillScreen) return
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [fillScreen, measure, items.length])
+
+  const placeholderCount = fillScreen
+    ? Math.min(emptySlots, Math.max(0, (fillCount ?? FILL_SCREEN_INITIAL_TOTAL) - items.length))
+    : emptySlots
+
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div ref={gridRef} className="grid grid-cols-3 gap-2">
       {items.map((item, index) => {
         const eager = index < FIRST_SCREEN_GRID_COUNT
         const expiring = isExpiringSoon(item.expiresAt)
@@ -112,7 +156,7 @@ export default function InventoryGrid({
         )
       })}
       {/* 빈 슬롯 placeholder — BadgeGridCardPlaceholder가 채운 카드와 동일한 폭·aspect-square·text-sm 기하를 유지한다 */}
-      {Array.from({ length: emptySlots }).map((_, i) => (
+      {Array.from({ length: placeholderCount }).map((_, i) => (
         <BadgeGridCardPlaceholder key={`empty-${i}`} />
       ))}
     </div>

@@ -74,3 +74,22 @@ describe('InventoryGrid 빈 슬롯 (티켓 20261114_1040 → 20261125_1444 치�
     expect(html).not.toContain('w-[90px] h-[90px]')
   })
 })
+
+describe('InventoryGrid 빈 슬롯 화면 높이 채움 (티켓 20261127_0829)', () => {
+  const placeholderCount = (html: string) => (html.match(/opacity-30/g) ?? []).length
+
+  it('fillScreen의 첫 렌더(서버 포함)는 옛 규칙대로 총 6칸이다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM, REAL_ITEM, { ...REAL_ITEM, id: 'b' }]} mode="navigate" emptySlots={27} fillScreen />)
+    expect(placeholderCount(html)).toBe(3)
+  })
+
+  it('fillScreen의 빈 칸은 emptySlots(남은 슬롯 수)를 넘지 않는다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" emptySlots={2} fillScreen />)
+    expect(placeholderCount(html)).toBe(2)
+  })
+
+  it('fillScreen이 없으면 emptySlots를 그대로 그린다', () => {
+    const html = renderToStaticMarkup(<InventoryGrid items={[REAL_ITEM]} mode="navigate" emptySlots={9} />)
+    expect(placeholderCount(html)).toBe(9)
+  })
+})
