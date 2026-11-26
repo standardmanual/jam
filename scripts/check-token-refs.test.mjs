@@ -20,6 +20,9 @@ assert.deepEqual(findUndefinedTokens('color: var(--g)', tokens, ':root { --g: re
 assert.deepEqual(findUndefinedTokens('color: var(--background)', tokens), [], '토큰 파일에 정의된 이름은 넘어간다')
 assert.deepEqual(findUndefinedTokens('설명: var(--weight-*)', tokens), [], '와일드카드 설명 표기는 넘어간다')
 
+assert.deepEqual(findUndefinedTokens('max-height: var(--radix-select-content-available-height)', tokens), [], 'Radix가 실행 때 넣는 변수는 넘어간다')
+assert.deepEqual([...declaredNames("const geist = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })")], ['--font-geist-sans'], 'next/font의 variable 설정은 선언으로 인정한다')
+
 // 선언 이름 수집: CSS·style 객체·setProperty·@property 선언은 정의로 인정하고 --tw-* 는 뺀다
 assert.deepEqual(
   [...declaredNames("a { --x: 1; } s={{ '--ticket': t }} el.style.setProperty('--y', v) @property --z { } --tw-ring: 0;")].sort(),
@@ -39,6 +42,7 @@ try {
   writeFileSync(join(ok, 'A.tsx'), "const a = <div style={{ '--ticket-zzz': t, color: 'var(--ticket-zzz)' }} />\n")
   writeFileSync(join(ok, 'B.css'), '.a { --local-zzz: 1px; margin: var(--local-zzz); outline: var(--tw-ring-shadow); }\n')
   writeFileSync(join(ok, 'C.test.ts'), "el.style.setProperty('--set-zzz', '1'); const s = 'var(--set-zzz)'\n")
+  writeFileSync(join(ok, 'D.test.ts'), "const desc = 'var(--spacing-N)' // 시험 파일은 대상에서 빠진다\n")
   const run = (dir) => spawnSync(process.execPath, [SCRIPT, dir], { encoding: 'utf8' })
   let r = run(bad)
   assert.equal(r.status, 1, '미정의 참조가 있는 폴더는 종료 코드 1')

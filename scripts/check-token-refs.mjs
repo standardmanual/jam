@@ -10,7 +10,8 @@
 //
 // 대상(티켓 20261126_2115, 9-4회차): jam-web/src/**와 jam-web/design-system/**의 .ts·.tsx·.css(시험·스토리 포함, node_modules 제외).
 // 정의로 인정하는 이름: 토큰 파일 + jam-theme.css·admin-theme.css·globals.css + 대상 파일 어디서든 선언한 이름(CSS `--x:`·style 객체 `'--x':`·
-// `setProperty('--x'`·`@property --x`). 서버가 인라인으로 넣는 실행 값(`--ticket` 등) 때문이다. Tailwind 내부 변수 `--tw-*`는 넘어간다.
+// `setProperty('--x'`·`@property --x`·next/font의 `variable: '--x'`). 서버가 인라인으로 넣는 실행 값(`--ticket` 등)과 글꼴 변수 때문이다.
+// 라이브러리가 실행 때 넣는 변수(Tailwind `--tw-*`, Radix `--radix-*`)는 넘어간다. 시험 파일(*.test.*)은 렌더되지 않으므로 대상에서 뺀다.
 //
 // 사용법: node scripts/check-token-refs.mjs [폴더…]   (0 = 통과, 1 = 미정의 참조 발견)
 //         폴더 인자를 주면 그 폴더만 본다(시험용). 정의 이름은 저장소 토큰 파일과 그 폴더 안 선언에서 읽는다.
@@ -25,6 +26,7 @@ const GLOBALS = path.join(WEB_ROOT, 'src/app/globals.css')
 const THEME_FILES = ['jam-theme.css', 'admin-theme.css', 'globals.css'].map((n) => path.join(WEB_ROOT, 'src/app', n))
 const SCAN_ROOTS = [path.join(WEB_ROOT, 'src'), path.join(WEB_ROOT, 'design-system')]
 const SCAN_EXT = /\.(?:tsx?|css)$/
+const TEST_FILE = /\.test\.[cm]?[jt]sx?$/ // 시험 파일은 렌더되지 않아 설명용 이름(`--spacing-N` 등)을 쓴다
 
 /** tokens/*.css의 `--x: 값` 이름을 모은다. 주석 안의 ':'·'--토큰'이 매칭을 밀어내므로 주석을 먼저 걷는다. */
 export function loadTokenNames(dir = TOKEN_DIR) {
@@ -46,7 +48,7 @@ export function findUndefinedTokens(src, tokenNames, globalsSrc = '') {
   for (const m of src.matchAll(/var\((--[\w-]+)(\*?)\s*(,?)/g)) {
     if (m[2] === '*') continue // var(--weight-*)는 설명문 속 와일드카드 표기
     if (m[3] === ',') continue // fallback이 있으면 비어도 렌더가 살아 있다
-    if (m[1].startsWith('--tw-')) continue // Tailwind 내부 변수
+    if (m[1].startsWith('--tw-') || m[1].startsWith('--radix-')) continue // 라이브러리가 실행 때 넣는 변수(Tailwind·Radix)
     if (localVars.has(m[1])) continue
     if (!tokenNames.has(m[1]) && !globalsSrc.includes(`${m[1]}:`)) missing.add(m[1])
   }
@@ -70,6 +72,7 @@ export function declaredNames(src) {
   for (const m of src.matchAll(/['"]?(--[\w-]+)['"]?\s*:/g)) out.add(m[1])
   for (const m of src.matchAll(/setProperty\(\s*['"`](--[\w-]+)/g)) out.add(m[1])
   for (const m of src.matchAll(/@property\s+(--[\w-]+)/g)) out.add(m[1])
+  for (const m of src.matchAll(/variable:\s*['"`](--[\w-]+)/g)) out.add(m[1]) // next/font가 실행 때 넣는 글꼴 변수
   for (const n of out) if (n.startsWith('--tw-')) out.delete(n)
   return out
 }
@@ -81,7 +84,7 @@ function main() {
     if (existsSync(f)) for (const n of declaredNames(readFileSync(f, 'utf8'))) tokenNames.add(n)
   }
   const globalsSrc = existsSync(GLOBALS) ? readFileSync(GLOBALS, 'utf8') : ''
-  const targets = (argDirs.length > 0 ? argDirs : SCAN_ROOTS).flatMap((d) => walk(d, (f) => SCAN_EXT.test(f)))
+  const targets = (argDirs.length > 0 ? argDirs : SCAN_ROOTS).flatMap((d) => walk(d, (f) => SCAN_EXT.test(f) && !TEST_FILE.test(f)))
   const sources = new Map(targets.map((f) => [f, readFileSync(f, 'utf8')]))
   for (const src of sources.values()) for (const n of declaredNames(src)) tokenNames.add(n)
   let bad = 0
