@@ -9,6 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   parseCodePaths,
   isTestFile,
+  isStoryFile,
+  isBehaviorNeutral,
   underCodePaths,
   genFeedTypes,
   genTemplates,
@@ -120,7 +122,7 @@ try {
   sh('git', ['commit', '-q', '-m', 'init'])
 
   // 1) 홈피드 코드만 스테이지 → 차단
-  write('jam-web/src/lib/today/cards.ts', '// 변경\n')
+  write('jam-web/src/lib/today/cards.ts', 'export const a = 2\n')
   sh('git', ['add', '--', 'jam-web/src/lib/today/cards.ts'])
   {
     const r = run(['--staged'])
@@ -139,9 +141,60 @@ try {
   write('jam-web/src/lib/today/__tests__/cards.test.ts', '// 테스트\n')
   sh('git', ['add', '--', 'jam-web/src/lib/today/__tests__/cards.test.ts'])
   assert.equal(run(['--staged']).status, 0)
+  sh('git', ['add', '-A'])
+  sh('git', ['commit', '-q', '-m', 'tests'])
+
+  // 4) 주석만 바뀐 스테이지 → 통과(동작 무변경), 안내가 나온다
+  const CARDS = 'jam-web/src/lib/today/cards.ts'
+  write(CARDS, '// 새 주석\nexport const a = 2\n')
+  sh('git', ['add', '--', CARDS])
+  {
+    const r = run(['--staged'])
+    assert.equal(r.status, 0)
+    assert.ok(r.stderr.includes('안내(pre-commit)'))
+  }
+  sh('git', ['commit', '-q', '-m', 'comment only'])
+
+  // 5) 식이 바뀐 스테이지 → 차단
+  write(CARDS, 'export const a = 3\n')
+  sh('git', ['add', '--', CARDS])
+  assert.equal(run(['--staged']).status, 1)
+  sh('git', ['commit', '-q', '--no-verify', '-m', 'expr changed'])
+
+  // 6) 같은 경로에 스토리 새 파일 → 통과
+  write('jam-web/src/lib/today/Foo.stories.tsx', 'export default {}\n')
+  sh('git', ['add', '--', 'jam-web/src/lib/today/Foo.stories.tsx'])
+  assert.equal(run(['--staged']).status, 0)
+  sh('git', ['commit', '-q', '-m', 'story'])
+
+  // 7) 같은 경로에 일반 새 파일 → 차단
+  write('jam-web/src/lib/today/bar.ts', 'export const b = 1\n')
+  sh('git', ['add', '--', 'jam-web/src/lib/today/bar.ts'])
+  assert.equal(run(['--staged']).status, 1)
+  sh('git', ['commit', '-q', '--no-verify', '-m', 'new file'])
+
+  // 8) 이름만 바꾸고 import 경로만 고침 → 통과
+  const big = ['import { x } from "./old"', 'export function f() {', '  return x + 1', '}', 'export const k = 10', 'export const m = 20', ''].join('\n')
+  write('jam-web/src/lib/today/ren.ts', big)
+  sh('git', ['add', '--', 'jam-web/src/lib/today/ren.ts'])
+  sh('git', ['commit', '-q', '--no-verify', '-m', 'ren base'])
+  sh('git', ['mv', 'jam-web/src/lib/today/ren.ts', 'jam-web/src/lib/today/ren2.ts'])
+  write('jam-web/src/lib/today/ren2.ts', big.replace('./old', './new'))
+  sh('git', ['add', '--', 'jam-web/src/lib/today/ren2.ts'])
+  assert.equal(run(['--staged']).status, 0)
 } finally {
   rmSync(dir, { recursive: true, force: true })
 }
+
+// ── ②-2 단위: 스토리 파일 판정과 동작 무변경 판정 ─────────────────────────────────────────
+assert.equal(isStoryFile('a/b/Foo.stories.tsx'), true)
+assert.equal(isStoryFile('a/b/Foo.tsx'), false)
+assert.equal(isBehaviorNeutral('const a = 1 // x\n', 'const a = 1 // y\n'), true)
+assert.equal(isBehaviorNeutral("import {\n a,\n} from './x'\nconst b = 1\n", "import {\n a,\n} from './y'\nconst b = 1\n"), true)
+assert.equal(isBehaviorNeutral('export function f() {}\n', 'function f() {}\n'), true)
+assert.equal(isBehaviorNeutral('const a = 1\n', 'const a = 2\n'), false)
+assert.equal(isBehaviorNeutral(null, 'const a = 1\n'), false)
+assert.equal(isBehaviorNeutral("const u = 'https://a.com/x'\n", "const u = 'https://a.com/y'\n"), false)
 
 // ── ③ --staged: 문서 파일이 아직 없을 때(이 티켓 병합 전 상태) → 검사할 게 없어 통과 ───────────
 // (티켓 20260927_2153: gen-home-feed-doc.mjs 240행 `if (!existsSync(docFile)) process.exit(0)` 경로)
