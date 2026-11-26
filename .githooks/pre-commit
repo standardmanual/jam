@@ -238,7 +238,7 @@ if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
   # ⑦ 문서 링크·참조 검사 (티켓 20260919_1245, docs/DOCUMENT_SCHEMA.md §5).
   #    커밋에서 추가된 줄의 링크와, 삭제·이동된 파일을 가리키는 모든 문서를 검사한다.
   #    새로 깨지는 링크·백틱 경로·frontmatter 필드 오류의 차단 여부는 scripts/doc-check.config.json의
-#    severity가 정한다(현재 link·codespan·field는 error, unresolvable은 warn).
+  #    severity가 정한다(현재 link·codespan·field는 error, unresolvable은 warn).
   #    기존에 깨진 링크는 건드리지 않는다(추가된 줄만 보므로 기준선 목록이 없다).
   #    엔진이 스스로 실패하면(위반 코드 10이 아닌 비정상 종료) 경고만 내고 통과시킨다 —
   #    검사기 오류가 모든 커밋을 막아서는 안 된다.

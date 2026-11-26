@@ -73,15 +73,15 @@ function trackingRatioFor(fontSize: number) {
 }
 
 // ── Spinning counter (릴) ────────────────────────────────────────────────
-// 스핀 스펙 상수. `--reel-dur`/`--reel-stagger`/`--reel-spin-blur`(globals.css)가 착지
+// 스핀 스펙 상수. `--reel-dur`/`--reel-stagger`(design-system/tokens/component.css)가 착지
 // 트랜지션(.t-reel-strip, transitions.css "프로젝트 확장")의 실제 지속시간을 소유하지만,
 // 아래 SVG feGaussianBlur의 SMIL <animate>는 CSS 커스텀 프로퍼티를 참조할 수 없어(SMIL
-// 속성값은 정적 문자열) 같은 값을 JS 상수로 미러링해야 한다. globals.css 토큰을 바꾸면
+// 속성값은 정적 문자열) 같은 값을 JS 상수로 미러링해야 한다. 그 토큰을 바꾸면
 // 이 값도 함께 맞춰야 한다.
 const SPIN_CYCLES = 2; // 착지 전 완전히 도는 루프 수(전 자리 공통 고정값 — 결정적 애니메이션)
 const REEL_DUR_MS = 1400; // --reel-dur 미러링
 const REEL_STAGGER_MS = 90; // --reel-stagger 미러링
-const REEL_SPIN_BLUR_PX = 3; // --reel-spin-blur 미러링 (기준: REEL_BLUR_REF_FONT 크기)
+const REEL_SPIN_BLUR_PX = 3; // 스핀 블러 값의 원천(CSS 토큰 없음, 기준: REEL_BLUR_REF_FONT 크기)
 const REEL_BLUR_REF_FONT = 200; // 위 블러 기준 폰트 크기(Figma 스탬프 스케일) — 다른 크기는 비례 축소
 const REEL_CELL_RATIO = 1.08; // 릴 셀 높이 = fontSize * 이 비율(숫자 글리프가 클리핑되지 않을 여유)
 
