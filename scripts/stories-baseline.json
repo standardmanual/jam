@@ -1,10 +1,6 @@
 [
-  "BadgeGridCard.tsx",
   "BottomSheet.tsx",
-  "CollectionGridCard.tsx",
   "Footer.tsx",
-  "ListCard.tsx",
-  "ListRow.tsx",
   "NotificationBell.tsx",
   "TabBar.tsx",
   "Toast.tsx",
