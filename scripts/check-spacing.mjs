@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-spacing — 서비스 화면 소스에 눈금 밖 간격이 새로 들어오면 실패한다 (티켓 20261108_2140, 간격 5회차, 상위 20261108_1926).
+// check-spacing — 서비스 화면 소스에 눈금 밖 간격이 있으면 실패한다 (티켓 20261108_2140, 간격 5회차, 상위 20261108_1926).
 //
 // 위반으로 세는 것 세 가지다. 문자열 속 클래스를 정규식으로 세고, 주석 안은 세지 않는다(scripts/strip-code-comments.mjs로 지운 본문에서 센다).
 //   1. 임의 px 간격: pt-[32px]처럼 간격 접두에 [<숫자>px]를 쓴 것
@@ -8,13 +8,11 @@
 //   3. 인라인 style·CSS의 padding·margin·gap 값이 var(--spacing-32|40|48|64|96)을 참조하는 것
 // 같은 줄에 `spacing-allow: <사유>` 주석이 있으면 세지 않는다(사유 필수, 예외 주석은 원래 줄에서 읽는다).
 //
-// 남아 있는 위반은 scripts/spacing-baseline.json에 { "경로": 개수 }로 고정한다. 기준선에 없는 파일의 위반이나
-// 기준선보다 늘어난 파일은 실패로, 줄어든 파일은 「기준선을 줄이세요」 안내만 낸다(실패 아님).
+// 위반은 예외 없이 실패한다. 줄 단위 예외는 `spacing-allow: <사유>`뿐이다.
 //
 // 사용법: node scripts/check-spacing.mjs                  검사 (0 = 통과, 1 = 위반 발견)
-//         node scripts/check-spacing.mjs --write-baseline  현재 개수로 기준선을 다시 쓴다
-//         --root <dir> --baseline <file>                   시험용: 검사 루트와 기준선 경로를 바꾼다
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+//         --root <dir>                                     시험용: 검사 루트를 바꾼다
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stripComments } from './strip-code-comments.mjs'
@@ -90,26 +88,9 @@ export function scan(root) {
   return result
 }
 
-// 기준선과 견준다. failures: 늘었거나 새로 생긴 파일, shrunk: 줄었거나 사라진 파일
-export function compare(current, baseline) {
-  const failures = []
-  const shrunk = []
-  for (const [file, v] of Object.entries(current)) {
-    const base = baseline[file]
-    if (base === undefined) failures.push({ file, now: v.total, base: 0, lines: v.lines })
-    else if (v.total > base) failures.push({ file, now: v.total, base, lines: v.lines })
-    else if (v.total < base) shrunk.push({ file, now: v.total, base })
-  }
-  for (const [file, base] of Object.entries(baseline)) {
-    if (current[file] === undefined) shrunk.push({ file, now: 0, base })
-  }
-  return { failures, shrunk }
-}
-
-function toBaseline(current) {
-  const out = {}
-  for (const file of Object.keys(current).sort()) out[file] = current[file].total
-  return out
+// 위반이 있는 파일을 실패 목록으로 바꾼다(기준선 없이 하나라도 있으면 실패).
+export function toFailures(current) {
+  return Object.keys(current).sort().map((file) => ({ file, now: current[file].total, lines: current[file].lines }))
 }
 
 function main() {
@@ -119,37 +100,15 @@ function main() {
     return i >= 0 && args[i + 1] ? args[i + 1] : fallback
   }
   const root = path.resolve(opt('--root', path.join(SCRIPT_DIR, '..')))
-  const baselinePath = path.resolve(opt('--baseline', path.join(SCRIPT_DIR, 'spacing-baseline.json')))
   const current = scan(root)
 
-  if (args.includes('--write-baseline')) {
-    const b = toBaseline(current)
-    writeFileSync(baselinePath, JSON.stringify(b, null, 2) + '\n')
-    const sum = Object.values(b).reduce((a, n) => a + n, 0)
-    console.log(`check-spacing: 기준선을 썼습니다 — 파일 ${Object.keys(b).length}개, 위반 ${sum}건 (${path.basename(baselinePath)})`)
-    return 0
-  }
+  const failures = toFailures(current)
 
-  let baseline = {}
-  if (existsSync(baselinePath)) {
-    try {
-      baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
-    } catch (e) {
-      console.error(`check-spacing: 기준선이 올바른 JSON이 아닙니다 — ${e.message}`)
-      return 1
-    }
-  }
-  const { failures, shrunk } = compare(current, baseline)
-
-  if (shrunk.length > 0) {
-    console.log('check-spacing: 위반이 줄었습니다. 기준선을 줄이세요 (node scripts/check-spacing.mjs --write-baseline):')
-    for (const s of shrunk) console.log(`  ${s.file}: ${s.base} → ${s.now}`)
-  }
   if (failures.length > 0) {
-    console.error('check-spacing: 눈금 밖 간격이 늘었습니다. 역할 토큰의 클래스(readme 「간격 역할 토큰과 클래스 대응」)를 쓰세요.')
+    console.error('check-spacing: 눈금 밖 간격이 있습니다. 역할 토큰의 클래스(readme 「간격 역할 토큰과 클래스 대응」)를 쓰세요.')
     console.error('  불가피하면 같은 줄에 `spacing-allow: <사유>` 주석을 답니다.')
     for (const f of failures) {
-      console.error(`  ${f.file}: 기준선 ${f.base} → 현재 ${f.now} (줄 ${f.lines.join(', ')})`)
+      console.error(`  ${f.file}: ${f.now}건 (줄 ${f.lines.join(', ')})`)
     }
     return 1
   }
