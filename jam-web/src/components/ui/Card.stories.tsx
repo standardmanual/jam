@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
+import { d } from '@/lib/i18n';
 import { Card } from './Card';
 
 const meta: Meta<typeof Card> = {
@@ -14,111 +15,29 @@ const meta: Meta<typeof Card> = {
 export default meta;
 type Story = StoryObj<typeof Card>;
 
+const Narrow = (Story: React.ComponentType) => (
+  <div style={{ width: 320 }}>
+    <Story />
+  </div>
+);
+
+/** 서비스 대부분의 카드. 위치 권한 안내(`LocationPermissionCard`)의 바깥 카드처럼 흰 면에 외곽선·그림자가 없다. */
 export const Default: Story = {
-  args: { tone: 'default', children: '카드 기본 컨텐츠입니다. 흰 면, 외곽선·그림자 없음.' },
-  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
+  name: '기본 — 흰 면',
+  args: { tone: 'default', children: d.drops.permissionUnsupportedDescription },
+  decorators: [Narrow],
 };
 
-/**
- * 회색 캔버스(--background, #f0f0f0) 위의 경계 확인용.
- * 흰 카드(--card-bg)는 외곽선 없이 면 대비와 여백으로만 구분된다.
- * tint는 흰 카드 안 구획으로만 쓴다(흰 카드 안에 흰 카드를 겹치지 않는다).
- */
-export const OnCreamCanvas: Story = {
-  name: '회색 캔버스 위 경계',
-  parameters: { layout: 'fullscreen' },
-  render: () => (
-    <div style={{ background: 'var(--background)', padding: 16, width: 393, boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card>
-          <p style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 700 }}>기본 카드</p>
-          <p style={{ margin: '4px 0 12px', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-            --card-bg 흰 면, 외곽선·그림자 없음
-          </p>
-          <Card tone="tint">
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>tint — 카드 안 구획 (--background-secondary)</p>
-          </Card>
-        </Card>
-      </div>
-    </div>
-  ),
-};
-
+/** 위치 권한 안내(`LocationPermissionCard`)의 안내 단계 — 흰 카드 안 구획으로만 쓴다. */
 export const Tint: Story = {
-  args: { tone: 'tint', children: 'Tint 배경 카드' },
-  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
+  name: '구획 — tint',
+  args: { tone: 'tint', children: d.drops.permissionGuideTitle },
+  decorators: [Narrow],
 };
 
+/** 캡슐 차단 안내(`CapsuleBlockedCard`)와 온보딩 트라이브 선택(`TribeStep`)에서 고른 카드 — 어두운 반전 면에 `--snow` 글자. */
 export const Inverse: Story = {
-  args: { tone: 'inverse', children: 'Inverse 배경 (어두운 반전 면 + --snow 글자, 테두리 없음)' },
-  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
-};
-
-/**
- * 선택 표시로 쓸 때의 크기 확인 (티켓 20261021_1247).
- * default와 inverse 모두 테두리가 없어(티켓 20261108_1940) 선택으로 바뀌어도 두 카드의 박스가 같다.
- */
-export const SelectionSameSize: Story = {
-  name: '선택 표시 — 같은 크기',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 320 }}>
-      <Card tone="default" onClick={() => {}} role="radio" aria-checked={false}>
-        <p style={{ margin: 0, fontWeight: 700 }}>고르지 않은 카드</p>
-        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>흰 면, 테두리 없음</p>
-      </Card>
-      <Card tone="inverse" onClick={() => {}} role="radio" aria-checked>
-        <p style={{ margin: 0, fontWeight: 700 }}>고른 카드</p>
-        <p style={{ margin: '4px 0 0', fontSize: 'var(--text-sm)' }}>반전 면, 테두리 없음</p>
-      </Card>
-    </div>
-  ),
-};
-
-export const Interactive: Story = {
-  name: '클릭 가능',
-  args: {
-    tone: 'default',
-    children: '클릭 가능한 카드입니다. onClick 시 role="button" + tabIndex=0 자동 설정.',
-    onClick: () => {},
-  },
-  decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
-};
-
-export const AllTones: Story = {
-  name: '전체 Tone',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
-      <Card tone="default">
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>default</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --card-bg 흰 면 (외곽선·그림자 없음)</p>
-      </Card>
-      <Card tone="tint">
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>tint</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--foreground)' }}>배경: --background-secondary</p>
-      </Card>
-      <Card tone="inverse">
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--snow)' }}>inverse</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--snow)' }}>배경: --background-inverse (어두운 반전 면, 테두리 없음)</p>
-      </Card>
-    </div>
-  ),
-};
-
-export const WithContent: Story = {
-  name: '미션 카드 예시',
-  render: () => (
-    <div style={{ width: 320 }}>
-      <Card>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--foreground)' }}>
-            오늘의 미션
-          </p>
-          <p style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--muted)', lineHeight: 'var(--text-base--line-height)' }}>
-            5km 달리기를 완료하면 배지를 획득해요.
-          </p>
-          <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--link)' }}>진행 중 • 3.2 / 5.0 km</p>
-        </div>
-      </Card>
-    </div>
-  ),
+  name: '반전 — 어두운 면',
+  args: { tone: 'inverse', children: d.capsule.blockedBanner.line1 },
+  decorators: [Narrow],
 };

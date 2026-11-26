@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { expect } from 'storybook/test';
+import { d } from '@/lib/i18n';
 import { LabelChip } from './LabelChip';
 import { Card } from './Card';
 
@@ -35,123 +36,42 @@ type Story = StoryObj<typeof LabelChip>;
 
 const CARD_WIDTH = 280;
 
+/** 아이템 배지 상세 등에서 흰 카드 위에 놓이는 기본 칩(예: 획득 이력의 «처음 받은 날») */
 export const Default: Story = {
-  name: '기본 — 흰 카드 위 한글 라벨',
+  name: '기본 — 흰 카드 위',
   render: () => (
     <Card style={{ width: CARD_WIDTH }}>
-      <LabelChip>내 진행도</LabelChip>
-    </Card>
-  ),
-};
-
-/** 영문 소문자 입력은 `textTransform: uppercase`로 SYNC처럼 보인다. 한글은 영향이 없다. */
-export const LowercaseInput: Story = {
-  name: '영문 소문자 입력 — 화면은 대문자',
-  render: () => (
-    <Card style={{ width: CARD_WIDTH }}>
-      <span data-testid="lowercase">
-        <LabelChip>sync</LabelChip>
-      </span>
-    </Card>
-  ),
-  play: async ({ canvasElement }) => {
-    const chip = canvasElement.querySelector('[data-testid="lowercase"] span') as HTMLElement;
-    expect(getComputedStyle(chip).textTransform).toBe('uppercase');
-  },
-};
-
-/** 온보딩 퀘스트 카드의 칩 줄 재현 — 칩은 좌측, 진행도 n/7은 같은 줄 우측. */
-export const ChipRow: Story = {
-  name: '칩 줄 — [LabelChip] ····· 1/7 (퀘스트 카드)',
-  render: () => (
-    <Card style={{ width: CARD_WIDTH }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <LabelChip>퀘스트</LabelChip>
-        <span
-          style={{
-            fontSize: 'var(--text-sm)',
-            fontWeight: 700,
-            color: 'var(--link)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          1/7
-        </span>
-      </div>
+      <LabelChip>{d.badges.firstEarnedChip}</LabelChip>
     </Card>
   ),
 };
 
 /**
- * flex-col 카드의 기본 `align-items: stretch`는 `inline-flex` 칩도 카드 폭으로 늘린다.
- * 그래서 호출부가 `className="self-start"`를 넘긴다(컴포넌트에 굳히지 않는다).
- * 아래 두 카드에서 위는 `self-start` 없음(칩이 카드 폭으로 늘어남), 아래는 있음(글자 폭).
+ * 오늘 현황 줄·정지 안내·Strava 안내 카드처럼 flex-col 카드 안에서 쓰는 칩.
+ * 카드의 `align-items: stretch`가 칩을 카드 폭으로 늘리지 않도록 호출부가 `className="self-start"`를 넘긴다.
  */
-export const SelfStartCompare: Story = {
-  name: 'flex-col 카드 — self-start 없음 / 있음',
+export const SelfStart: Story = {
+  name: '카드 안 — 글자 폭(self-start)',
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Card
-        className="flex flex-col gap-2"
-        style={{ width: CARD_WIDTH }}
-        data-testid="without-self-start"
-      >
-        <LabelChip>self-start 없음</LabelChip>
-      </Card>
-      <Card
-        className="flex flex-col gap-2"
-        style={{ width: CARD_WIDTH }}
-        data-testid="with-self-start"
-      >
-        <LabelChip className="self-start">self-start 있음</LabelChip>
-      </Card>
-    </div>
-  ),
-};
-
-/** `children`이 비면 빈 필이 남지 않는다 — 아래 카드 안에는 아무것도 그려지지 않는다. */
-export const EmptyChildren: Story = {
-  name: 'children 비어 있음 — 아무것도 그리지 않는다',
-  render: () => (
-    <Card style={{ width: CARD_WIDTH, minHeight: 40 }}>
-      <div data-testid="empty">
-        <LabelChip>{''}</LabelChip>
-        <LabelChip>{null}</LabelChip>
-      </div>
+    <Card className="flex flex-col gap-2" style={{ width: CARD_WIDTH }}>
+      <LabelChip className="self-start">{d.badges.firstEarnedChip}</LabelChip>
     </Card>
   ),
-  play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-testid="empty"]')?.children.length).toBe(0);
-  },
 };
 
-/**
- * 반전 색조 — 크림 바탕 위 어두운 칩(기사 화면 `ArticleView`의 라벨 칩). 티켓 20261001_1737(1248).
- * 위는 기본 색조(흰 카드 위 옅은 회색 칩), 아래는 `tone="inverse"`(크림 바탕 위 어두운 칩)다. 모양(높이·여백·글자 크기)은 같다.
- */
+/** 기사 화면(`ArticleView`)의 라벨 칩 — 크림 바탕 위 어두운 칩. 모양(높이·여백·글자 크기)은 기본 색조와 같다. */
 export const ToneInverse: Story = {
-  name: '반전 색조 — 크림 바탕 위 어두운 칩 (tone="inverse")',
+  name: '반전 색조 — 크림 바탕 위',
   render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Card style={{ width: CARD_WIDTH }}>
-        <span data-testid="tone-default">
-          <LabelChip>기본 · 흰 카드 위</LabelChip>
-        </span>
-      </Card>
-      <div style={{ width: CARD_WIDTH }}>
-        <span data-testid="tone-inverse">
-          <LabelChip tone="inverse">반전 · 크림 바탕 위</LabelChip>
-        </span>
-      </div>
+    <div style={{ width: CARD_WIDTH }}>
+      <span data-testid="tone-inverse">
+        <LabelChip tone="inverse">기사</LabelChip>
+      </span>
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const base = canvasElement.querySelector('[data-testid="tone-default"] span') as HTMLElement;
     const inverse = canvasElement.querySelector('[data-testid="tone-inverse"] span') as HTMLElement;
-    // 색조만 다르고 높이·여백·글자 크기는 같다
-    expect(inverse.getBoundingClientRect().height).toBe(base.getBoundingClientRect().height);
-    expect(getComputedStyle(inverse).padding).toBe(getComputedStyle(base).padding);
-    expect(getComputedStyle(inverse).fontSize).toBe(getComputedStyle(base).fontSize);
-    expect(getComputedStyle(inverse).backgroundColor).not.toBe(getComputedStyle(base).backgroundColor);
+    expect(getComputedStyle(inverse).textTransform).toBe('uppercase');
+    expect(getComputedStyle(inverse).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   },
 };

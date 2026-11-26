@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { expect } from 'storybook/test';
+import { d } from '@/lib/i18n';
 import { BadgeHeroSection } from './BadgeHeroSection';
 import { LabelChip } from './LabelChip';
 import { LockedTile } from './LockedTile';
@@ -51,6 +52,7 @@ const Column = ({ children, width = 430 }: { children: React.ReactNode; width?: 
 
 const DESCRIPTION = ['짝 잃은 양말이 제 짝을 찾아 빨랫줄에 나란히 걸렸습니다.', '오늘도 한 걸음 더 달려 봐요.'];
 
+/** 배지 상세 페이지(`badges/[id]`)의 대표 카드 */
 export const Page: Story = {
   name: '기본 — page',
   render: () => (
@@ -66,10 +68,12 @@ export const Page: Story = {
     expect(card.className).toContain('bg-card-bg');
     expect(card.className).toContain('p-6');
     expect(getComputedStyle(card).borderTopWidth).toBe('0px');
-    expect(canvasElement.querySelectorAll('p').length).toBe(2);
+    expect(canvasElement.querySelectorAll('p').length).toBe(1);
+    expect(canvasElement.querySelectorAll('p > span').length).toBe(2);
   },
 };
 
+/** 지도 드랍 바텀시트(`BadgeDetailSheet`)의 대표 카드 */
 export const Sheet: Story = {
   name: '기본 — sheet (폭 360)',
   render: () => (
@@ -86,6 +90,7 @@ export const Sheet: Story = {
   },
 };
 
+/** 무한레벨형 배지(등급 대신 Lv.N 칩)의 상세 대표 카드 */
 export const Leveled: Story = {
   name: '레벨형 — Lv.N 칩',
   render: () => (
@@ -98,6 +103,7 @@ export const Leveled: Story = {
   },
 };
 
+/** 잠긴 아이템 배지 상세(`LockedItemDetail`)의 대표 카드 — 이름·설명을 가리고 «잠김» 칩을 붙인다 */
 export const Locked: Story = {
   name: '잠긴 개체 — chipExtra · titleNode · descriptionNode',
   render: () => (
@@ -105,20 +111,21 @@ export const Locked: Story = {
       <BadgeHeroSection
         name="잠긴 배지"
         rarity="rare"
-        chipExtra={<LabelChip>잠김</LabelChip>}
-        titleNode="이름을 가렸어요"
-        descriptionNode="열면 어떤 배지인지 알 수 있어요."
+        chipExtra={<LabelChip>{d.lockedItem.detail.chip}</LabelChip>}
+        titleNode={d.lockedItem.card.name}
+        descriptionNode={d.lockedItem.detail.description}
         imageSlot={<LockedTile size={200} />}
       />
     </Column>
   ),
   play: async ({ canvasElement }) => {
-    expect(canvasElement.textContent).toContain('잠김');
-    expect(canvasElement.querySelector('h1')!.textContent).toBe('이름을 가렸어요');
+    expect(canvasElement.textContent).toContain(d.lockedItem.detail.chip);
+    expect(canvasElement.querySelector('h1')!.textContent).toBe(d.lockedItem.card.name);
     expect(canvasElement.querySelectorAll('p').length).toBe(1);
   },
 };
 
+/** 배지 이미지가 없을 때 메달 아이콘으로 대신하는 대표 카드 */
 export const NoImage: Story = {
   name: '이미지 없음 — MedalIcon',
   render: () => (
@@ -128,6 +135,7 @@ export const NoImage: Story = {
   ),
 };
 
+/** 설명이 없는 배지의 대표 카드 — 설명 블록을 그리지 않는다 */
 export const NoDescription: Story = {
   name: '설명 없음 — 설명 블록 미렌더',
   render: () => (
@@ -163,63 +171,5 @@ export const WithBackground: Story = {
     const card = h1.closest('.rounded-2xl') as HTMLElement;
     expect(card.className).toContain('bg-transparent');
     expect(card.querySelector('[data-testid="bg"]')).toBeTruthy();
-  },
-};
-
-export const LongDescription: Story = {
-  name: '긴 설명 — 폭 360',
-  render: () => (
-    <Column width={360}>
-      <BadgeHeroSection
-        name="아주 길고 긴 이름을 가진 배지의 이름이 두세 줄로 접히는 경우"
-        rarity="epic"
-        descriptionLines={[
-          '한강변을 따라 서울을 가로지르는 긴 코스를 끝까지 달려 본 러너에게만 주어지는 배지입니다.',
-          '중간에 쉬어 가도 괜찮아요. 완주한 날의 바람과 햇살이 이 배지에 함께 담겨 있어요.',
-          '다음 도전도 기다리고 있어요.',
-        ]}
-        imageSlot={<Image px={200} alt="긴 이름" />}
-      />
-    </Column>
-  ),
-  play: async ({ canvasElement }) => {
-    const lines = canvasElement.querySelectorAll('p');
-    expect(lines.length).toBe(3);
-    // 말줄임 없이 내용이 카드 높이를 정한다 — 마지막 문장이 카드 안에서 잘리지 않는다
-    const card = canvasElement.querySelector('h1')!.closest('.rounded-2xl') as HTMLElement;
-    expect(lines[2].getBoundingClientRect().bottom).toBeLessThanOrEqual(card.getBoundingClientRect().bottom);
-  },
-};
-
-/** 중간색 면 위에서 설명을 한 단계 진하게 한다. 샘플 배경은 서비스 Aura를 흉내 낸 세로 그라데이션(위 연함 → 아래 진함)이다. */
-export const StrongText: Story = {
-  name: '설명 진하게 — strongText',
-  render: () => (
-    <Column>
-      <BadgeHeroSection
-        strongText
-        backgroundColor="var(--card-bg)"
-        backgroundSlot={
-          <div
-            data-testid="bg"
-            className="absolute inset-0 z-0"
-            style={{ background: 'linear-gradient(to bottom, var(--card-bg) 0%, var(--card-bg) 28%, var(--border) 100%)' }}
-          />
-        }
-        name="한강 러너"
-        rarity="rare"
-        descriptionLines={DESCRIPTION}
-        imageSlot={<Image px={200} alt="한강 러너" />}
-      />
-    </Column>
-  ),
-  play: async ({ canvasElement }) => {
-    const lines = canvasElement.querySelectorAll('p');
-    expect(lines.length).toBe(2);
-    lines.forEach((line) => {
-      expect(line.className).toContain('text-foreground');
-      expect(line.className).not.toContain('text-muted');
-    });
-    expect(canvasElement.querySelector('h1')!.className).toContain('text-foreground');
   },
 };

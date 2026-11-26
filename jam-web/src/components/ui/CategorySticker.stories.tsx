@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
-import { CategorySticker, STICKER_COLOR_PAIRS } from './CategorySticker';
-import type { CategoryStickerPair } from './CategorySticker';
+import { CategorySticker } from './CategorySticker';
 
 const meta: Meta<typeof CategorySticker> = {
   title: 'UI/Cards/CategorySticker',
@@ -21,75 +20,20 @@ const meta: Meta<typeof CategorySticker> = {
 export default meta;
 type Story = StoryObj<typeof CategorySticker>;
 
-const PAIRS = Object.keys(STICKER_COLOR_PAIRS) as CategoryStickerPair[];
-const LABELS = ['ACTIVITY', 'ITEM', 'MISSION', 'CHECK IN', 'COLLECTION', 'DROP', 'PICKUP'];
-const LETTERS = ['J', 'a', 'm'] as const;
-const SHAPES = ['pebble', 'wave'] as const;
-const wrap: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 16 };
-const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
-
-export const PairsGrid: Story = {
-  name: '두 모양 × 보색 짝 8개 (16장)',
-  render: () => (
-    <div style={col}>
-      {SHAPES.map((shape) => (
-        <div key={shape} style={wrap}>
-          {PAIRS.map((pair, i) => (
-            <CategorySticker key={pair} shape={shape} seed={`pair-${i}`} label="MISSION" pair={pair} letter={LETTERS[i % 3]} />
-          ))}
-        </div>
-      ))}
-    </div>
-  ),
+/** 홈 피드 카드(`FeedCardParts`의 `PlannedChipView`)에서 분류 문구를 단 조약돌 모양 스티커 */
+export const Pebble: Story = {
+  name: '조약돌 — MISSION',
+  render: () => <CategorySticker shape="pebble" seed="mission" label="MISSION" pair="green-pink" letter="J" />,
 };
 
-export const Labels: Story = {
-  name: '문구 7개 × 두 모양',
-  render: () => (
-    <div style={col}>
-      {SHAPES.map((shape) => (
-        <div key={shape} style={wrap}>
-          {LABELS.map((label, i) => (
-            <CategorySticker key={label} shape={shape} seed="labels" label={label} pair={PAIRS[i]} letter={LETTERS[i % 3]} />
-          ))}
-        </div>
-      ))}
-    </div>
-  ),
+/** 홈 피드 카드(`FeedCardParts`의 `PlannedChipView`)에서 분류 문구를 단 물결 모양 스티커 */
+export const Wave: Story = {
+  name: '물결 — ITEM',
+  render: () => <CategorySticker shape="wave" seed="item" label="ITEM" pair="pink-green" letter="a" />,
 };
 
+/** 가장 긴 분류 문구(컬렉션 카드의 COLLECTION)는 글자 크기를 줄여 둘레에 맞춘다 */
 export const LongestLabel: Story = {
-  name: '가장 긴 문구(COLLECTION) — 글자 줄임',
-  render: () => (
-    <div style={wrap}>
-      <CategorySticker shape="pebble" seed="long" label="COLLECTION" pair="green-pink" letter="J" />
-      <CategorySticker shape="wave" seed="long" label="COLLECTION" pair="pink-green" letter="a" />
-      <CategorySticker shape="wave" seed="long" label="ITEM" pair="pink-green" letter="a" />
-    </div>
-  ),
-};
-
-export const Seeds: Story = {
-  name: '시드 바꿔 보기 — 같은 시드는 같은 모양',
-  render: () => (
-    <div style={col}>
-      {SHAPES.map((shape) => (
-        <div key={shape} style={wrap}>
-          {['a', 'b', 'c', 'd', 'e', 'f', 'a'].map((seed, i) => (
-            <CategorySticker key={i} shape={shape} seed={seed} label="PICKUP" pair="yellow-purple" letter="m" />
-          ))}
-        </div>
-      ))}
-    </div>
-  ),
-};
-
-export const EmptyLabel: Story = {
-  name: '문구 없음 — 바탕과 로고만',
-  render: () => (
-    <div style={wrap}>
-      <CategorySticker shape="pebble" seed="empty" label="" pair="sky-red" letter="J" />
-      <CategorySticker shape="wave" seed="empty" label="" pair="sky-red" letter="J" />
-    </div>
-  ),
+  name: '가장 긴 문구 — COLLECTION',
+  render: () => <CategorySticker shape="pebble" seed="collection" label="COLLECTION" pair="yellow-purple" letter="m" />,
 };

@@ -30,6 +30,7 @@ const meta: Meta<typeof MixerSlot> = {
 export default meta;
 type Story = StoryObj<typeof MixerSlot>;
 
+/** 등급 올리기(`TierUpPanel`)에서 재료를 채울 수 있는 빈 칸 */
 export const Empty: Story = {
   name: '빈 슬롯 — 채울 수 있음(테두리 없음 + 검은 원 안 흰 «+»)',
   args: {
@@ -58,6 +59,7 @@ export const Empty: Story = {
   },
 };
 
+/** 등급 올리기에서 재료로 쓸 배지가 하나도 없을 때의 잠긴 칸 */
 export const Locked: Story = {
   name: '잠김 — 후보 배지 미보유',
   args: {
@@ -65,6 +67,7 @@ export const Locked: Story = {
   },
 };
 
+/** 등급 올리기에서 재료 배지를 채운 칸 */
 export const Filled: Story = {
   name: '채움',
   args: {
@@ -97,6 +100,7 @@ export const Filled: Story = {
   },
 };
 
+/** 등급 올리기에서 채운 재료 배지에 이미지 주소가 없을 때의 칸 */
 export const FilledNoImage: Story = {
   name: '채움 — 이미지 없음(폴백)',
   args: {

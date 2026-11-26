@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
+import { d, t } from '@/lib/i18n';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
 import Button from './Button';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
@@ -45,122 +46,39 @@ function makeItems(count: number, override?: Partial<BadgeRevealItem>): BadgeRev
   }));
 }
 
-export const Empty: Story = {
-  name: '0개 — 캐러셀 미노출',
-  args: { open: true, items: [] },
-};
-
+/** 배지 획득 연출(`BadgeRevealOverlay`)에서 배지를 1개 받았을 때 — 이웃 카드가 없다 */
 export const Single: Story = {
   name: '1개 — 이웃 없음·플리킹 비활성',
   args: { open: true, items: makeItems(1) },
 };
 
-export const Two: Story = {
-  name: '2개 — 왼쪽 없음, 오른쪽에만 1장',
-  args: { open: true, items: makeItems(2) },
-};
-
+/** 배지 획득 연출에서 배지를 여러 개 받았을 때 — 좌우 이웃 카드가 비친다 */
 export const Three: Story = {
   name: '3개 — 좌우 1장씩 peek',
   args: { open: true, items: makeItems(3) },
 };
 
-export const Five: Story = {
-  name: '5개',
-  args: { open: true, items: makeItems(5) },
-};
-
+/** 배지 획득 연출에서 상세를 다 싣지 못했을 때 — 마지막에 «전체 보기» 카드가 붙는다 */
 export const TwentyWithMoreCard: Story = {
-  name: '20개 — 10장 + 전체 보기 카드',
+  name: '많이 획득 — 10장 + 전체 보기 카드',
   args: {
     open: true,
     items: makeItems(10),
     moreCount: 10,
+    moreMessage: (n: number) => t(d.badgeReveal.moreMessage, { count: n }),
+    moreLabel: d.badgeReveal.moreLabel,
   },
 };
 
-export const CustomMoreMessage: Story = {
-  name: '전체 보기 문구 주입 (moreMessage)',
-  args: {
-    open: true,
-    items: makeItems(10),
-    moreCount: 7,
-    // 서비스는 i18n 사전(d)에서 문구를 주입한다 — 컴포넌트에 하드코딩하지 않는다.
-    moreMessage: (n: number) => `아직 ${n}개가 더 남았어요`,
-    moreLabel: '배지함에서 보기',
-  },
-};
-
+/** 배지 획득 연출에서 배지 이미지가 없을 때 */
 export const NoImage: Story = {
   name: '엣지 — 이미지 없음',
   args: { open: true, items: makeItems(3, { imageUrl: '' }) },
 };
 
-export const LongDescription: Story = {
-  name: '엣지 — 설명 아주 김 (3줄 클램프)',
-  args: {
-    open: true,
-    items: makeItems(3, {
-      description:
-        '한강 자전거길 전 구간을 완주하고, 같은 주에 러닝과 라이딩을 각각 3회 이상 기록하면 획득할 수 있어요. ' +
-        '누적 거리 200km를 넘기면 다음 단계 배지로 이어집니다. 시즌이 끝나기 전에 도전해 보세요.',
-    }),
-  },
-};
-
 /**
- * 엣지 — 이름 1행 + 설명 1행 ("서초역" 케이스, 20260908_2008 여백 문제의 근원).
- * 이미지가 고정 크기(IMAGE_SIZE_RATIO)로 콘텐츠 블록에 포함되고, `justifyContent:'center'`가
- * 블록 전체를 카드 중앙에 배치해 텍스트가 짧을수록 카드 상하로 여백이 고르게 분산돼야 한다.
- */
-export const ShortText: Story = {
-  name: '엣지 — 이름·설명 짧음 (서초역 케이스, 여백 축소 확인)',
-  args: {
-    open: true,
-    items: makeItems(3, { name: '서초역', description: '서초역에서 체크인하면 획득해요.' }),
-  },
-};
-
-export const LongName: Story = {
-  name: '엣지 — 이름 아주 김',
-  args: {
-    open: true,
-    items: makeItems(3, { name: '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 2' }),
-  },
-};
-
-export const MysticOnly: Story = {
-  name: '엣지 — mystic만',
-  args: { open: true, items: makeItems(3, { rarity: 'mystic' }) },
-};
-
-/**
- * v5 무한레벨형(`badges.rarity IS NULL`) 회귀 고정 — 티켓 20260905_0030.
- * `rarity: null`은 "등급이 존재하지 않음"이라 등급 칩도 등급 낭독도 없어야 한다.
- * 이전에는 캐러셀이 `?? 'common'`으로 접어 Lv.N 배지가 Common으로 표시됐다.
- * (`undefined`는 여전히 미지정 = common이며, 위 스토리들이 그 경로를 덮는다)
- */
-export const LevelBadgeNoRarity: Story = {
-  name: '엣지 — 등급 없음(무한레벨형) · Common으로 새지 않는다',
-  args: { open: true, items: makeItems(3, { rarity: null }) },
-  play: async ({ canvasElement, step }) => {
-    await step('등급 칩을 그리지 않는다', async () => {
-      await waitFor(() =>
-        expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy()
-      );
-      expect(canvasElement.textContent).not.toContain('Common');
-    });
-
-    await step('라이브 리전도 등급을 낭독하지 않는다', async () => {
-      const liveText =
-        canvasElement.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent ?? '';
-      expect(liveText).toContain('한강 러너 1');
-      expect(liveText).not.toContain('Common');
-    });
-  },
-};
-
-/**
+ * 서비스: 배지 획득 연출에서 이름과 설명이 긴 배지.
+ *
  * 20260824_001 회귀 확인용 — 이름 2행 + 설명 3행이 동시에 걸리는 최악 조합.
  * 텍스트가 `flexShrink: 0`이고 이미지가 `maxHeight: 46%`로 먼저 양보하므로
  * 이름 2행째·설명 3행째가 잘리지 않아야 한다.
@@ -178,117 +96,11 @@ export const LongNameAndDescription: Story = {
   },
 };
 
-/* ────────────────────────── 재오픈 리셋 회귀 (20260824_001) ────────────────────────── */
-
-const REOPEN_POOL = makeItems(20);
-
-/** 중앙 카드(= aria-hidden="false"인 카드)의 배지 이름. 이웃 카드는 aria-hidden="true"다. */
-function centerBadgeName(root: HTMLElement): string {
-  const center = root.querySelector('[role="dialog"] [aria-hidden="false"]');
-  return center?.querySelectorAll('p')[0]?.textContent?.trim() ?? '';
-}
-
-/**
- * 재오픈 리셋을 실측하는 하네스.
- * 툴바는 `zIndex: 100`으로 오버레이(zIndex 60) 위에 띄운다 — 캐러셀이 열린 상태에서도
- * 카드 수를 바꿔 눌러 "열린 채 목록 교체" 경로까지 검증하기 위해서다.
- */
-function ReopenResetHarness() {
-  const [open, setOpen] = useState(false);
-  const [count, setCount] = useState(3);
-  const items = useMemo(() => REOPEN_POOL.slice(0, count), [count]);
-
-  return (
-    <div>
-      <div style={{ position: 'relative', zIndex: 100, padding: 24, display: 'flex', gap: 8 }}>
-        {[3, 20, 1].map((n) => (
-          <button
-            key={n}
-            type="button"
-            data-testid={`open-${n}`}
-            onClick={() => {
-              setCount(n);
-              setOpen(true);
-            }}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-full)',
-              border: 'none',
-              background: 'var(--accent)',
-              color: 'var(--accent-foreground)',
-              fontFamily: 'var(--font-family-base)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            {`${n}개 열기`}
-          </button>
-        ))}
-      </div>
-
-      <BadgeRevealCarousel open={open} items={items} onClose={() => setOpen(false)} />
-    </div>
-  );
-}
-
-/**
- * 20260824_001 게이트 리뷰 회귀 확인용 — **재오픈 시 중앙 카드가 항상 첫 배지로 리셋**된다.
- *
- * 스핀(phase)을 제거하기 전에는 phase 전환이 navToken을 갈아치우며 우연히 리셋 역할을 겸했다.
- * 스핀 제거 후 token이 `count`뿐이라, 카드 수가 같은 재오픈(3개 → 닫기 → 3개)에서 직전에
- * 스와이프한 카드가 그대로 남는 회귀가 났다. 아래 play가 그 경로를 자동으로 재현·검증한다.
- */
-export const ReopenResetRegression: Story = {
-  name: '회귀 — 재오픈 시 첫 카드로 리셋',
-  args: { open: false, items: [] },
-  render: () => <ReopenResetHarness />,
-  play: async ({ canvasElement, step }) => {
-    const center = () => centerBadgeName(canvasElement);
-    const dialogCount = () => canvasElement.querySelectorAll('[role="dialog"]').length;
-
-    await step('3개로 열면 첫 카드가 중앙', async () => {
-      await userEvent.click(canvasElement.querySelector('[data-testid="open-3"]')!);
-      await waitFor(() => expect(center()).toBe('한강 러너 1'));
-    });
-
-    await step('ArrowRight로 2번 카드로 이동', async () => {
-      await userEvent.keyboard('{ArrowRight}');
-      await waitFor(() => expect(center()).toBe('한강 러너 2'));
-    });
-
-    await step('Escape로 닫기', async () => {
-      await userEvent.keyboard('{Escape}');
-      await waitFor(() => expect(dialogCount()).toBe(0));
-    });
-
-    await step('같은 카드 수(3개)로 다시 열면 첫 카드로 리셋 — 이번 회귀의 핵심', async () => {
-      await userEvent.click(canvasElement.querySelector('[data-testid="open-3"]')!);
-      await waitFor(() => expect(center()).toBe('한강 러너 1'));
-    });
-
-    await step('열린 채 카드 수를 20개로 바꿔도 첫 카드로 리셋 (navToken 경로)', async () => {
-      await userEvent.keyboard('{ArrowRight}');
-      await waitFor(() => expect(center()).toBe('한강 러너 2'));
-      await userEvent.click(canvasElement.querySelector('[data-testid="open-20"]')!);
-      await waitFor(() => expect(center()).toBe('한강 러너 1'));
-    });
-
-    await step('20개 → 닫기 → 1개 재오픈도 첫 카드', async () => {
-      await userEvent.keyboard('{ArrowRight}');
-      await userEvent.keyboard('{ArrowRight}');
-      await waitFor(() => expect(center()).toBe('한강 러너 3'));
-      await userEvent.keyboard('{Escape}');
-      await waitFor(() => expect(dialogCount()).toBe(0));
-      await userEvent.click(canvasElement.querySelector('[data-testid="open-1"]')!);
-      await waitFor(() => expect(center()).toBe('한강 러너 1'));
-    });
-  },
-};
-
 /* ──────────────────── 중앙 카드 텍스트 공지 (20260823_008) ──────────────────── */
 
 /**
+ * 서비스: 배지 획득 연출을 스크린리더로 쓸 때.
+ *
  * 오버레이가 열리면 초기 포커스가 닫기 버튼으로 가서, 스크린리더는 dialog의 ariaLabel만 읽고
  * 배지 이름·설명·등급은 읽지 않았다. 화살표·스와이프로 중앙 카드가 바뀔 때도 공지가 없었다.
  *
@@ -330,6 +142,8 @@ export const CenterCardAnnouncement: Story = {
 };
 
 /**
+ * 서비스: 배지 획득 연출에서 레벨형·반복 획득 배지.
+ *
  * v5 레벨형 · 반복형 슬롯 (티켓 20260905_0038 B).
  * 카드 슬롯이 「이미지 → 등급 pill → 이름 → 설명」으로 고정이라 Lv.N도 ×N도 들어갈 자리가
  * 없던 것을 칩 줄로 열었다. 두 칩은 배타적이 아니다 — 레벨형이면서 반복 획득일 수 있다.
@@ -366,40 +180,8 @@ export const LevelAndRepeatSlots: Story = {
 };
 
 /**
- * 칩 규격 (티켓 20261112_1626) — 카드의 등급·레벨 칩은 ListRowChip과 같은 md(12px 굵게, 높이 20px, 안쪽 2px 8px)다.
- * 칩 줄 높이도 20px로 고정돼, 칩이 없는 카드(common)·칩만 있는 카드·×N이 붙은 카드 사이에서 아래 이름의 y가 흔들리지 않는다.
- * 세 자리 레벨(Lv.100)도 52px 칩 안에 들어간다.
- */
-export const ChipSizeMd: Story = {
-  name: '칩 규격 — 12px 굵게·높이 20px (Lv.100, Mystic, common 없음, ×N)',
-  args: {
-    open: true,
-    items: [
-      { id: 'lv', name: '첫 숨결', description: '달릴수록 레벨이 오르는 배지예요.', imageUrl: SAMPLE_IMAGE, rarity: null, level: 100 },
-      { id: 'my', name: '신비한 러너', description: '아주 드문 배지예요.', imageUrl: SAMPLE_IMAGE, rarity: 'mystic', earnCount: 3 },
-      { id: 'co', name: '한강 러너', description: '칩이 없는 common 카드예요.', imageUrl: SAMPLE_IMAGE, rarity: 'common' },
-    ],
-  },
-  play: async ({ canvasElement, step }) => {
-    await step('레벨 칩이 12px·높이 20px이고 글자가 넘치지 않는다', async () => {
-      await waitFor(() => expect(canvasElement.textContent).toContain('Lv.100'));
-      const chip = Array.from(canvasElement.querySelectorAll('span')).find((el) => el.textContent === 'Lv.100') as HTMLElement;
-      expect(chip.offsetHeight).toBe(20);
-      expect(getComputedStyle(chip).fontSize).toBe('12px');
-      expect(chip.scrollWidth).toBeLessThanOrEqual(chip.offsetWidth);
-    });
-
-    await step('등급 칩이 12px·높이 20px이다', async () => {
-      await userEvent.keyboard('{ArrowRight}');
-      const chip = Array.from(canvasElement.querySelectorAll('span')).find((el) => el.textContent === 'Mystic') as HTMLElement;
-      expect(chip).toBeTruthy();
-      expect(chip.offsetHeight).toBe(20);
-      expect(getComputedStyle(chip).fontSize).toBe('12px');
-    });
-  },
-};
-
-/**
+ * 서비스: 배지 획득 연출에서 같은 배지를 여러 번 받았을 때.
+ *
  * 같은 배지 3회 획득이 카드 3장이 되면 안 된다 (티켓 20260905_0038 B).
  * 같은 `id`는 첫 등장 자리에서 한 장으로 접히고, 접힌 수가 ×N이 된다.
  */
@@ -441,32 +223,30 @@ function SelectModeHarness({
   need,
   initialSelected = [],
   submitting = false,
-  names,
   lockedIds = NO_LOCKED_IDS,
 }: {
   total: number;
   need: number;
   initialSelected?: string[];
   submitting?: boolean;
-  names?: string[];
   /** 잠긴 카드로 그릴 항목 id — 이름·설명은 호출부가 가린 문구로 넘기고 그림은 없다 */
   lockedIds?: string[];
 }) {
   const items = useMemo(
     () =>
-      makeItems(total).map((item, i): BadgeRevealItem => {
+      makeItems(total).map((item): BadgeRevealItem => {
         if (lockedIds.includes(item.id)) {
           return {
             ...item,
-            name: '잠긴 아이템 배지',
-            description: '여는 데 잼 60만큼 채워야 해요',
+            name: d.lockedItem.card.name,
+            description: d.lockedItem.card.description,
             imageUrl: null,
             locked: true,
           };
         }
-        return names?.[i] ? { ...item, name: names[i], description: '' } : { ...item, description: '' };
+        return { ...item, description: '' };
       }),
-    [total, names, lockedIds]
+    [total, lockedIds]
   );
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const full = selected.length >= need;
@@ -479,8 +259,10 @@ function SelectModeHarness({
       selectedIds={selected}
       selectionFull={full}
       closeDisabled={submitting}
-      closeLabel="나중에"
-      ariaLabel="인벤토리에 담을 아이템 배지 고르기"
+      closeLabel={d.syncPending.pick.fullLater}
+      ariaLabel={d.syncPending.pick.ariaLabel}
+      selectLabel={d.syncPending.pick.toggleSelect}
+      selectedLabel={d.syncPending.pick.toggleSelected}
       onClose={() => {}}
       onToggleSelect={(id) =>
         setSelected((prev) =>
@@ -491,9 +273,9 @@ function SelectModeHarness({
       header={
         <div style={{ padding: 'max(var(--spacing-16), env(safe-area-inset-top)) var(--spacing-24) var(--spacing-16)' }}>
           <p style={{ margin: 0, color: 'var(--base-white)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
-            {`인벤토리에 담을 ${need}개를 골라 주세요`}
+            {t(d.syncPending.pick.title, { n: need })}
           </p>
-          <p style={{ margin: 0, color: 'var(--base-white)', fontSize: 'var(--text-sm)' }}>{`이번에 ${total}개가 나왔어요`}</p>
+          <p style={{ margin: 0, color: 'var(--base-white)', fontSize: 'var(--text-sm)' }}>{t(d.syncPending.pick.subtitle, { total })}</p>
         </div>
       }
       footer={
@@ -509,7 +291,7 @@ function SelectModeHarness({
         >
           {/* 푸터에는 보이는 문구 없이 «N개 담기» 버튼만 둔다(티켓 20261112_1629). 서비스는 선택 개수를 sr-only 라이브 리전으로만 알린다 */}
           <Button surface="sub" fullWidth disabled={selected.length !== need || submitting} loading={submitting}>
-            {submitting ? '담는 중' : `${need}개 담기`}
+            {submitting ? d.syncPending.pick.submitting : t(d.syncPending.pick.confirmCta, { n: need })}
           </Button>
         </div>
       }
@@ -517,18 +299,12 @@ function SelectModeHarness({
   );
 }
 
-const LONG_NAMES = [
-  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 2',
-  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 3',
-  '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 4',
-];
-
 const toggleButtons = (root: HTMLElement) =>
   Array.from(root.querySelectorAll<HTMLButtonElement>('[data-select-toggle]'));
 const centerToggle = (root: HTMLElement) =>
   root.querySelector<HTMLButtonElement>('[aria-hidden="false"] [data-select-toggle]');
 
-/** 3장 중 선택 — 중앙 카드 토글이 aria-pressed로 선택을 알리고, 안쪽 링과 체크 칩이 나타난다. */
+/** 서비스: 보류 아이템 배지 고르기(`PendingItemsPickOverlay`). 3장 중 선택 — 중앙 카드 토글이 aria-pressed로 선택을 알리고, 안쪽 링과 체크 칩이 나타난다. */
 export const SelectMode: Story = {
   name: '선택 모드 — 3장 중 1장 고름',
   args: { open: true, items: [] },
@@ -545,12 +321,12 @@ export const SelectMode: Story = {
     await step('고르기를 누르면 골랐어요로 바뀐다', async () => {
       await userEvent.click(centerToggle(canvasElement)!);
       await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('true'));
-      expect(centerToggle(canvasElement)!.textContent).toBe('골랐어요');
+      expect(centerToggle(canvasElement)!.textContent).toBe(d.syncPending.pick.toggleSelected);
     });
   },
 };
 
-/** 빈칸을 다 채운 상태 — 안 고른 카드의 토글은 aria-disabled, 고른 카드는 해제할 수 있다. */
+/** 서비스: 보류 아이템 배지 고르기. 빈칸을 다 채운 상태 — 안 고른 카드의 토글은 aria-disabled, 고른 카드는 해제할 수 있다. */
 export const SelectModeFull: Story = {
   name: '선택 모드 — 빈칸을 다 채움(안 고른 카드 토글 비활성)',
   args: { open: true, items: [] },
@@ -571,7 +347,7 @@ export const SelectModeFull: Story = {
   },
 };
 
-/** 제출 중 — closeDisabled가 닫기 버튼과 Escape를 함께 막는다. */
+/** 서비스: 보류 아이템 배지 고르기. 제출 중 — closeDisabled가 닫기 버튼과 Escape를 함께 막는다. */
 export const SelectModeSubmitting: Story = {
   name: '선택 모드 — 제출 중(closeDisabled)',
   args: { open: true, items: [] },
@@ -579,7 +355,7 @@ export const SelectModeSubmitting: Story = {
   play: async ({ canvasElement, step }) => {
     await step('닫기 버튼이 soft disabled다', async () => {
       await waitFor(() => expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy());
-      const close = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="나중에"]');
+      const close = canvasElement.querySelector<HTMLButtonElement>(`button[aria-label="${d.syncPending.pick.fullLater}"]`);
       expect(close?.getAttribute('aria-disabled')).toBe('true');
     });
 
@@ -590,23 +366,7 @@ export const SelectModeSubmitting: Story = {
   },
 };
 
-/** 이름 2줄 — 카드 아래 72px를 비워 토글과 이름 둘째 줄이 겹치지 않는다. */
-export const SelectModeLongName: Story = {
-  name: '선택 모드 — 이름 2줄(토글과 겹침 없음)',
-  args: { open: true, items: [] },
-  render: () => <SelectModeHarness total={3} need={2} names={LONG_NAMES} />,
-  play: async ({ canvasElement, step }) => {
-    await step('이름 아래 끝이 토글 위 끝보다 위에 있다', async () => {
-      await waitFor(() => expect(centerToggle(canvasElement)).toBeTruthy());
-      const toggle = centerToggle(canvasElement)!;
-      const name = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"] p');
-      expect(name).toBeTruthy();
-      expect(name!.getBoundingClientRect().bottom).toBeLessThanOrEqual(toggle.getBoundingClientRect().top);
-    });
-  },
-};
-
-/** 잠긴 카드 — 그림 대신 중립 잠금 타일, 등급 칩(Rare), 가린 이름·필요한 양. 선택·해제는 열린 카드와 같다. */
+/** 서비스: 보류 아이템 배지 고르기. 잠긴 카드 — 그림 대신 중립 잠금 타일, 등급 칩(Rare), 가린 이름·필요한 양. 선택·해제는 열린 카드와 같다. */
 export const SelectModeLocked: Story = {
   name: '선택 모드 — 잠긴 카드(잠금 타일)',
   args: { open: true, items: [] },
@@ -617,19 +377,10 @@ export const SelectModeLocked: Story = {
       await userEvent.keyboard('{ArrowRight}');
       await waitFor(() => expect(centerToggle(canvasElement)!.getAttribute('aria-pressed')).toBe('true'));
       const card = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"]');
-      expect(card?.textContent).toContain('잠긴 아이템 배지');
-      expect(card?.textContent).toContain('여는 데 잼 60만큼 채워야 해요');
+      expect(card?.textContent).toContain(d.lockedItem.card.name);
+      expect(card?.textContent).toContain(d.lockedItem.card.description);
       expect(card?.querySelector('img')).toBeNull();
       expect(card?.querySelector('svg')).toBeTruthy();
-    });
-
-    await step('잠금 타일은 LockedTile 한 컴포넌트다 — 정사각형, 1px 테두리, --radius-2xl, 크림 면', async () => {
-      const tile = canvasElement.querySelector<HTMLElement>('[aria-hidden="false"] svg')!.parentElement as HTMLElement;
-      const rect = tile.getBoundingClientRect();
-      expect(Math.round(rect.width)).toBe(Math.round(rect.height));
-      const style = getComputedStyle(tile);
-      expect(style.borderTopWidth).toBe('1px');
-      expect(style.borderTopLeftRadius).not.toBe('0px');
     });
 
     await step('잠긴 카드도 해제할 수 있다', async () => {

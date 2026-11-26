@@ -35,7 +35,7 @@ const Surface = ({ children, width = 90 }: { children: React.ReactNode; width?: 
   </div>
 );
 
-/** 성공 — 이미지 윤곽을 따라가는 점선 path가 150ms 페이드로 나타난다. 이미지는 그리지 않는다. */
+/** 컬렉션 격자(`BadgeGridCard`)에서 후보가 없는 칸 — 이미지 윤곽을 따라가는 점선 path가 150ms 페이드로 나타난다. 이미지는 그리지 않는다. */
 export const Traced: Story = {
   name: '추적 성공 — 윤곽 점선',
   render: () => (
@@ -58,7 +58,7 @@ export const Traced: Story = {
   },
 };
 
-/** 실패 — 주소가 없으면 둥근 사각형 점선(inset 4, 반경 12). 가진 게 없는 칸이 버그처럼 보이지 않게 한다. */
+/** 컬렉션 격자(`BadgeGridCard`)의 후보 없는 칸 — 주소가 없으면 둥근 사각형 점선(inset 4, 반경 12). 가진 게 없는 칸이 버그처럼 보이지 않게 한다. */
 export const FallbackBox: Story = {
   name: '추적 실패 · 주소 없음 — 둥근 사각형 점선',
   render: () => (
@@ -76,7 +76,7 @@ export const FallbackBox: Story = {
   },
 };
 
-/** 이미지가 함께 보이는 칸(넣을 수 있는 칸)은 실패해도 사각형을 그리지 않는다. */
+/** 컬렉션 격자(`BadgeGridCard`)에서 이미지가 함께 보이는 칸(넣을 수 있는 칸)은 실패해도 사각형을 그리지 않는다. */
 export const FallbackNone: Story = {
   name: '추적 실패 — 아무것도 그리지 않음',
   render: () => (
@@ -88,27 +88,5 @@ export const FallbackNone: Story = {
     const svg = canvasElement.querySelector('svg')!;
     expect(svg.getAttribute('data-outline-state')).toBe('none');
     expect(svg.querySelector('path, rect')).toBeNull();
-  },
-};
-
-/** 칸이 줄어도(360px 폭 3열 80px · 믹스 4열 60px) 정사각형이고 굵기 · 점선 길이는 그대로다. */
-export const Sizes: Story = {
-  name: '크기별 — 90 · 80 · 60',
-  render: () => (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, background: 'var(--card-bg)', padding: 16, borderRadius: 'var(--radius-2xl)' }}>
-      {[90, 80, 60].map((w) => (
-        <div key={w} data-testid={`w${w}`} style={{ width: w }}>
-          <SlotOutline src={SAMPLE} />
-        </div>
-      ))}
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    for (const w of [90, 80, 60]) {
-      const svg = canvasElement.querySelector(`[data-testid="w${w}"] svg`)!;
-      const rect = svg.getBoundingClientRect();
-      expect(Math.round(rect.width)).toBe(w);
-      expect(Math.round(rect.height)).toBe(w);
-    }
   },
 };

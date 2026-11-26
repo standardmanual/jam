@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
 import { expect } from 'storybook/test';
 import { BadgeLevelChip } from './BadgeLevelChip';
-import { RarityBadge } from './RarityBadge';
 
 const meta: Meta<typeof BadgeLevelChip> = {
   title: 'UI/Cards/BadgeLevelChip',
@@ -27,94 +26,47 @@ const meta: Meta<typeof BadgeLevelChip> = {
 export default meta;
 type Story = StoryObj<typeof BadgeLevelChip>;
 
-export const Default: Story = { args: { level: 3 } };
-
-export const LevelRange: Story = {
-  name: '자릿수가 늘어도 폭이 흔들리지 않는다 (Lv.1 ~ Lv.128)',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-      {[1, 8, 42, 128].map((lv) => (
-        <BadgeLevelChip key={lv} level={lv} />
-      ))}
-    </div>
-  ),
-};
-
-/**
- * 레벨형과 등급형은 **다른 칩**이다. v5 데이터에서 레벨형은 `rarity`가 NULL이라
- * `RarityBadge`가 아무것도 그리지 않고, 반대로 등급형은 `level`이 없다.
- */
-export const VersusRarityBadge: Story = {
-  name: '등급 칩과 나란히 — 축이 다르다',
-  render: () => (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <span data-testid="level-chip"><BadgeLevelChip level={5} /></span>
-      <span data-testid="rarity-chip"><RarityBadge rarity="epic" /></span>
-      {/* 레벨형에 등급 칩을 태우면 아무것도 안 그린다(v5: rarity가 NULL) */}
-      <span data-testid="rarity-null"><RarityBadge rarity={null} /></span>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-testid="level-chip"]')?.textContent).toBe('Lv.5');
-    expect(canvasElement.querySelector('[data-testid="rarity-chip"]')?.textContent).toBe('Epic');
-    expect(canvasElement.querySelector('[data-testid="rarity-null"]')?.textContent?.trim()).toBe('');
-  },
-};
-
-export const NoLevel: Story = {
-  name: 'level=null — 아무것도 그리지 않는다',
-  render: () => (
-    <div data-testid="empty" style={{ minHeight: 20, minWidth: 60 }}>
-      <BadgeLevelChip level={null} />
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-testid="empty"]')?.textContent?.trim()).toBe('');
-  },
-};
-
-/**
- * 20260906_2140 — `size` 프롭. `RarityBadge`와 같은 어휘이고, **`sm`(기본)이 기존 값
- * 그대로**라 서비스 5개 호출부는 렌더가 달라지지 않는다.
- */
-export const Sizes: Story = {
-  name: '20260906_2140 — size sm(기본, 무변경) / md',
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <span data-testid="sm"><BadgeLevelChip level={8} /></span>
-      <span data-testid="md"><BadgeLevelChip level={8} size="md" /></span>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const sm = canvasElement.querySelector('[data-testid="sm"] span') as HTMLElement;
-    const md = canvasElement.querySelector('[data-testid="md"] span') as HTMLElement;
-    expect(getComputedStyle(sm).fontSize).toBe('8px');
-    expect(getComputedStyle(sm).paddingTop).toBe('4px');
-    expect(getComputedStyle(md).fontSize).toBe('12px');
-    expect(getComputedStyle(md).paddingTop).toBe('5px');
-  },
-};
-
-/**
- * 20261106_2322 — `row`. ListRow 안 칩 전용(12px 글자 · 높이 20px). 폭 52px·가운데 정렬은
- * 그대로라 Lv.128도 같은 폭 안에 들어간다. sm(16px)·md(22px)는 값이 그대로다.
- */
+/** 홈 피드(`FeedSection`)와 미션 목록(`MissionsListClient`)의 행 안 레벨 칩 — 12px 글자 · 높이 20px */
 export const RowSize: Story = {
-  name: '20261106_2322 — size row (12px/20px), sm·md 높이 불변',
+  name: '행 안 칩 — row',
   render: () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <span data-testid="sm"><BadgeLevelChip level={7} /></span>
-      <span data-testid="row"><BadgeLevelChip level={7} size="row" /></span>
-      <span data-testid="row-long"><BadgeLevelChip level={128} size="row" /></span>
-      <span data-testid="md"><BadgeLevelChip level={7} size="md" /></span>
-    </div>
+    <span data-testid="row">
+      <BadgeLevelChip level={7} size="row" />
+    </span>
   ),
   play: async ({ canvasElement }) => {
-    const el = (id: string) => canvasElement.querySelector(`[data-testid="${id}"] span`) as HTMLElement;
-    expect(getComputedStyle(el('row')).fontSize).toBe('12px');
-    expect(el('row').getBoundingClientRect().height).toBeCloseTo(20, 0);
-    expect(el('row-long').getBoundingClientRect().width).toBeCloseTo(52, 0);
-    expect(el('sm').getBoundingClientRect().height).toBeCloseTo(16, 0);
-    expect(el('md').getBoundingClientRect().height).toBeCloseTo(22, 0);
+    const el = canvasElement.querySelector('[data-testid="row"] span') as HTMLElement;
+    expect(getComputedStyle(el).fontSize).toBe('12px');
+    expect(el.getBoundingClientRect().height).toBeCloseTo(20, 0);
+    expect(el.textContent).toBe('Lv.7');
+  },
+};
+
+/** 세 자리 레벨도 폭 52px 안에 들어간다(행 안 칩 기준) */
+export const RowSizeWide: Story = {
+  name: '행 안 칩 — Lv.128',
+  render: () => (
+    <span data-testid="row-long">
+      <BadgeLevelChip level={128} size="row" />
+    </span>
+  ),
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('[data-testid="row-long"] span') as HTMLElement;
+    expect(el.getBoundingClientRect().width).toBeCloseTo(52, 0);
+  },
+};
+
+/** 배지 상세의 제목 박스(`TicketTitleBoxes`)·히어로(`BadgeHeroSection`)·획득 연출의 레벨 칩 — 12px 글자 · 높이 20px */
+export const MdSize: Story = {
+  name: '상세 칩 — md',
+  render: () => (
+    <span data-testid="md">
+      <BadgeLevelChip level={7} size="md" />
+    </span>
+  ),
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('[data-testid="md"] span') as HTMLElement;
+    expect(getComputedStyle(el).fontSize).toBe('12px');
+    expect(el.getBoundingClientRect().height).toBeCloseTo(20, 0);
   },
 };
