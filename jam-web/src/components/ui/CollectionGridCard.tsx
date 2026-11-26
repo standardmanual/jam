@@ -31,11 +31,12 @@ export interface CollectionGridCardProps {
   children?: ReactNode
 }
 
-// 카드 면 레시피(티켓 20261107_2246): BadgeGridCard와 같은 면 — --card-bg + 반경 16 + 안쪽 여백 12, 외곽선·그림자 없음.
+// 카드 면 레시피(티켓 20261107_2246): BadgeGridCard와 같은 면 — 회색 단색(--background-secondary) + 반경 16 + 안쪽 여백 12, 외곽선·그림자 없음.
+// 미완성 카드의 면은 흰색(--card-bg)에서 회색(--background-secondary)으로 바꿨다: 배지 목록의 다른 탭 카드와 같은 면이다(2026-11-27 사용자 지시).
 // 완성한 카드는 면만 검정(--accent)이고 글자는 --accent-foreground다(2026-11-25 사용자 지시, 티켓 20261125_1113. 이전 면은 강조색 그린, 티켓 20261114_1502).
 // 그림자·외곽선은 더하지 않는다.
 const BASE = 'flex flex-col gap-2 rounded-2xl p-3'
-const FACE_DEFAULT = 'bg-card-bg'
+const FACE_DEFAULT = 'bg-background-secondary'
 const FACE_COMPLETED = 'bg-accent'
 
 /**

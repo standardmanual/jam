@@ -101,17 +101,19 @@ describe('BadgeGridCard 쌍 — 카드 면과 선택 면', () => {
 describe('CollectionGridCard 쌍 — 카드 면과 진행 바', () => {
   const props = { name: '컬렉션', collected: 3, total: 10 }
 
-  it('서비스: 카드 면(bg-card-bg rounded-2xl p-3, 외곽선 없음)이다', () => {
+  it('서비스: 카드 면(bg-background-secondary rounded-2xl p-3, 외곽선 없음)이다', () => {
     const html = renderToStaticMarkup(<ServiceCollectionGridCard {...props} />)
-    expect(html).toContain('rounded-2xl p-3 bg-card-bg')
+    expect(html).toContain('rounded-2xl p-3 bg-background-secondary')
+    expect(html).not.toContain('bg-card-bg')
     expect(html).not.toContain('bg-jam-green')
     expect(html).toContain('var(--capsule-fill)')
   })
 
-  it('완성 카드: 서비스는 bg-accent(검정) 면이다(미완성은 --card-bg 그대로, 티켓 20261125_1113)', () => {
+  it('완성 카드: 서비스는 bg-accent(검정) 면이다(미완성은 회색 --background-secondary, 티켓 20261125_1113·2026-11-27)', () => {
     const service = renderToStaticMarkup(<ServiceCollectionGridCard {...props} collected={10} completed />)
     expect(service).toContain('rounded-2xl p-3 bg-accent')
     expect(service).not.toContain('bg-card-bg')
+    expect(service).not.toContain('bg-background-secondary')
     expect(service).not.toContain('bg-jam-green')
     // 검정 면 위에 그림자·외곽선을 더하지 않고, 글자는 --accent-foreground다
     expect(service).not.toMatch(/shadow|border(?!-radius)/)
