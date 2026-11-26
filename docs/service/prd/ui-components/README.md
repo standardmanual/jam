@@ -13,6 +13,7 @@ code:
 서비스 화면은 아래 정본 컴포넌트만 조합한다. 규칙(정본만 조합한다, 새 컴포넌트는 승인 등)은 상위 티켓 `20261125_1923`의 «사용자 결정»이 원천이다.
 
 이 목록의 표는 `node scripts/gen-component-list.mjs`가 만든다. 표는 손으로 고치지 않는다. 설명은 컴포넌트 파일 JSDoc의 `@summary`(없으면 JSDoc 첫 문장)에서 가져온다.
+디자인 토큰(층·이름·값·클래스·사용 수)의 카탈로그는 [tokens.md](tokens.md)에 있다. 이 문서도 `node scripts/gen-token-catalog.mjs`가 만든다.
 스토리가 없는 정본 파일은 허용하지 않는다(`verify`의 `component-list` 단계와 pre-commit이 검사). 새 정본 컴포넌트는 같은 이름의 스토리 파일과 함께 들어와야 한다.
 
 <!-- BEGIN generated: component-list -->

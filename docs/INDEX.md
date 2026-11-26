@@ -708,6 +708,7 @@ status: active
 - [CONDITION_PRECHECK_PRD.md](service/prd/admin-ui/CONDITION_PRECHECK_PRD.md) — 어드민이 배지·미션을 저장하기 전에 조건이 드랍엔진에서 어떻게 판정되는지 미리 계산해 보여 주는 기능의 PRD
 - [PRD.md](service/prd/badge-detail/PRD.md) — 배지 상세 화면 3종(아이템·체크인·액티비티)과 컬렉션 상세의 티켓 디자인 규격이다. 기본 바탕 위 티켓 머리, 절취선, 그라데이션 아래 블록, 티켓 범위 토큰, 티켓색 결정(홈 카드 이어받기·무작위), 사진 자리와 미획득 실루엣, Strava 버튼을 정한다.
 - [README.md](service/prd/ui-components/README.md) — 서비스 화면이 조합해 쓰는 정본 UI 컴포넌트(jam-web/src/components/ui)의 파일·export·설명·스토리 목록이다. 생성기가 만든다.
+- [tokens.md](service/prd/ui-components/tokens.md) — 디자인 토큰의 층·이름·값·클래스·사용 수 카탈로그다. 생성기가 만들며 손으로 고치지 않는다.
 - [SERVER_ERROR_MESSAGE_RULE.md](service/writing/SERVER_ERROR_MESSAGE_RULE.md) — 서버 API 에러 메시지는 i18n 딕셔너리를 단일 소스로 삼고, 클라이언트는 서버가 보낸 메시지를 그대로 노출한다
 - [SLOP_DICTIONARY.md](service/writing/SLOP_DICTIONARY.md) — 글 슬롭의 금칙 단어와 표현, 대체 표현을 모으고 새로 발견한 표현을 직접 추가해 가는 사전이다.
 - [UX_WRITING_GUIDELINE.md](service/writing/UX_WRITING_GUIDELINE.md) — 화면 문구의 고정 용어, 톤, 문장 구조, 에러 대응, CTA, 네비게이션 규칙과 Anti-slop 판단 기준을 정의한 가이드라인이다.
@@ -1138,6 +1139,7 @@ status: active
 ### docs/service/prd/ui-components/
 
 - [README.md](service/prd/ui-components/README.md) — 서비스 화면이 조합해 쓰는 정본 UI 컴포넌트(jam-web/src/components/ui)의 파일·export·설명·스토리 목록이다. 생성기가 만든다.
+- [tokens.md](service/prd/ui-components/tokens.md) — 디자인 토큰의 층·이름·값·클래스·사용 수 카탈로그다. 생성기가 만들며 손으로 고치지 않는다.
 
 ### docs/service/writing/
 
