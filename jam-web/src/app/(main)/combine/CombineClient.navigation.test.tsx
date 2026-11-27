@@ -65,6 +65,12 @@ vi.mock('react', async (importOriginal) => {
       }
       return [hooks.store[index], set]
     },
+    useRef: (initial: unknown) => {
+      if (!hooks.active) return actual.useRef(initial)
+      const index = hooks.cursor++
+      if (!(index in hooks.store)) hooks.store[index] = { current: initial }
+      return hooks.store[index]
+    },
     useMemo: (factory: () => unknown, deps: unknown[]) => (hooks.active ? factory() : actual.useMemo(factory, deps)),
     useEffect: (effect: () => void | (() => void), deps?: unknown[]) => {
       if (hooks.active) hooks.effects.push(effect)

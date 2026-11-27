@@ -7,7 +7,6 @@ import { ListRow } from '@/components/ui/ListRow'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
-import TierUpRevealOverlay, { measureTierUpMaterials, type TierUpRevealMaterial, type TierUpRevealResult } from '@/components/TierUpRevealOverlay'
 import Button from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -17,6 +16,8 @@ import PendingResultsSheet, { type PendingSheetView } from './PendingResultsShee
 import BagItemCell from './BagItemCell'
 import RecipeSlotCard, { type RecipeSlotStatus } from './RecipeSlotCard'
 import TierUpPanel from './TierUpPanel'
+import { TIER_UP_NAV_STYLE, TIER_UP_PAGE_STYLE } from './gachaTheme'
+import type { TierUpGachaHandle } from './TierUpGachaStage'
 import {
   gradeLockNote,
   hasMixedGrades,
@@ -32,12 +33,10 @@ import {
   fillTierUpSlot,
   groupTierUpMaterials,
   hasEnoughTierUpGroup,
-  lockedTierUpRarity,
   nextEmptyTierUpSlot,
   pickableTierUpIds,
   removeTierUpSlot,
   resolveTierUpSlots,
-  tierUpRarityNote,
   tierUpRejection,
   tierUpResultMessage,
   tierUpSubmitIds,
@@ -182,11 +181,6 @@ export function toTierUpRevealBadges(resultBadges: TierUpResultBadge[]): RevealB
   return toMixRevealBadges(resultBadges, details)
 }
 
-/** 순수 변환 — 잠기지 않은 등급 올리기 결과 배지를 결과 연출(`TierUpRevealOverlay`)의 입력으로 바꾼다. 옛 응답처럼 `description`이 없으면 설명 없음이다 */
-function toTierUpReveal(badge: TierUpResultBadge): TierUpRevealResult {
-  return { name: badge.name, rarity: badge.rarity ?? null, imageUrl: badge.imageUrl ?? null, description: badge.description ?? null }
-}
-
 /** 순수 변환 — 받은 «받지 않은 결과» 목록을 결과 캐러셀 항목으로 바꾼다. 잠긴 결과를 열린 척 보이지 않는다. */
 export function toPendingRevealBadges(items: PendingResultView[]): RevealBadge[] {
   return items.map((item): RevealBadge => {
@@ -328,8 +322,6 @@ export default function CombineClient({
     resultMessage?: string
     /** 어디서 온 결과인가 — `claim`(받지 않은 결과 받기)은 믹서의 채운 슬롯을 건드리지 않고, `tierUp`은 등급 올리기의 담은 칸을 비운다 */
     kind?: 'mix' | 'claim' | 'tierUp'
-    /** 잠기지 않은 등급 올리기 성공 — 있으면 `BadgeRevealOverlay` 대신 `TierUpRevealOverlay`가 열린다(티켓 20261112_2141) */
-    tierUpReveal?: TierUpRevealResult
     /** 오버레이를 닫는 순간 배너가 가리킬 받지 않은 결과 개수(닫은 뒤 서버 값을 다시 읽는다) */
     pendingAfterClose?: number
     /** 일반 결과는 지급됐고 첫 성공자 보상만 받지 않은 결과로 남았다 — 닫은 뒤 서버의 지금 개수를 읽어 배너를 나타낸다 */
@@ -348,10 +340,12 @@ export default function CombineClient({
    */
   const [tierUpSlots, setTierUpSlots] = useState<TierUpSlots>(emptyTierUpSlots)
   const [tierUpSheetOpen, setTierUpSheetOpen] = useState(false)
-  const [tierUpTarget, setTierUpTarget] = useState(0)
-  const [tierUpLoading, setTierUpLoading] = useState(false)
-  /** 제출하는 순간 잰 재료 그림과 슬롯 자리 — 결과가 오면 서버 새로고침으로 슬롯이 비므로 그 전에 잡아 둔다 */
-  const [tierUpMaterials, setTierUpMaterials] = useState<TierUpRevealMaterial[]>([])
+  /** 가차머신 무대(티켓 20261127_2225) — 연출 시작(`play`)과 서버 결과 전달(`settle`) */
+  const tierUpStage = useRef<TierUpGachaHandle>(null)
+  /** 제출부터 «한 번 더»·안내 열림·거절까지 참이다 — 6번째 선택 직후의 연타가 제출을 두 번 보내지 않게 상태가 아니라 ref로 막는다 */
+  const tierUpBusy = useRef(false)
+  /** 잠김·받지 않음 결과 — 무대가 진동을 마치고 `onHandoff`를 부르면 그때 기존 안내(`result`)로 연다 */
+  const tierUpHandoff = useRef<typeof result>(null)
   const { toast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -366,8 +360,6 @@ export default function CombineClient({
   )
   const selectedRecipeId = view.recipeId
   const tierUpOpen = view.kind === 'tierUp'
-  /** 결과가 «잠기지 않은 등급 올리기 성공»이면 블랙 전환 연출을 연다 — 그때는 `BadgeRevealOverlay`를 열지 않는다 */
-  const tierUpReveal = result?.kind === 'tierUp' && !!result.tierUpReveal
   const needsUrlCleanup = view.needsCleanup
 
   useEffect(() => {
@@ -385,6 +377,11 @@ export default function CombineClient({
     setTierUpSlots(emptyTierUpSlots())
     setTierUpSheetOpen(false)
   }
+  // 화면이 바뀌면 제출 잠금도 푼다(무대는 화면과 함께 사라져 연출이 끊긴다)
+  useEffect(() => {
+    tierUpBusy.current = false
+    tierUpHandoff.current = null
+  }, [tierUpOpen])
 
   // 화면을 떠나면 «목록에서 push로 열었다» 표시를 지운다(다음에 주소로 바로 열리면 앞 항목이 없을 수 있다).
   useEffect(() => () => markOpenedByPush(false), [])
@@ -434,8 +431,6 @@ export default function CombineClient({
   const tierUpFilled = resolveTierUpSlots(tierUpSlots, items)
   const tierUpVisibleSlots: TierUpSlots = tierUpFilled.map((item) => item?.id ?? null)
   const tierUpSheet = buildTierUpSheet(tierUpGroups, tierUpFilled)
-  const tierUpLockedRarity = lockedTierUpRarity(tierUpFilled)
-  const tierUpSubmitItemIds = tierUpSubmitIds(tierUpFilled)
 
   function selectRecipe(recipeId: string) {
     // 목록에서 열면 history를 쌓고, 이미 열린 상태에서 다른 레시피로 바꾸면 쌓지 않는다.
@@ -542,28 +537,31 @@ export default function CombineClient({
     closeToList()
   }
 
-  function openTierUpSheet(slotIndex: number) {
-    setTierUpTarget(slotIndex)
+  function openTierUpSheet() {
+    if (tierUpBusy.current) return
     setTierUpSheetOpen(true)
   }
 
   /**
-   * 재료 시트에서 개체를 담는다 — 누른 칸부터 다음 빈 칸으로 이어서 채우고 6칸이 차면 시트를 닫는다. 시트가 비활성으로 그린 개체
-   * (다른 등급, 6개 미만 묶음, 이미 담은 것)는 한 번 더 걸러 다른 등급이 섞인 제출이 화면에서 만들어지지 않게 한다.
+   * 재료 시트에서 개체를 고른다(티켓 20261127_2225). 이미 고른 개체를 다시 누르면 빠진다. 시트가 비활성으로 그린 개체(다른 등급, 6개 미만 묶음)는
+   * 한 번 더 걸러 다른 등급이 섞인 제출이 화면에서 만들어지지 않게 한다. 6개가 차면 시트를 닫고 바로 제출한다.
    */
   function pickTierUpItem(itemId: string) {
+    if (tierUpBusy.current) return
+    const chosenAt = tierUpVisibleSlots.indexOf(itemId)
+    if (chosenAt >= 0) {
+      setTierUpSlots(removeTierUpSlot(tierUpVisibleSlots, chosenAt))
+      return
+    }
     if (!pickableTierUpIds(tierUpSheet).has(itemId)) return
-    const index = tierUpVisibleSlots[tierUpTarget] ? nextEmptyTierUpSlot(tierUpVisibleSlots, tierUpTarget) : tierUpTarget
+    const index = nextEmptyTierUpSlot(tierUpVisibleSlots, 0)
     if (index === null) return
     const next = fillTierUpSlot(tierUpVisibleSlots, index, itemId)
     setTierUpSlots(next)
-    const following = nextEmptyTierUpSlot(next, index + 1)
-    if (following === null) setTierUpSheetOpen(false)
-    else setTierUpTarget(following)
-  }
-
-  function removeTierUpItem(slotIndex: number) {
-    setTierUpSlots(removeTierUpSlot(tierUpVisibleSlots, slotIndex))
+    if (nextEmptyTierUpSlot(next, 0) === null) {
+      setTierUpSheetOpen(false)
+      void handleTierUp(resolveTierUpSlots(next, items))
+    }
   }
 
   /**
@@ -779,17 +777,19 @@ export default function CombineClient({
   }
 
   /**
-   * 등급 올리기 제출 — 요청은 `{ itemIds }` 6개뿐이다(컬렉션·확률·결과는 서버가 정한다). 소각 앞의 거절은 모두 토스트로 알리고 결과 오버레이를
-   * 열지 않으며 담은 칸을 그대로 둔다(`items_not_found`만 칸을 비운다). 분석 이벤트는 보내지 않는다 — `combine_attempt` 같은 레시피 믹스 지표를
-   * 섞지 않기 위해서다(티켓 가정 나).
+   * 등급 UP 제출 — 요청은 `{ itemIds }` 6개뿐이다(컬렉션·확률·결과는 서버가 정한다). 무대 연출(`play`)과 서버 호출을 동시에 시작하고, 응답 갈래를 무대에 넘긴다.
+   * 잠기지 않은 단일 성공은 `reveal`(배지 공개), 잠김·받지 않음은 `handoff`(진동 뒤 기존 안내), 소각 전 거절·네트워크 오류는 `abort`(머신 초기화 + 토스트)다.
+   * 분석 이벤트는 보내지 않는다 — `combine_attempt` 같은 레시피 믹스 지표를 섞지 않기 위해서다(티켓 가정 나).
    */
-  async function handleTierUp() {
-    if (tierUpLoading || pendingBlocked || !tierUpSubmitItemIds) return
-    const body: TierUpRequest = { itemIds: tierUpSubmitItemIds }
+  async function handleTierUp(filled: (InventoryItemWithBadge | null)[]) {
+    const submitIds = tierUpSubmitIds(filled)
+    if (tierUpBusy.current || pendingBlocked || !submitIds) return
+    const body: TierUpRequest = { itemIds: submitIds }
 
-    setTierUpLoading(true)
+    tierUpBusy.current = true
+    tierUpHandoff.current = null
     setResult(null)
-    setTierUpMaterials(measureTierUpMaterials(tierUpFilled.map((item) => item?.badge.image_url)))
+    tierUpStage.current?.play(filled.map((item) => item?.badge.image_url ?? null))
     try {
       const res = await fetch(TIER_UP_ENDPOINT, {
         method: 'POST',
@@ -800,6 +800,8 @@ export default function CombineClient({
 
       if (!res.ok || !data || data.success !== true) {
         const rejection = tierUpRejection(res.status, data)
+        tierUpStage.current?.settle({ kind: 'abort' })
+        tierUpBusy.current = false
         toast(rejection.message, rejection.tone)
         if (rejection.clearSlots) setTierUpSlots(emptyTierUpSlots())
         if (rejection.refreshPending) await refreshPendingCount()
@@ -811,35 +813,57 @@ export default function CombineClient({
       if (data.resultStatus === 'pending') {
         // 빈칸이 모자라 받지 않은 결과로 남았다 — 카드 없이 기존 «받지 않은 믹스 결과» 문구를 쓴다(포인트는 없다). 닫으면 배너가 나타난다.
         const pendingTotal = Number(data.pendingCount ?? 0)
-        setResult({
+        tierUpHandoff.current = {
           success: true,
           badges: [],
           points: 0,
           message: pendingResultMessage({ pendingCount: pendingTotal, freeSlots: Number(data.freeSlots ?? 0), points: 0 }),
           kind: 'tierUp',
           pendingAfterClose: pendingTotal,
-        })
+        }
+        tierUpStage.current?.settle({ kind: 'handoff' })
       } else {
-        const message = tierUpResultMessage(data.materialRarity, resultBadges)
         const first = resultBadges[0]
-        setResult({
-          success: true,
-          badges: toTierUpRevealBadges(resultBadges),
-          points: 0,
-          message,
-          resultMessage: message,
-          kind: 'tierUp',
-          // 잠기지 않은 성공만 블랙 전환 연출을 쓴다. 잠긴 결과는 이름·그림이 없어 지금 오버레이(가린 카드)를 그대로 쓴다
-          tierUpReveal: resultBadges.length === 1 && first.locked !== true && first.name ? toTierUpReveal(first) : undefined,
-        })
+        if (resultBadges.length === 1 && first?.locked !== true && first?.name) {
+          // 잠기지 않은 단일 성공 — 무대가 배지를 공개한다
+          tierUpStage.current?.settle({
+            kind: 'reveal',
+            badge: { name: first.name, rarity: first.rarity ?? null, imageUrl: first.imageUrl ?? null, description: first.description ?? null },
+          })
+        } else {
+          // 잠긴 결과는 이름·그림이 없어 지금 오버레이(가린 카드)를 그대로 쓴다
+          const message = tierUpResultMessage(data.materialRarity, resultBadges)
+          tierUpHandoff.current = {
+            success: true,
+            badges: toTierUpRevealBadges(resultBadges),
+            points: 0,
+            message,
+            resultMessage: message,
+            kind: 'tierUp',
+          }
+          tierUpStage.current?.settle({ kind: 'handoff' })
+        }
       }
-      // 재료 소각·지급 반영 — 담은 칸은 오버레이를 닫을 때 비운다
+      // 재료 소각·지급 반영 — 고른 칸은 «한 번 더»·오버레이를 닫을 때 비운다
       router.refresh()
     } catch {
+      tierUpStage.current?.settle({ kind: 'abort' })
+      tierUpBusy.current = false
       toast(d.combine.genericError, 'error')
-    } finally {
-      setTierUpLoading(false)
     }
+  }
+
+  /** 무대의 «한 번 더» — 고른 배지를 비우고 처음 상태로 돌아간다(서버 반영은 제출 때 `router.refresh()`로 했다) */
+  function handleTierUpAgain() {
+    setTierUpSlots(emptyTierUpSlots())
+    tierUpBusy.current = false
+  }
+
+  /** 무대가 잠김·받지 않음 결과의 진동을 마쳤다 — 기존 안내(가린 카드 오버레이 / 받지 않은 결과 문구)를 연다 */
+  function handleTierUpHandoff() {
+    const pending = tierUpHandoff.current
+    tierUpHandoff.current = null
+    if (pending) setResult(pending)
   }
 
   function closeResult() {
@@ -848,7 +872,10 @@ export default function CombineClient({
     setResult(null)
     // 티켓 요구사항: 오버레이를 닫으면 같은 레시피 화면에 슬롯만 비운 채로 남는다.
     // 받지 않은 결과를 받은 연출은 믹서의 채운 슬롯과 무관하므로 건드리지 않는다.
-    if (closing?.kind === 'tierUp') setTierUpSlots(emptyTierUpSlots())
+    if (closing?.kind === 'tierUp') {
+      setTierUpSlots(emptyTierUpSlots())
+      tierUpBusy.current = false
+    }
     else if (closing?.kind !== 'claim') setFills({})
     // 받지 않은 결과 개수가 바뀌었다 — 오버레이를 닫은 뒤에 배너를 나타내거나 지운다.
     if (closing?.pendingAfterClose !== undefined) {
@@ -890,7 +917,10 @@ export default function CombineClient({
   return (
     // 레시피 상세(믹서)에서는 루트가 뷰포트 높이를 채워, 맨 아래 유의사항 구역이 푸터까지 같은 회색으로 이어진다(티켓 20261110_1757).
     // `min-h-full`은 부모가 높이를 정하지 않아 풀리지 않으므로(layout.tsx 주석) 뷰포트 단위 `min-h-dvh`를 쓴다
-    <div className={['flex flex-col text-foreground', selectedRecipe && !tierUpOpen ? 'min-h-dvh' : 'min-h-full'].join(' ')}>
+    <div
+      className={['flex flex-col text-foreground', selectedRecipe || tierUpOpen ? 'min-h-dvh' : 'min-h-full'].join(' ')}
+      style={tierUpOpen ? TIER_UP_PAGE_STYLE : undefined}
+    >
       {/*
         티켓 20260917_1655: /combine은 인벤토리 하위 화면이라 points와 동일한 뒤로가기형 TopNav를
         쓴다. 믹서 화면에서는 뒤로가기가 라우트를 벗어나지 않고 먼저 레시피 탐색으로
@@ -899,6 +929,7 @@ export default function CombineClient({
       <TopNav
         title={tierUpOpen ? d.combine.tierUp.title : d.combine.title}
         onBack={tierUpOpen ? closeTierUp : selectedRecipe ? closeMixer : undefined}
+        headerStyle={tierUpOpen ? TIER_UP_NAV_STYLE : undefined}
       />
 
       {/* 받지 않은 믹스 결과 배너 — 탐색·믹서 두 화면 모두 TopNav 바로 아래. 오류가 아니라 «할 일»이라 경고색을 쓰지 않는다(티켓 20261018_0055 2회). */}
@@ -920,18 +951,15 @@ export default function CombineClient({
 
       {tierUpOpen ? (
         <TierUpPanel
-          slots={tierUpFilled}
-          noMaterials={tierUpGroups.length === 0}
-          rarityNote={tierUpLockedRarity ? tierUpRarityNote(tierUpLockedRarity) : null}
+          stageRef={tierUpStage}
+          count={tierUpFilled.filter(Boolean).length}
           showNoEnoughNotice={!hasEnoughTierUpGroup(tierUpGroups)}
-          canSubmit={!!tierUpSubmitItemIds}
-          submitting={tierUpLoading}
           pendingBlocked={pendingBlocked}
           onOpenSheet={openTierUpSheet}
-          onRemove={removeTierUpItem}
-          onSubmit={handleTierUp}
           sheetOpen={tierUpSheetOpen}
           onCloseSheet={() => setTierUpSheetOpen(false)}
+          onAgain={handleTierUpAgain}
+          onHandoff={handleTierUpHandoff}
           sheet={tierUpSheet}
           onPick={pickTierUpItem}
         />
@@ -1121,16 +1149,13 @@ export default function CombineClient({
 
       {/* 결과 오버레이 — 성공 시 BadgeRevealCarousel, 실패(또는 배지 없이 포인트만)는 같은 셸에 메시지 */}
       <BadgeRevealOverlay
-        open={!!result && !tierUpReveal}
+        open={!!result}
         items={result?.badges ?? []}
         profileHref="/profile"
         onClose={closeResult}
         emptyMessage={result?.message}
         resultMessage={result?.resultMessage}
       />
-
-      {/* 등급 올리기 성공(잠기지 않음) 연출 — 위 오버레이와 동시에 열리지 않는다. 확인을 누르면 closeResult가 슬롯 6칸을 비운다 */}
-      <TierUpRevealOverlay open={tierUpReveal} materials={tierUpMaterials} result={result?.tierUpReveal ?? null} onConfirm={closeResult} />
     </div>
   )
 }

@@ -74,7 +74,7 @@ export const SERVICE_JAM_DEFAULT_CAPS: Readonly<Record<(typeof SERVICE_JAM_CAP_K
 const SERVICE_JAM_LABELS: Readonly<Record<ServiceJamRuleKind, { label: string; phrase: string }>> = {
   locked_unlock: { label: '잠긴 아이템 배지 열기', phrase: '잠긴 아이템 배지를 1개 열 때마다' },
   badge_earned: { label: '배지 받기', phrase: '배지를 1개 받을 때마다' },
-  combine_success: { label: '믹스 성공', phrase: '믹스에 1번 성공할 때마다(등급 올리기 포함)' },
+  combine_success: { label: '믹스 성공', phrase: '믹스에 1번 성공할 때마다(등급 UP 포함)' },
   mission_complete: { label: '미션 완료', phrase: '미션을 1개 완료할 때마다' },
   collection_complete: { label: '컬렉션 완성', phrase: '컬렉션을 1번 완성할 때마다(등급과 관계없이 같은 값)' },
   drop: { label: '드랍', phrase: '1번 드랍할 때마다' },

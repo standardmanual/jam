@@ -334,7 +334,7 @@ describe('서비스 활동 잼 항목 (티켓 20261028_1735 4회)', () => {
     for (const text of [
       `잠긴 아이템 배지 열기 ${A.locked_unlock}`,
       `배지 받기 ${A.badge_earned}`,
-      `믹스 성공(등급 올리기 포함) ${A.combine_success}`,
+      `믹스 성공(등급 UP 포함) ${A.combine_success}`,
       `미션 완료 ${A.mission_complete}`,
       `컬렉션 완성(등급 무관) ${A.collection_complete}`,
       `드랍 ${A.drop}`,

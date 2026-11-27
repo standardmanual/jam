@@ -22,12 +22,15 @@ export default function BagItemCell({
   imageUrl,
   rarity = null,
   state,
+  releasable = false,
   onClick,
 }: {
   name: string
   imageUrl: string | null
   rarity?: BadgeRarity | null
   state: BagItemState
+  /** 참이면 `used` 셀도 눌러 풀 수 있다(등급 UP 시트: 고른 배지를 다시 누르면 빠진다, 티켓 20261127_2225) */
+  releasable?: boolean
   onClick: () => void
 }) {
   const active = state === 'active'
@@ -45,7 +48,7 @@ export default function BagItemCell({
       imageUrl={imageUrl}
       rarity={rarity}
       earned={state !== 'needed' && state !== 'used'}
-      onClick={active ? onClick : undefined}
+      onClick={active || (releasable && state === 'used') ? onClick : undefined}
     >
       {state === 'used' && (
         <div className="flex justify-center">
