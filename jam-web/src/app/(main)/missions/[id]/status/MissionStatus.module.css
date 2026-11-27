@@ -4,15 +4,10 @@
  * 티켓 면 위 글자색은 서버가 넣은 --ticket-text(코랄 위 순수 검정)를 읽는다.
  */
 
-/* 페이지 바탕: 검정 반전 면. min-h-dvh로 아래까지 이어지고, 아래는 24 + 안전영역을 남긴다.
-   --foreground를 --snow로 바꿔 투명 상단 바의 글자·아이콘이 검정 바탕에서 읽힌다. 티켓 안은 BadgeTicket이 다시 덮는다 */
+/* 페이지 바탕: 다른 (main) 화면과 같은 기본 바탕·글자색이다(색은 TSX의 bg-background·text-foreground). min-h-dvh로 아래까지 이어지고, 아래는 24 + 안전영역을 남긴다 */
 .page {
   position: relative;
   min-height: 100dvh;
-  --background: var(--background-inverse);
-  --foreground: var(--snow);
-  background: var(--background-inverse);
-  color: var(--snow);
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 

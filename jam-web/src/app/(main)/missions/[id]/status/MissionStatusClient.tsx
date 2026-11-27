@@ -21,7 +21,7 @@ interface Props {
 /**
  * 미션 현황 화면의 클라이언트 래퍼 (티켓 20261127_1145) — «fetch + 컨텍스트 + 상단 바»만 맡는다.
  * 화면 모양은 서버가 그리는 `BadgeTicket`과 그 슬롯의 `MissionSummary`·`MissionBoard`가 정한다.
- * 페이지 바탕은 검정 반전 면이고 글자는 --snow다(상단 바가 읽는다). 로딩·오류 중에도 이 바탕이 깔려 번쩍임이 없다.
+ * 페이지 바탕·글자색은 다른 (main) 화면과 같은 기본값(bg-background·text-foreground)이다. 로딩·오류 중에도 이 바탕이 깔려 번쩍임이 없다.
  */
 export default function MissionStatusClient({ missionId, missionType, children }: Props) {
   const [data, setData] = useState<StatusResponse | null>(null)
@@ -52,8 +52,8 @@ export default function MissionStatusClient({ missionId, missionType, children }
 
   return (
     <MissionStatusContext.Provider value={{ data, error, showLoader, missionType }}>
-      <div className={styles.page}>
-        <TopNav title={d.missions.backToDetail} headerStyle={{ background: 'transparent' }} />
+      <div className={`${styles.page} bg-background text-foreground`}>
+        <TopNav title={d.missions.backToDetail} />
         {children}
       </div>
     </MissionStatusContext.Provider>

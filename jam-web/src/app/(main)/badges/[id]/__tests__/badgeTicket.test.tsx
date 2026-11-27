@@ -117,8 +117,8 @@ describe('TicketPhoto·StravaLink', () => {
 
 describe('BadgeTicket — 미션 현황 변형 (티켓 20261127_1145)', () => {
   const mission = missionTicketColor()
-  const renderMission = (surface?: 'default' | 'inverse') =>
-    renderToStaticMarkup(<BadgeTicket color={mission} kindLabel="RANKING" dateText="2026.11.27" surface={surface} photo={<p>사진</p>} body={<p>카드</p>} />)
+  const renderMission = () =>
+    renderToStaticMarkup(<BadgeTicket color={mission} kindLabel="RANKING" dateText="2026.11.27" photo={<p>사진</p>} body={<p>카드</p>} />)
 
   it('미션 티켓색은 토큰 변수와 서버가 정한 글자색을 첫 HTML에 담는다', () => {
     const html = renderMission()
@@ -127,14 +127,11 @@ describe('BadgeTicket — 미션 현황 변형 (티켓 20261127_1145)', () => {
     expect(html).toContain('data-ticket-color="mission"')
   })
 
-  it('surface="inverse"일 때만 검정 바탕 변형 클래스가 붙는다', () => {
+  it('페이지 바탕을 덮는 변형이 없다 — 절취선 홈은 기본 --background를 그대로 읽는다', () => {
     expect(renderMission()).not.toContain('onInverse')
-    expect(renderMission('inverse')).toContain('onInverse')
-  })
-
-  it('CSS 모듈은 검정 바탕 변형에서 --background를 --background-inverse로 덮는다', () => {
     const css = readFileSync(new URL('../BadgeTicket.module.css', import.meta.url), 'utf-8')
-    expect(css).toMatch(/\.onInverse\s*\{[^}]*--background:\s*var\(--background-inverse\)/)
+    expect(css).not.toContain('onInverse')
+    expect(css).not.toContain('--background-inverse')
   })
 })
 

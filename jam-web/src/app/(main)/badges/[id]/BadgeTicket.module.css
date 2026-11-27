@@ -34,12 +34,6 @@
   }
 }
 
-/* 검정 바탕 위 티켓(미션 현황, 티켓 20261127_1145): 절취선 홈·점선이 읽는 --background를 이 티켓 범위에서만 검정 반전 면으로 둔다.
-   페이지 바탕 칠·min-h-dvh·상단 바 글자색(--foreground → --snow)은 화면 래퍼가 맡는다 */
-.onInverse {
-  --background: var(--background-inverse);
-}
-
 /* 카드 안 글자는 항상 var(--ticket-ink)(#171717)(티켓 20261124_2253). 티켓 면 위 글자색은 .face가 되살린다 */
 .ink,
 .cards {

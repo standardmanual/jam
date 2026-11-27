@@ -6,6 +6,7 @@
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/missions/[id]/status/MissionStatusClient.test.tsx"
  */
+import { readFileSync } from 'node:fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -53,7 +54,6 @@ function render(data: unknown, missionType = 'distance', kind: 'RANKING' | 'MISS
         color={missionTicketColor()}
         kindLabel={kind}
         dateText="2026.11.27"
-        surface="inverse"
         photo={<MissionSummary />}
         body={<MissionBoard />}
       />
@@ -70,7 +70,7 @@ beforeEach(() => {
 describe('MissionStatusClient — 티켓 골격', () => {
   const data = { type: 'ranking', entries: [ranked('me', 1)], me: ranked('me', 1), totalParticipants: 1 }
 
-  it('티켓 틀(머리 RANKING·날짜·절취선 2개·검정 바탕 변형)이 서버 마크업에 그려지고 티켓색은 코랄 토큰이다', () => {
+  it('티켓 틀(머리 RANKING·날짜·절취선 2개)이 서버 마크업에 그려지고 티켓색은 코랄 토큰이다', () => {
     const html = render(data)
     expect(html).toContain('RANKING')
     expect(html).toContain('2026.11.27')
@@ -78,7 +78,7 @@ describe('MissionStatusClient — 티켓 골격', () => {
     expect(html).toContain('--ticket:var(--mission-ticket)')
     expect(html).toContain('--ticket-text:#000000')
     expect(html).toMatch(/--ticket-end:oklch\(from var\(--ticket\)/)
-    expect(html).toContain('_onInverse_')
+    expect(html).not.toContain('_onInverse_')
     expect(html.match(/class="_tear_/g)).toHaveLength(2)
   })
 
@@ -91,10 +91,13 @@ describe('MissionStatusClient — 티켓 골격', () => {
     expect(html).not.toContain('rgba(')
   })
 
-  it('상단 바 배경은 투명이고 페이지 래퍼가 반전 바탕을 건다', () => {
+  it('페이지 바탕은 다른 화면과 같은 기본 바탕·글자색이고 상단 바도 배경을 덮어쓰지 않는다', () => {
     const html = render(data)
-    expect(html).toContain('data-bg="transparent"')
-    expect(html).toContain('_page_')
+    expect(html).not.toContain('data-bg=')
+    expect(html).toMatch(/class="_page_[^"]*bg-background text-foreground"/)
+    const css = readFileSync(new URL('./MissionStatus.module.css', import.meta.url), 'utf-8')
+    expect(css).not.toContain('--background-inverse')
+    expect(css).not.toMatch(/\.page\s*\{[^}]*--snow/)
   })
 
   it('MISSION 머리 글자는 달성형이다', () => {

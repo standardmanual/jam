@@ -53,7 +53,6 @@ export default async function MissionStatusPage({ params }: Props) {
         color={missionTicketColor()}
         kindLabel={isRanking ? 'RANKING' : 'MISSION'}
         dateText={formatTicketDate(new Date().toISOString())}
-        surface="inverse"
         photo={<MissionSummary />}
         body={<MissionBoard />}
       />
