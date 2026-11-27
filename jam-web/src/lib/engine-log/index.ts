@@ -38,6 +38,8 @@ export type EngineDecisionEvent =
   | 'chapter_jam_mismatch'
   /** 챕터 오름 처리(소식·챕터 배지 판정) 실패 (engine='points', 티켓 20261019_1316). 한쪽이 실패해도 다른 쪽은 한다. 소식은 같은 묶음 키라 다시 보내도 한 건이다 */
   | 'chapter_rise_failed'
+  /** 챕터 오름 보상 지급·대기 받기·보충 지급 실패 (engine='points', 티켓 20261127_1732). `step`으로 구분한다. 같은 (유저, 챕터)는 DB가 한 번만 기록하므로 다시 시도해도 중복 지급이 없다 */
+  | 'chapter_reward_failed'
   /** 챕터 1 시작(`chapter_start`) 실패 (engine='points', 티켓 20261019_1316). `ensureChapterStarted`가 다음에 불릴 때 다시 시도한다 */
   | 'chapter_start_failed'
   | 'tribe_constant_missing'

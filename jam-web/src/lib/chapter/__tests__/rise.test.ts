@@ -6,6 +6,8 @@
  * - 소식은 오른 챕터 가운데 가장 높은 챕터로 한 건만 보낸다. 묶음 키는 `chapter_up:{챕터}` + `once`라 같은 오름을 두 번 처리해도 소식은 한 건이다.
  * - 피드(티켓 20261021_1249 6-3 5회): 가장 높은 챕터가 2 이상일 때만 `chapter_up` 한 건을 `{ chapter_no }`만 담아 기록한다. 챕터 1 시작은 기록하지 않고, 한 번에 여러 챕터를 넘어도 최고 챕터 한 건이며,
  *   오른 챕터가 없으면(같은 일을 다시 보낸 경우 포함) 기록하지 않는다. 활동 id를 넘기지 않는다(넘기면 활동 묶음 카드에 섞인다). 피드가 실패해도 소식·판정은 하고, 소식·판정이 실패해도 피드는 기록한다.
+ * - 오름 보상(티켓 20261127_1732 C3b): 오른 챕터가 있으면 `grantRewardsForReachedChapters`를 오른 챕터 목록 그대로 부른다(챕터 번호별 K-1 계산은 `grant.test.ts`). 오른 챕터가 없으면 부르지 않는다.
+ *   지급 단계가 던져도 소식·피드·판정은 하고 실패는 `step: 'reward'`로 남긴다.
  * - 챕터 배지 판정은 `runJamActionEvaluation(userId, ['chapter_reached'])`이다. `skipBadgeEvaluation`이면 건너뛴다(소식은 보낸다).
  * - 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. 어떤 경우에도 던지지 않고 실패는 `chapter_rise_failed`로 남긴다.
  * - 챕터 배지가 다시 챕터 점수를 올리는 고리는 5-5의 제외 규칙이 막는다(`chapter_reached` 조건 배지는 «배지 받기» 점수에서 뺀다).
@@ -16,11 +18,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { createNotificationMock, runEvaluationMock, logMock, recordFeedEventMock } = vi.hoisted(() => ({
+const { createNotificationMock, runEvaluationMock, logMock, recordFeedEventMock, grantRewardsMock } = vi.hoisted(() => ({
   createNotificationMock: vi.fn(),
   runEvaluationMock: vi.fn(),
   logMock: vi.fn(),
   recordFeedEventMock: vi.fn(),
+  grantRewardsMock: vi.fn(),
 }))
 
 vi.mock('@/lib/notifications', async () => {
@@ -35,6 +38,9 @@ vi.mock('@/lib/badge-engine/jamActionRoute', () => ({
   runJamActionEvaluation: (...args: unknown[]) => runEvaluationMock(...args),
 }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
+vi.mock('@/lib/chapter/reward/grant', () => ({
+  grantRewardsForReachedChapters: (...args: unknown[]) => grantRewardsMock(...args),
+}))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => recordFeedEventMock(...args) }))
 
 import { awardBadgeReceiveScore } from '../badgeReceive'
@@ -47,6 +53,8 @@ beforeEach(() => {
   runEvaluationMock.mockReset()
   logMock.mockReset()
   recordFeedEventMock.mockReset()
+  grantRewardsMock.mockReset()
+  grantRewardsMock.mockResolvedValue(undefined)
   recordFeedEventMock.mockResolvedValue(undefined)
   createNotificationMock.mockResolvedValue({ id: 'n1' })
   runEvaluationMock.mockResolvedValue(undefined)
@@ -223,6 +231,60 @@ describe('processChapterRise — 소식', () => {
 
     const keys = createNotificationMock.mock.calls.map((call) => call[0].groupKey)
     expect(new Set(keys).size).toBe(2)
+  })
+})
+
+describe('processChapterRise — 오름 보상 지급 (티켓 20261127_1732)', () => {
+  it('오른 챕터가 있으면 지급 단계를 오른 챕터 목록 그대로 부른다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [2, 3] })
+
+    expect(grantRewardsMock).toHaveBeenCalledTimes(1)
+    expect(grantRewardsMock).toHaveBeenCalledWith(USER, [2, 3])
+  })
+
+  it('챕터 번호가 아닌 값은 걸러서 넘긴다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [0, 2, 1.5] })
+
+    expect(grantRewardsMock).toHaveBeenCalledWith(USER, [2])
+  })
+
+  it('오른 챕터가 없으면 지급 단계를 부르지 않는다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [] })
+
+    expect(grantRewardsMock).not.toHaveBeenCalled()
+  })
+
+  it('skipBadgeEvaluation이어도 지급한다 — 판정만 건너뛴다', async () => {
+    await processChapterRise({ userId: USER, reachedChapters: [3] }, { skipBadgeEvaluation: true })
+
+    expect(grantRewardsMock).toHaveBeenCalledTimes(1)
+    expect(runEvaluationMock).not.toHaveBeenCalled()
+  })
+
+  it('지급 단계가 던져도 소식·피드·판정은 하고, step reward로 남기며 던지지 않는다', async () => {
+    grantRewardsMock.mockRejectedValue(new Error('지급 장애'))
+
+    await expect(processChapterRise({ userId: USER, reachedChapters: [3] })).resolves.toBeUndefined()
+
+    expect(createNotificationMock).toHaveBeenCalledTimes(1)
+    expect(recordFeedEventMock).toHaveBeenCalledTimes(1)
+    expect(runEvaluationMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_rise_failed', USER, {
+      step: 'reward',
+      reachedChapters: [3],
+      error: '보상 지급 예외: 지급 장애',
+    })
+  })
+
+  it('소식·피드·판정이 실패해도 지급은 한다', async () => {
+    createNotificationMock.mockResolvedValue(null)
+    recordFeedEventMock.mockRejectedValue(new Error('피드 장애'))
+    runEvaluationMock.mockRejectedValue(new Error('판정 장애'))
+
+    await processChapterRise({ userId: USER, reachedChapters: [3] })
+
+    expect(grantRewardsMock).toHaveBeenCalledTimes(1)
   })
 })
 

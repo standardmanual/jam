@@ -20,6 +20,7 @@ import { markStravaDisconnected } from '@/lib/strava/connection-write'
 import { countPendingItems, SyncPendingItemsError } from '@/lib/strava/pending-items'
 import { CapsuleInventoryBlockedError, readCapsuleReceiveBlocked } from '@/lib/capsule/receive-block'
 import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
+import { settleChapterRewards } from '@/lib/chapter/reward/grant'
 import { assertNotSuspended, getSuspensionPeriods } from '@/lib/suspension/suspension'
 import { assertHasTribe } from '@/lib/tribe/gate'
 import { isDuringSuspension } from '@/lib/suspension/suspension-contract'
@@ -1129,6 +1130,8 @@ export async function syncStravaActivities(
   // 판정은 DB 함수 capsule_receive_blocked가 단일 원천이다. 읽지 못하면 던져 동기화하지 않는다.
   // 막힘을 읽기 전에 따라잡기 지급을 한 번 시도한다(티켓 20261105_1438 R2): 빈칸이 대기 보상 개수 이상이면 지급하고 남은 잼을 채우므로, 풀린 유저는 막히지 않고 이어서 동기화한다.
   // 던지지 않는다. 지급을 시도한 뒤에 막힘을 다시 읽는다.
+  // 이관·누락 보충: 이관(C1b)이 올린 챕터와 오름 처리 전에 프로세스가 죽어 지급이 빠진 챕터를 여기서 지급한다(티켓 20261127_1732). 새 대기가 생기면 아래 막힘 판정이 합산한다. 던지지 않는다.
+  await settleChapterRewards(supabase, userId, { scanMissing: true })
   await settleAfterSlotsFreed(supabase, userId)
   const receiveBlock = await readCapsuleReceiveBlocked(supabase, userId)
   if (receiveBlock.blocked) {

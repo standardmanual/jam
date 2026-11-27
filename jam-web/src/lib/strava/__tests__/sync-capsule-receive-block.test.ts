@@ -10,6 +10,8 @@
  * - 챕터 보상 대기(`chapter_reward_grants`의 pending)만 있어도 같은 `CapsuleInventoryBlockedError`(빈칸·필요 칸수)로 막힌다(C2a, 티켓 20261127_1729, 실제 막힘 판정 함수 사용). 대기가 없으면 막히지 않는다.
  * - 막힘을 읽기 전에 대기 보상 자동 지급(`settleAfterSlotsFreed`)을 한 번 시도한다. 지급 뒤에 막힘을 읽으므로 풀린 유저는 막히지 않는다 (티켓 20261105_1438 R2).
  *
+ * - 진입에서 `settleChapterRewards(supabase, userId, { scanMissing: true })`를 `settleAfterSlotsFreed`보다 먼저 부른다(이관·누락 보충, 티켓 20261127_1732 C3b). 거기서 새 `pending`이 생기면 같은 진입의 막힘 판정이 합산해 막는다(Q-c).
+ *
  * 실제 Strava·공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/strava/__tests__/sync-capsule-receive-block.test.ts
@@ -17,8 +19,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { createServiceClientMock, getAllActivitiesMock, refreshMock, readBlockedMock, assertNotSuspendedMock, countPendingMock, settleMock } = vi.hoisted(() => ({
+const { createServiceClientMock, getAllActivitiesMock, refreshMock, readBlockedMock, assertNotSuspendedMock, countPendingMock, settleMock, settleChapterRewardsMock } = vi.hoisted(() => ({
   settleMock: vi.fn(async () => {}),
+  settleChapterRewardsMock: vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}),
   createServiceClientMock: vi.fn(),
   getAllActivitiesMock: vi.fn(),
   refreshMock: vi.fn(),
@@ -45,6 +48,7 @@ vi.mock('@/lib/strava/pending-items', async () => {
   const actual = await vi.importActual<typeof import('@/lib/strava/pending-items')>('@/lib/strava/pending-items')
   return { ...actual, countPendingItems: countPendingMock }
 })
+vi.mock('@/lib/chapter/reward/grant', () => ({ settleChapterRewards: settleChapterRewardsMock }))
 vi.mock('@/lib/capsule/settle-pending', () => ({ settleAfterSlotsFreed: settleMock }))
 vi.mock('@/lib/capsule/receive-block', async () => {
   const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
@@ -99,6 +103,8 @@ beforeEach(() => {
   assertNotSuspendedMock.mockImplementation(async () => {})
   countPendingMock.mockImplementation(async () => 0)
   settleMock.mockImplementation(async () => {})
+  settleChapterRewardsMock.mockReset()
+  settleChapterRewardsMock.mockImplementation(async () => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -150,6 +156,18 @@ describe('syncStravaActivities — 챕터 보상 대기도 막는다 (C2a, 티�
     await expect(syncStravaActivities(USER_ID)).rejects.toMatchObject({ free: 1, needed: 3 })
   })
 
+  it('입구의 보충 지급이 칸 부족으로 새 pending을 만들면 같은 진입의 막힘 판정이 합산해 409로 막는다', async () => {
+    const grantRows: unknown[] = []
+    const { supabase } = makeFakeWithChapterGrants(grantRows, { blocked: false, pending: 0, free: 0, needed: 0, shortfall: 0 })
+    createServiceClientMock.mockReturnValue(supabase)
+    settleChapterRewardsMock.mockImplementation(async () => {
+      grantRows.push({ drawn_items: [{}, {}], reward_count: 2 })
+    })
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toMatchObject({ name: 'CapsuleInventoryBlockedError', free: 0, needed: 2 })
+    expect(getAllActivitiesMock).not.toHaveBeenCalled()
+  })
+
   it('둘 다 없으면 막지 않고 보류 확인으로 이어진다', async () => {
     const { supabase } = makeFakeWithChapterGrants([], { blocked: false, pending: 0, free: 5, needed: 0, shortfall: 0 })
     createServiceClientMock.mockReturnValue(supabase)
@@ -174,6 +192,19 @@ describe('syncStravaActivities — 캡슐이 가득 차고 빈칸이 모자라�
     expect(refreshMock).not.toHaveBeenCalled()
     expect(record.connectionUpdates).toEqual([])
     expect(record.tablesTouched).toEqual(['strava_connections'])
+  })
+
+  it('진입에서 챕터 보상 정산을 scanMissing: true로, 대기 보상 자동 지급보다 먼저 부른다', async () => {
+    const { supabase } = makeFake()
+    createServiceClientMock.mockReturnValue(supabase)
+    readBlockedMock.mockResolvedValue({ blocked: true, free: 1, needed: 2 })
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBeInstanceOf(CapsuleInventoryBlockedError)
+
+    expect(settleChapterRewardsMock).toHaveBeenCalledTimes(1)
+    expect(settleChapterRewardsMock).toHaveBeenCalledWith(supabase, USER_ID, { scanMissing: true })
+    expect(settleChapterRewardsMock.mock.invocationCallOrder[0]).toBeLessThan(settleMock.mock.invocationCallOrder[0])
+    expect(settleMock.mock.invocationCallOrder[0]).toBeLessThan(readBlockedMock.mock.invocationCallOrder[0])
   })
 
   it('막힘을 읽기 전에 대기 보상 자동 지급을 시도하고, 지급 뒤의 판정으로 막힘을 정한다', async () => {

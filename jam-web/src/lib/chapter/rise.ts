@@ -11,6 +11,8 @@
  *  2-1) 피드: 가장 높은 챕터가 **2 이상**일 때만 `chapter_up` 한 건을 기록한다(티켓 20261021_1249 6-3 5회, 운영 로직 15.3절). 챕터 1 시작은 올리지 않는다.
  *     피드에는 중복 방지 키가 없다. `reachedChapters`는 `chapter_ups`에 **이번 호출로 새로 들어간** 챕터만 담으므로(같은 일을 다시 보내면 빈 목록이다), 이 목록이 비어 있지 않을 때만 기록하는 것이 «새로 오른 경우에만»이다.
  *     한 번에 여러 챕터를 넘어도 최고 챕터 한 건이다. 메타는 `chapter_no`뿐이고 `strava_activity_id`를 넘기지 않는다(넘기면 활동 묶음 카드에 섞인다).
+ *  2-2) 오름 보상(티켓 20261127_1732 C3b): 오른 챕터 K(2 이상)마다 마친 챕터 K-1의 보상을 (유저, 챕터)당 한 번 지급한다(`reward/grant.ts`의 `grantRewardsForReachedChapters`).
+ *     추첨 → DB 함수 → 후속 처리 순서이고 빈칸이 모자라면 대기로 남는다. 한 번에 여러 챕터를 넘으면 단계마다 한 번씩이다. 챕터 1 시작은 보상이 없다.
  *  3) 챕터 배지 판정: 비어 있지 않으면(챕터 1 시작 포함) `runJamActionEvaluation(userId, ['chapter_reached'])`로 챕터 조건 배지를 바로 판정해 받게 한다.
  *     넘은 챕터가 여럿이어도 챕터 도달값은 지금 챕터 하나라서 `chapter_reached >= N` 조건 배지는 한 번의 판정으로 모두 받는다.
  *     `skipBadgeEvaluation`이 참이면 이 판정만 건너뛴다(아래 «이중 판정»).
@@ -24,7 +26,7 @@
  * 겹쳐서 생기는 일은 판정이 한 번 더 도는 것과, 동기화 결과 카드 대신 결산 소식(`activity_recap`)으로 먼저 알려지는 것뿐이다. 챕터 오름은 평생 챕터 수(10)번 안쪽이라 비용이 작다.
  *
  * ## 서로 막지 않는다
- * 소식, 피드, 판정은 각자 `try/catch`로 감싼다. 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. **절대 던지지 않는다** — 실패는 `console.error`와
+ * 소식, 피드, 보상 지급, 판정은 각자 `try/catch`로 감싼다. 판정이 실패해도 소식은 보내고, 소식이 실패해도 판정은 한다. **절대 던지지 않는다** — 실패는 `console.error`와
  * `engine_decision_log`(`points` 엔진, 이벤트 `chapter_rise_failed`, `step`으로 구분)에 남긴다. `runJamActionEvaluation`은 자기 안의 실패를 스스로 삼키고
  * `console.error`만 남기므로, 이 함수가 기록하는 판정 실패는 그 함수를 불러오거나 부르다 던진 경우다.
  *
@@ -51,7 +53,7 @@ export interface ChapterRiseOptions {
   skipBadgeEvaluation?: boolean
 }
 
-type ChapterRiseFailureStep = 'notification' | 'feed' | 'badge_evaluation' | 'unexpected'
+type ChapterRiseFailureStep = 'notification' | 'feed' | 'reward' | 'badge_evaluation' | 'unexpected'
 
 function isChapterNo(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1
@@ -113,6 +115,19 @@ async function recordRiseFeed(userId: string, highest: number, reachedChapters: 
   }
 }
 
+/**
+ * 오른 챕터마다 마친 챕터의 보상을 지급한다. 지급 모듈은 호출 시점에 불러온다(`jamActionRoute`와 같은 이유 — 모듈 평가 시점의 순환을 피한다).
+ * `grantRewardsForReachedChapters`는 던지지 않지만 불러오다 던질 수 있어 여기서 한 번 더 감싼다.
+ */
+async function grantRiseRewards(userId: string, reachedChapters: readonly number[]): Promise<void> {
+  try {
+    const { grantRewardsForReachedChapters } = await import('@/lib/chapter/reward/grant')
+    await grantRewardsForReachedChapters(userId, reachedChapters)
+  } catch (e) {
+    await recordRiseFailure(userId, 'reward', reachedChapters, `보상 지급 예외: ${errorText(e)}`)
+  }
+}
+
 async function evaluateChapterBadges(userId: string, reachedChapters: readonly number[]): Promise<void> {
   try {
     // 정적 import는 `score.ts`와 순환이 된다(파일 머리말 «순환 import»)
@@ -123,7 +138,7 @@ async function evaluateChapterBadges(userId: string, reachedChapters: readonly n
   }
 }
 
-/** 챕터 오름을 처리한다(소식, 피드, 챕터 배지 판정). 던지지 않는다. */
+/** 챕터 오름을 처리한다(소식, 피드, 보상 지급, 챕터 배지 판정). 던지지 않는다. */
 export async function processChapterRise(input: ChapterRiseInput, options: ChapterRiseOptions = {}): Promise<void> {
   try {
     const reachedChapters = input.reachedChapters.filter(isChapterNo)
@@ -133,6 +148,7 @@ export async function processChapterRise(input: ChapterRiseInput, options: Chapt
     // 챕터 1 시작도 소식으로 알린다(티켓 20261021_1248). 완료 보상은 시점이 갈라지고 건너뛴 유저는 받지 않아 알림 구실을 하지 못한다
     await sendRiseNotification(input.userId, highest, reachedChapters)
     await recordRiseFeed(input.userId, highest, reachedChapters)
+    await grantRiseRewards(input.userId, reachedChapters)
     if (options.skipBadgeEvaluation !== true) await evaluateChapterBadges(input.userId, reachedChapters)
   } catch (e) {
     await recordRiseFailure(input.userId, 'unexpected', input.reachedChapters, errorText(e))

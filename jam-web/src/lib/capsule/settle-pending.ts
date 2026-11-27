@@ -4,6 +4,9 @@
  * `settleAfterSlotsFreed(supabase, userId)` — **절대 던지지 않는다.** 인벤토리 칸이 줄어드는 서버 경로(꽂기·내려놓기·조합 소각)가 응답 직전에 부르고,
  * 어떤 경로로 칸이 비었든 늦어도 다음 접속에는 지급되도록 홈 조회·캡슐 상태 조회·동기화 입구도 부른다(따라잡기).
  *
+ * 챕터 보상 대기도 함께 받는다(티켓 20261127_1732 C3b): `settle()` 맨 앞에서 `settleChapterRewards`(`scanMissing: false`)가 챕터 보상의 `pending` 행을 먼저 받는다.
+ * 챕터 보상 대기만 있어도 옛 대기 판정(`readCapsuleReceiveBlocked`가 둘을 합산한다)을 지나므로, 옛 대기가 0건이면 옛 지급 단계는 `claimPendingCapsules`가 빈 결과로 끝난다.
+ *
  * 순서
  *  1. 대기 보상이 없으면 바로 끝낸다(`capsule_receive_blocked` 한 번 — 막힘 판정과 같은 단일 원천이다).
  *  2. 빈칸이 대기 개수보다 적으면(`shortfall > 0`) 지급하지 않는다(부분 지급 없음). 대기 보상은 그대로 남는다.
@@ -23,6 +26,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import { jamTriggersForCapsuleOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
 import { runJamActionEvaluation } from '@/lib/badge-engine/jamActionRoute'
+import { settleChapterRewards } from '@/lib/chapter/reward/grant'
 import { UserSuspendedError } from '@/lib/suspension/suspension'
 import { CapsuleError } from './capsule'
 import { claimPendingCapsules } from './claim'
@@ -48,6 +52,9 @@ async function scheduleJamActionEvaluation(userId: string, triggers: readonly Ja
 }
 
 async function settle(supabase: SupabaseClient, userId: string): Promise<void> {
+  // 0. 챕터 보상 대기를 먼저 받는다(던지지 않는다). 보충 지급은 동기화 입구만 한다(`scanMissing: false`)
+  await settleChapterRewards(supabase, userId, { scanMissing: false })
+
   // 1·2. 대기 보상이 없거나 빈칸이 모자라면 아무것도 하지 않는다
   const block = await readCapsuleReceiveBlocked(supabase, userId)
   if (!block.blocked || block.shortfall > 0) return

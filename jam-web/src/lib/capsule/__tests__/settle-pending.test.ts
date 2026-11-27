@@ -7,6 +7,7 @@
  * - 빈칸이 충분하면 지급한다. 지급 뒤에는 어떤 경우에도 캡슐 자동 채움(`runSyncCapsuleAutoFill`)을 부르지 않는다(C2b).
  * - 지급은 열기 기록이라 행동 지표(캡슐 연 횟수)만 판정한다. `chapter_reached`는 더하지 않는다.
  * - 이용 정지·소속 트라이브 없음이면 지급하지 않고 조용히 끝난다. 그 밖의 실패(막힘 판정·지급)도 던지지 않는다.
+ * - 챕터 보상 정산(티켓 20261127_1732 C3b)을 가장 먼저 `scanMissing: false`로 부른다. 그 정산이 던지지 않는 한 옛 지급 시험은 그대로다.
  * - 같은 프로세스에서 같은 유저의 동시 호출은 한 번만 돈다(이중 지급은 DB 잠금이 따로 막는다).
  * 공용 DB는 호출하지 않는다 — 하위 모듈은 모두 가짜다.
  *
@@ -26,6 +27,7 @@ const claimMock = vi.hoisted(() => vi.fn())
 // 자동 채움 모의: 지급 뒤에도 절대 불리지 않음을 확인하는 데만 쓴다(C2b)
 const fillMock = vi.hoisted(() => vi.fn())
 const evaluateMock = vi.hoisted(() => vi.fn())
+const chapterRewardsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('next/server', () => ({ after: (cb: () => unknown) => void order.afterCallbacks.push(cb) }))
 vi.mock('../receive-block', () => ({
@@ -38,6 +40,12 @@ vi.mock('../claim', () => ({
   claimPendingCapsules: async (...args: unknown[]) => {
     order.calls.push('claim')
     return claimMock(...args)
+  },
+}))
+vi.mock('@/lib/chapter/reward/grant', () => ({
+  settleChapterRewards: async (...args: unknown[]) => {
+    order.calls.push('chapterRewards')
+    return chapterRewardsMock(...args)
   },
 }))
 vi.mock('../sync-auto-fill', () => ({
@@ -72,6 +80,8 @@ beforeEach(() => {
   claimMock.mockReset()
   fillMock.mockReset()
   evaluateMock.mockReset()
+  chapterRewardsMock.mockReset()
+  chapterRewardsMock.mockResolvedValue(undefined)
   blockedMock.mockResolvedValue(BLOCKED_ENOUGH)
   claimMock.mockResolvedValue(CLAIMED_ONE)
   fillMock.mockResolvedValue({ opened: true, chapterRose: true })
@@ -80,6 +90,23 @@ beforeEach(() => {
 })
 
 describe('settleAfterSlotsFreed', () => {
+  it('챕터 보상 정산을 가장 먼저, 보충 없이(scanMissing: false) 부른 뒤 옛 막힘 판정으로 이어진다', async () => {
+    await settleAfterSlotsFreed(supabase, USER_ID)
+
+    expect(chapterRewardsMock).toHaveBeenCalledTimes(1)
+    expect(chapterRewardsMock).toHaveBeenCalledWith(supabase, USER_ID, { scanMissing: false })
+    expect(order.calls.slice(0, 2)).toEqual(['chapterRewards', 'blocked'])
+  })
+
+  it('옛 대기가 없어도 챕터 보상 정산은 부른다 — 옛 지급은 하지 않는다', async () => {
+    blockedMock.mockResolvedValue({ blocked: false, pending: 0, free: 3, needed: 0, shortfall: 0 })
+
+    await settleAfterSlotsFreed(supabase, USER_ID)
+
+    expect(chapterRewardsMock).toHaveBeenCalledTimes(1)
+    expect(claimMock).not.toHaveBeenCalled()
+  })
+
   it('대기 보상이 없으면 막힘 판정 한 번으로 끝낸다 — 지급도 채움도 하지 않는다', async () => {
     blockedMock.mockResolvedValue({ blocked: false, pending: 0, free: 3, needed: 0, shortfall: 0 })
 
@@ -105,7 +132,7 @@ describe('settleAfterSlotsFreed', () => {
 
     expect(claimMock).toHaveBeenCalledWith(supabase, USER_ID)
     expect(fillMock).not.toHaveBeenCalled()
-    expect(order.calls).toEqual(['blocked', 'claim'])
+    expect(order.calls).toEqual(['chapterRewards', 'blocked', 'claim'])
   })
 
   it('지급은 열기 기록이므로 행동 지표(캡슐 열기)를 응답 뒤에 판정한다', async () => {

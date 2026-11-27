@@ -54,6 +54,25 @@ describe('start → rise → jamActionRoute → sync', () => {
     expect(typeof rise.processChapterRise).toBe('function')
   })
 
+  it('지급 모듈(챕터 오름 보상, 티켓 20261127_1732)을 어느 순서로 불러도 내보내기가 채워져 있다 — 동기화·정산 쪽이 먼저여도 같다', async () => {
+    const sync = await import('@/lib/strava/sync')
+    const settlePending = await import('@/lib/capsule/settle-pending')
+    const grant = await import('../reward/grant')
+    const rise = await import('../rise')
+
+    expect(typeof sync.syncStravaActivities).toBe('function')
+    expect(typeof settlePending.settleAfterSlotsFreed).toBe('function')
+    expect(typeof grant.grantRewardsForReachedChapters).toBe('function')
+    expect(typeof grant.settleChapterRewards).toBe('function')
+    expect(typeof rise.processChapterRise).toBe('function')
+
+    vi.resetModules()
+    const grantFirst = await import('../reward/grant')
+    const riseAfter = await import('../rise')
+    expect(typeof grantFirst.issueChapterReward).toBe('function')
+    expect(typeof riseAfter.processChapterRise).toBe('function')
+  })
+
   it('오름 처리가 실제 판정 래퍼 모듈을 불러오고, 불러오기에 실패해도 던지지 않는다', async () => {
     const rise = await import('../rise')
 
