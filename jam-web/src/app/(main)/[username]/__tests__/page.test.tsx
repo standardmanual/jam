@@ -227,7 +227,7 @@ const CAPSULE_STATUS = {
 }
 
 // 내 챕터 진행 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 내 진행이 새는 것이다
-const MY_CHAPTER = { ok: true, chapterNo: 7, nextChapterNo: 8, progress: 0.4242 }
+const MY_CHAPTER = { ok: true, chapterNo: 7, chapterJam: 1234, requiredJam: 2700, nextChapterNo: 8, isLastChapter: false, progress: 0.4242, tribeName: '새벽러너스' }
 const PUBLIC_CHAPTER = { ok: true, tribe: { id: 'tribe-1', name: '새벽러너스' }, chapterNo: 3 }
 
 beforeEach(() => {
@@ -512,7 +512,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     const props = await renderPage('target')
     const serialized = JSON.stringify(props)
 
-    for (const secret of ['0.4242', 'progress', 'nextChapterNo', 'chapterInitial', 'score', 'total_score']) {
+    for (const secret of ['0.4242', '1234', '2700', 'progress', 'nextChapterNo', 'chapterJam', 'requiredJam', 'isLastChapter', 'chapterInitial', 'score', 'total_score']) {
       expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
     }
     expect(Object.keys(props.publicChapter as object).sort()).toEqual(['chapterNo', 'tribeName'])
@@ -550,7 +550,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
 
   it('(l) 내 프로필: 마지막 챕터도 챕터 번호만 내려간다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, nextChapterNo: null, progress: null })
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, chapterJam: 5400, requiredJam: null, nextChapterNo: null, isLastChapter: true, progress: null, tribeName: null })
 
     const props = await renderPage('target')
 
@@ -576,7 +576,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
   it('(l) 내 프로필: 챕터가 없으면(퀘스트 전) 트라이브가 있어도 줄을 그리지 않는다', async () => {
     state.loginUserId = TARGET_USER_ID
     getMyTribeNameMock.mockResolvedValue('새벽러너스')
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, nextChapterNo: null, progress: null })
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, chapterJam: null, requiredJam: null, nextChapterNo: null, isLastChapter: false, progress: null, tribeName: null })
 
     const props = await renderPage('target')
 
@@ -585,7 +585,7 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
 
   it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, nextChapterNo: null, progress: null })
+    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, chapterJam: null, requiredJam: null, nextChapterNo: null, isLastChapter: false, progress: null, tribeName: null })
 
     const props = await renderPage('target')
 
