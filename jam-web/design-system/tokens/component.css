@@ -26,7 +26,6 @@
   /* ── 지도·연출 (티켓 20261126_2025, 사용자 승인 2026-11-26) ── */
   --map-drop-marker-active: var(--jam-green);   /* 지도 배지 지점 마커 면 */
   --map-label-bg: color-mix(in srgb, var(--base-black) 65%, transparent); /* 지도 지점 이름표 바탕 */
-  --tierup-stage-bg: radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%); /* 티어업 연출 무대 바탕 */
 
   /* ── 탭바 아이콘 (면 재질은 아래 :root 블록) ──────────────── */
   --tabbar-icon: var(--base-neutral-900);

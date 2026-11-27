@@ -2,7 +2,7 @@
 id: "20261128_0002"
 category: UI
 priority: P3
-status: OPEN
+status: IN_PROGRESS
 created: 2026-11-28
 closed:
 ---
@@ -15,6 +15,9 @@ closed:
 - 구현 계획: 토큰 정의를 지우고 카탈로그 생성기를 다시 돌린다. 토큰 삭제는 DS 변경이라 사용자 승인 줄이 필요하다.
 - 관련 파일: `jam-web/design-system/tokens/component.css`(29행), `docs/service/prd/ui-components/tokens.md`(243·560행, 생성기 산출)
 
+## 사용자 승인
+- 사용자 승인: 2026-11-28 — `--tierup-stage-bg` 토큰 삭제(후속 티켓 진행 지시 «후속티켓 진행해»)
+
 ## 배경 / 문제 정의
 티켓 20261127_2225 잔여 이슈와 민지 범위 밖 발견물(참고/낮음). 쓰지 않는 토큰이 카탈로그에 남아 사용처 0으로 표시된다.
 
@@ -26,16 +29,21 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- 경미 수정 경로(정의 1줄 삭제 + 생성기 재실행)로 카리나가 직접 처리했다.
+- `jam-web/design-system/tokens/component.css`에서 `--tierup-stage-bg` 정의를 지웠고, `node scripts/gen-token-catalog.mjs`로 `tokens.md`를 다시 만들었다.
 
 ### 변경된 파일
 ```
--
+jam-web/design-system/tokens/component.css
+docs/service/prd/ui-components/tokens.md (생성기 산출)
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `gen-token-catalog --check` 통과, `check-token-refs` 통과(1606개 파일)
+- [x] `git grep tierup-stage-bg`가 티켓 기록 외에 걸리지 않는다
 
 ### 주요 의사결정 / 핵심 메모
+- DS 변경이라 「사용자 승인」 줄을 남기고 진행했다.
 
 ### 잔여 이슈
 -

@@ -17,7 +17,7 @@ code:
 정본 컴포넌트 목록은 [README](README.md)에 있다.
 
 <!-- BEGIN generated: gen-token-catalog -->
-토큰 442개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 120개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 24개
+토큰 441개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 119개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 23개
 
 **층 규칙**: 색·px·ms 같은 직접 값은 기본값 층에만 둔다. 의미 층과 컴포넌트 층은 기본값을 참조한다.
 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·정본 폴더 등 일부뿐이다.
@@ -35,7 +35,7 @@ code:
 |---|---|---|---|---|---|---|---|---|---|
 | `--base-white` | `#ffffff` | 〃 | — | 0 | 0 | 0 | 0 | 6 | 다른 토큰의 재료로 쓰임 |
 | `--base-snow` | `#fcfcfc` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
-| `--base-black` | `#000000` | 〃 | — | 0 | 0 | 0 | 0 | 9 | 다른 토큰의 재료로 쓰임 |
+| `--base-black` | `#000000` | 〃 | — | 0 | 0 | 0 | 0 | 8 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-50` | `#fafafa` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--base-neutral-100` | `#f5f5f5` | 〃 | — | 0 | 0 | 0 | 0 | 2 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-200` | `#e5e5e5` | 〃 | — | 0 | 0 | 0 | 0 | 7 | 다른 토큰의 재료로 쓰임 |
@@ -43,9 +43,9 @@ code:
 | `--base-neutral-400` | `#a3a3a3` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-500` | `#737373` | 〃 | — | 0 | 0 | 0 | 0 | 2 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 0 | 1 | 1 | — |
-| `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 0 | 1 | — |
+| `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--base-neutral-800` | `#262626` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 0 | 10 | 다른 토큰의 재료로 쓰임 |
+| `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 0 | 9 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-950` | `#0a0a0a` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-danger-red` | `#d61f1f` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-point-orange` | `#ff4400` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
@@ -240,7 +240,6 @@ code:
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-drop-marker-active` | `var(--jam-green)` | `#59C02B` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-label-bg` | `color-mix(in srgb, var(--base-black) 65%, transparent)` | `color-mix(in srgb, #000000 65%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--tierup-stage-bg` | `radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)` | `radial-gradient(circle farthest-corner at 50% 42%, #404040 0%, #171717 38%, #000000 100%)` | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--tabbar-icon` | `var(--base-neutral-900)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
 | `--tabbar-icon-active` | `var(--foreground)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-icon-inverse` | `var(--muted-on-inverse)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
@@ -538,7 +537,7 @@ code:
 |---|---|---|
 | `--base-neutral-50` | 기본값 (primitive) | 0 |
 | `--base-neutral-300` | 기본값 (primitive) | 0 |
-| `--base-neutral-700` | 기본값 (primitive) | 1 |
+| `--base-neutral-700` | 기본값 (primitive) | 0 |
 | `--radius-xs` | 기본값 (primitive) | 1 |
 | `--radius-4xl` | 기본값 (primitive) | 1 |
 | `--spacing-20` | 기본값 (primitive) | 0 |
@@ -557,7 +556,6 @@ code:
 | `--font-weight-light` | 기본값 (primitive) | 0 |
 | `--leading-normal` | 기본값 (primitive) | 0 |
 | `--drop-shadow-xs` | 기본값 (primitive) | 0 |
-| `--tierup-stage-bg` | 컴포넌트 (component) | 0 |
 | `--radius-xs` | 어드민 (admin) | 1 |
 | `--radius-4xl` | 어드민 (admin) | 1 |
 <!-- END generated: gen-token-catalog -->
