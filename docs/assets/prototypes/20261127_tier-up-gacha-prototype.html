@@ -317,7 +317,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   word-break: keep-all;
   opacity: 0;
 }
-.reveal .sub { margin: 0; font-size: 13px; color: var(--muted); opacity: 0; }
+.reveal .sub { margin: 0; max-width: 300px; font-size: 14px; line-height: 1.55; color: var(--muted); text-align: center; text-wrap: balance; word-break: keep-all; opacity: 0; }
 
 .again {
   position: absolute;
@@ -507,7 +507,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
       <div class="meta">
         <span class="chip" id="revealChip">RARE</span>
         <p class="name" id="revealName"></p>
-        <p class="sub">인벤토리에 담았어요</p>
+        <p class="sub" id="revealDesc"></p>
       </div>
     </div>
 
@@ -582,10 +582,24 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     rare: ['별빛 나침반', '은빛 페이스 시계', '강변 노을 엽서', '산정 깃발', '야간 러닝 랜턴', '바람의 지도', '언덕 정복 메달', '첫눈 발자국'],
     epic: ['오로라 스니커즈', '황금 반환점', '폭풍 속 우산', '은하 지도'],
   };
+  // 예시 결과 배지: 이름과 설명(서비스에서는 응답의 description을 쓴다)
   const RESULT_POOL = {
-    rare: ['달빛 페이스메이커', '파도 소리 조개', '구름 위 계단', '새벽 다섯 시 종'],
-    epic: ['불꽃 바통', '천 개의 발자국', '빛나는 등대', '시간을 달리는 시계'],
-    mystic: ['전설의 첫 걸음', '별이 된 결승선'],
+    rare: [
+      ['달빛 페이스메이커', '밤길을 함께 달려 주는 은은한 빛이에요. 혼자 뛰어도 외롭지 않아요.'],
+      ['파도 소리 조개', '귀에 대면 바닷가 러닝 코스의 파도 소리가 들려요.'],
+      ['구름 위 계단', '오르막을 끝까지 올라간 사람만 밟을 수 있는 계단이에요.'],
+      ['새벽 다섯 시 종', '가장 먼저 하루를 시작한 사람에게 울리는 종이에요.'],
+    ],
+    epic: [
+      ['불꽃 바통', '팀의 열기를 다음 주자에게 건네는 바통이에요.'],
+      ['천 개의 발자국', '천 번의 출발이 모여 만든 길 위의 흔적이에요.'],
+      ['빛나는 등대', '길을 잃은 러너에게 돌아갈 방향을 비춰 줘요.'],
+      ['시간을 달리는 시계', '기록을 넘어선 순간을 영원히 기억하는 시계예요.'],
+    ],
+    mystic: [
+      ['전설의 첫 걸음', '모든 여정이 시작된 첫 발자국이 담겨 있어요.'],
+      ['별이 된 결승선', '끝까지 달린 사람들의 결승선이 별이 되어 빛나요.'],
+    ],
   };
   let uid = 0;
   const inv = [];
@@ -999,12 +1013,13 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
     // 5) 상위 등급 배지가 나타나고 가차볼은 뒤로 빠르게 사라진다
     const pool = RESULT_POOL[toR];
-    const name = pool[Math.floor(Math.random() * pool.length)];
+    const [name, desc] = pool[Math.floor(Math.random() * pool.length)];
     const art = badgeArt(uid, toR);
     const result = { id: 'b' + uid, name, rarity: toR, art, fresh: true };
     uid++;
     $('revealImg').src = art;
     $('revealName').textContent = name;
+    $('revealDesc').textContent = desc;
     $('revealChip').textContent = LABEL[toR].toUpperCase();
     reveal.style.setProperty('--rc', RCOLOR[toR]);
     reveal.hidden = false;
