@@ -66,6 +66,14 @@ describe('모은 잼 숫자 자리', () => {
     expect(numberPlacement(inner, chapterFillRatio(494, 2344), 3)).toBe('inside')
     expect(numberPlacement(inner, chapterFillRatio(493, 2344), 3)).toBe('outside')
   })
+  it('글자 폭을 키워 받으면(기준 글자 크기 확대) 필요 길이와 경계가 따라 움직인다', () => {
+    // 125% 확대: 글자 폭 12.5 × 1.25
+    const wide = 12.5 * 1.25
+    expect(insideNumberNeededPx(3, wide)).toBe(44 + 4 + 3 * wide + 12)
+    // 100%에서는 안인 494가 확대하면 밖이 된다(숫자가 칩을 덮지 않게)
+    expect(numberPlacement(298, chapterFillRatio(494, 2344), 3, wide)).toBe('outside')
+    expect(numberPlacement(298, chapterFillRatio(494, 2344), 3)).toBe('inside')
+  })
   it('채움 길이가 필요 길이와 정확히 같으면 안이다', () => {
     // 1글자 숫자의 필요 길이(72.5)에 채움 길이가 닿는 정도를 거꾸로 구한다
     const needed = insideNumberNeededPx(1)

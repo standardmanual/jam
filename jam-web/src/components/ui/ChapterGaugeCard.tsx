@@ -20,6 +20,7 @@ import {
   formatGemCount,
   moveDurationMs,
   numberPlacement,
+  NUMBER_CHAR_WIDTH_PX,
 } from '@/components/ui/chapterGaugeCardMath'
 
 /**
@@ -109,9 +110,9 @@ function CardLayout({
 
       {children}
 
-      {/* 필요 잼 줄 — 트랙에 붙여 오른쪽 정렬. 필요 잼이 없으면 비워 두되 높이는 지킨다 */}
+      {/* 필요 잼 줄 — 트랙에 붙여 오른쪽 정렬. 필요 잼이 없으면 비워 두되 높이는 지킨다. 같은 수치를 트랙의 접근성 라벨이 읽어 주므로 보조 기기에는 숨긴다 */}
       <div
-        aria-hidden={requiredText === null ? true : undefined}
+        aria-hidden="true"
         data-chapter-required={requiredText === null ? 'empty' : 'value'}
         className="text-right text-base font-extrabold tabular-nums"
         style={{ paddingInline: 'var(--spacing-16)', marginTop: 'calc(var(--spacing-8) * -1)', color: 'var(--capsule-fill)' }}
@@ -156,6 +157,8 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
   const [visible, setVisible] = useState(() => typeof window === 'undefined' || typeof window.IntersectionObserver === 'undefined')
   // 트랙 안쪽 폭(px) — 숫자 자리 판정에 쓴다. 재기 전에는 0이다
   const [innerWidth, setInnerWidth] = useState(0)
+  // 숫자 글자 배율 — 기준 글자 크기(rem)가 16px보다 크면 숫자도 커지므로 자리 판정의 글자 폭에 곱한다
+  const [charScale, setCharScale] = useState(1)
   // 모은 잼 숫자를 보일 때가 되었는가 — 채움이 움직이기 시작할 때 같이 켜진다(서버 렌더와 첫 그리기에서는 꺼져 있다)
   const [numberReady, setNumberReady] = useState(false)
 
@@ -220,7 +223,11 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
   useEffect(() => {
     const inner = innerRef.current
     if (!inner) return
-    const measure = () => setInnerWidth(inner.clientWidth)
+    const measure = () => {
+      setInnerWidth(inner.clientWidth)
+      if (typeof document === 'undefined' || typeof window.getComputedStyle !== 'function') return
+      setCharScale(Math.max(1, (parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16) / 16))
+    }
     measure()
     if (typeof window.ResizeObserver === 'undefined') return
     const observer = new window.ResizeObserver(measure)
@@ -229,7 +236,7 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
   }, [])
 
   // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다
-  const placement = numberPlacement(innerWidth, target, numberText.length)
+  const placement = numberPlacement(innerWidth, target, numberText.length, NUMBER_CHAR_WIDTH_PX * charScale)
   const showNumber = numberReady && arrived
   const numberContent = showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText
   const numberClass = 'absolute right-0 top-0 flex h-full items-center whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'

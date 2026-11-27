@@ -57,18 +57,26 @@ export function formatGemCount(value: number): string {
   return Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)).toLocaleString('ko-KR')
 }
 
-/** 채움 안에 숫자가 들어가려면 필요한 채움 길이(px) = 칩 + 간격 + 글자 수 × 글자 폭 + 오른쪽 간격 */
-export function insideNumberNeededPx(charCount: number): number {
-  return CHAPTER_CHIP_WIDTH_PX + NUMBER_CHIP_GAP_PX + charCount * NUMBER_CHAR_WIDTH_PX + NUMBER_FILL_END_GAP_PX
+/**
+ * 채움 안에 숫자가 들어가려면 필요한 채움 길이(px) = 칩 + 간격 + 글자 수 × 글자 폭 + 오른쪽 간격.
+ * 숫자 글자는 rem 단위라 기준 글자 크기가 커지면 같이 커지므로, 글자 폭은 `charWidthPx`로 배율을 반영해 받는다.
+ */
+export function insideNumberNeededPx(charCount: number, charWidthPx: number = NUMBER_CHAR_WIDTH_PX): number {
+  return CHAPTER_CHIP_WIDTH_PX + NUMBER_CHIP_GAP_PX + charCount * charWidthPx + NUMBER_FILL_END_GAP_PX
 }
 
 /**
  * 모은 잼 숫자 자리. 최종 채움 길이가 필요 길이 이상이면 채움 안(`inside`), 아니면 트랙 안 오른쪽(`outside`)이다.
  * 트랙 폭을 아직 모르면(0 이하) `outside`다.
  */
-export function numberPlacement(innerWidthPx: number, ratio: number, charCount: number): NumberPlacement {
+export function numberPlacement(
+  innerWidthPx: number,
+  ratio: number,
+  charCount: number,
+  charWidthPx: number = NUMBER_CHAR_WIDTH_PX
+): NumberPlacement {
   if (!(innerWidthPx > 0)) return 'outside'
-  return fillWidthPx(innerWidthPx, ratio) >= insideNumberNeededPx(charCount) ? 'inside' : 'outside'
+  return fillWidthPx(innerWidthPx, ratio) >= insideNumberNeededPx(charCount, charWidthPx) ? 'inside' : 'outside'
 }
 
 /** 같은 화면에서 값이 바뀔 때의 이동 시간(ms). 옮길 거리에 비례해 늘리되 700~1500ms 안에 둔다 */

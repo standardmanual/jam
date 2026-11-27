@@ -83,6 +83,7 @@ describe('숫자와 문구', () => {
     const row = (h: string) => h.match(/<div[^>]*data-chapter-required="[^"]*"[^>]*>/)?.[0] ?? ''
     expect(row(normal)).toContain('data-chapter-required="value"')
     expect(row(last)).toContain('data-chapter-required="empty"')
+    expect(row(normal)).toContain('aria-hidden="true"')
     expect(row(last)).toContain('aria-hidden="true"')
     // 클래스·스타일(높이를 정하는 것)은 같다
     const strip = (r: string) => r.replace(/data-chapter-required="[^"]*"/, '').replace(/ aria-hidden="true"/, '')
