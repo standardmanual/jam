@@ -1036,18 +1036,21 @@ export type Database = {
           chapter_no: number
           required_jam: number | null
           required_score: number
+          reward_count: number | null
           updated_at: string
         }
         Insert: {
           chapter_no: number
           required_jam?: number | null
           required_score: number
+          reward_count?: number | null
           updated_at?: string
         }
         Update: {
           chapter_no?: number
           required_jam?: number | null
           required_score?: number
+          reward_count?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -1083,6 +1086,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chapter_reward_grants: {
+        Row: {
+          chapter_no: number
+          claimed_at: string | null
+          created_at: string
+          drawn_items: Json
+          reward_count: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          chapter_no: number
+          claimed_at?: string | null
+          created_at?: string
+          drawn_items?: Json
+          reward_count: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          chapter_no?: number
+          claimed_at?: string | null
+          created_at?: string
+          drawn_items?: Json
+          reward_count?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_reward_grants_chapter_no_fkey"
+            columns: ["chapter_no"]
+            isOneToOne: false
+            referencedRelation: "chapter_definitions"
+            referencedColumns: ["chapter_no"]
+          },
+          {
+            foreignKeyName: "chapter_reward_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_reward_policy: {
+        Row: {
+          id: number
+          other_tribe_probability: number
+          pity_epic_threshold: number
+          rarity_common: number
+          rarity_epic: number
+          rarity_mystic: number
+          rarity_rare: number
+          updated_at: string
+        }
+        Insert: {
+          id: number
+          other_tribe_probability?: number
+          pity_epic_threshold?: number
+          rarity_common?: number
+          rarity_epic?: number
+          rarity_mystic?: number
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          other_tribe_probability?: number
+          pity_epic_threshold?: number
+          rarity_common?: number
+          rarity_epic?: number
+          rarity_mystic?: number
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       chapter_ups: {
         Row: {
