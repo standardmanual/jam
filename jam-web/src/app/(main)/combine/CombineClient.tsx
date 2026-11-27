@@ -828,7 +828,7 @@ export default function CombineClient({
           // 잠기지 않은 단일 성공 — 무대가 배지를 공개한다
           tierUpStage.current?.settle({
             kind: 'reveal',
-            badge: { name: first.name, rarity: first.rarity ?? null, imageUrl: first.imageUrl ?? null },
+            badge: { name: first.name, rarity: first.rarity ?? null, imageUrl: first.imageUrl ?? null, description: first.description ?? null },
           })
         } else {
           // 잠긴 결과는 이름·그림이 없어 지금 오버레이(가린 카드)를 그대로 쓴다

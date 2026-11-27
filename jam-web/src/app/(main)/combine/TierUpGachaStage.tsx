@@ -43,6 +43,8 @@ export interface TierUpGachaBadge {
   name: string
   rarity: Rarity | null
   imageUrl: string | null
+  /** 결과 배지 설명문 — 없거나 비어 있으면 설명 줄을 그리지 않는다 */
+  description: string | null
 }
 
 export type TierUpGachaOutcome = { kind: 'reveal'; badge: TierUpGachaBadge } | { kind: 'handoff' } | { kind: 'abort' }
@@ -684,12 +686,14 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
             >
               {badge.name}
             </p>
-            <p
-              className={`${styles.sub} ${styles.metaItem} break-keep wrap-break-word`}
-              style={{ color: GACHA.muted, animation: `${styles.riseIn} ${T(380)}ms ${T(600)}ms ease-out both` }}
-            >
-              {d.combine.tierUp.resultSub}
-            </p>
+            {badge.description?.trim() && (
+              <p
+                className={`${styles.sub} ${styles.metaItem} break-keep wrap-break-word text-balance`}
+                style={{ color: GACHA.muted, animation: `${styles.riseIn} ${T(380)}ms ${T(600)}ms ease-out both` }}
+              >
+                {badge.description.trim()}
+              </p>
+            )}
           </div>
         </div>
       )}

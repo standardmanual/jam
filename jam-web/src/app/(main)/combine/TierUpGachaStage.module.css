@@ -340,7 +340,10 @@
 }
 .sub {
   margin: 0;
-  font-size: 13px;
+  max-width: 300px;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .again {

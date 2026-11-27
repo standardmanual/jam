@@ -327,7 +327,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     title: '서비스 활동 잼 (종류별 고정값과 하루·주간 상한)',
     type: 'admin_link',
     currentSpec:
-      '기본값: 잠긴 아이템 배지 열기 5 · 배지 받기 5 · 믹스 성공(등급 올리기 포함) 5 · 미션 완료 20 · 컬렉션 완성(등급 무관) 30 · 드랍 0 · 픽업 0잼. 한 유저가 받는 양은 하루(KST) 40잼, 주간(월~일 KST) 100잼까지이고 상한 0은 «상한 없음»이 아니라 지급 0. 상한에 걸리면 남은 만큼만 일부 지급하고 남은 양이 0이면 줄을 만들지 않음. 종류별 값이 0이면 지급 없음. 같은 활동은 이벤트 키(종류:원천 id)로 한 번만 지급됨. 이용 정지 중에는 지급하지 않음. 캡슐 가득 참은 종류에 없음. 캡슐이 가득 차고 인벤토리 빈칸이 모자라 막혀 있으면 지급하지 않음(거절, 나중에 보충하지 않음, 판정은 capsule_receive_blocked): 응답은 지급 0·blocked로 구분하고 원장·날짜별 합·지갑을 바꾸지 않으며 실패 기록도 남기지 않음. 중복 키·규칙값 0·상한 도달은 각자의 이유가 먼저이고, 믹스는 빈칸을 만든 뒤 지급하므로 막히지 않음. 운영자 지급·회수는 이 함수를 지나지 않아 막히지 않음. 원장 사유 service_activity로 구분해 남기고 모은 총량(total_earned)은 바꾸지 않음. 지급량이 0보다 크면 지급 직후 캡슐 자동 채움(채움 → 100%면 열기 → 인벤토리 빈칸이 모자라면 거기서 멈춤 → 보지 않은 캡슐 결과 기록)을 이어서 돌림. 보상으로 생긴 잼도 같은 규칙으로 채우고, 같은 서버 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 건너뜀',
+      '기본값: 잠긴 아이템 배지 열기 5 · 배지 받기 5 · 믹스 성공(등급 UP 포함) 5 · 미션 완료 20 · 컬렉션 완성(등급 무관) 30 · 드랍 0 · 픽업 0잼. 한 유저가 받는 양은 하루(KST) 40잼, 주간(월~일 KST) 100잼까지이고 상한 0은 «상한 없음»이 아니라 지급 0. 상한에 걸리면 남은 만큼만 일부 지급하고 남은 양이 0이면 줄을 만들지 않음. 종류별 값이 0이면 지급 없음. 같은 활동은 이벤트 키(종류:원천 id)로 한 번만 지급됨. 이용 정지 중에는 지급하지 않음. 캡슐 가득 참은 종류에 없음. 캡슐이 가득 차고 인벤토리 빈칸이 모자라 막혀 있으면 지급하지 않음(거절, 나중에 보충하지 않음, 판정은 capsule_receive_blocked): 응답은 지급 0·blocked로 구분하고 원장·날짜별 합·지갑을 바꾸지 않으며 실패 기록도 남기지 않음. 중복 키·규칙값 0·상한 도달은 각자의 이유가 먼저이고, 믹스는 빈칸을 만든 뒤 지급하므로 막히지 않음. 운영자 지급·회수는 이 함수를 지나지 않아 막히지 않음. 원장 사유 service_activity로 구분해 남기고 모은 총량(total_earned)은 바꾸지 않음. 지급량이 0보다 크면 지급 직후 캡슐 자동 채움(채움 → 100%면 열기 → 인벤토리 빈칸이 모자라면 거기서 멈춤 → 보지 않은 캡슐 결과 기록)을 이어서 돌림. 보상으로 생긴 잼도 같은 규칙으로 채우고, 같은 서버 프로세스에서 한 유저의 자동 채움이 돌고 있으면 안쪽 호출은 건너뜀',
     dbTable: 'service_jam_rules',
     dbColumn: 'amount',
     codeLocation: 'jam-web/src/lib/jam/serviceActivity.ts',
@@ -878,7 +878,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
       '기본 70% (0~100%, 재료 등급의 바로 위가 나올 확률이고 나머지는 같은 등급, Common·Rare·Epic 재료 모두 같은 값, Mystic 재료는 이 값과 무관하게 Mystic 100%, 바꾸면 확률 안내 페이지에도 함께 반영되고 저장 전에 확인창이 뜸)',
     dbTable: 'combine_policy',
     dbColumn: 'tier_up_probability',
-    userExperience: '같은 등급 6개로 등급 UP를 하면 설정한 확률로 한 등급 위가 나오고, 나머지는 같은 등급이 나와요.',
+    userExperience: '같은 등급 6개로 등급 UP을 하면 설정한 확률로 한 등급 위가 나오고, 나머지는 같은 등급이 나와요.',
     basisDoc: '운영 로직 8.4절, 8.6절, 19.1절',
     ticketId: '20261023_1648',
     adminLink: {
@@ -1550,7 +1550,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     chapterTitle: '안전과 확률 안내',
     title: '공식 확률 안내 페이지 (/probability) 실시간 연동',
     type: 'code_constant',
-    currentSpec: 'force-dynamic으로 jam_policy·capsule_policy·combine_policy(등급 올리기 윗등급 확률) 실시간 조회 반영',
+    currentSpec: 'force-dynamic으로 jam_policy·capsule_policy·combine_policy(등급 UP 윗등급 확률) 실시간 조회 반영',
     codeLocation: 'jam-web/src/lib/probability/disclosure.ts',
     userExperience: '운영자가 어드민에서 확률을 변경하면 공개 페이지에 지체 없이 즉시 반영돼요.',
     basisDoc: '운영 로직 18.3절',
