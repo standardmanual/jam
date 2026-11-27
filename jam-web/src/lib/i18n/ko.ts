@@ -339,6 +339,25 @@ export const ko = {
     },
   },
 
+  /**
+   * 홈 챕터 게이지 카드 문구 — 티켓 20261127_1735 (C5b, 채원 사전 판정 2026-11-28).
+   * 정본 `ui/ChapterGaugeCard`는 문장을 만들지 않아서 라벨과 접근성 문구를 호출부(`ChapterGaugeSection`)가 여기서 넘긴다.
+   * 카드에는 모은 잼과 필요한 잼 숫자가 보이므로 접근성 라벨도 같은 수치를 읽어 준다. 용어는 «챕터»·«잼»이다(UX Writing 가이드 1.3절).
+   */
+  chapterGauge: {
+    /** 챕터 번호 위의 영문 라벨. 영문 유지는 Q-k 확정이며 스크린리더에는 장식이라 카드 접근성 이름에 넣지 않는다 */
+    label: 'CHAPTER',
+    /** 카드(group)의 접근성 이름. 트라이브가 없으면 `ariaLabelNoTribe`를 쓴다 */
+    ariaLabel: '챕터 {chapterNo}, {tribeName}',
+    ariaLabelNoTribe: '챕터 {chapterNo}',
+    /** 트랙(img)의 접근성 이름. 마지막 챕터는 필요한 잼이 없어 `trackAriaLabelLast`를 쓴다 */
+    trackAriaLabel: '다음 챕터까지 잼 {filled} / {required}',
+    trackAriaLabelLast: '잼 {filled}',
+    /** 불러오기에 실패했을 때 카드 자리에 놓이는 블록의 문구와 버튼 */
+    loadFailed: '챕터를 불러오지 못했어요',
+    retry: '다시 시도',
+  },
+
   /** 투데이 카드 스택 콘텐츠 유형 (template_type) 라벨 — 색상 구분 없이 아이콘+라벨로만 식별 */
   todayCard: {
     badgeSpotlight: '배지',

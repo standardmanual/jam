@@ -104,8 +104,8 @@ code:
 | `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 836 | 0 | 226 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 963 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 963 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 136 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 136 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 137 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 137 | 0 | 83 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg--line-height` | `calc(1.75 / 1.125)` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 21 | 0 | 21 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -114,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5748 | 0 | 460 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5752 | 0 | 461 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -183,8 +183,8 @@ code:
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 2 | 221 | 6 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 248 | 1 | 143 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 2 | 17 | 1 | — |
-| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 36 | 31 | 0 | 38 | 7 | — |
-| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 5 | 8 | 0 | 6 | 2 | — |
+| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 36 | 32 | 0 | 39 | 7 | — |
+| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 5 | 9 | 0 | 7 | 2 | — |
 | `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
 | `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | — |

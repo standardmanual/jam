@@ -10,8 +10,9 @@ import SuspensionBanner from './SuspensionBanner'
 import { loadHomeSuspensionBanner } from '@/lib/suspension/home-banner'
 import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
 import HomeViewTracker from './HomeViewTracker'
-import CapsuleWidget from '@/components/capsule/CapsuleWidget'
-import { getCapsuleStatus } from '@/lib/capsule/capsule'
+import ChapterGaugeSection from '@/components/chapter/ChapterGaugeSection'
+import { getMyChapter, type MyChapterResult } from '@/lib/chapter/read'
+import { readCapsuleReceiveBlocked } from '@/lib/capsule/receive-block'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getDisplayName } from '@/lib/utils'
@@ -50,15 +51,22 @@ export default async function HomePage() {
   // user_suspensions는 service_role 전용이라 서비스 클라이언트로 읽는다. 조회가 실패하면 배너만 생략한다(던지지 않는다).
   const suspensionPromise = loadHomeSuspensionBanner(createServiceClient(), userId)
   // 따라잡기(티켓 20261105_1438 R2): 어떤 경로로 칸이 비었든 빈칸이 대기 보상 개수 이상이면 여기서 대기 보상을 자동으로 지급하고 남은 잼을 채운 뒤,
-  // 그 결과를 캡슐 초기값이 읽게 한다. 던지지 않고, 대기 보상이 없으면 확인 한 번으로 끝난다.
-  // 막힘 판정은 캡슐 초기값의 `notice === 'blocked'` 하나다(티켓 20261105_1912). 홈이 따로 읽던 막힘 조회는 걷었다.
+  // 그 결과를 챕터·막힘 조회가 읽게 한다(막힘이 바로 풀리도록 순서를 지킨다). 던지지 않고, 대기 보상이 없으면 확인 한 번으로 끝난다.
   const settlePromise = settleAfterSlotsFreed(createServiceClient(), userId)
-  // 캡슐 초기값(티켓 20261018_0054). 조회가 실패하면 null로 접고 던지지 않는다 — 위젯이 클라이언트에서 다시 가져오고 오류 상태를 보여 준다.
-  // 캡슐이 없으면 서버가 이때 만든다(`capsule_get_or_create`).
-  const capsulePromise = settlePromise.then(() => getCapsuleStatus(createServiceClient(), userId)).catch((err: unknown) => {
-    console.error('[home/page] 캡슐 조회 실패 — 위젯이 클라이언트에서 다시 가져온다', err)
-    return null
-  })
+  // 챕터 게이지 카드 값(티켓 20261127_1735). 조회가 실패하면 던지지 않고 null로 접는다 — 카드 자리에 «다시 시도» 오류 블록이 뜬다.
+  const chapterPromise: Promise<MyChapterResult | null> = settlePromise
+    .then(() => getMyChapter(createServiceClient(), userId))
+    .catch((err: unknown) => {
+      console.error('[home/page] 챕터 조회 실패 — 카드 자리에 오류 블록을 그린다', err)
+      return null
+    })
+  // 막힘 판정(대기 보상으로 받지 못한 아이템 배지가 있는가). 실패하면 던지지 않고 안내만 생략한다.
+  const blockedPromise = settlePromise
+    .then(() => readCapsuleReceiveBlocked(createServiceClient(), userId))
+    .catch((err: unknown) => {
+      console.error('[home/page] 막힘 조회 실패 — 막힘 안내만 생략한다', err)
+      return null
+    })
 
   const { data: stravaConn, error: stravaConnError } = await stravaConnPromise
   if (stravaConnError) console.error('[home/page] strava_connections 조회 실패', stravaConnError)
@@ -75,17 +83,21 @@ export default async function HomePage() {
     rightStatus,
     leftStatus,
     suspension,
-    capsuleInitial,
+    chapter,
+    receiveBlocked,
   ] = await Promise.all([
     profilePromise,
     rightStatusPromise,
     leftStatusPromise,
     suspensionPromise,
-    capsulePromise,
+    chapterPromise,
+    blockedPromise,
   ])
   if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
 
   const userProfile = profile as UserRow | null
+  // 막힘 안내는 이용 정지 중이면 없다(정지 배너가 이미 알린다). 홈이 읽은 정지 값을 그대로 쓴다.
+  const blocked = receiveBlocked?.blocked && !suspension ? { pendingItemCount: receiveBlocked.pending } : null
 
   const displayName = (userProfile && getDisplayName(userProfile)) || user.email?.split('@')[0] || '러너'
 
@@ -123,10 +135,9 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      {/* 캡슐 위젯 (티켓 20261018_0054, 20261028_1739, 20261031_1806, 위치 20261104_1710) — 인사말 줄 바로 아래(2026-11-04 사용자 요청).
-          홈에는 챕터 번호를 그리지 않는다. 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고).
-          막힘이면 위젯이 게이지와 안내·«인벤토리 가기»를 한 카드로 그린다(티켓 20261105_1912). 정지 중에는 서버가 notice none을 줘 일반 게이지다. 조회가 실패했으면 위젯이 직접 가져온다. 확률 안내 링크는 이 묶음에 두지 않는다(푸터의 «확률 안내»로 통합). */}
-      <CapsuleWidget initial={capsuleInitial} blockedCard />
+      {/* 챕터 게이지 카드 (티켓 20261127_1735 C5b) — 인사말 줄 바로 아래, 오늘의 현황 위. 챕터가 없는 유저는 아무것도 그리지 않아 빈 간격도 없다.
+          막힘이면 카드 아래에 안내 카드가 이어 붙는다(정지 중에는 없음). 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고). */}
+      <ChapterGaugeSection chapter={chapter} blocked={blocked} />
 
       {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.
           유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}
