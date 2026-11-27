@@ -46,6 +46,8 @@ interface FakeOptions {
   suspension?: { data: unknown; error: unknown }
   /** `users.tribe_id`. 생략하면 트라이브 있음 */
   tribe?: { data: unknown; error: unknown }
+  /** `chapter_reward_grants`의 그 유저 pending 행들(C2a). 생략하면 챕터 보상 대기 없음 */
+  chapterGrants?: { data: unknown; error: unknown }
 }
 
 /** `capsule_receive_blocked` 기본 응답 — 막히지 않음 */
@@ -92,6 +94,9 @@ function fakeClient(options: FakeOptions): { client: SupabaseClient; rpc: Return
       }
       if (table === 'user_suspensions') {
         return { select: () => ({ eq: () => ({ is: () => ({ maybeSingle: async () => options.suspension ?? { data: null, error: null } }) }) }) }
+      }
+      if (table === 'chapter_reward_grants') {
+        return { select: () => ({ eq: () => ({ eq: async () => options.chapterGrants ?? { data: [], error: null } }) }) }
       }
       if (table === 'users') {
         return { select: () => ({ eq: () => ({ maybeSingle: async () => options.tribe ?? { data: { tribe_id: 't1' }, error: null } }) }) }
@@ -346,8 +351,18 @@ describe('getCapsuleStatus — 보류·안내 값 (티켓 20261028_1739 1회)', 
     expect(out).toMatchObject({ claim: { blockedReason: null }, notice: 'none' })
   })
 
-  it('읽기 횟수를 고정한다: 캡슐 RPC 1회·막힘 판정 RPC 1회와 테이블 읽기 5개, 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
-    const base = ['jam_wallets', 'capsule_policy', 'inventory', 'capsule_pending_rewards', 'user_suspensions']
+  it('챕터 보상 대기만 있어도 안내는 blocked이고 대기 개수와 부족분에 합쳐진다 (C2a, 티켓 20261127_1729)', async () => {
+    const out = await status({
+      rpc: capsuleRow(),
+      inventory: { data: { used_slots: 49, max_slots: 50 }, error: null },
+      chapterGrants: { data: [{ drawn_items: [{}, {}, {}], reward_count: 3 }], error: null },
+    })
+
+    expect(out).toMatchObject({ notice: 'blocked', pendingItemCount: 3 })
+  })
+
+  it('읽기 횟수를 고정한다: 캡슐 RPC 1회·막힘 판정 RPC 1회와 테이블 읽기 6개(챕터 보상 대기 포함, C2a), 트라이브는 보류가 있고 정지가 아닐 때만 읽는다', async () => {
+    const base = ['jam_wallets', 'capsule_policy', 'inventory', 'capsule_pending_rewards', 'user_suspensions', 'chapter_reward_grants']
 
     const none = fakeClient({ rpc: capsuleRow() })
     await getCapsuleStatus(none.client, USER_ID)

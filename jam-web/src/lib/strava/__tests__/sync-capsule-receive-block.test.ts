@@ -7,6 +7,7 @@
  * - 막힘 판정을 읽지 못하면 «막히지 않음»으로 보지 않고 던진다.
  * - 이용 정지가 먼저 적용된다(정지 중이면 막힘 판정을 읽지 않는다).
  * - 막히지 않으면 평소대로 보류 확인으로 이어진다.
+ * - 챕터 보상 대기(`chapter_reward_grants`의 pending)만 있어도 같은 `CapsuleInventoryBlockedError`(빈칸·필요 칸수)로 막힌다(C2a, 티켓 20261127_1729, 실제 막힘 판정 함수 사용). 대기가 없으면 막히지 않는다.
  * - 막힘을 읽기 전에 대기 보상 자동 지급(`settleAfterSlotsFreed`)을 한 번 시도한다. 지급 뒤에 막힘을 읽으므로 풀린 유저는 막히지 않는다 (티켓 20261105_1438 R2).
  *
  * 실제 Strava·공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
@@ -100,6 +101,62 @@ beforeEach(() => {
   settleMock.mockImplementation(async () => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+describe('syncStravaActivities — 챕터 보상 대기도 막는다 (C2a, 티켓 20261127_1729)', () => {
+  /** 실제 `readCapsuleReceiveBlocked`가 읽는 `capsule_receive_blocked` RPC와 `chapter_reward_grants` 대기 행만 얹은 가짜 */
+  function makeFakeWithChapterGrants(grantRows: unknown[], rpcPayload: Record<string, number | boolean>) {
+    const { supabase, record } = makeFake()
+    const baseFrom = (supabase as unknown as { from: (t: string) => unknown }).from
+    const from = (table: string) => {
+      if (table === 'chapter_reward_grants') {
+        record.tablesTouched.push(table)
+        return { select: () => ({ eq: () => ({ eq: async () => ({ data: grantRows, error: null }) }) }) }
+      }
+      return baseFrom(table)
+    }
+    const rpc = async () => ({ data: rpcPayload, error: null })
+    return { supabase: { from, rpc } as unknown as SupabaseClient, record }
+  }
+
+  beforeEach(async () => {
+    const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
+    readBlockedMock.mockImplementation(actual.readCapsuleReceiveBlocked)
+  })
+
+  it('옛 대기 보상이 없어도 챕터 보상 대기가 있으면 같은 막힘 오류(빈칸·필요 칸수)를 던지고 동기화를 시작하지 않는다', async () => {
+    const { supabase, record } = makeFakeWithChapterGrants(
+      [{ drawn_items: [{}, {}, {}], reward_count: 3 }],
+      { blocked: false, pending: 0, free: 1, needed: 0, shortfall: 0 },
+    )
+    createServiceClientMock.mockReturnValue(supabase)
+
+    const run = syncStravaActivities(USER_ID)
+
+    await expect(run).rejects.toBeInstanceOf(CapsuleInventoryBlockedError)
+    await expect(run).rejects.toMatchObject({ free: 1, needed: 3 })
+    expect(getAllActivitiesMock).not.toHaveBeenCalled()
+    expect(refreshMock).not.toHaveBeenCalled()
+    expect(record.connectionUpdates).toEqual([])
+  })
+
+  it('옛 대기 보상과 챕터 보상 대기를 합친 칸수가 필요 칸수로 실린다', async () => {
+    const { supabase } = makeFakeWithChapterGrants(
+      [{ drawn_items: [{}], reward_count: 1 }],
+      { blocked: true, pending: 2, free: 1, needed: 2, shortfall: 1 },
+    )
+    createServiceClientMock.mockReturnValue(supabase)
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toMatchObject({ free: 1, needed: 3 })
+  })
+
+  it('둘 다 없으면 막지 않고 보류 확인으로 이어진다', async () => {
+    const { supabase } = makeFakeWithChapterGrants([], { blocked: false, pending: 0, free: 5, needed: 0, shortfall: 0 })
+    createServiceClientMock.mockReturnValue(supabase)
+    countPendingMock.mockImplementation(async () => 1)
+
+    await expect(syncStravaActivities(USER_ID)).rejects.toBeInstanceOf(SyncPendingItemsError)
+  })
 })
 
 describe('syncStravaActivities — 캡슐이 가득 차고 빈칸이 모자라면 막힌다', () => {
