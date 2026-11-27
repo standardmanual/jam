@@ -7,12 +7,12 @@ import { TicketSummaryBoxView } from '@/app/(main)/badges/[id]/TicketTitleBoxes'
 import { d, t } from '@/lib/i18n'
 import { formatMissionProgress, missionProgressUnit } from '@/lib/missions/format'
 import { useMissionStatus } from './MissionStatusContext'
-import { achievedCount, gapToFirstText } from './missionStatusStats'
+import { gapToFirstText } from './missionStatusStats'
 import styles from './MissionStatus.module.css'
 
 /**
  * 미션 현황 티켓의 «내 요약» 자리(photo 슬롯) — 티켓 20261127_1145.
- * 글자 상자(2px·직각·투명) 위 칸에 내 아바타 96·이름·내 기록(랭킹형) 또는 내 현황 알약(달성형), 아래 두 칸에 통계를 둔다.
+ * 글자 상자(2px·직각·투명) 위 칸에 내 아바타 96·이름·내 기록(랭킹형) 또는 내 상황 알약(달성형), 아래에 통계(랭킹형 두 칸·달성형 «전체 참가자» 한 칸)를 둔다.
  * 가운데 정렬은 이 상자(위 칸·통계 칸)에만 쓴다. 로딩은 눈 모양 로더, 오류는 티켓 면 글자색 문장이며 둘 다 같은 최소 높이 자리에 둔다.
  * `me`가 없으면(참가 기록을 못 읽은 경우) 이름·값은 «—», 아바타는 사람 아이콘이다.
  */
@@ -60,7 +60,6 @@ export default function MissionSummary() {
 
   const me = data.me
   const achieved = me?.achieved ?? false
-  const count = achievedCount(data.entries, me, data.totalParticipants)
   return (
     <TicketSummaryBoxView
       top={
@@ -74,7 +73,6 @@ export default function MissionSummary() {
         </>
       }
       stats={[
-        { label: d.missions.statusAchievedCountLabel, value: count == null ? '—' : t(d.missions.statusPeopleCount, { count }) },
         { label: d.missions.statusTotalCountLabel, value: t(d.missions.statusPeopleCount, { count: data.totalParticipants }) },
       ]}
     />

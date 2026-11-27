@@ -55,10 +55,10 @@ export interface TicketSummaryStat {
 
 /**
  * 같은 글자 상자 규격(2px·직각·투명 면)의 요약 변형 — 미션 현황 «내 요약»(티켓 20261127_1145).
- * 이름·설명 대신 위 칸(`top` 슬롯)과 아래 두 칸 통계(`stats`)를 받는다. 위 칸은 `titleTop`을 그대로 쓰고, 통계 두 칸은 가운데 세로 선으로 나뉜다.
+ * 이름·설명 대신 위 칸(`top` 슬롯)과 아래 통계 한두 칸(`stats`)을 받는다. 위 칸은 `titleTop`을 그대로 쓰고, 통계가 두 칸이면 가운데 세로 선으로 나뉘고 한 칸이면 폭 전체를 쓴다.
  * h1은 두지 않는다(이 변형의 이름은 `top` 안의 문단이다).
  */
-export function TicketSummaryBoxView({ top, stats }: { top: ReactNode; stats: readonly [TicketSummaryStat, TicketSummaryStat] }) {
+export function TicketSummaryBoxView({ top, stats }: { top: ReactNode; stats: readonly [TicketSummaryStat] | readonly [TicketSummaryStat, TicketSummaryStat] }) {
   return (
     <div className={styles.titleBox}>
       <div className={styles.titleTop}>{top}</div>

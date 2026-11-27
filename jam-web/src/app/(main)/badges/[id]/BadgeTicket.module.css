@@ -208,10 +208,11 @@
   padding-top: 24px;
 }
 
-/* 요약 상자의 통계 칸(미션 현황, 티켓 20261127_1145): 2px 선 위 두 칸, 가운데 세로 2px 선. 가운데 정렬은 이 칸에만 쓴다 */
+/* 요약 상자의 통계 칸(미션 현황, 티켓 20261127_1145): 2px 선 위 한두 칸(한 칸이면 폭 전체), 두 칸이면 가운데 세로 2px 선. 가운데 정렬은 이 칸에만 쓴다 */
 .titleStats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   border-top: 2px solid var(--ticket-text);
 }
 

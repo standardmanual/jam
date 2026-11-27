@@ -215,7 +215,7 @@ describe('MissionStatusClient — 달성형', () => {
 
   it('내가 달성하면 ink 면 알약(done), 미달성이면 면 없는 외곽선 알약(outline)이고 둘 다 큰 크기다', () => {
     const done = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
-    expect(done).toContain('내 현황')
+    expect(done).toContain('내 상황')
     expect(done).toMatch(/background:var\(--foreground\);color:var\(--snow\)[^>]*>달성<\/span>/)
     expect(done).toContain('font-size:var(--text-3xl)')
     const notYet = render({ type: 'achievement', entries: others, me: person('me', false), totalParticipants: 3 }, 'distance', 'MISSION')
@@ -223,12 +223,13 @@ describe('MissionStatusClient — 달성형', () => {
     expect(notYet).not.toContain('background:var(--muted)')
   })
 
-  it('아래 두 칸은 «달성한 참가자»(나 포함)와 «전체 참가자»다', () => {
+  it('아래 칸은 «전체 참가자» 한 칸뿐이다(«달성한 참가자»는 두지 않는다)', () => {
     const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
     const stats = html.slice(html.indexOf('_titleStats_'))
-    expect(stats.indexOf('달성한 참가자')).toBeLessThan(stats.indexOf('전체 참가자'))
-    expect(stats).toContain('>2명<') // 다른 참가자 중 1명 + 나
+    expect(stats).toContain('전체 참가자')
     expect(stats).toContain('>3명<')
+    expect(stats.match(/_titleStat_/g)).toHaveLength(1)
+    expect(html).not.toContain('달성한 참가자')
   })
 
   it('«달성 현황» 카드에는 서버가 준 순서 그대로 다른 참가자만 나오고 «나»는 없다', () => {

@@ -135,7 +135,7 @@ export function ListRowChip({
   style = {},
 }: {
   tone?: keyof typeof CHIP_TONES
-  /** `lg`는 큰 상태 알약(30px 굵게, 미션 현황 «내 현황», 티켓 20261127_1145). 기본 `md`는 12px 칩이다 */
+  /** `lg`는 큰 상태 알약(30px 굵게, 미션 상황 «내 상황», 티켓 20261127_1145). 기본 `md`는 12px 칩이다 */
   size?: 'md' | 'lg'
   children?: ReactNode
   className?: string
