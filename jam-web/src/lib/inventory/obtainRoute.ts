@@ -8,18 +8,25 @@
  * 캡슐에서 나온 개체도 `obtained_by`는 `drop`이라(`activity-feed/capsuleItems.ts` 참고) `obtained_by`만으로는 활동 드랍과 가를 수 없다.
  * 그래서 발급 기록의 경로를 먼저 보고, 없으면 `obtained_by`로 판단한다.
  *
+ * 챕터 오름 보상(`chapter_reward`)은 발급 기록에만 남으므로(티켓 20261127_1732) `chapterReward`로 옮긴다.
+ *
  * 값 → 경로 키는 아는 값만 옮긴다. 모르는 값은 `system`(«시스템 지급»)이다. 미션 보상 지급은 발급 기록에도 `obtained_by`에도 구분되는 값을 남기지 않는다(`system_event`).
  * 대신 `mission_item_rewards.inventory_item_id`에 개체가 남으므로, 서버가 그 행이 있는지 읽어 `missionReward`로 넘기면 «미션 보상»으로 가른다.
  */
-export type ObtainRouteKey = 'capsule' | 'activity' | 'mission' | 'checkinPickup' | 'event' | 'system'
+import { CHAPTER_REWARD_ISSUE_ROUTE } from '@/lib/chapter/reward/route'
+
+export type ObtainRouteKey = 'capsule' | 'chapterReward' | 'activity' | 'mission' | 'checkinPickup' | 'event' | 'system'
 
 /** 발급 기록(`item_issue_log.route`)의 캡슐 값 — `lib/capsule/open.ts`의 `CAPSULE_ISSUE_ROUTE`와 같다 */
 const ISSUE_ROUTE_CAPSULE = 'capsule'
+/** 발급 기록의 챕터 오름 보상 값 — `lib/chapter/reward/route.ts`의 `CHAPTER_REWARD_ISSUE_ROUTE`와 같다 */
+const ISSUE_ROUTE_CHAPTER_REWARD = CHAPTER_REWARD_ISSUE_ROUTE
 /** 발급 기록의 활동 동기화 값 — `lib/drop-engine/syncIssueRun.ts`의 `SYNC_ISSUE_ROUTE`와 같다 */
 const ISSUE_ROUTE_SYNC = 'sync'
 
 export function resolveObtainRoute(obtainedBy: string, issueRoute: string | null | undefined, missionReward = false): ObtainRouteKey {
   if (issueRoute === ISSUE_ROUTE_CAPSULE) return 'capsule'
+  if (issueRoute === ISSUE_ROUTE_CHAPTER_REWARD) return 'chapterReward'
   if (issueRoute === ISSUE_ROUTE_SYNC) return 'activity'
   if (missionReward) return 'mission'
   if (obtainedBy === 'drop') return 'activity'

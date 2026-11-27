@@ -691,6 +691,18 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
       expect(payload.item).toMatchObject({ name: '새벽의 첫 바퀴' })
     })
 
+    it("경로가 'chapter_reward'(챕터 오름 보상에서 나온 잠긴 개체)이면 피드를 올리지 않는다 — 포인트 소식은 그대로다 (티켓 20261127_1732)", async () => {
+      const { client } = fakeClient({
+        rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
+        tables: { ...INFO_TABLES, item_issue_log: { data: { route: 'chapter_reward' }, error: null } },
+      })
+
+      await openLockedItem(client, USER_ID, ITEM_ID)
+
+      expect(feedMock).not.toHaveBeenCalled()
+      expect(recapMock).toHaveBeenCalledTimes(1)
+    })
+
     it('발급 기록 행이 없으면(운영자가 지정한 개체 등 캡슐이 아닌 경로) 피드를 한 번 올린다', async () => {
       const { client } = fakeClient({
         rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
@@ -703,7 +715,7 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
       expect(feedMock.mock.calls[0][2]).toMatchObject({ inventory_item_id: ITEM_ID, badge_id: BADGE_ID, point_reward: 50 })
     })
 
-    it('캡슐이 아닌 다른 경로 값이면 올린다 — 제외하는 것은 캡슐뿐이다', async () => {
+    it('캡슐이 아닌 다른 경로 값이면 올린다 — 제외하는 것은 캡슐·챕터 오름 보상뿐이다', async () => {
       const { client } = fakeClient({
         rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
         tables: { ...INFO_TABLES, item_issue_log: { data: { route: 'admin_grant' }, error: null } },

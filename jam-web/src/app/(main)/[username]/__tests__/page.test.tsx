@@ -639,14 +639,14 @@ describe('/{username} 프로필 페이지 — 캡슐에서 나온 개체 제외'
     }
   })
 
-  it("(m) 캡슐 발급 조회는 route = 'capsule' 조건을 건다", async () => {
+  it("(m) 캡슐 발급 조회는 route가 피드 제외 경로(capsule·chapter_reward)인 조건을 건다", async () => {
     state.actDropRows = [actDropRow('item-sync-2', '동기화배지')]
 
     await renderPage('target')
 
     const issueCalls = state.calls.filter((c) => c.table === 'item_issue_log')
     expect(issueCalls.length).toBe(1)
-    expect(issueCalls[0].eqs).toContainEqual(['route', 'capsule'])
+    expect(issueCalls[0].ins).toContainEqual(['route', ['chapter_reward', 'capsule']])
   })
 
   it('(n) 합성할 개체가 없으면 발급 기록을 조회하지 않는다', async () => {

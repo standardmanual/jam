@@ -489,6 +489,7 @@ export const ko = {
 
     /** 획득 경로 문구(2026-11-09) — 잠긴 아이템 배지 상세의 «획득 경로» 줄이 쓴다. «무엇을 하다가 어떻게 받았는가»가 읽히게 맥락과 행위를 함께 적는다 */
     obtainByCapsule: '캡슐 열기 보상',
+    obtainByChapterReward: '챕터 오름 보상',
     obtainByDrop: '활동 동기화 드랍',
     obtainByDropEvent: '이벤트 드랍',
     obtainByMission: '미션 보상',

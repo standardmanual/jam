@@ -9,12 +9,20 @@ import { describe, it, expect } from 'vitest'
 import { resolveObtainRoute } from '../obtainRoute'
 import { d } from '@/lib/i18n'
 import { CAPSULE_ISSUE_ROUTE } from '@/lib/capsule/open'
+import { CHAPTER_REWARD_ISSUE_ROUTE } from '@/lib/chapter/reward/route'
 import { SYNC_ISSUE_ROUTE } from '@/lib/drop-engine/syncIssueRun'
 
 describe('resolveObtainRoute', () => {
   it('발급 기록의 경로가 캡슐이면 obtained_by가 drop이어도 캡슐 열기 보상이다', () => {
     expect(resolveObtainRoute('drop', 'capsule')).toBe('capsule')
     expect(resolveObtainRoute('system_event', 'capsule')).toBe('capsule')
+  })
+
+  it('발급 기록의 경로가 chapter_reward이면 obtained_by와 무관하게 챕터 오름 보상이다 (티켓 20261127_1732)', () => {
+    expect(resolveObtainRoute('drop', 'chapter_reward')).toBe('chapterReward')
+    expect(resolveObtainRoute('system_event', 'chapter_reward')).toBe('chapterReward')
+    // 미션 보상 기록이 있어도 발급 기록이 앞선다
+    expect(resolveObtainRoute('system_event', 'chapter_reward', true)).toBe('chapterReward')
   })
 
   it('활동 동기화로 받은 개체는 활동 드랍이다(발급 기록이 없어도 obtained_by=drop이면 같다)', () => {
@@ -45,12 +53,14 @@ describe('resolveObtainRoute', () => {
   it('코드가 쓰는 경로 값과 같은 문자열을 본다', () => {
     expect(CAPSULE_ISSUE_ROUTE).toBe('capsule')
     expect(SYNC_ISSUE_ROUTE).toBe('sync')
+    expect(CHAPTER_REWARD_ISSUE_ROUTE).toBe('chapter_reward')
   })
 })
 
 describe('받은 경로 문구', () => {
   it('경로마다 맥락과 행위가 함께 읽히는 문구다', () => {
     expect(d.inventory.obtainByCapsule).toBe('캡슐 열기 보상')
+    expect(d.inventory.obtainByChapterReward).toBe('챕터 오름 보상')
     expect(d.inventory.obtainByDrop).toBe('활동 동기화 드랍')
     expect(d.inventory.obtainByMission).toBe('미션 보상')
     expect(d.inventory.obtainByPickup).toBe('체크인 픽업')

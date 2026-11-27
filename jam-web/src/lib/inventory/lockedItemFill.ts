@@ -10,7 +10,7 @@
  * 활동 피드도 이 파일이 올린다. 잠긴 채 받은 개체는 받을 때 포인트도 피드도 건너뛰므로(`recordIssuedRewards`, 7.3절 가림 원칙) 열 때가 `item_dropped`를 처음 올리는 때다.
  * 칸은 열린 채 받은 개체의 피드와 같고(`recordItemDroppedFeed`) 시각은 연 때다(티켓 20261026_1031, 사용자 결정 2026-10-26).
  * 단 동기화로 받은 잠긴 개체만 올린다. 캡슐을 열어 나온 개체는 잠긴 채여도 열 때 올리지 않는다 — 남의 뽑기 결과를 보여 주면 뽑기를 부추기므로 캡슐 개봉 결과는 피드에
- * 올리지 않는다는 기존 결정(15.3절, 2026-10-10)을 지킨다(사용자 결정 2026-10-26). 출처는 발급 기록 `item_issue_log.route`로 가른다(`CAPSULE_ISSUE_ROUTE`).
+ * 올리지 않는다는 기존 결정(15.3절, 2026-10-10)을 지킨다(사용자 결정 2026-10-26). 출처는 발급 기록 `item_issue_log.route`로 가른다(`isFeedExcludedIssueRoute`).
  *
  * 열기 전에는 이름·그림·설명·컬렉션·트라이브·일련번호를 어떤 응답에도 싣지 않는다. 열기 성공 응답에만 `loadOpenedInfo`가 읽은 정보를 싣는다.
  *
@@ -20,7 +20,7 @@
  * 클라이언트가 쓸 타입·상수는 `lockedItemFill-contract.ts`에 있다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { CAPSULE_ISSUE_ROUTE } from '@/lib/capsule/open'
+import { isFeedExcludedIssueRoute } from '@/lib/chapter/reward/route'
 import { awardServiceJam } from '@/lib/jam/serviceActivity'
 import { recordItemDroppedFeed } from '@/lib/drop-engine/issueFollowUp'
 import { recordActivityRecap } from '@/lib/notifications/recap'
@@ -155,12 +155,12 @@ async function loadIssueRoute(supabase: SupabaseClient, itemId: string): Promise
 }
 
 /**
- * 연 개체를 활동 피드에 올려도 되는가. 캡슐에서 나온 개체(`route = 'capsule'`)만 아니다 — 캡슐 개봉 결과는 피드에 올리지 않는다(운영 로직 15.3절, 2026-10-10 사용자 결정).
+ * 연 개체를 활동 피드에 올려도 되는가. 캡슐(`route = 'capsule'`)·챕터 오름 보상(`route = 'chapter_reward'`)에서 나온 개체는 아니다 — 이 결과는 피드에 올리지 않는다(운영 로직 15.3절, 2026-10-10 사용자 결정).
  * 동기화로 받은 개체와 발급 기록이 없는 개체는 올린다. 경로를 읽지 못하면 올리지 않고 기록만 남긴다 — 캡슐 제외 결정을 어기느니 피드를 빼는 쪽이 안전하다. 던지지 않는다.
  */
 async function canPostOpenedFeed(supabase: SupabaseClient, userId: string, itemId: string): Promise<boolean> {
   try {
-    return (await loadIssueRoute(supabase, itemId)) !== CAPSULE_ISSUE_ROUTE
+    return !isFeedExcludedIssueRoute(await loadIssueRoute(supabase, itemId))
   } catch (e) {
     console.error(`[locked-item] 발급 경로 조회 실패 — 캡슐 출처인지 알 수 없어 피드를 올리지 않는다 (userId: ${userId}, itemId: ${itemId}):`, e)
     return false

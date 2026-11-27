@@ -60,6 +60,7 @@ export interface LockedItemDetailProps {
 /** 획득 경로 문구 — 경로 키(`resolveObtainRoute`)마다 한 문구다 */
 const OBTAIN_ROUTE_LABEL: Record<ObtainRouteKey, string> = {
   capsule: d.inventory.obtainByCapsule,
+  chapterReward: d.inventory.obtainByChapterReward,
   activity: d.inventory.obtainByDrop,
   mission: d.inventory.obtainByMission,
   checkinPickup: d.inventory.obtainByPickup,

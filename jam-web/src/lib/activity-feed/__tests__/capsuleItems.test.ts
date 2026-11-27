@@ -1,7 +1,7 @@
 /**
  * 캡슐에서 나온 개체 가르기 시험 (티켓 20261022_1021)
  *
- * 프로필이 피드 행이 없는 개체를 «아이템 드랍» 카드로 합성할 때, 캡슐로 발급한 개체를 빼는 데 쓰는 조회다.
+ * 프로필이 피드 행이 없는 개체를 «아이템 드랍» 카드로 합성할 때, 캡슐·챕터 오름 보상(티켓 20261127_1732)으로 발급한 개체를 빼는 데 쓰는 조회다.
  * 실행: cd jam-web && npx vitest run src/lib/activity-feed/__tests__/capsuleItems.test.ts
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -10,11 +10,12 @@ import { fetchCapsuleIssuedItemIds } from '../capsuleItems'
 type Result = { data: { inventory_item_id: string | null }[] | null; error: unknown }
 
 function fakeService(result: Result) {
-  const eq = vi.fn(async () => result)
-  const inFn = vi.fn(() => ({ eq }))
+  // 두 번째 `.in('route', ...)`가 마지막이라 결과를 돌려준다
+  const routeIn = vi.fn(async () => result)
+  const inFn = vi.fn(() => ({ in: routeIn }))
   const select = vi.fn(() => ({ in: inFn }))
   const from = vi.fn(() => ({ select }))
-  return { service: { from } as never, from, select, inFn, eq }
+  return { service: { from } as never, from, select, inFn, routeIn }
 }
 
 afterEach(() => vi.restoreAllMocks())
@@ -28,15 +29,15 @@ describe('fetchCapsuleIssuedItemIds', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
-  it("발급 기록의 경로가 'capsule'인 개체만 묻고, 개체 id는 중복 없이 넘긴다", async () => {
-    const { service, from, select, inFn, eq } = fakeService({ data: [{ inventory_item_id: 'item-2' }], error: null })
+  it("발급 기록의 경로가 'capsule'·'chapter_reward'(피드 제외 경로)인 개체만 묻고, 개체 id는 중복 없이 넘긴다", async () => {
+    const { service, from, select, inFn, routeIn } = fakeService({ data: [{ inventory_item_id: 'item-2' }], error: null })
 
     const ids = await fetchCapsuleIssuedItemIds(service, ['item-1', 'item-2', 'item-1'])
 
     expect(from).toHaveBeenCalledWith('item_issue_log')
     expect(select).toHaveBeenCalledWith('inventory_item_id')
     expect(inFn).toHaveBeenCalledWith('inventory_item_id', ['item-1', 'item-2'])
-    expect(eq).toHaveBeenCalledWith('route', 'capsule')
+    expect(routeIn).toHaveBeenCalledWith('route', ['chapter_reward', 'capsule'])
     expect([...ids]).toEqual(['item-2'])
   })
 

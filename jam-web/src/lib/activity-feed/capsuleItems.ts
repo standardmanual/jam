@@ -4,12 +4,12 @@
  * 캡슐을 열어 나온 아이템 배지는 활동 피드에 올리지 않는다(2026-10-10 사용자 결정). 티켓 20261021_1249 5회가 캡슐 열기의
  * `item_dropped` 기록을 없앴지만, 프로필 서버 화면(`app/(main)/[username]/page.tsx`)은 `inventory_items.obtained_by = 'drop'`인
  * 개체를 피드 행이 없으면 «아이템 드랍» 카드로 합성한다(피드 윈도우 밖 보정). 캡슐 개체도 `obtained_by`가 `'drop'`이라 이 합성에 걸린다.
- * 그래서 합성 전에 캡슐로 발급한 개체를 발급 기록(`item_issue_log.route = 'capsule'`)으로 가려 뺀다.
+ * 그래서 합성 전에 캡슐로 발급한 개체를 발급 기록(`item_issue_log.route = 'capsule'`)으로 가려 뺀다. 챕터 오름 보상(`route = 'chapter_reward'`, 티켓 20261127_1732)도 같다 — 제외 경로는 `chapter/reward/route.ts`가 정한다.
  *
  * 조회가 실패하면 빈 집합을 돌려주고 서버 로그만 남긴다 — 합성은 이전처럼 계속 그려지고(캡슐 개체가 카드로 보일 수 있다), 프로필이 깨지지 않는다.
  */
 import type { createServiceClient } from '@/lib/supabase/server'
-import { CAPSULE_ISSUE_ROUTE } from '@/lib/capsule/open'
+import { FEED_EXCLUDED_ISSUE_ROUTES } from '@/lib/chapter/reward/route'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -22,7 +22,7 @@ export async function fetchCapsuleIssuedItemIds(service: ServiceClient, itemIds:
     .from('item_issue_log')
     .select('inventory_item_id')
     .in('inventory_item_id', ids)
-    .eq('route', CAPSULE_ISSUE_ROUTE)
+    .in('route', [...FEED_EXCLUDED_ISSUE_ROUTES])
   if (error) {
     console.error('[activity-feed/capsuleItems] item_issue_log(캡슐 발급) 조회 실패', error)
     return new Set()
