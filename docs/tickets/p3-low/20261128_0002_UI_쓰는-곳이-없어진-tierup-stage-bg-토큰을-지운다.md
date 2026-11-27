@@ -2,9 +2,9 @@
 id: "20261128_0002"
 category: UI
 priority: P3
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-11-28
-closed:
+closed: 2026-11-28
 ---
 
 # [UI] 쓰는 곳이 없어진 `--tierup-stage-bg` 토큰을 지운다
@@ -44,6 +44,8 @@ docs/service/prd/ui-components/tokens.md (생성기 산출)
 
 ### 주요 의사결정 / 핵심 메모
 - DS 변경이라 「사용자 승인」 줄을 남기고 진행했다.
+
+- 2026-11-28 사용자 종료 승인(«머지하고 클로즈»).
 
 ### 잔여 이슈
 -
