@@ -155,14 +155,14 @@
   clip-path: polygon(100% 0, 0 50%, 100% 100%);
 }
 
-/* 점선: 지름 4px 점, 10px 간격, 좌우 26px 안쪽 */
+/* 점선: 지름 3px 점, 5px 간격(주기 8px), 좌우 26px 안쪽. 지름 4px·간격 10px에서 작고 조밀하게 바꿨다(2026-11-27 사용자 지시, 티켓 20261127_0930) */
 .dots {
   position: absolute;
-  top: -2px;
+  top: -1.5px;
   left: 26px;
   right: 26px;
-  height: 4px;
-  background: radial-gradient(circle at 2px 2px, var(--background) 2px, transparent 2.5px) 0 0 / 14px 4px repeat-x;
+  height: 3px;
+  background: radial-gradient(circle at 1.5px 1.5px, var(--background) 1.5px, transparent 2px) 0 0 / 8px 3px repeat-x;
 }
 
 /* 아래 블록: 사진 구간부터 티켓 끝까지 한 덩어리 */
