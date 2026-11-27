@@ -525,7 +525,7 @@ describe('CombineClient 등급 UP 흐름', () => {
       screen.openTierUp()
       const after = await screen.submitAll()
       expect(screen.outcomes()).toEqual([
-        { kind: 'reveal', badge: { name: '새 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png' } },
+        { kind: 'reveal', badge: { name: '새 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png', description: '설명' } },
       ])
       // 연출 중에도 기존 결과 오버레이는 닫혀 있다
       expect(screen.overlay(after).props.open).toBe(false)

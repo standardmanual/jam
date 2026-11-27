@@ -674,27 +674,7 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
               <SafeImage src={badge.imageUrl} alt="" width={180} height={180} priority />
             </div>
           </div>
-          <div className={styles.meta}>
-            {badge.rarity && (
-              <div className={styles.metaItem} style={{ animation: `${styles.riseIn} ${T(380)}ms ${T(420)}ms ease-out both` }}>
-                <RarityBadge rarity={badge.rarity} size="md" showCommon />
-              </div>
-            )}
-            <p
-              className={`${styles.name} ${styles.metaItem} text-snow break-keep wrap-break-word text-balance`}
-              style={{ animation: `${styles.riseIn} ${T(380)}ms ${T(510)}ms ease-out both` }}
-            >
-              {badge.name}
-            </p>
-            {badge.description?.trim() && (
-              <p
-                className={`${styles.sub} ${styles.metaItem} break-keep wrap-break-word text-balance`}
-                style={{ color: GACHA.muted, animation: `${styles.riseIn} ${T(380)}ms ${T(600)}ms ease-out both` }}
-              >
-                {badge.description.trim()}
-              </p>
-            )}
-          </div>
+          <TierUpGachaResultMeta badge={badge} T={T} />
         </div>
       )}
 
@@ -712,6 +692,38 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
             {d.combine.tierUp.again}
           </Button>
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 결과 배지 아래 글자 묶음 — 등급 칩, 배지 이름, 배지 설명(티켓 20261127_2225).
+ * 설명은 응답의 `description`이고, 없거나 공백뿐이면 설명 줄을 그리지 않는다. 시험이 결과 상태를 만들지 않고 이 갈래를 보도록 따로 내보낸다.
+ */
+export function TierUpGachaResultMeta({ badge, T }: { badge: TierUpGachaBadge; T: (ms: number) => number }) {
+  const description = badge.description?.trim()
+  return (
+    <div className={styles.meta}>
+      {badge.rarity && (
+        <div className={styles.metaItem} style={{ animation: `${styles.riseIn} ${T(380)}ms ${T(420)}ms ease-out both` }}>
+          <RarityBadge rarity={badge.rarity} size="md" showCommon />
+        </div>
+      )}
+      <p
+        className={`${styles.name} ${styles.metaItem} text-snow break-keep wrap-break-word text-balance`}
+        style={{ animation: `${styles.riseIn} ${T(380)}ms ${T(510)}ms ease-out both` }}
+      >
+        {badge.name}
+      </p>
+      {description && (
+        <p
+          data-tier-up-description
+          className={`${styles.sub} ${styles.metaItem} break-keep wrap-break-word text-balance`}
+          style={{ color: GACHA.muted, animation: `${styles.riseIn} ${T(380)}ms ${T(600)}ms ease-out both` }}
+        >
+          {description}
+        </p>
       )}
     </div>
   )
