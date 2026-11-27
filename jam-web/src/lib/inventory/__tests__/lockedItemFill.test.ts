@@ -39,14 +39,16 @@ import { UserSuspendedError } from '@/lib/suspension/suspension'
 const calls = vi.hoisted(() => ({ order: [] as string[] }))
 const assertNotSuspendedMock = vi.hoisted(() => vi.fn())
 const logMock = vi.hoisted(() => vi.fn())
-const autoFillMock = vi.hoisted(() => vi.fn())
+const applyJamMock = vi.hoisted(() => vi.fn())
 const recapMock = vi.hoisted(() => vi.fn())
 const feedMock = vi.hoisted(() => vi.fn())
 const awardPointsMock = vi.hoisted(() => vi.fn())
 
 // 포인트 소식(활동 결산)은 가짜로 막는다(티켓 20261026_1031) — 불린 순서와 인자만 본다
 // 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727)은 이 시험의 관심사가 아니다 — 적립 호출·실패 처리는 applyJam.test.ts와 서비스 활동·정산 시험이 본다
-vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
+vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: (...args: unknown[]) => applyJamMock(...args) }))
+// 챕터 보상 대기 사전 확인(C2b, 티켓 20261127_1730)은 대기 없음으로 막는다 — 개체 정보 조회의 읽기 횟수(reads)를 건드리지 않게 한다
+vi.mock('@/lib/capsule/receive-block', () => ({ readPendingChapterRewardCount: async () => 0 }))
 vi.mock('@/lib/notifications/recap', () => ({
   recordActivityRecap: async (...args: unknown[]) => {
     calls.order.push('recap')
@@ -61,13 +63,7 @@ vi.mock('@/lib/activity-feed', () => ({
 vi.mock('@/lib/points', () => ({ awardPoints: (...args: unknown[]) => awardPointsMock(...args) }))
 // 잼 지급 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
-// 서비스 활동 잼은 실제 `awardServiceJam`을 쓰고(RPC만 가짜), 지급 뒤 즉시 채움과 행동 지표 판정은 가짜로 막는다 — 불린 순서만 본다
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async (...args: unknown[]) => {
-    calls.order.push('auto_fill')
-    return autoFillMock(...args)
-  },
-}))
+// 서비스 활동 잼은 실제 `awardServiceJam`을 쓰고(RPC만 가짜), 지급 뒤 새 진행값 적립(`applyChapterJam`)과 행동 지표 판정은 가짜로 막는다 — 불린 순서만 본다
 vi.mock('@/lib/badge-engine/jamActionRoute', () => ({ runJamActionEvaluation: vi.fn(async () => {}) }))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => {
@@ -159,8 +155,8 @@ beforeEach(() => {
   assertNotSuspendedMock.mockResolvedValue(undefined)
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
-  autoFillMock.mockReset()
-  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false })
+  applyJamMock.mockReset()
+  applyJamMock.mockResolvedValue({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] })
   recapMock.mockReset()
   recapMock.mockResolvedValue(undefined)
   feedMock.mockReset()
@@ -362,32 +358,26 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
     expect(rpc.mock.calls.map(([name]) => name)).not.toContain('chapter_add_score')
   })
 
-  it('지급이 있으면 곧바로 캡슐 자동 채움이 이어지고, 소식보다 앞이며 열기 응답은 그대로다 (지급 즉시 채움)', async () => {
+  it('지급이 있으면 곧바로 승급 모드 적립이 이어지고, 소식보다 앞이며 열기 응답은 그대로다 (지급 즉시 적립, C2b)', async () => {
     const { client } = fakeClient({ rpc: { locked_item_open_points: { data: OPEN_OK, error: null } }, tables: INFO_TABLES })
 
     const payload = await openLockedItem(client, USER_ID, ITEM_ID)
 
-    expect(autoFillMock).toHaveBeenCalledTimes(1)
-    expect(autoFillMock).toHaveBeenCalledWith(expect.anything(), USER_ID)
-    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'recap'])
+    expect(applyJamMock).toHaveBeenCalledTimes(1)
+    expect(applyJamMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ userId: USER_ID, amount: 5, promote: true }))
+    expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'recap'])
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
   })
 
-  it('규칙값 0·같은 키 재전송처럼 지급이 0이면 채우지 않는다', async () => {
+  it('규칙값 0이면 적립하지 않는다', async () => {
     const zero = fakeClient({
       rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
       tables: INFO_TABLES,
       jam: { data: { ok: true, granted: 0, reason: 'rule_zero' }, error: null },
     })
     await openLockedItem(zero.client, USER_ID, ITEM_ID)
-    const dup = fakeClient({
-      rpc: { locked_item_open_points: { data: OPEN_OK, error: null } },
-      tables: INFO_TABLES,
-      jam: { data: { ok: true, granted: 5, duplicate: true }, error: null },
-    })
-    await openLockedItem(dup.client, USER_ID, ITEM_ID)
 
-    expect(autoFillMock).not.toHaveBeenCalled()
+    expect(applyJamMock).not.toHaveBeenCalled()
   })
 
   it('같은 개체를 다시 보내도 같은 (활동 종류, 원천 id)다', async () => {
@@ -415,7 +405,7 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
     for (const { rpc } of [suspended, notFull, broken]) {
       expect(rpc.mock.calls.map(([name]) => name)).not.toContain('jam_apply_service_activity')
     }
-    expect(autoFillMock).not.toHaveBeenCalled()
+    expect(applyJamMock).not.toHaveBeenCalled()
   })
 
   it('개체 정보 조회가 실패해도 잼은 준다(열기가 확정된 뒤의 일이다)', async () => {
@@ -442,7 +432,7 @@ describe('openLockedItem — 서비스 활동 잼 «잠긴 아이템 배지 열�
     expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
     expect(payload.item).not.toBeNull()
     expect(logMock).toHaveBeenCalledWith('points', 'service_jam_failed', USER_ID, expect.objectContaining({ kind: 'locked_unlock', sourceId: ITEM_ID }))
-    expect(autoFillMock).not.toHaveBeenCalled()
+    expect(applyJamMock).not.toHaveBeenCalled()
   })
 
   it('잼 RPC가 예외를 던져도 열기와 응답은 그대로다', async () => {
@@ -695,7 +685,7 @@ describe('openLockedItem — 활동 피드 item_dropped (티켓 20261026_1031)',
       expect(recapMock).toHaveBeenCalledTimes(1)
       expect(recapMock).toHaveBeenCalledWith(USER_ID, { points: 50 }, { client })
       // 잼 지급·즉시 채움도 그대로다
-      expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'auto_fill', 'recap'])
+      expect(calls.order).toEqual(['assertNotSuspended', 'rpc:locked_item_open_points', 'rpc:jam_apply_service_activity', 'recap'])
       // 열기 응답은 출처와 무관하게 같다(개체 정보·접두사를 그대로 싣는다)
       expect(payload).toMatchObject({ itemId: ITEM_ID, badgeId: BADGE_ID, serialNumber: 7, serialPrefix: 'ABCD', pointsAwarded: 50 })
       expect(payload.item).toMatchObject({ name: '새벽의 첫 바퀴' })

@@ -4,35 +4,38 @@
  * 배지 받기·컬렉션 완성·믹스 성공 같은 서비스 활동이 일어나면 DB 함수 `jam_apply_service_activity`(마이그레이션 303)로 지갑에 잼을 넣는다.
  * 값(종류별 고정값)과 하루·주간 상한은 DB 설정 행이 갖고 있어 코드에 두지 않는다. 호출부는 «무슨 종류가, 어떤 원천으로»만 넘긴다.
  *
- * 지급 즉시 채움: 지급량이 0보다 크고 이미 지급한 키의 재전송이 아닐 때만 곧바로 캡슐 자동 채움(`runSyncCapsuleAutoFill` — 채움·열기 또는 보류·소멸·단계 알림·
- * «보지 않은 캡슐 결과» 기록)을 잇는다. 지갑 잔액은 사용자에게 보이는 개념이 아니라 서버 안의 임시 보관이라서다. 응답 뒤에 JAM! 행동 지표를 판정한다 —
- * 잼 조건 주 키 4개(`jamTriggersForServiceJam()`, 서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상, 열린 캡슐이 있거나 챕터가 올랐으면
- * `jamTriggersForCapsuleOpen()` + `chapter_reached`도 더한다. 자동 채움은 챕터 배지 판정을 건너뛰고 돌기 때문에(`skipRiseBadgeEvaluation`) 여기서 이어서 읽는다.
- * 중복 재전송(`duplicate`)·규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)·막혀서 거절된 경우(`blocked`)는 채움을 부르지 않는다.
- * 새 진행값에도 쌓는다(B4, 티켓 20261127_1727): 지급량(`granted`)이 0보다 크면 같은 이벤트 키로 `applyChapterJam`을 승급 없이(`promote: false`) 부른다. 실패해도 지급·채움은 그대로다.
+ * 지급 즉시 승급 모드 적립(C2b, 티켓 20261127_1730, 상위 20261127_1720): 지급량(`granted`)이 0보다 크면 같은 이벤트 키로 `applyChapterJam`을 승급 모드(`promote: true`)로 부른다 —
+ * 새 진행값(`user_chapters.chapter_jam`)에 쌓고 챕터를 올린다. 재전송(`duplicate`)이어도 지급량이 0보다 크면 같은 키로 다시 부른다(이전 적립이 실패했다면 이때 메운다, DB가 중복을 거른다).
+ * 이번 호출로 새로 오른 챕터(`reachedChapters`)가 있으면 오름 처리(`processChapterRise`, 소식·피드)를 챕터 배지 판정 없이(`skipBadgeEvaluation`) 한 번 부르고,
+ * 챕터 배지 판정은 아래 행동 지표 판정이 `chapter_reached`로 한 번 맡는다(이중 판정 규칙, `chapter/rise.ts` 머리말).
+ * 응답 뒤에 JAM! 행동 지표를 판정한다 — 잼 조건 주 키 4개(`jamTriggersForServiceJam()`, 서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 새 지급이거나 오른 챕터가 있을 때 항상,
+ * 챕터가 올랐으면 `chapter_reached`도 더한다. 캡슐 열기 지표는 더하지 않는다(캡슐은 폐지됐다). 규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)·막혀서 거절된 경우(`blocked`)는 적립도 판정도 없다.
+ * 챕터 보상 대기(`chapter_reward_grants`의 `pending`)가 있으면 RPC를 부르지 않고 `{ granted: 0, blocked: true }`로 막는다(옛 DB 함수가 대기 보상이 있을 때 거절하던 규칙을 옮겼다).
+ * 대기를 읽지 못하면 막지 않고 진행한다(옛 DB 함수와 같은 방향). 적립·오름 처리가 실패해도 지급 결과는 그대로다.
  *
  * 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id는 챕터 점수 때 쓰던 것을 그대로 쓰므로 같은 일을 다시 보내도 같은 키다(유저별 유일, DB가 막는다).
  *
  * 응답 해석 (DB 계약, 303)
  *  - `{ ok: false, error: 'user_suspended' | 'invalid_input' }` — 이용 정지는 지급하지 않을 뿐 실패가 아니라 기록 없이 `{ ok: false }`, 입력 오류는 기록한다
- *  - `{ ok: true, granted, duplicate: true }` — 같은 키 재전송. `granted`는 기존 양. 채우지 않는다
- *  - `{ ok: true, granted: 0, reason: 'rule_zero' }` — 규칙값 0. 채우지 않는다
- *  - `{ ok: true, granted: 0, capped: true }` — 상한에 걸림. 채우지 않는다
- *  - `{ ok: true, granted: 0, blocked: true }` — 캡슐이 가득 차고 인벤토리 빈칸이 모자라 막혀 있어 거절(마이그레이션 321). 오류가 아니라 실패 기록을 남기지 않고, 나중에 보충하지 않으며, 채우지 않는다
- *  - `{ ok: true, granted, capped, duplicate: false, ... }` — 지급(`capped`가 참이면 일부 지급). 채운다
- *  - 지급 뒤 규칙값을 0으로 내리고 같은 키를 다시 보내면 `rule_zero`가 아니라 `duplicate`와 기존 양이 온다(1회차 기록). 어느 쪽이든 채우지 않는다
+ *  - `{ ok: true, granted, duplicate: true }` — 같은 키 재전송. `granted`는 기존 양. 적립은 다시 부르되 판정은 새로 오른 챕터가 있을 때만 한다
+ *  - `{ ok: true, granted: 0, reason: 'rule_zero' }` — 규칙값 0. 적립하지 않는다
+ *  - `{ ok: true, granted: 0, capped: true }` — 상한에 걸림. 적립하지 않는다
+ *  - `{ ok: true, granted: 0, blocked: true }` — 옛 대기 보상이 있어 막혀 거절(마이그레이션 321). 오류가 아니라 실패 기록을 남기지 않고, 나중에 보충하지 않으며, 적립하지 않는다
+ *  - `{ ok: true, granted, capped, duplicate: false, ... }` — 지급(`capped`가 참이면 일부 지급). 지급량만큼 적립한다
+ *  - 지급 뒤 규칙값을 0으로 내리고 같은 키를 다시 보내면 `rule_zero`가 아니라 `duplicate`와 기존 양이 온다(1회차 기록). 어느 쪽이든 새로 지급하지 않았다
  *
  * **절대 던지지 않는다.** 실패(RPC 오류·해석 못 할 응답·예외)는 `console.error`와 `engine_decision_log`(`points` 엔진, 이벤트 `service_jam_failed`)에 남기고
- * `{ ok: false }`를 돌려준다. 같은 원천 id로 다시 보낼 수 있다. 자동 채움·행동 지표 판정이 실패해도 지급 결과는 바뀌지 않는다.
+ * `{ ok: false }`를 돌려준다. 같은 원천 id로 다시 보낼 수 있다. 적립·오름 처리·행동 지표 판정이 실패해도 지급 결과는 바뀌지 않는다.
  *
- * 서버 전용이다(service_role 클라이언트로 쓴다). 자동 채움과 행동 지표 판정 모듈은 호출 시점에 불러온다 — 이 파일을 가져오는 배지 엔진·동기화와 정적 순환을 만들지 않기 위해서다
+ * 서버 전용이다(service_role 클라이언트로 쓴다). 오름 처리와 행동 지표 판정 모듈은 호출 시점에 불러온다 — 이 파일을 가져오는 배지 엔진·동기화와 정적 순환을 만들지 않기 위해서다
  * (`chapter/rise.ts`와 같은 이유).
  */
 import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { jamTriggersForCapsuleOpen, jamTriggersForServiceJam } from '@/lib/badge-engine/jamActionProgressTriggers'
+import { jamTriggersForServiceJam } from '@/lib/badge-engine/jamActionProgressTriggers'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
 import { applyChapterJam } from '@/lib/chapter/applyJam'
+import { readPendingChapterRewardCount } from '@/lib/capsule/receive-block'
 import { logEngineDecision } from '@/lib/engine-log'
 
 /** `service_jam_rules.activity_kind`와 같은 값 7종 */
@@ -110,9 +113,9 @@ async function recordServiceJamFailure(userId: string, kind: ServiceJamKind, sou
 /**
  * 무거운 모듈은 처음 쓸 때 한 번만 불러 같은 약속을 나눠 쓴다. 호출마다 `import()`를 따로 걸면 동시에 지급이 겹칠 때 모듈이 한 번 더 평가될 수 있다.
  */
-let autoFillModule: Promise<typeof import('@/lib/capsule/sync-auto-fill')> | null = null
+let riseModule: Promise<typeof import('@/lib/chapter/rise')> | null = null
 let actionRouteModule: Promise<typeof import('@/lib/badge-engine/jamActionRoute')> | null = null
-const loadAutoFill = () => (autoFillModule ??= import('@/lib/capsule/sync-auto-fill'))
+const loadRise = () => (riseModule ??= import('@/lib/chapter/rise'))
 const loadActionRoute = () => (actionRouteModule ??= import('@/lib/badge-engine/jamActionRoute'))
 
 /**
@@ -136,25 +139,46 @@ async function scheduleJamActionEvaluation(userId: string, triggers: readonly Ja
   }
 }
 
+interface AfterGrantInput {
+  userId: string
+  eventKey: string
+  granted: number
+  /** 같은 키의 재전송이다 */
+  duplicate: boolean
+}
+
 /**
- * 지급 직후 캡슐을 채우고, 행동 지표를 판정한다. 던지지 않는다.
- * 판정 목록은 항상 잼 조건 주 키 4개(`jamTriggersForServiceJam()`)를 포함한다 — 서비스 활동 잼이 잼 조건에 합산되기 때문이다(티켓 20261028_1736).
- * 열린 캡슐이나 챕터 오름이 있으면 챕터·캡슐 지표를 더한다. 자동 채움이 던져도 잼 조건 판정은 건너뛰지 않는다.
+ * 지급 직후 새 진행값에 승급 모드로 쌓고, 오른 챕터를 처리하고, 행동 지표를 판정한다. 던지지 않는다.
+ * 적립은 지급량이 있으면 재전송에도 부른다(DB가 중복을 거른다). 오름 처리는 이번에 새로 오른 챕터가 있을 때만 하고, 챕터 배지 판정은 건너뛴다 —
+ * 아래 지표 판정의 `chapter_reached`가 한 번 맡는다. 지표 판정은 새 지급이거나 오른 챕터가 있을 때 하며, 항상 잼 조건 주 키 4개를 포함한다(티켓 20261028_1736).
+ * 적립·오름 처리가 던져도 지표 판정은 건너뛰지 않는다.
  */
-async function fillCapsuleAfterGrant(supabase: SupabaseClient, userId: string): Promise<void> {
-  const triggers: JamActionTrigger[] = [...jamTriggersForServiceJam()]
+async function afterServiceJamGrant(supabase: SupabaseClient, input: AfterGrantInput): Promise<void> {
+  const { userId, eventKey, granted, duplicate } = input
+  let reachedChapters: number[] = []
   try {
-    const { runSyncCapsuleAutoFill } = await loadAutoFill()
-    const step = await runSyncCapsuleAutoFill(supabase, userId)
-    if (step.opened || step.chapterRose) triggers.push('chapter_reached')
-    if (step.opened) triggers.push(...jamTriggersForCapsuleOpen())
+    const applied = await applyChapterJam(supabase, { userId, amount: granted, eventKey, promote: true })
+    if (applied.ok && !applied.duplicate) reachedChapters = applied.reachedChapters
   } catch (e) {
-    console.error(`[service-jam] 지급 뒤 캡슐 채움 예외 — 잼은 지갑에 남는다 (userId: ${userId}):`, e)
+    console.error(`[service-jam] 지급 뒤 진행값 적립 예외 — 지급은 그대로다 (userId: ${userId}):`, e)
   }
+
+  if (reachedChapters.length > 0) {
+    try {
+      const { processChapterRise } = await loadRise()
+      await processChapterRise({ userId, reachedChapters }, { skipBadgeEvaluation: true })
+    } catch (e) {
+      console.error(`[service-jam] 챕터 오름 처리 예외 — 지급은 그대로다 (userId: ${userId}):`, e)
+    }
+  }
+
+  if (duplicate && reachedChapters.length === 0) return
+  const triggers: JamActionTrigger[] = [...jamTriggersForServiceJam()]
+  if (reachedChapters.length > 0) triggers.push('chapter_reached')
   await scheduleJamActionEvaluation(userId, triggers)
 }
 
-/** 서비스 활동 잼을 지급하고 곧바로 캡슐을 채운다. 던지지 않는다 — 실패하면 기록만 남기고 `{ ok: false }`다. */
+/** 서비스 활동 잼을 지급하고 곧바로 새 진행값에 승급 모드로 쌓는다. 던지지 않는다 — 실패하면 기록만 남기고 `{ ok: false }`다. */
 export async function awardServiceJam(supabase: SupabaseClient, input: AwardServiceJamInput): Promise<AwardServiceJamResult> {
   const { userId, kind, sourceId } = input
   try {
@@ -163,6 +187,15 @@ export async function awardServiceJam(supabase: SupabaseClient, input: AwardServ
       return { ok: false }
     }
     const eventKey = serviceActivityEventKey(kind, sourceId)
+
+    // 챕터 보상 대기가 있으면 지급하지 않는다(옛 DB 함수가 대기 보상이 있을 때 거절하던 규칙). 읽지 못하면 막지 않고 진행한다
+    try {
+      if ((await readPendingChapterRewardCount(supabase, userId)) > 0) {
+        return { ok: true, granted: 0, duplicate: false, capped: false, blocked: true }
+      }
+    } catch (e) {
+      console.error(`[service-jam] 챕터 보상 대기를 읽지 못해 막지 않고 진행한다 (userId: ${userId}):`, e)
+    }
 
     const { data, error } = await supabase.rpc('jam_apply_service_activity', { p_user_id: userId, p_kind: kind, p_event_key: eventKey })
     if (error) {
@@ -176,11 +209,8 @@ export async function awardServiceJam(supabase: SupabaseClient, input: AwardServ
       return { ok: false }
     }
 
-    // 새 진행값에도 쌓는다(B4 이중 쓰기, 티켓 20261127_1727, 승급은 캡슐). 지급량이 있으면 재전송이어도 같은 키로 부른다(DB가 중복을 거른다). 캡슐 채움과 독립이다
-    if (parsed.granted > 0) await applyChapterJam(supabase, { userId, amount: parsed.granted, eventKey, promote: false })
-
-    // 새로 지급했을 때만 채운다 — 재전송·규칙값 0·상한 도달은 지갑이 그대로다
-    if (parsed.granted > 0 && !parsed.duplicate) await fillCapsuleAfterGrant(supabase, userId)
+    // 지급량이 있으면 새 진행값에 승급 모드로 쌓는다(C2b). 재전송이어도 같은 키로 부른다(DB가 중복을 거른다). 지급 0(규칙값 0·상한·막힘)은 부르지 않는다
+    if (parsed.granted > 0) await afterServiceJamGrant(supabase, { userId, eventKey, granted: parsed.granted, duplicate: parsed.duplicate })
 
     return { ok: true, granted: parsed.granted, duplicate: parsed.duplicate, capped: parsed.capped, blocked: parsed.blocked }
   } catch (e) {

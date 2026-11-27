@@ -19,14 +19,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const { logMock, autoFillMock } = vi.hoisted(() => ({ logMock: vi.fn(), autoFillMock: vi.fn() }))
+const { logMock } = vi.hoisted(() => ({ logMock: vi.fn() }))
 const recordFeedEventMock = vi.hoisted(() => vi.fn())
 
 // 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727)은 이 시험의 관심사가 아니다 — 적립 호출·실패 처리는 applyJam.test.ts와 서비스 활동·정산 시험이 본다
 vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다. 여기서는 채움을 막고 서비스 활동 잼 RPC 인자만 본다
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({ runSyncCapsuleAutoFill: (...args: unknown[]) => autoFillMock(...args) }))
+vi.mock('@/lib/capsule/receive-block', () => ({ readPendingChapterRewardCount: async () => 0 })) // 챕터 보상 대기 사전 확인(C2b, 티켓 20261127_1730) — 대기 없음
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: (...args: unknown[]) => recordFeedEventMock(...args) }))
 
 import {
@@ -101,8 +101,6 @@ function rpcCalls(rpc: ReturnType<typeof fakeClient>['rpc']) {
 beforeEach(() => {
   logMock.mockReset()
   logMock.mockResolvedValue(undefined)
-  autoFillMock.mockReset()
-  autoFillMock.mockResolvedValue({ autoFill: {}, opened: false, chapterRose: false })
   recordFeedEventMock.mockReset()
   recordFeedEventMock.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})

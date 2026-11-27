@@ -37,7 +37,7 @@ function isResult(value: unknown): value is CapsuleReceiveBlockedResult {
 }
 
 /** 챕터 보상 대기 개수 — 행마다 `drawn_items`가 배열이면 그 길이, 아니면 `reward_count`를 센다. 읽지 못하면 던진다 */
-async function readPendingChapterRewardCount(supabase: SupabaseClient, userId: string): Promise<number> {
+export async function readPendingChapterRewardCount(supabase: SupabaseClient, userId: string): Promise<number> {
   const { data, error } = await supabase
     .from('chapter_reward_grants')
     .select('drawn_items, reward_count')

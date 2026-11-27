@@ -245,9 +245,7 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabas
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
-}))
+vi.mock('@/lib/capsule/receive-block', () => ({ readPendingChapterRewardCount: async () => 0 })) // 챕터 보상 대기 사전 확인(C2b, 티켓 20261127_1730) — 대기 없음
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
 vi.mock('@/lib/abusing/policy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/abusing/policy')>()

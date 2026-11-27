@@ -28,9 +28,7 @@ vi.mock('@/lib/points', () => ({ awardPoints: awardPointsMock }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: recordFeedEventMock }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: logEngineMock }))
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
-}))
+vi.mock('@/lib/capsule/receive-block', () => ({ readPendingChapterRewardCount: async () => 0 })) // 챕터 보상 대기 사전 확인(C2b, 티켓 20261127_1730) — 대기 없음
 
 import { issueQualifyingBadges } from '../usageBadges'
 

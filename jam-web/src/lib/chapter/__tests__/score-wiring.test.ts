@@ -22,7 +22,7 @@
  *     - 지급 RPC가 실패해도(오류·예외·계약 밖 응답) 본 동작의 결과는 같고, 같은 원천 id로 다시 보내면 한 번만 지급된다
  *     - 옛 점수 장부 쓰기는 어떤 경로에서도 일어나지 않는다(`chapter_add_score` 호출 0회)
  *
- * 지점별 세부(호출 인자·순서·응답 불변)는 각 지점의 시험이 고정한다. 지급 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`와 `lib/inventory/__tests__/lockedItemFill.test.ts`가 고정한다.
+ * 지점별 세부(호출 인자·순서·응답 불변)는 각 지점의 시험이 고정한다. 지급 즉시 승급 모드 적립은 `lib/jam/__tests__/serviceActivity.test.ts`와 `lib/inventory/__tests__/lockedItemFill.test.ts`가 고정한다.
  * 공용 DB와 실제 RPC는 부르지 않는다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/chapter/__tests__/score-wiring.test.ts
@@ -39,9 +39,7 @@ const logMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
-}))
+vi.mock('@/lib/capsule/receive-block', () => ({ readPendingChapterRewardCount: async () => 0 })) // 챕터 보상 대기 사전 확인(C2b, 티켓 20261127_1730) — 대기 없음
 
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { SERVICE_JAM_KINDS, awardServiceJam } from '@/lib/jam/serviceActivity'

@@ -2,7 +2,7 @@
  * 챕터 진행값 적립 래퍼 — `applyChapterJam` (티켓 20261127_1727, 상위 20261127_1720)
  *
  * DB 함수 `chapter_jam_apply`(마이그레이션 365)를 부른다. 활동 정산(`lib/jam/settlement.ts`)은 C2a(티켓 20261127_1729)부터 `promote: true`로 부른다 —
- * 진행값(`user_chapters.chapter_jam`)을 쌓고 챕터를 올린다. 서비스 활동 잼 쪽은 아직 `promote: false`다(C2b가 바꾼다).
+ * 진행값(`user_chapters.chapter_jam`)을 쌓고 챕터를 올린다. 서비스 활동 잼(`lib/jam/serviceActivity.ts`)도 C2b(티켓 20261127_1730)부터 `promote: true`로 부른다.
  *
  * 같은 `eventKey`는 DB(`chapter_jam_events`)가 한 번만 센다. 그래서 같은 일을 다시 보내도 안전하다.
  *
@@ -27,7 +27,7 @@ export interface ApplyChapterJamInput {
   amount: number
   /** 멱등 키. 같은 (userId, eventKey)는 DB가 한 번만 센다 */
   eventKey: string
-  /** `true`면 쌓은 뒤 승급한다. 활동 정산은 `true`, 서비스 활동 잼은 C2b 전까지 `false`다 */
+  /** `true`면 쌓은 뒤 승급한다. 활동 정산과 서비스 활동 잼 모두 `true`다 */
   promote: boolean
 }
 
