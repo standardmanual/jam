@@ -9,6 +9,8 @@
  * - 같은 활동을 두 번 정산해도 원장은 한 줄. 활동 하나가 실패해도 나머지는 정산, 던지지 않는다.
  * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회): 정산이 `chapter_add_score`를 부르지 않는다. 정산 순서는 오래된 활동부터이고,
  *   같은 활동을 두 번 보내도 원장은 한 줄이다.
+ * - 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727): 정산에 성공한 활동마다 `activity_settlement:<활동 id>` 키로 `chapter_jam_apply`를 `p_promote: false`로 부른다. 양은 원장에 기록된 양이다.
+ *   잼 0 활동·`jam_apply` 실패 활동은 부르지 않고, 적립이 실패해도 정산 결과와 원장은 그대로다.
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/settlement.test.ts
@@ -114,7 +116,11 @@ interface Ledger {
   balance: number
   /** `jam_apply` 호출 인자 */
   rpcCalls: Record<string, unknown>[]
-  /** `jam_apply`가 아닌 RPC 이름(챕터 점수가 다시 불리지 않는지 본다) */
+  /** `chapter_jam_apply`(새 진행값 적립) 호출 인자 */
+  chapterCalls: Record<string, unknown>[]
+  /** 적립된 멱등 키(같은 키는 한 번만 센다) */
+  chapterKeys: Set<string>
+  /** `jam_apply`·`chapter_jam_apply`가 아닌 RPC 이름(챕터 점수가 다시 불리지 않는지 본다) */
   otherRpcNames: string[]
   /** `jam_apply`가 불린 순서 */
   order: string[]
@@ -124,8 +130,10 @@ function makeLedgerClient(opts: {
   activityIds: Record<number, string>
   failFor?: Set<string>
   activitiesError?: boolean
+  /** `chapter_jam_apply`가 RPC 오류를 돌려준다 */
+  chapterFails?: boolean
 }): { supabase: SupabaseClient; ledger: Ledger } {
-  const ledger: Ledger = { lines: new Map(), balance: 0, rpcCalls: [], otherRpcNames: [], order: [] }
+  const ledger: Ledger = { lines: new Map(), balance: 0, rpcCalls: [], chapterCalls: [], chapterKeys: new Set(), otherRpcNames: [], order: [] }
   const supabase = {
     from: (table: string) => {
       expect(table).toBe('strava_activities')
@@ -142,6 +150,14 @@ function makeLedgerClient(opts: {
       return { select: () => chain }
     },
     rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'chapter_jam_apply') {
+        ledger.chapterCalls.push(args)
+        if (opts.chapterFails) return { data: null, error: { message: 'chapter rpc failed' } }
+        const key = args.p_event_key as string
+        if (ledger.chapterKeys.has(key)) return { data: { ok: true, duplicate: true, applied: 0 }, error: null }
+        ledger.chapterKeys.add(key)
+        return { data: { ok: true, duplicate: false, applied: args.p_amount }, error: null }
+      }
       if (name !== 'jam_apply') {
         ledger.otherRpcNames.push(name)
         return { data: null, error: { message: 'unexpected rpc' } }
@@ -342,5 +358,65 @@ describe('settleActivities — 챕터 점수 «모은 잼»을 세지 않는다 
     await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
 
     expect(ledger.lines.size).toBe(1)
+  })
+})
+
+describe('settleActivities — 새 진행값 적립 (B4 이중 쓰기, 티켓 20261127_1727)', () => {
+  it('정산 성공 뒤 활동마다 activity_settlement:<활동 id> 키로 승급 없이(p_promote false) 원장에 기록된 양만큼 적립한다', async () => {
+    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2' } })
+
+    await settleActivities(
+      supabase,
+      'user-1',
+      [target(1), target(2, { jamActivityType: 'walking', sportType: 'Walk', type: 'Walk', startDate: '2026-09-13T00:00:00Z' })],
+      DEFAULT_JAM_POLICY,
+      NOW
+    )
+
+    expect(ledger.chapterCalls).toEqual([
+      { p_user_id: 'user-1', p_amount: 90, p_event_key: 'activity_settlement:act-1', p_promote: false },
+      { p_user_id: 'user-1', p_amount: 30, p_event_key: 'activity_settlement:act-2', p_promote: false },
+    ])
+    expect(ledger.otherRpcNames).toEqual([])
+    expect(logMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 활동을 다시 정산해도 정산 결과는 그대로이고 같은 키로 다시 부른다 (DB가 중복을 거른다)', async () => {
+    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1' } })
+
+    const first = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
+    const second = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
+
+    expect(second).toEqual(first)
+    expect(ledger.chapterCalls).toHaveLength(2)
+    expect(ledger.chapterCalls[1]).toEqual(ledger.chapterCalls[0])
+    expect(ledger.chapterKeys.size).toBe(1)
+    // 중복은 정상이라 기록이 없다
+    expect(logMock).not.toHaveBeenCalled()
+  })
+
+  it('적립 호출이 실패(RPC 오류)해도 정산 결과와 원장 줄은 그대로이고 chapter_jam_apply_failed를 남긴다', async () => {
+    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2' }, chapterFails: true })
+
+    const result = await settleActivities(supabase, 'user-1', [target(1), target(2)], DEFAULT_JAM_POLICY, NOW)
+
+    expect(result.total).toBe(180)
+    expect(result.items.map((i) => i.activityId)).toEqual(['act-1', 'act-2'])
+    expect(ledger.lines.size).toBe(2)
+    expect(ledger.balance).toBe(180)
+    expect(logMock).toHaveBeenCalledWith(
+      'points',
+      'chapter_jam_apply_failed',
+      'user-1',
+      expect.objectContaining({ eventKey: 'activity_settlement:act-1', amount: 90 })
+    )
+  })
+
+  it('잼이 0인 활동과 jam_apply가 실패한 활동은 적립을 부르지 않는다', async () => {
+    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2', 3: 'act-3' }, failFor: new Set(['act-2']) })
+
+    await settleActivities(supabase, 'user-1', [target(1, { movingTimeSec: 59 }), target(2), target(3, { startDate: '2026-09-13T00:00:00Z' })], DEFAULT_JAM_POLICY, NOW)
+
+    expect(ledger.chapterCalls.map((c) => c.p_event_key)).toEqual(['activity_settlement:act-3'])
   })
 })

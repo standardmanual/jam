@@ -117,6 +117,8 @@ const stub = vi.hoisted(() => ({
 const awardPointsMock = vi.hoisted(() => vi.fn())
 
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다. 여기서는 채움을 막고 서비스 활동 잼 RPC 인자만 본다
+// 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727)은 이 시험의 관심사가 아니다 — 적립 호출·실패 처리는 applyJam.test.ts와 서비스 활동·정산 시험이 본다
+vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
   runSyncCapsuleAutoFill: async () => ({ autoFill: {}, opened: false, chapterRose: false }),
 }))

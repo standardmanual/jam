@@ -23,7 +23,7 @@ import { settleActivities } from '../settlement'
 const MIN = 60
 const NOW = new Date('2026-10-17T03:00:00Z')
 
-/** 활동 id 조회와 `jam_apply`, `chapter_add_score`만 받는 가짜. `reached`가 점수 RPC의 오른 챕터 목록이다 */
+/** 활동 id 조회와 `jam_apply`, `chapter_jam_apply`, `chapter_add_score`만 받는 가짜. `reached`가 점수 RPC의 오른 챕터 목록이다 */
 function makeClient(reached: number[]): SupabaseClient {
   return {
     from: () => ({
@@ -39,6 +39,7 @@ function makeClient(reached: number[]): SupabaseClient {
       if (name === 'chapter_add_score') {
         return { data: [{ score_added: args.p_amount as number, current_chapter: reached.length > 0 ? Math.max(...reached) : 2, reached_chapters: reached }], error: null }
       }
+      if (name === 'chapter_jam_apply') return { data: { ok: true, duplicate: false, applied: args.p_amount }, error: null }
       return { data: { amount: args.p_amount, source_activity_id: args.p_source_activity_id }, error: null }
     },
   } as unknown as SupabaseClient
@@ -55,14 +56,14 @@ beforeEach(() => {
 })
 
 describe('settleActivities — 챕터 오름 처리를 부르지 않는다 (티켓 20261028_1733 3회)', () => {
-  it('점수 RPC가 오름을 돌려줄 수 있는 클라이언트여도 오름 처리를 부르지 않고 점수 RPC도 부르지 않는다', async () => {
+  it('점수 RPC가 오름을 돌려줄 수 있는 클라이언트여도 오름 처리를 부르지 않고 점수 RPC도 부르지 않는다(새 진행값 적립 chapter_jam_apply는 B4가 부른다)', async () => {
     const client = makeClient([2, 3])
     const rpcSpy = vi.spyOn(client, 'rpc')
 
     const result = await settleActivities(client, 'user-1', [RUN], DEFAULT_JAM_POLICY, NOW)
 
     expect(riseMock).not.toHaveBeenCalled()
-    expect(rpcSpy.mock.calls.map(([name]) => name)).toEqual(['jam_apply'])
+    expect(rpcSpy.mock.calls.map(([name]) => name)).toEqual(['jam_apply', 'chapter_jam_apply'])
     expect(result.total).toBe(90)
     expect(result.items).toEqual([{ stravaId: 1, activityId: 'act-1', amount: 90, earnedOn: '2026-09-12' }])
   })

@@ -35,6 +35,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 const logMock = vi.hoisted(() => vi.fn())
 
 // 지급 실패 기록(logEngineDecision)이 실제 service 클라이언트를 만들지 않게 막는다
+// 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727)은 이 시험의 관심사가 아니다 — 적립 호출·실패 처리는 applyJam.test.ts와 서비스 활동·정산 시험이 본다
+vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: (...args: unknown[]) => logMock(...args) }))
 // 지급 뒤 즉시 채움은 `lib/jam/__tests__/serviceActivity.test.ts`가 고정한다
 vi.mock('@/lib/capsule/sync-auto-fill', () => ({
@@ -172,7 +174,8 @@ describe('호출 지점 목록 — 소스 검색', () => {
   })
 
   it('멈춘 종류를 쓰는 코드가 없다 — 잼 정산은 점수·서비스 활동 잼을 가져오지 않고 jam_earned를 적은 파일이 없다', () => {
-    expect(SOURCES.get('lib/jam/settlement.ts')).not.toMatch(/@\/lib\/chapter|awardChapterScore|chapter_add_score|awardServiceJam/)
+    // 새 진행값 적립 래퍼(`@/lib/chapter/applyJam`, B4 티켓 20261127_1727)만 예외다 — 옛 점수 장부는 가져오지 않는다
+    expect(SOURCES.get('lib/jam/settlement.ts')).not.toMatch(/@\/lib\/chapter(?!\/applyJam')|awardChapterScore|chapter_add_score|awardServiceJam/)
     const writers = [...SOURCES].filter(([file, source]) => file !== 'lib/chapter/kinds.ts' && /['"]jam_earned['"]/.test(source)).map(([file]) => file)
     expect(writers).toEqual([])
   })

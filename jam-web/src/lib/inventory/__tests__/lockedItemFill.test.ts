@@ -45,6 +45,8 @@ const feedMock = vi.hoisted(() => vi.fn())
 const awardPointsMock = vi.hoisted(() => vi.fn())
 
 // 포인트 소식(활동 결산)은 가짜로 막는다(티켓 20261026_1031) — 불린 순서와 인자만 본다
+// 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727)은 이 시험의 관심사가 아니다 — 적립 호출·실패 처리는 applyJam.test.ts와 서비스 활동·정산 시험이 본다
+vi.mock('@/lib/chapter/applyJam', () => ({ applyChapterJam: async () => ({ ok: true, duplicate: false, skipped: null, applied: 0, chapterNo: null, chapterJam: null, reachedChapters: [] }) }))
 vi.mock('@/lib/notifications/recap', () => ({
   recordActivityRecap: async (...args: unknown[]) => {
     calls.order.push('recap')

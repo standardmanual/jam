@@ -14,9 +14,10 @@
  * - `p_earned_on`에는 **활동한 날의 KST 날짜**(활동 시작 시각을 KST로 바꾼 날짜)를 넘긴다. 늦게 동기화한 활동이
  *   동기화한 날로 잡히면 주간 양이 틀어진다(마이그레이션 220의 사용자 결정, 2026-10-17).
  * - 정산이 실패해도 던지지 않는다 — 로그만 남기고 동기화를 막지 않는다.
- * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회 — 챕터는 캡슐 횟수로 오른다).
+ * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회 — 챕터는 캡슐 횟수로 오른다). 새 진행값 적립은 이중 쓰기다(B4, 티켓 20261127_1727, 승급은 캡슐).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { applyChapterJam } from '@/lib/chapter/applyJam'
 import { kstDateString } from '@/lib/notifications/kst'
 import type { JamPolicy } from './policy'
 
@@ -196,6 +197,15 @@ export async function settleActivities(
         items.push(item)
         // 챕터 점수 «모은 잼»은 더 세지 않는다(티켓 20261028_1733 3회). 챕터는 캡슐이 가득 찬 횟수로 오르고, 잼은 동기화가 정산 직후 부르는 자동 채움
         // (`lib/capsule/auto-fill.ts`)이 캡슐에 채운다. 옛 점수 장부의 나머지 쓰기는 U5가 바꾼다.
+        // 새 진행값 적립은 이중 쓰기(B4, 티켓 20261127_1727, 승급은 캡슐). 같은 활동은 같은 키라 DB가 한 번만 센다. 래퍼는 던지지 않는다.
+        if (item.amount > 0) {
+          await applyChapterJam(supabase, {
+            userId,
+            amount: item.amount,
+            eventKey: `activity_settlement:${activityId}`,
+            promote: false,
+          })
+        }
       } catch (e) {
         console.error(`[jam-settlement] jam_apply 예외 — userId: ${userId}, stravaId: ${target.stravaId}:`, e)
       }

@@ -9,6 +9,7 @@
  * 잼 조건 주 키 4개(`jamTriggersForServiceJam()`, 서비스 활동 잼이 잼 조건에 합산된다, 티켓 20261028_1736)는 항상, 열린 캡슐이 있거나 챕터가 올랐으면
  * `jamTriggersForCapsuleOpen()` + `chapter_reached`도 더한다. 자동 채움은 챕터 배지 판정을 건너뛰고 돌기 때문에(`skipRiseBadgeEvaluation`) 여기서 이어서 읽는다.
  * 중복 재전송(`duplicate`)·규칙값 0(`rule_zero`)·상한에 걸려 지급이 0인 경우(`capped`)·막혀서 거절된 경우(`blocked`)는 채움을 부르지 않는다.
+ * 새 진행값에도 쌓는다(B4, 티켓 20261127_1727): 지급량(`granted`)이 0보다 크면 같은 이벤트 키로 `applyChapterJam`을 승급 없이(`promote: false`) 부른다. 실패해도 지급·채움은 그대로다.
  *
  * 이벤트 키는 `<서비스 kind>:<기존 원천 id>`다. 원천 id는 챕터 점수 때 쓰던 것을 그대로 쓰므로 같은 일을 다시 보내도 같은 키다(유저별 유일, DB가 막는다).
  *
@@ -31,6 +32,7 @@ import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { jamTriggersForCapsuleOpen, jamTriggersForServiceJam } from '@/lib/badge-engine/jamActionProgressTriggers'
 import type { JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
+import { applyChapterJam } from '@/lib/chapter/applyJam'
 import { logEngineDecision } from '@/lib/engine-log'
 
 /** `service_jam_rules.activity_kind`와 같은 값 7종 */
@@ -173,6 +175,9 @@ export async function awardServiceJam(supabase: SupabaseClient, input: AwardServ
       await recordServiceJamFailure(userId, kind, sourceId, parsed)
       return { ok: false }
     }
+
+    // 새 진행값에도 쌓는다(B4 이중 쓰기, 티켓 20261127_1727, 승급은 캡슐). 지급량이 있으면 재전송이어도 같은 키로 부른다(DB가 중복을 거른다). 캡슐 채움과 독립이다
+    if (parsed.granted > 0) await applyChapterJam(supabase, { userId, amount: parsed.granted, eventKey, promote: false })
 
     // 새로 지급했을 때만 채운다 — 재전송·규칙값 0·상한 도달은 지갑이 그대로다
     if (parsed.granted > 0 && !parsed.duplicate) await fillCapsuleAfterGrant(supabase, userId)

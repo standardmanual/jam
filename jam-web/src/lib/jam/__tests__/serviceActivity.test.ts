@@ -14,6 +14,8 @@
  * - 던지지 않는다. RPC 오류·계약 밖 응답·예외는 `console.error`와 `engine_decision_log`(`service_jam_failed`)에 남기고 `{ ok: false }`다.
  *   이용 정지(`user_suspended`)는 지급하지 않을 뿐 실패 기록이 없다. 채움·판정이 던져도 지급 결과는 그대로다.
  * - 반환은 `{ ok, granted, duplicate, capped, blocked }`다.
+ * - 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727): 지급량 > 0이면 이벤트 키 그대로 `chapter_jam_apply`를 `p_promote: false`로 부른다. 지급 0(`rule_zero`·`capped` 0·`blocked`)이면
+ *   부르지 않고, 일부 지급이면 지급량만큼만 보낸다. 재전송(`duplicate`)이어도 지급량 > 0이면 부른다. 적립이 실패해도 지급 결과와 캡슐 채움은 그대로다.
  * 공용 DB와 실제 RPC는 호출하지 않는다 — 가짜 클라이언트와 목만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/serviceActivity.test.ts
@@ -47,9 +49,24 @@ const SOURCE = '33333333-3333-4333-8333-333333333333'
 
 const GRANTED = { ok: true, granted: 5, ruleAmount: 5, capped: false, duplicate: false, dailyUsed: 5, weeklyUsed: 5, balance: 5 }
 
-function fakeClient(result: { data: unknown; error: unknown } | (() => Promise<never>) = { data: GRANTED, error: null }) {
-  const rpc = vi.fn(async () => (typeof result === 'function' ? result() : result))
-  return { client: { rpc } as unknown as SupabaseClient, rpc }
+/**
+ * 가짜 클라이언트. `rpc`는 지급 RPC(`jam_apply_service_activity`) 호출만, `chapterRpc`는 새 진행값 적립(`chapter_jam_apply`, B4) 호출만 센다.
+ * 적립 응답을 따로 정하지 않으면 보낸 양을 그대로 쌓았다고 답한다.
+ */
+function fakeClient(
+  result: { data: unknown; error: unknown } | (() => Promise<never>) = { data: GRANTED, error: null },
+  chapterResult?: { data: unknown; error: unknown } | (() => Promise<never>)
+) {
+  type RpcFn = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
+  const rpc = vi.fn<RpcFn>(async () => (typeof result === 'function' ? result() : result))
+  const chapterRpc = vi.fn<RpcFn>(async (_name, args) => {
+    if (typeof chapterResult === 'function') return chapterResult()
+    return chapterResult ?? { data: { ok: true, duplicate: false, applied: args.p_amount }, error: null }
+  })
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => (name === 'chapter_jam_apply' ? chapterRpc(name, args) : rpc(name, args)),
+  } as unknown as SupabaseClient
+  return { client, rpc, chapterRpc }
 }
 
 const JAM_KEYS = ['jam_total_earned', 'jam_weekly_earned', 'jam_week_count', 'jam_week_streak']
@@ -255,6 +272,117 @@ describe('awardServiceJam — JAM! 행동 지표 판정', () => {
     const { client } = fakeClient()
 
     await expect(awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })).resolves.toMatchObject({ ok: true, granted: 5 })
+  })
+})
+
+describe('awardServiceJam — 새 진행값 적립 (B4 이중 쓰기, 티켓 20261127_1727)', () => {
+  it('지급(granted > 0)이면 이벤트 키 그대로, 승급 없이(p_promote false) 지급량만큼 적립한다', async () => {
+    const { client, chapterRpc } = fakeClient()
+
+    await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
+
+    expect(chapterRpc).toHaveBeenCalledTimes(1)
+    expect(chapterRpc).toHaveBeenCalledWith('chapter_jam_apply', {
+      p_user_id: USER,
+      p_amount: 5,
+      p_event_key: `badge_earned:${SOURCE}`,
+      p_promote: false,
+    })
+    expect(logMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['rule_zero(규칙값 0)', { ok: true, granted: 0, reason: 'rule_zero', ruleAmount: 0 }],
+    ['capped(상한에 걸려 지급 0)', { ok: true, granted: 0, capped: true, dailyUsed: 40 }],
+    ['blocked(막혀서 거절)', { ok: true, granted: 0, blocked: true, ruleAmount: 20, duplicate: false }],
+  ])('%s는 적립을 부르지 않는다', async (_label, data) => {
+    const { client, chapterRpc } = fakeClient({ data, error: null })
+
+    await awardServiceJam(client, { userId: USER, kind: 'mission_complete', sourceId: SOURCE })
+
+    expect(chapterRpc).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['이용 정지', { data: { ok: false, error: 'user_suspended' }, error: null }],
+    ['지급 RPC 오류', { data: null, error: { message: '지급 장애' } }],
+    ['계약 밖 응답', { data: { granted: 5 }, error: null }],
+  ])('지급이 안 됐으면(%s) 적립을 부르지 않는다', async (_label, result) => {
+    const { client, chapterRpc } = fakeClient(result)
+
+    await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
+
+    expect(chapterRpc).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['하루 상한(40) 경계에서 12만 지급', 12],
+    ['한 주 상한(100) 경계에서 1만 지급', 1],
+  ])('상한에 걸려 일부만 지급되면(%s) 지급량만큼만 보낸다', async (_label, granted) => {
+    const { client, chapterRpc } = fakeClient({ data: { ...GRANTED, granted, ruleAmount: 30, capped: true }, error: null })
+
+    await awardServiceJam(client, { userId: USER, kind: 'collection_complete', sourceId: SOURCE })
+
+    expect(chapterRpc).toHaveBeenCalledTimes(1)
+    expect(chapterRpc).toHaveBeenCalledWith('chapter_jam_apply', expect.objectContaining({ p_amount: granted, p_promote: false }))
+  })
+
+  it('재전송(duplicate)이고 지급량 > 0이면 같은 키로 다시 부른다 (이전에 적립이 실패했던 것을 메운다)', async () => {
+    const { client, chapterRpc } = fakeClient(
+      { data: { ok: true, granted: 5, duplicate: true }, error: null },
+      { data: { ok: true, duplicate: true, applied: 0 }, error: null }
+    )
+
+    await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
+
+    expect(chapterRpc).toHaveBeenCalledWith('chapter_jam_apply', {
+      p_user_id: USER,
+      p_amount: 5,
+      p_event_key: `badge_earned:${SOURCE}`,
+      p_promote: false,
+    })
+    // 중복은 정상이라 기록이 없고, 재전송이라 캡슐은 채우지 않는다
+    expect(logMock).not.toHaveBeenCalled()
+    expect(autoFillMock).not.toHaveBeenCalled()
+  })
+
+  it('챕터를 시작하지 않은 유저(no_chapter)는 정상으로 건너뛰고 기록하지 않는다', async () => {
+    const { client } = fakeClient(undefined, { data: { ok: false, error: 'no_chapter' }, error: null })
+
+    await awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })
+
+    expect(logMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['RPC 오류', { data: null, error: { message: '적립 장애' } }],
+    ['예외', async () => Promise.reject(new Error('네트워크 끊김'))],
+  ])('적립이 실패해도(%s) 지급 결과와 캡슐 채움은 그대로이고 chapter_jam_apply_failed를 남긴다', async (_label, chapterResult) => {
+    const { client } = fakeClient(undefined, chapterResult as never)
+
+    await expect(awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })).resolves.toEqual({
+      ok: true,
+      granted: 5,
+      duplicate: false,
+      capped: false,
+      blocked: false,
+    })
+
+    expect(autoFillMock).toHaveBeenCalledTimes(1)
+    expect(logMock).toHaveBeenCalledWith(
+      'points',
+      'chapter_jam_apply_failed',
+      USER,
+      expect.objectContaining({ eventKey: `badge_earned:${SOURCE}`, amount: 5 })
+    )
+  })
+
+  it('응답의 applied가 보낸 양과 다르면 chapter_jam_mismatch를 남기고 지급 결과는 그대로다', async () => {
+    const { client } = fakeClient(undefined, { data: { ok: true, duplicate: false, applied: 3 }, error: null })
+
+    await expect(awardServiceJam(client, { userId: USER, kind: 'badge_earned', sourceId: SOURCE })).resolves.toMatchObject({ ok: true, granted: 5 })
+
+    expect(logMock).toHaveBeenCalledWith('points', 'chapter_jam_mismatch', USER, expect.objectContaining({ amount: 5, applied: 3 }))
   })
 })
 
