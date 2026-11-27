@@ -17,7 +17,7 @@ code:
 정본 컴포넌트 목록은 [README](README.md)에 있다.
 
 <!-- BEGIN generated: gen-token-catalog -->
-토큰 442개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 120개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 22개
+토큰 442개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 120개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 24개
 
 **층 규칙**: 색·px·ms 같은 직접 값은 기본값 층에만 둔다. 의미 층과 컴포넌트 층은 기본값을 참조한다.
 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·정본 폴더 등 일부뿐이다.
@@ -43,7 +43,7 @@ code:
 | `--base-neutral-400` | `#a3a3a3` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-500` | `#737373` | 〃 | — | 0 | 0 | 0 | 0 | 2 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 0 | 1 | 1 | — |
-| `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
+| `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 0 | 1 | — |
 | `--base-neutral-800` | `#262626` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 0 | 10 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-950` | `#0a0a0a` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
@@ -93,28 +93,28 @@ code:
 | `--ease-linear` | `linear` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--ease-smooth-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | 〃 | — | 17 | 0 | 0 | 7 | 9 | — |
 | `--ease-bounce` | `cubic-bezier(0.34, 1.36, 0.64, 1)` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
-| `--ease-out` | `ease-out` | 〃 | `ease-out` | 11 | 16 | 0 | 11 | 2 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--ease-in-out` | `ease-in-out` | 〃 | `ease-in-out` | 0 | 4 | 0 | 3 | 3 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--ease-out` | `ease-out` | 〃 | `ease-out` | 11 | 13 | 0 | 11 | 2 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--ease-in-out` | `ease-in-out` | 〃 | `ease-in-out` | 0 | 5 | 0 | 4 | 3 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--scale-press` | `0.96` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--scale-press-card` | `0.98` | 〃 | — | 3 | 0 | 0 | 3 | 0 | — |
 | `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--scale-compact` | `0.7` | 〃 | — | 5 | 0 | 0 | 1 | 0 | — |
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
-| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 835 | 0 | 229 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 835 | 0 | 225 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 963 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 963 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 136 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 136 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 135 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 135 | 0 | 81 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg--line-height` | `calc(1.75 / 1.125)` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 19 | 0 | 20 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xl--line-height` | `calc(1.75 / 1.25)` | 〃 | `text-xl` | 1 | 19 | 0 | 19 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-2xl` | `1.5rem` | 〃 | `text-2xl` | 3 | 89 | 0 | 87 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 89 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-2xl` | `1.5rem` | 〃 | `text-2xl` | 3 | 88 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5757 | 0 | 460 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5737 | 0 | 459 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -145,7 +145,7 @@ code:
 | `--font-weight-normal` | `400` | 〃 | `font-normal` | 0 | 45 | 0 | 21 | 0 | — |
 | `--font-weight-medium` | `500` | 〃 | `font-medium` | 0 | 386 | 0 | 151 | 0 | — |
 | `--font-weight-semibold` | `600` | 〃 | `font-semibold` | 0 | 211 | 0 | 105 | 0 | — |
-| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 298 | 0 | 168 | 0 | — |
+| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 297 | 0 | 167 | 0 | — |
 | `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 2 | 0 | 1 | 0 | — |
 | `--font-weight-black` | `900` | 〃 | `font-black` | 0 | 10 | 0 | 7 | 0 | — |
 | `--tracking-tighter` | `-0.05em` | 〃 | `tracking-tighter` | 0 | 1 | 0 | 1 | 0 | — |
@@ -163,8 +163,8 @@ code:
 | `--animate-spin` | `spin 1s linear infinite` | 〃 | `animate-spin` | 0 | 13 | 0 | 9 | 0 | — |
 | `--animate-pulse` | `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite` | 〃 | `animate-pulse` | 0 | 4 | 0 | 4 | 0 | — |
 | `--aspect-video` | `16 / 9` | 〃 | `aspect-video` | 0 | 2 | 0 | 1 | 0 | — |
-| `--default-transition-duration` | `150ms` | 〃 | `transition · transition-*` | 0 | 278 | 0 | 122 | 0 | — |
-| `--default-transition-timing-function` | `cubic-bezier(0.4, 0, 0.2, 1)` | 〃 | `transition · transition-*` | 0 | 278 | 0 | 122 | 0 | — |
+| `--default-transition-duration` | `150ms` | 〃 | `transition · transition-*` | 0 | 282 | 0 | 123 | 0 | — |
+| `--default-transition-timing-function` | `cubic-bezier(0.4, 0, 0.2, 1)` | 〃 | `transition · transition-*` | 0 | 282 | 0 | 123 | 0 | — |
 | `--default-font-family` | `var(--font-geist-sans)` | 〃 | — | 0 | 0 | 0 | 0 | 0 | Tailwind 기본 스타일이 읽음 |
 | `--default-mono-font-family` | `var(--font-geist-mono)` | 〃 | — | 0 | 0 | 0 | 0 | 0 | Tailwind 기본 스타일이 읽음 |
 
@@ -180,12 +180,12 @@ code:
 | `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 14 | 14 | 0 | 20 | 3 | — |
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 6 | 0 | 0 | 3 | 2 | — |
-| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 1 | 220 | 6 | — |
-| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 249 | 1 | 144 | 2 | — |
+| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 2 | 221 | 6 | — |
+| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 248 | 1 | 143 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 2 | 17 | 1 | — |
-| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 36 | 30 | 0 | 38 | 7 | — |
-| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 6 | 8 | 0 | 7 | 2 | — |
-| `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 2 | 0 | 0 | 2 | 0 | — |
+| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 36 | 31 | 0 | 39 | 7 | — |
+| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 5 | 8 | 0 | 6 | 2 | — |
+| `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
 | `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | — |
 | `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 1 | 0 | 0 | 1 | 1 | — |
@@ -206,7 +206,7 @@ code:
 | `--layout-section-gap` | `var(--spacing-48)` | `48px` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--layout-element-gap` | `var(--spacing-16)` | `16px` | — | 4 | 0 | 0 | 2 | 0 | — |
 | `--page-top` | `var(--spacing-16)` | `16px` | — | 4 | 0 | 0 | 3 | 0 | — |
-| `--page-bottom` | `var(--spacing-24)` | `24px` | — | 2 | 0 | 0 | 2 | 0 | — |
+| `--page-bottom` | `var(--spacing-24)` | `24px` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--gap-card-detail` | `var(--spacing-12)` | `12px` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--card-padding` | `var(--spacing-16)` | `16px` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--gap-actions` | `var(--spacing-8)` | `8px` | — | 1 | 0 | 0 | 1 | 0 | — |
@@ -227,10 +227,10 @@ code:
 
 | 이름 | 정의 값 | 최종 값 | 클래스 | var() | 클래스 사용 | 문자열 | 쓰는 파일 | 토큰 안 참조 | 비고 |
 |---|---|---|---|---|---|---|---|---|---|
-| `--rarity-common` | `var(--base-neutral-500)` | `#737373` | — | 3 | 0 | 0 | 3 | 0 | — |
-| `--rarity-rare` | `var(--base-rarity-green)` | `#00cc7a` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--rarity-epic` | `var(--base-rarity-amber)` | `#f5a300` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--rarity-mystic` | `var(--base-rarity-pink)` | `#ff2d87` | — | 1 | 0 | 0 | 1 | 0 | — |
+| `--rarity-common` | `var(--base-neutral-500)` | `#737373` | — | 4 | 0 | 0 | 4 | 0 | — |
+| `--rarity-rare` | `var(--base-rarity-green)` | `#00cc7a` | — | 2 | 0 | 0 | 2 | 0 | — |
+| `--rarity-epic` | `var(--base-rarity-amber)` | `#f5a300` | — | 2 | 0 | 0 | 2 | 0 | — |
+| `--rarity-mystic` | `var(--base-rarity-pink)` | `#ff2d87` | — | 2 | 0 | 0 | 2 | 0 | — |
 | `--rarity-common-foreground` | `var(--base-white)` | `#ffffff` | — | 3 | 0 | 0 | 3 | 0 | — |
 | `--rarity-rare-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-epic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
@@ -240,7 +240,7 @@ code:
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-drop-marker-active` | `var(--jam-green)` | `#59C02B` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-label-bg` | `color-mix(in srgb, var(--base-black) 65%, transparent)` | `color-mix(in srgb, #000000 65%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--tierup-stage-bg` | `radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)` | `radial-gradient(circle farthest-corner at 50% 42%, #404040 0%, #171717 38%, #000000 100%)` | — | 1 | 0 | 0 | 1 | 0 | — |
+| `--tierup-stage-bg` | `radial-gradient(circle farthest-corner at 50% 42%, var(--base-neutral-700) 0%, var(--base-neutral-900) 38%, var(--base-black) 100%)` | `radial-gradient(circle farthest-corner at 50% 42%, #404040 0%, #171717 38%, #000000 100%)` | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--tabbar-icon` | `var(--base-neutral-900)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
 | `--tabbar-icon-active` | `var(--foreground)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-icon-inverse` | `var(--muted-on-inverse)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
@@ -277,7 +277,7 @@ code:
 | `--grid-cell-max-width` | `90px` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--grid-thumb-bleed` | `0.75rem` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--grid-thumb-inset` | `4.4%` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--cta-max-width` | `220px` | 〃 | — | 2 | 0 | 0 | 2 | 0 | — |
+| `--cta-max-width` | `220px` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--share-card-max-width` | `360px` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--share-card-image-size` | `70%` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--animate-sync-spin` | `spin 2.4s linear infinite` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
@@ -456,11 +456,11 @@ code:
 | `--shadow-sm` | `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)` | 〃 | `shadow-sm` | 0 | 5 | 0 | 5 | 0 | — |
 | `--shadow-md` | `0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)` | 〃 | `shadow-md` | 0 | 6 | 0 | 6 | 0 | — |
 | `--shadow-lg` | `0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)` | 〃 | `shadow-lg` | 0 | 16 | 0 | 16 | 0 | — |
-| `--blur` | `8px` | 〃 | `blur · backdrop-blur` | 0 | 47 | 0 | 9 | 0 | — |
+| `--blur` | `8px` | 〃 | `blur · backdrop-blur` | 0 | 51 | 0 | 11 | 0 | — |
 | `--shadow` | `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)` | 〃 | `shadow` | 0 | 2 | 0 | 1 | 0 | — |
 | `--radius` | `0.25rem` | 〃 | `rounded` | 0 | 79 | 0 | 45 | 6 | reference 정의(클래스 값만)와 별개로 globals.css에 변수 정의가 있음 |
 | `--background` | `oklch(1 0 0)` | 〃 | `*-background` | 12 | 75 | 0 | 51 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 77 | 598 | 1 | 220 | 6 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 77 | 598 | 2 | 221 | 6 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--card` | `oklch(1 0 0)` | 〃 | `*-card` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover` | `oklch(1 0 0)` | 〃 | `*-popover` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover-foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-popover-foreground` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
@@ -468,7 +468,7 @@ code:
 | `--primary-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-primary-foreground` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary` | `oklch(0.97 0.001 106.424)` | 〃 | `*-secondary` | 0 | 3 | 0 | 3 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary-foreground` | `oklch(0.216 0.006 56.043)` | 〃 | `*-secondary-foreground` | 0 | 2 | 0 | 2 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 249 | 1 | 144 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 248 | 1 | 143 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1010 | 0 | 249 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
@@ -538,6 +538,7 @@ code:
 |---|---|---|
 | `--base-neutral-50` | 기본값 (primitive) | 0 |
 | `--base-neutral-300` | 기본값 (primitive) | 0 |
+| `--base-neutral-700` | 기본값 (primitive) | 1 |
 | `--radius-xs` | 기본값 (primitive) | 1 |
 | `--radius-4xl` | 기본값 (primitive) | 1 |
 | `--spacing-20` | 기본값 (primitive) | 0 |
@@ -556,6 +557,7 @@ code:
 | `--font-weight-light` | 기본값 (primitive) | 0 |
 | `--leading-normal` | 기본값 (primitive) | 0 |
 | `--drop-shadow-xs` | 기본값 (primitive) | 0 |
+| `--tierup-stage-bg` | 컴포넌트 (component) | 0 |
 | `--radius-xs` | 어드민 (admin) | 1 |
 | `--radius-4xl` | 어드민 (admin) | 1 |
 <!-- END generated: gen-token-catalog -->
