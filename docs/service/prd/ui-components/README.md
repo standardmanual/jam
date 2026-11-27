@@ -40,7 +40,7 @@ code:
 | `BadgeRevealCarousel.tsx` | BadgeRevealCarousel | 배지를 얻은 순간 카드를 3D로 넘겨 보는 전체 화면 캐러셀이다. 배지 획득 연출과 보류 아이템 배지 고르기에서 쓴다. | UI/Patterns/BadgeRevealCarousel (12개) |
 | `BottomSheet.tsx` | BottomSheet | 화면 아래에서 올라와 끌어 내려 닫는 시트다. 배지 공유·합성·컬렉션 등 여러 화면에서 쓴다. | UI/Feedback/BottomSheet (4개) |
 | `Button.tsx` | Button | 변형·크기·면을 고르는 기본 버튼이다. 로그인·팔로우·배지 상세 등 거의 모든 화면에서 쓴다. | UI/Buttons/Button (18개) |
-| `Card.tsx` | Card | 흰 면의 둥근 카드 틀이다. 서비스 화면 대부분의 묶음 면이며 tint는 카드 안 구획, inverse는 선택·안내 신호에 쓴다. | UI/Cards/Card (3개) |
+| `Card.tsx` | Card | 흰 면의 둥근 카드 틀이다. 서비스 화면 대부분의 묶음 면이며 tint는 카드 안 구획, inverse는 선택·안내 신호에 쓴다. | UI/Cards/Card (4개) |
 | `Carousel.tsx` | Carousel | 가운데 카드가 선택되는 무한 순환 가로 캐러셀이다. 지도의 장소 카드 모달에서 쓴다. | UI/Navigation/Carousel (3개) |
 | `CategorySticker.tsx` | CategorySticker | 홈 피드 카드 모서리에 붙는 분류 스티커다. 조약돌·물결 모양 바탕에 분류 문구와 JAM 로고 글자를 얹는다. | UI/Cards/CategorySticker (3개) |
 | `Checkbox.tsx` | Checkbox | 라벨이 붙은 체크박스다. 온보딩의 만 14세 이상 확인에서 쓴다. | UI/Forms/Checkbox (2개) |

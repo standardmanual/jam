@@ -85,12 +85,6 @@
   --tabbar-label-size: 0.8125rem;
   --tabbar-label-line-height: 1;
 
-  /* ── 미션 상황 화면 글자 (티켓 20261111_2049) ─────────────── */
-  /* 카드 제목 전용. 시안이 21px인데 글자 눈금에 21px이 없어 이 화면만 따로 둔다.
-     다른 화면에 쓰지 않고, --text-* 눈금은 바꾸지 않는다. 행간 1.5 = 31.5px */
-  --status-card-title-size: 1.3125rem;
-  --status-card-title-line-height: 1.5;
-
   /* ── ListRow 치수 — ListRow 전용이다. 다른 컴포넌트가 가져다 쓰지 않는다. (티켓 20261106_2003 3-2회차) ── */
   --list-row-lead-size: 48px;
   --list-row-indicator-size: 24px;

@@ -8,7 +8,6 @@ import { d, t } from '@/lib/i18n'
 import { formatMissionProgress, missionProgressUnit } from '@/lib/missions/format'
 import { useMissionStatus } from './MissionStatusContext'
 import { gapToFirstText } from './missionStatusStats'
-import styles from './MissionStatus.module.css'
 
 /**
  * 미션 현황 티켓의 «내 요약» 자리(photo 슬롯) — 티켓 20261127_1145.
@@ -21,18 +20,18 @@ export default function MissionSummary() {
 
   if (error) {
     return (
-      <div className={styles.slot}>
+      <div className="flex items-center justify-center min-h-80 px-4 pb-6">
         <p className="m-0 text-base text-foreground break-keep wrap-break-word">{error}</p>
       </div>
     )
   }
   if (!data) {
-    return <div className={styles.slot}>{showLoader && <WanderingEyesLoader />}</div>
+    return <div className="flex items-center justify-center min-h-80 px-4 pb-6">{showLoader && <WanderingEyesLoader />}</div>
   }
 
   // 응답의 me는 두 틀의 합집합이라 아바타·이름만 공통으로 읽고, 나머지는 틀별로 좁힌 뒤 읽는다
-  const avatar = <Avatar src={data.me?.avatarUrl ?? null} alt="" size={96} className={styles.avatar} />
-  const name = <p className={`${styles.name} text-lg font-bold text-foreground`}>{data.me?.displayName ?? '—'}</p>
+  const avatar = <Avatar src={data.me?.avatarUrl ?? null} alt="" size={96} className="border-2 border-foreground" />
+  const name = <p className={"m-0 mt-3 w-full max-w-70 truncate text-center text-lg font-bold text-foreground"}>{data.me?.displayName ?? '—'}</p>
 
   if (data.type === 'ranking') {
     const me = data.me
@@ -43,8 +42,8 @@ export default function MissionSummary() {
           <>
             {avatar}
             {name}
-            <p className={`${styles.topLabel} text-sm text-foreground break-keep wrap-break-word`}>{d.missions.statusMyRecordLabel}</p>
-            <p className={`${styles.topValue} text-5xl font-bold text-foreground`}>
+            <p className={"m-0 mt-3 text-sm text-foreground break-keep wrap-break-word"}>{d.missions.statusMyRecordLabel}</p>
+            <p className={"m-0 tabular-nums text-5xl font-bold text-foreground"}>
               {me ? formatMissionProgress(me.progressValue, missionType) : '—'}
               {me && unit && <span className="text-base font-normal text-foreground">{unit}</span>}
             </p>
@@ -66,8 +65,8 @@ export default function MissionSummary() {
         <>
           {avatar}
           {name}
-          <p className={`${styles.topLabel} text-sm text-foreground break-keep wrap-break-word`}>{d.missions.statusMyStatusLabel}</p>
-          <ListRowChip tone={achieved ? 'done' : 'outline'} size="lg" className={styles.topPill}>
+          <p className={"m-0 mt-3 text-sm text-foreground break-keep wrap-break-word"}>{d.missions.statusMyStatusLabel}</p>
+          <ListRowChip tone={achieved ? 'done' : 'outline'} size="lg" className="mt-1">
             {achieved ? d.missions.achieved : d.missions.notAchieved}
           </ListRowChip>
         </>

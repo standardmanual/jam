@@ -7,7 +7,6 @@ import type { MissionType } from '@/types/database'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 import { MissionStatusContext } from './MissionStatusContext'
 import type { StatusResponse } from './missionStatusTypes'
-import styles from './MissionStatus.module.css'
 
 interface Props {
   missionId: string
@@ -52,7 +51,7 @@ export default function MissionStatusClient({ missionId, missionType, children }
 
   return (
     <MissionStatusContext.Provider value={{ data, error, showLoader, missionType }}>
-      <div className={`${styles.page} bg-background text-foreground`}>
+      <div className={"relative min-h-dvh pb-[calc(var(--page-bottom)+var(--spacing-safe-bottom))] bg-background text-foreground"}>
         <TopNav title={d.missions.backToDetail} />
         {children}
       </div>

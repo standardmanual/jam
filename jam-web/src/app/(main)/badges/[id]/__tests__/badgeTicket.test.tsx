@@ -143,13 +143,15 @@ describe('TicketSummaryBoxView (티켓 20261127_1145)', () => {
   it('위 칸 슬롯과 통계 두 칸을 같은 글자 상자 안에 차례로 그린다', () => {
     expect(html.indexOf('위 칸')).toBeLessThan(html.indexOf('내 순위'))
     expect(html.indexOf('내 순위')).toBeLessThan(html.indexOf('1위와 차이'))
-    expect(html.match(/_titleStat_/g)).toHaveLength(2)
+    expect(html.match(/min-w-0 flex flex-col items-center/g)).toHaveLength(2)
     expect(html).not.toContain('<h1')
   })
 
-  it('통계 칸 값은 줄바꿈하지 않고 28px, 가운데 세로 선은 2px이다', () => {
+  it('통계 칸은 눈금 클래스만 쓴다 — 값은 text-3xl 굵게·줄바꿈 없음, 둘째 칸에만 2px 세로 선', () => {
+    expect(html).toContain('grid grid-flow-col auto-cols-fr border-t-2 border-foreground')
+    expect(html).toMatch(/max-w-full text-3xl font-bold tabular-nums whitespace-nowrap">2위</)
+    expect(html.match(/border-l-2 border-foreground/g)).toHaveLength(1)
     const css = readFileSync(new URL('../BadgeTicket.module.css', import.meta.url), 'utf-8')
-    expect(css).toMatch(/\.titleStatValue\s*\{[^}]*font-size:\s*28px[^}]*white-space:\s*nowrap/)
-    expect(css).toMatch(/\.titleStat \+ \.titleStat\s*\{[^}]*border-left:\s*2px solid/)
+    expect(css).not.toMatch(/\.titleStat/)
   })
 })

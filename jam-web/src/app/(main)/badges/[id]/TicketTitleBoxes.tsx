@@ -46,7 +46,7 @@ export function TicketTitleBoxesView({ chip, name, description }: { chip?: React
   )
 }
 
-/** 요약 상자 통계 칸 하나 — 라벨(12px)과 값(28px 굵게) */
+/** 요약 상자 통계 칸 하나 — 라벨(text-xs)과 값(text-3xl 굵게) */
 export interface TicketSummaryStat {
   label: string
   /** 값 글자(단위를 붙인 한 문자열). 한 줄로 두고 줄바꿈하지 않는다 */
@@ -62,11 +62,14 @@ export function TicketSummaryBoxView({ top, stats }: { top: ReactNode; stats: re
   return (
     <div className={styles.titleBox}>
       <div className={styles.titleTop}>{top}</div>
-      <div className={styles.titleStats}>
-        {stats.map((stat) => (
-          <div key={stat.label} className={styles.titleStat}>
-            <span className={`${styles.titleStatLabel} break-keep wrap-break-word`}>{stat.label}</span>
-            <span className={styles.titleStatValue}>{stat.value}</span>
+      <div className="grid grid-flow-col auto-cols-fr border-t-2 border-foreground">
+        {stats.map((stat, index) => (
+          <div
+            key={stat.label}
+            className={`min-w-0 flex flex-col items-center gap-1 pt-3 px-2 pb-4${index > 0 ? ' border-l-2 border-foreground' : ''}`}
+          >
+            <span className="text-xs break-keep wrap-break-word">{stat.label}</span>
+            <span className="max-w-full text-3xl font-bold tabular-nums whitespace-nowrap">{stat.value}</span>
           </div>
         ))}
       </div>

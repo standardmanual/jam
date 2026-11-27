@@ -9,7 +9,6 @@ import { d, t } from '@/lib/i18n'
 import { formatMissionProgress } from '@/lib/missions/format'
 import { useMissionStatus } from './MissionStatusContext'
 import type { AchievementEntry } from './missionStatusTypes'
-import styles from './MissionStatus.module.css'
 
 /**
  * 달성형 행 — `ListRow`(티켓 20261107_1947, 목록 행 4단계 3-5배치): 랭킹형 `RankingListRow`와 같은 골격.
@@ -44,12 +43,12 @@ function SimpleAvatar({ url }: { url: string | null }) {
   return <UserIcon className="w-6 h-6" />
 }
 
-/** 카드 헤더 — 제목(왼쪽, 굵게)과 인원 표기(오른쪽, 12px)를 기준선에 맞춘다. 면이 검정이라 둘 다 --snow다. 왼쪽 정렬이다 */
+/** 카드 헤더 — 제목(왼쪽, 굵게)과 인원 표기(오른쪽, 12px)를 기준선에 맞춘다. 면이 검정이라 둘 다 Card inverse가 정한 --foreground(--snow)다. 왼쪽 정렬이다 */
 function CardHeader({ title, countLabel }: { title: string; countLabel: string }) {
   return (
-    <div className={styles.cardHeader}>
-      <p className={`${styles.cardTitle} break-keep wrap-break-word`}>{title}</p>
-      <span className={`${styles.cardCount} text-xs`}>{countLabel}</span>
+    <div className="flex items-baseline justify-between gap-2 mb-2">
+      <p className="m-0 text-xl font-bold text-foreground break-keep wrap-break-word">{title}</p>
+      <span className="text-xs text-foreground tabular-nums whitespace-nowrap">{countLabel}</span>
     </div>
   )
 }
@@ -68,13 +67,13 @@ export default function MissionBoard() {
     if (entries.length === 0) return null
     const maxProgress = entries[0]?.progressValue ?? me?.progressValue ?? 1
     return (
-      <div className={styles.cardArea}>
-        <Card tone="inverse" className={styles.darkCard}>
+      <div className="px-4 pb-6">
+        <Card tone="inverse">
           <CardHeader
             title={d.missions.statusAllRanks}
             countLabel={t(d.missions.statusParticipants, { count: data.totalParticipants })}
           />
-          <div className={styles.rows}>
+          <div className="flex flex-col gap-2">
             {entries.map((entry) => (
               <RankingListRow
                 key={entry.userId}
@@ -108,10 +107,10 @@ export default function MissionBoard() {
 
   if (others.length > 0) {
     return (
-      <div className={styles.cardArea}>
-        <Card tone="inverse" className={styles.darkCard}>
+      <div className="px-4 pb-6">
+        <Card tone="inverse">
           <CardHeader title={d.missions.statusAchievementLabel} countLabel={t(d.missions.statusOtherParticipants, { count: otherCount })} />
-          <div className={styles.rows}>
+          <div className="flex flex-col gap-2">
             {others.map((e) => (
               <AchievementRow key={e.userId} e={e} />
             ))}
@@ -123,8 +122,8 @@ export default function MissionBoard() {
   if (!me) return null
   // 달성형에서 내가 참가 중인데 다른 참가자가 없을 때 — 검정 카드 안에 둬서 코랄 면 위 잉크 글자 대신 반전 글자로 읽히게 한다
   return (
-    <div className={styles.cardArea}>
-      <Card tone="inverse" className={styles.darkCard}>
+    <div className="px-4 pb-6">
+      <Card tone="inverse">
         <EmptyState
           icon={<UsersIcon className="w-8 h-8" />}
           title={d.missions.statusNoOtherParticipants}

@@ -6,7 +6,7 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
    * 면 톤.
    * - `default`: `--card-bg`(흰) 면, 테두리 없음. 그림자 없음.
    * - `tint`: `--background-secondary`, 테두리 없음. 흰 카드 안 구획용.
-   * - `inverse`: `--background-inverse`(어두운 반전 면) + `--snow` 글자, 테두리 없음.
+   * - `inverse`: `--background-inverse`(어두운 반전 면) + `--snow` 글자, 테두리 없음. 안에서 글자 토큰(`--foreground`·`--muted`·`--link`)을 반전 값으로 스스로 정하므로 티켓 잉크 구간 안에서도 읽힌다.
    */
   tone?: 'default' | 'tint' | 'inverse';
   children?: ReactNode;
@@ -22,7 +22,7 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
  * 면 레시피(JAM 2.0 라이트, 티켓 20261015_2133):
  *   - default: --card-bg(#ffffff) 면, 테두리 없음. #f5f5f5 바탕(--background) 위에서 면 대비로만 구분한다. 그림자는 쓰지 않는다(티켓 20261108_1940).
  *   - tint:    --background-secondary(테두리 없음). 카드 안 구획용이다. 흰 카드 안에 흰 카드를 겹치지 않고 안쪽 구획은 이 tint를 쓴다.
- *   - inverse: --background-inverse(어두운 반전 면) + --snow 글자, 테두리 없음. 서비스 화면에서는
+ *   - inverse: --background-inverse(어두운 반전 면) + --snow 글자(+ 글자 토큰 --foreground·--muted·--link을 반전 값으로 지정), 테두리 없음. 서비스 화면에서는
  *              선택 표시 같은 신호 용도뿐이다. default와 같이 테두리가 없어 박스 크기가 같다(티켓 20261108_1940).
  *
  * 그 밖의 약속:
@@ -48,6 +48,8 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
     inverse: {
       background: 'var(--background-inverse)',
       color: 'var(--snow)',
+      // 티켓 카드 구간(.cards·.ink)이 되돌린 글자 토큰을 이 면 안에서 다시 반전 글자로 읽히게 한다(티켓 20261127_1555). 호출부 style이 뒤에서 덮는다
+      ...({ '--foreground': 'var(--snow)', '--muted': 'var(--muted-on-inverse)', '--link': 'var(--snow)' } as CSSProperties),
     },
   };
 

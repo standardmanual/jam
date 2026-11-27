@@ -6,7 +6,7 @@
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/missions/[id]/status/MissionStatusClient.test.tsx"
  */
-import { readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -94,10 +94,8 @@ describe('MissionStatusClient — 티켓 골격', () => {
   it('페이지 바탕은 다른 화면과 같은 기본 바탕·글자색이고 상단 바도 배경을 덮어쓰지 않는다', () => {
     const html = render(data)
     expect(html).not.toContain('data-bg=')
-    expect(html).toMatch(/class="_page_[^"]*bg-background text-foreground"/)
-    const css = readFileSync(new URL('./MissionStatus.module.css', import.meta.url), 'utf-8')
-    expect(css).not.toContain('--background-inverse')
-    expect(css).not.toMatch(/\.page\s*\{[^}]*--snow/)
+    expect(html).toMatch(/class="relative min-h-dvh [^"]*bg-background text-foreground"/)
+    expect(existsSync(new URL('./MissionStatus.module.css', import.meta.url))).toBe(false)
   })
 
   it('MISSION 머리 글자는 달성형이다', () => {
@@ -111,14 +109,14 @@ describe('MissionStatusClient — 로딩·오류', () => {
   it('로딩 중에도 티켓 틀은 그려지고(머리·절취선), 로더가 뜨기 전에는 요약 자리만 비어 있다', () => {
     const html = render(null)
     expect(html).toContain('RANKING')
-    expect(html).toContain('_slot_')
+    expect(html).toContain('min-h-80')
     expect(html).not.toContain('내 기록')
   })
 
   it('디바운스를 지나면 요약 자리에 눈 모양 로더가 뜬다', () => {
     hoisted.showLoader = true
     const html = render(null)
-    expect(html).toMatch(/_slot_[^>]*><div class="wandering-eyes"/)
+    expect(html).toMatch(/min-h-80[^>]*><div class="wandering-eyes"/)
   })
 
   it('오류 문구는 요약 자리에 티켓 면 글자색(--foreground)으로 나오고 카드는 그리지 않는다', () => {
@@ -140,13 +138,13 @@ describe('MissionStatusClient — 랭킹형', () => {
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(html).toContain('width:96px;height:96px')
-    expect(html).toContain('_avatar_')
+    expect(html).toContain('border-2 border-foreground')
     expect(html).toContain('text-5xl font-bold')
   })
 
   it('아래 두 칸은 «내 순위»와 «1위와 차이»다(1위 값 30 − 내 값 20 = 10.0km)', () => {
     const html = render(base)
-    const stats = html.slice(html.indexOf('_titleStats_'))
+    const stats = html.slice(html.indexOf('auto-cols-fr'))
     expect(stats.indexOf('내 순위')).toBeLessThan(stats.indexOf('1위와 차이'))
     expect(stats).toContain('>2위<')
     expect(stats).toContain('>10.0km<')
@@ -155,7 +153,7 @@ describe('MissionStatusClient — 랭킹형', () => {
   it('내가 1위이면 «1위와 차이»는 «—»다', () => {
     const me = ranked('me', 1)
     const html = render({ type: 'ranking', entries: [me, ranked('c', 2)], me, totalParticipants: 2 })
-    expect(html).toMatch(/1위와 차이<\/span><span class="_titleStatValue_[^"]*">—</)
+    expect(html).toMatch(/1위와 차이<\/span><span class="[^"]*text-3xl[^"]*">—</)
   })
 
   it('«전체 랭킹» 카드는 검정 면(Card inverse)이고 모든 참가자가 나오며 내 행에만 «나» 원이 있다', () => {
@@ -187,8 +185,8 @@ describe('MissionStatusClient — 랭킹형', () => {
   it('me가 null이면 이름·값·순위·차이가 «—»이고 아바타는 사람 아이콘이다', () => {
     const html = render({ type: 'ranking', entries, me: null, totalParticipants: 3 }, 'activity_count')
     expect(html).toContain('>—</p>')
-    expect(html).toMatch(/내 순위<\/span><span class="_titleStatValue_[^"]*">—</)
-    expect(html).toMatch(/1위와 차이<\/span><span class="_titleStatValue_[^"]*">—</)
+    expect(html).toMatch(/내 순위<\/span><span class="[^"]*text-3xl[^"]*">—</)
+    expect(html).toMatch(/1위와 차이<\/span><span class="[^"]*text-3xl[^"]*">—</)
     expect(html).toContain('<svg')
   })
 
@@ -208,7 +206,7 @@ describe('MissionStatusClient — 랭킹형', () => {
   it('긴 이름은 한 줄 말줄임(최대 280) 클래스를 쓴다', () => {
     const me = ranked('me', 1, { displayName: '아주아주아주아주아주아주아주아주긴이름' })
     const html = render({ type: 'ranking', entries: [me], me, totalParticipants: 1 })
-    expect(html).toContain('_name_')
+    expect(html).toContain('max-w-70 truncate')
   })
 })
 
@@ -228,10 +226,10 @@ describe('MissionStatusClient — 달성형', () => {
 
   it('아래 칸은 «전체 참가자» 한 칸뿐이다(«달성한 참가자»는 두지 않는다)', () => {
     const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
-    const stats = html.slice(html.indexOf('_titleStats_'))
+    const stats = html.slice(html.indexOf('auto-cols-fr'))
     expect(stats).toContain('전체 참가자')
     expect(stats).toContain('>3명<')
-    expect(stats.match(/_titleStat_/g)).toHaveLength(1)
+    expect(stats.match(/min-w-0 flex flex-col/g)).toHaveLength(1)
     expect(html).not.toContain('달성한 참가자')
   })
 
@@ -261,12 +259,14 @@ describe('MissionStatusClient — 달성형', () => {
     const html = render({ type: 'achievement', entries: [], me, totalParticipants: 1 }, 'distance', 'MISSION')
     expect(html).toContain('아직 다른 참가자가 없어요')
     expect(html).toContain('다른 참가자가 생기면 여기에 보여요')
-    expect(html).toMatch(/_darkCard_[^>]*>[\s\S]*아직 다른 참가자가 없어요/)
+    expect(html).toMatch(/background:var\(--background-inverse\)[^>]*>[\s\S]*아직 다른 참가자가 없어요/)
     expect(html).not.toContain('다른 참가자 0명')
   })
 
-  it('카드 제목은 화면 전용 글자 크기 토큰(CSS 모듈)을 쓴다', () => {
+  it('카드 제목은 글자 눈금 text-xl을 쓰고 화면 전용 토큰·덮어쓰기가 없다', () => {
     const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
-    expect(html).toContain('_cardTitle_')
+    expect(html).toContain('text-xl font-bold')
+    expect(html).not.toContain('status-card-title')
+    expect(html).not.toMatch(/darkCard/)
   })
 })

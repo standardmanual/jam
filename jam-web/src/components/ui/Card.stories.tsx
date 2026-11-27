@@ -41,3 +41,28 @@ export const Inverse: Story = {
   args: { tone: 'inverse', children: d.capsule.blockedBanner.line1 },
   decorators: [Narrow],
 };
+
+/**
+ * 티켓 잉크 구간(`.cards`·`.ink`) 안 inverse — 이 구간은 `--foreground`·`--muted`·`--link`를 잉크색으로 되돌리지만,
+ * Card inverse가 자기 안에서 다시 `--snow`·`--muted-on-inverse`로 정하므로 글자가 흰색으로 읽힌다(미션 현황 «전체 랭킹» 카드, 티켓 20261127_1555).
+ * 구간이 되돌린 값을 스토리에서도 같은 변수로 재현한다.
+ */
+export const InverseInInk: Story = {
+  name: '반전 — 잉크 구간 안',
+  args: { tone: 'inverse' },
+  render: (args) => (
+    <div
+      style={{
+        width: 320,
+        ['--foreground' as string]: 'var(--ticket-ink)',
+        ['--muted' as string]: 'color-mix(in srgb, var(--ticket-ink) 80%, transparent)',
+        ['--link' as string]: 'var(--ticket-ink)',
+      }}
+    >
+      <Card {...args}>
+        <p className="m-0 text-base text-foreground">{d.capsule.blockedBanner.line1}</p>
+        <p className="m-0 text-sm text-muted">{d.capsule.blockedBanner.line2NoCount}</p>
+      </Card>
+    </div>
+  ),
+};
