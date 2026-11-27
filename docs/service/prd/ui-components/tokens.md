@@ -67,7 +67,7 @@ code:
 | `--radius-md` | `0.375rem` | 〃 | `rounded-md` | 0 | 92 | 0 | 57 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-lg` | `0.5rem` | 〃 | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-xl` | `0.75rem` | 〃 | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 14 | 109 | 0 | 74 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 14 | 110 | 0 | 75 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-3xl` | `1.5rem` | 〃 | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-4xl` | `2rem` | 〃 | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-full` | `9999px` | 〃 | — | 19 | 0 | 0 | 11 | 0 | — |
@@ -103,8 +103,8 @@ code:
 | `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 964 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 964 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 138 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 138 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 136 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 136 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg--line-height` | `calc(1.75 / 1.125)` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 18 | 0 | 19 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -113,7 +113,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 89 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5734 | 0 | 459 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5738 | 0 | 459 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -144,7 +144,7 @@ code:
 | `--font-weight-normal` | `400` | 〃 | `font-normal` | 0 | 45 | 0 | 21 | 0 | — |
 | `--font-weight-medium` | `500` | 〃 | `font-medium` | 0 | 386 | 0 | 151 | 0 | — |
 | `--font-weight-semibold` | `600` | 〃 | `font-semibold` | 0 | 211 | 0 | 105 | 0 | — |
-| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 298 | 0 | 167 | 0 | — |
+| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 299 | 0 | 167 | 0 | — |
 | `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 2 | 0 | 1 | 0 | — |
 | `--font-weight-black` | `900` | 〃 | `font-black` | 0 | 10 | 0 | 7 | 0 | — |
 | `--tracking-tighter` | `-0.05em` | 〃 | `tracking-tighter` | 0 | 1 | 0 | 1 | 0 | — |
@@ -180,13 +180,13 @@ code:
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 3 | 0 | 0 | 3 | 2 | — |
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 594 | 0 | 218 | 7 | — |
-| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 40 | 250 | 0 | 144 | 2 | — |
+| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 37 | 250 | 0 | 144 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 0 | 16 | 1 | — |
 | `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 35 | 30 | 0 | 39 | 7 | — |
 | `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 2 | 8 | 0 | 6 | 2 | — |
 | `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 2 | 0 | 0 | 2 | 0 | — |
-| `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 15 | 0 | 21 | 1 | — |
-| `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 12 | 4 | 0 | 12 | 1 | — |
+| `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
+| `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | — |
 | `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 2 | 0 | 0 | 2 | 1 | — |
 | `--border` | `var(--base-neutral-200)` | `#e5e5e5` | `*-border` | 11 | 346 | 0 | 137 | 1 | — |
 | `--field-border` | `var(--base-neutral-400)` | `#a3a3a3` | `*-field-border` | 2 | 0 | 0 | 2 | 1 | — |
@@ -471,10 +471,10 @@ code:
 | `--primary-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-primary-foreground` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary` | `oklch(0.97 0.001 106.424)` | 〃 | `*-secondary` | 0 | 3 | 0 | 3 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary-foreground` | `oklch(0.216 0.006 56.043)` | 〃 | `*-secondary-foreground` | 0 | 2 | 0 | 2 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 40 | 250 | 0 | 144 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 37 | 250 | 0 | 144 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1010 | 0 | 249 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 15 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 12 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--destructive` | `oklch(0.577 0.245 27.325)` | 〃 | `*-destructive` | 0 | 116 | 0 | 35 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--border` | `oklch(0.923 0.003 48.717)` | 〃 | `*-border` | 11 | 346 | 0 | 137 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--input` | `oklch(0.923 0.003 48.717)` | 〃 | `*-input` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
@@ -490,7 +490,7 @@ code:
 | `--radius-md` | `calc(var(--radius) * 0.8)` | `calc(0.25rem * 0.8)` | `rounded-md` | 0 | 92 | 0 | 57 | 1 | — |
 | `--radius-lg` | `var(--radius)` | `0.25rem` | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | — |
 | `--radius-xl` | `calc(var(--radius) * 1.4)` | `calc(0.25rem * 1.4)` | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | — |
-| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 14 | 109 | 0 | 74 | 1 | — |
+| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 14 | 110 | 0 | 75 | 1 | — |
 | `--radius-3xl` | `calc(var(--radius) * 2.2)` | `calc(0.25rem * 2.2)` | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | — |
 | `--radius-4xl` | `calc(var(--radius) * 2.6)` | `calc(0.25rem * 2.6)` | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | — |
 

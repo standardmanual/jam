@@ -320,6 +320,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           afterPhoto={
             <>
               <TicketTitleBoxes badge={badgeRow} />
+              {!hasEarned && <NotEarnedNotice />}
               {/* 대표 개체 일련번호 — 본인 뷰 + 현재 보유 중인 개체가 있을 때만, 글자 상자 아래에 노출한다(height=50, 20260903_1423). */}
               {isOwnBadge && representativeSerial ? (
                 <div className="relative z-10 flex justify-center px-4 pt-0 pb-6">
@@ -330,8 +331,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           }
           body={
             <>
-              {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
-              {(isOwnBadge || !hasEarned) && (
+              {/* info-section — 본인 뷰에서 보유 개체 목록이 있을 때만 렌더링 (미획득 안내는 글자 상자 아래로 옮겼다) */}
+              {isOwnBadge && allItemInventory.length > 0 && (
                 <div className="relative z-10 flex flex-col gap-5 px-4 pb-3">
                   {isOwnBadge && allItemInventory.length > 0 && (
                     // activeItemId — 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다(20260907_2059 보완).
@@ -347,11 +348,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                     />
                   )}
 
-                  {!hasEarned && (
-                    <Card className="text-center">
-                      <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-                    </Card>
-                  )}
                 </div>
               )}
 
@@ -426,7 +422,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           dateText={formatTicketDate(checkinEarns[0]?.earned_at)}
           /* 방문 횟수 칩 — 아이템 배지의 등급 칩과 같은 자리(카드 안 이름 바로 위)에 «×N»을 둔다. 2회 이상일 때만 그린다(2026-11-09 사용자 지시) */
           photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} silhouette={ticketColor.silhouette} backgroundAnimation={badgeCardAnimation} />}
-          afterPhoto={<TicketTitleBoxes badge={badgeRow} chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined} />}
+          afterPhoto={
+            <>
+              <TicketTitleBoxes badge={badgeRow} chipExtra={checkinEarns.length > 1 ? <VisitCountChip count={checkinEarns.length} /> : undefined} />
+              {!hasEarned && <NotEarnedNotice />}
+            </>
+          }
           body={
             <>
               {/* info-section — 체크인 배지는 «획득 조건» 카드를 두지 않는다(2026-11-09 사용자 지시) */}
@@ -450,11 +451,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   </Button>
                 )}
 
-                {!hasEarned && (
-                  <Card className="text-center">
-                    <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-                  </Card>
-                )}
               </div>
             </>
           }
@@ -491,7 +487,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         kindLabel={d.badges.ticketKindActivity}
         dateText={formatTicketDate(earned?.earned_at)}
         photo={<TicketPhoto badge={badgeRow} hasEarned={hasEarned} silhouette={ticketColor.silhouette} backgroundAnimation={badgeCardAnimation} />}
-        afterPhoto={<TicketTitleBoxes badge={badgeRow} />}
+        afterPhoto={
+          <>
+            <TicketTitleBoxes badge={badgeRow} />
+            {!hasEarned && <NotEarnedNotice />}
+          </>
+        }
         body={
           <>
             {/* info-section */}
@@ -593,12 +594,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 </Card>
               )}
 
-              {/* 미획득 안내 */}
-              {!hasEarned && (
-                <Card className="text-center">
-                  <p className="text-base text-[var(--muted)]">{d.badges.notEarnedTitle}</p>
-                </Card>
-              )}
             </div>
           </>
         }
@@ -618,6 +613,22 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       ) : (
         <div aria-hidden="true" style={noShareSpacerStyle} />
       )}
+    </div>
+  )
+}
+
+/**
+ * 미획득 안내 카드 — 글자 상자 바로 아래, 절취선 위에 놓는다. 컬렉션 상세의 «컬렉션 완성!» 알림 카드와 같은 자리·같은 검정 면이다
+ * (2026-11-27 사용자 지시, 티켓 20261127_0829). 검정 면이라 어떤 티켓색에서도 글자는 `--accent-foreground`다. 활동·체크인·아이템 세 갈래가 함께 쓴다.
+ */
+function NotEarnedNotice() {
+  return (
+    <div className="relative z-10 px-4 pb-6">
+      <div className="flex flex-col items-center gap-1.5 rounded-2xl bg-accent p-5 text-center">
+        <p className="text-base/normal font-bold break-keep wrap-break-word text-balance" style={{ color: 'var(--accent-foreground)' }}>
+          {d.badges.notEarnedTitle}
+        </p>
+      </div>
     </div>
   )
 }
