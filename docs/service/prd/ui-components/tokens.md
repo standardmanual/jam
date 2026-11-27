@@ -17,7 +17,7 @@ code:
 정본 컴포넌트 목록은 [README](README.md)에 있다.
 
 <!-- BEGIN generated: gen-token-catalog -->
-토큰 441개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 119개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 23개
+토큰 442개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 120개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 23개
 
 **층 규칙**: 색·px·ms 같은 직접 값은 기본값 층에만 둔다. 의미 층과 컴포넌트 층은 기본값을 참조한다.
 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·정본 폴더 등 일부뿐이다.
@@ -42,9 +42,9 @@ code:
 | `--base-neutral-300` | `#d4d4d4` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--base-neutral-400` | `#a3a3a3` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-500` | `#737373` | 〃 | — | 0 | 0 | 0 | 0 | 2 | 다른 토큰의 재료로 쓰임 |
-| `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 0 | 1 | 1 | — |
+| `--base-neutral-600` | `#525252` | 〃 | — | 1 | 0 | 0 | 1 | 2 | — |
 | `--base-neutral-700` | `#404040` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
-| `--base-neutral-800` | `#262626` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
+| `--base-neutral-800` | `#262626` | 〃 | — | 1 | 0 | 0 | 1 | 1 | — |
 | `--base-neutral-900` | `#171717` | 〃 | — | 0 | 0 | 0 | 0 | 9 | 다른 토큰의 재료로 쓰임 |
 | `--base-neutral-950` | `#0a0a0a` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--base-danger-red` | `#d61f1f` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
@@ -68,14 +68,14 @@ code:
 | `--radius-md` | `0.375rem` | 〃 | `rounded-md` | 0 | 92 | 0 | 57 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-lg` | `0.5rem` | 〃 | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-xl` | `0.75rem` | 〃 | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 15 | 110 | 0 | 75 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 15 | 111 | 0 | 76 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-3xl` | `1.5rem` | 〃 | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-4xl` | `2rem` | 〃 | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-full` | `9999px` | 〃 | — | 19 | 0 | 0 | 11 | 0 | — |
 | `--spacing-4` | `4px` | 〃 | — | 7 | 0 | 0 | 3 | 0 | — |
-| `--spacing-8` | `8px` | 〃 | — | 8 | 0 | 0 | 4 | 1 | — |
-| `--spacing-12` | `12px` | 〃 | — | 3 | 0 | 0 | 2 | 3 | — |
-| `--spacing-16` | `16px` | 〃 | — | 4 | 0 | 0 | 3 | 5 | — |
+| `--spacing-8` | `8px` | 〃 | — | 9 | 0 | 0 | 5 | 1 | — |
+| `--spacing-12` | `12px` | 〃 | — | 7 | 0 | 0 | 3 | 3 | — |
+| `--spacing-16` | `16px` | 〃 | — | 7 | 0 | 0 | 4 | 5 | — |
 | `--spacing-20` | `20px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--spacing-24` | `24px` | 〃 | — | 5 | 0 | 0 | 1 | 2 | — |
 | `--spacing-32` | `32px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
@@ -91,7 +91,7 @@ code:
 | `--duration-stagger` | `40ms` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--duration-very-slow` | `500ms` | 〃 | — | 0 | 0 | 0 | 0 | 2 | 다른 토큰의 재료로 쓰임 |
 | `--ease-linear` | `linear` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--ease-smooth-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | 〃 | — | 17 | 0 | 0 | 7 | 9 | — |
+| `--ease-smooth-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | 〃 | — | 18 | 0 | 0 | 8 | 9 | — |
 | `--ease-bounce` | `cubic-bezier(0.34, 1.36, 0.64, 1)` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--ease-out` | `ease-out` | 〃 | `ease-out` | 11 | 13 | 0 | 11 | 2 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--ease-in-out` | `ease-in-out` | 〃 | `ease-in-out` | 0 | 5 | 0 | 4 | 3 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -100,21 +100,21 @@ code:
 | `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--scale-compact` | `0.7` | 〃 | — | 5 | 0 | 0 | 1 | 0 | — |
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
-| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 835 | 0 | 229 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 835 | 0 | 225 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 963 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 963 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 135 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 135 | 0 | 81 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 136 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 136 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg--line-height` | `calc(1.75 / 1.125)` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 19 | 0 | 20 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xl--line-height` | `calc(1.75 / 1.25)` | 〃 | `text-xl` | 1 | 19 | 0 | 19 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 21 | 0 | 21 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xl--line-height` | `calc(1.75 / 1.25)` | 〃 | `text-xl` | 1 | 21 | 0 | 20 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-2xl` | `1.5rem` | 〃 | `text-2xl` | 3 | 88 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5737 | 0 | 459 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5746 | 0 | 460 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -135,8 +135,8 @@ code:
 | `--container-7xl` | `80rem` | 〃 | `max-w-7xl` | 0 | 0 | 0 | 0 | 0 | — |
 | `--text-3xl` | `1.875rem` | 〃 | `text-3xl` | 1 | 33 | 0 | 32 | 0 | — |
 | `--text-3xl--line-height` | `calc(2.25 / 1.875)` | 〃 | `text-3xl` | 1 | 33 | 0 | 32 | 0 | — |
-| `--text-4xl` | `2.25rem` | 〃 | `text-4xl` | 0 | 1 | 0 | 1 | 0 | — |
-| `--text-4xl--line-height` | `calc(2.5 / 2.25)` | 〃 | `text-4xl` | 0 | 1 | 0 | 1 | 0 | — |
+| `--text-4xl` | `2.25rem` | 〃 | `text-4xl` | 0 | 2 | 0 | 2 | 0 | — |
+| `--text-4xl--line-height` | `calc(2.5 / 2.25)` | 〃 | `text-4xl` | 0 | 2 | 0 | 2 | 0 | — |
 | `--text-5xl` | `3rem` | 〃 | `text-5xl` | 0 | 2 | 0 | 2 | 0 | — |
 | `--text-5xl--line-height` | `1` | 〃 | `text-5xl` | 0 | 2 | 0 | 2 | 0 | — |
 | `--font-weight-thin` | `100` | 〃 | `font-thin` | 0 | 0 | 0 | 0 | 0 | — |
@@ -146,7 +146,7 @@ code:
 | `--font-weight-medium` | `500` | 〃 | `font-medium` | 0 | 386 | 0 | 151 | 0 | — |
 | `--font-weight-semibold` | `600` | 〃 | `font-semibold` | 0 | 211 | 0 | 105 | 0 | — |
 | `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 297 | 0 | 167 | 0 | — |
-| `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 2 | 0 | 1 | 0 | — |
+| `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 7 | 0 | 2 | 0 | — |
 | `--font-weight-black` | `900` | 〃 | `font-black` | 0 | 10 | 0 | 7 | 0 | — |
 | `--tracking-tighter` | `-0.05em` | 〃 | `tracking-tighter` | 0 | 1 | 0 | 1 | 0 | — |
 | `--tracking-tight` | `-0.025em` | 〃 | `tracking-tight` | 0 | 8 | 0 | 7 | 0 | — |
@@ -163,8 +163,8 @@ code:
 | `--animate-spin` | `spin 1s linear infinite` | 〃 | `animate-spin` | 0 | 13 | 0 | 9 | 0 | — |
 | `--animate-pulse` | `pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite` | 〃 | `animate-pulse` | 0 | 4 | 0 | 4 | 0 | — |
 | `--aspect-video` | `16 / 9` | 〃 | `aspect-video` | 0 | 2 | 0 | 1 | 0 | — |
-| `--default-transition-duration` | `150ms` | 〃 | `transition · transition-*` | 0 | 282 | 0 | 123 | 0 | — |
-| `--default-transition-timing-function` | `cubic-bezier(0.4, 0, 0.2, 1)` | 〃 | `transition · transition-*` | 0 | 282 | 0 | 123 | 0 | — |
+| `--default-transition-duration` | `150ms` | 〃 | `transition · transition-*` | 0 | 283 | 0 | 124 | 0 | — |
+| `--default-transition-timing-function` | `cubic-bezier(0.4, 0, 0.2, 1)` | 〃 | `transition · transition-*` | 0 | 283 | 0 | 124 | 0 | — |
 | `--default-font-family` | `var(--font-geist-sans)` | 〃 | — | 0 | 0 | 0 | 0 | 0 | Tailwind 기본 스타일이 읽음 |
 | `--default-mono-font-family` | `var(--font-geist-mono)` | 〃 | — | 0 | 0 | 0 | 0 | 0 | Tailwind 기본 스타일이 읽음 |
 
@@ -183,7 +183,7 @@ code:
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 2 | 221 | 6 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 248 | 1 | 143 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 2 | 17 | 1 | — |
-| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 36 | 31 | 0 | 39 | 7 | — |
+| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 38 | 31 | 0 | 40 | 7 | — |
 | `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 5 | 8 | 0 | 6 | 2 | — |
 | `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
@@ -235,9 +235,10 @@ code:
 | `--rarity-rare-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-epic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-mystic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 6 | 0 | 0 | 5 | 0 | — |
-| `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 4 | 0 | 0 | 2 | 0 | — |
+| `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 9 | 0 | 0 | 6 | 0 | — |
+| `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 7 | 0 | 0 | 3 | 0 | — |
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 0 | 1 | 0 | — |
+| `--chapter-card-bg` | `linear-gradient(180deg, var(--base-neutral-600) 0%, var(--base-neutral-800) 100%)` | `linear-gradient(180deg, #525252 0%, #262626 100%)` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-drop-marker-active` | `var(--jam-green)` | `#59C02B` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-label-bg` | `color-mix(in srgb, var(--base-black) 65%, transparent)` | `color-mix(in srgb, #000000 65%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-icon` | `var(--base-neutral-900)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
@@ -486,7 +487,7 @@ code:
 | `--radius-md` | `calc(var(--radius) * 0.8)` | `calc(0.25rem * 0.8)` | `rounded-md` | 0 | 92 | 0 | 57 | 1 | — |
 | `--radius-lg` | `var(--radius)` | `0.25rem` | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | — |
 | `--radius-xl` | `calc(var(--radius) * 1.4)` | `calc(0.25rem * 1.4)` | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | — |
-| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 15 | 110 | 0 | 75 | 1 | — |
+| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 15 | 111 | 0 | 76 | 1 | — |
 | `--radius-3xl` | `calc(var(--radius) * 2.2)` | `calc(0.25rem * 2.2)` | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | — |
 | `--radius-4xl` | `calc(var(--radius) * 2.6)` | `calc(0.25rem * 2.6)` | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | — |
 
