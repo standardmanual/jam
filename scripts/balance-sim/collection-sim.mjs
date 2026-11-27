@@ -1,6 +1,6 @@
 // 컬렉션 첫 완성 시간 모의 실험 (티켓 20261023_1308)
 //
-// 퍼소나마다 아이템 배지가 들어오는 길(동기화, 캡슐, 잠긴 아이템 배지 열기)을 주 단위로 흉내 내고, «내 트라이브의 컬렉션 하나를 한 등급으로
+// 퍼소나마다 아이템 배지가 들어오는 길(동기화, 챕터 오름 보상, 잠긴 아이템 배지 열기. 현행 기준선은 챕터 오름 보상 대신 캡슐)을 주 단위로 흉내 내고, «내 트라이브의 컬렉션 하나를 한 등급으로
 // 처음 완성하는 시간»(Common, Rare, Epic, Mystic 각각)을 잰다. 반복마다 같은 들어옴을 모든 규칙이 함께 써서(짝 비교) 규칙 사이 차이만 드러나게 한다.
 //
 // 등급 올리기 규칙(rule)
@@ -15,7 +15,12 @@
 // 검증: 밸런스 문서 「19 게이미피케이션 밸런스」 5절의 첫 완성 시간 표는 «컬렉션을 고르고 이름만 무작위, 등급 확정»(변형 sure+pick+ownOnly)과 비슷하게 나온다
 //       (러닝 보통 Rare 4.4달, Epic 12달, Mystic 43달, 문서는 3달, 12달, 20~58달).
 // 값: 공용 DB(2026-10-23 읽음)와 밸런스 문서 2~5절. 한계: 시스템 드랍, 다른 유저의 드랍과 픽업, 미션 보상, 단서 레시피, 인벤토리 칸 수는 넣지 않았다.
-// 사용법: node scripts/balance-sim/collection-sim.mjs [반복 횟수=400] [규칙 id 쉼표 목록]   (환경변수 SIM_JSON=결과를 저장할 경로)
+// 들어오는 길 모델(model, 티켓 20261127_1723): capsule = 현행(잼의 3분의 2로 캡슐), 챕터오름-A~E = 캡슐 없음 + 챕터가 오를 때 아이템 배지 보상(후보 값은
+//   chapter-capsule-sim.mjs의 REWARD_MODELS와 같다). 챕터 모델은 주당 진행값(활동 잼 + 서비스 활동 잼 어림)이 CHAPTER_NEED에 닿으면 챕터가 오르고 보상을 낸다.
+//   잠긴 아이템 배지 열기는 두 모델 모두 «잼의 3분의 1»로 같게 둔다(포인트 모델은 chapter-capsule-sim.mjs가 맡는다는 한계). 보상의 아이템 배지도 잠금 비율
+//   JAM.locked를 그대로 쓰고(Q-i 미정), 챕터 오름 보상의 트라이브는 캡슐과 같은 규칙(내 트라이브 80%)을 쓴다(// 추정). 인벤토리 칸 수는 넣지 않았다.
+// 사용법: node scripts/balance-sim/collection-sim.mjs [반복 횟수=400] [규칙 id 쉼표 목록=대표 규칙 3개, '전체'면 전부] [모델 id 쉼표 목록=전체]
+//   (환경변수 SIM_JSON=결과를 저장할 경로)   모델 id: capsule, 챕터오름-A, 챕터오름-B, 챕터오름-C, 챕터오름-D, 챕터오름-E
 const N = Number(process.argv[2] ?? 400)
 const WPM = 365.25 / 12 / 7 // 한 달의 주 수
 const MONTHS = 60
@@ -23,6 +28,20 @@ const MAXW = Math.ceil(MONTHS * WPM)
 
 // ── 설정(공용 DB 값)
 const CAPSULE = { bonusProb: 0.2, otherTribe: 0.2, rarity: [70, 22, 6, 2], pity: 15 }
+const MIX_RARITY = [70, 22, 6, 2] // 믹스(등급 올리기) 결과 등급 확률. 값은 캡슐 등급 확률과 같고, 캡슐 모델이 아니어도 믹스는 이 값을 쓴다
+const CHAPTER_NEED = [870, 1120, 1260, 1600, 1980, 2205, 2700, 3300, 3960] // 챕터 1~9의 필요 잼(상위 티켓 20261127_1720)
+const SERVICE_WEEKLY = Math.min(100, 2 * 5 + 2 * 5 + 0.1 * 30 + 0.5 * 5 + 0.4 * 20) // 추정: chapter-capsule-sim.mjs의 serviceWeeklyEstimate와 같은 값(잠긴 배지 열기 주 2개 + 배지 받기 + 컬렉션 + 믹스 + 미션), 주 상한 100
+const CNT_UP = (c) => (c <= 3 ? 2 : c <= 6 ? 3 : 4) // 마친 챕터 번호 기준 보상 개수(// 추정)
+const CNT_UP_PLUS = (c) => (c <= 3 ? 3 : c <= 6 ? 4 : 5)
+// 챕터 오름 보상 후보(chapter-capsule-sim.mjs의 REWARD_MODELS와 같은 값, 서비스 확정값이 아니라 시뮬레이션 입력이다)
+const REWARD_MODELS = {
+  '챕터오름-A': { count: () => 1, rarity: [70, 22, 6, 2], pity: CAPSULE.pity },
+  '챕터오름-B': { count: CNT_UP, rarity: [70, 22, 6, 2], pity: CAPSULE.pity },
+  '챕터오름-C': { count: CNT_UP, rarity: [40, 35, 18, 7], pity: CAPSULE.pity },
+  '챕터오름-D': { count: CNT_UP, rarity: [20, 45, 25, 10], pity: CAPSULE.pity },
+  '챕터오름-E': { count: CNT_UP_PLUS, rarity: [30, 40, 22, 8], pity: CAPSULE.pity }
+}
+const MODEL_IDS = ['capsule', ...Object.keys(REWARD_MODELS)]
 const JAM = { bonusRolls: 2, divisor: 600, maxProb: 0.25, syncRarity: [84, 13, 2.5, 0.5], streak: 10, locked: 0.25, lockedMin: [30, 60, 120, 240] }
 const CH_TH = [1000, 2300, 3800, 5700, 8500, 11500, 15000, 19000, 23000]
 const CH_COST = [90, 100, 110, 120, 135, 150, 165, 180, 200, 220]
@@ -57,7 +76,11 @@ function weighted(rand, w) {
 }
 
 // ── 아이템 배지가 들어오는 길: 한 번 만들어 모든 규칙이 같이 쓴다(짝을 지어 비교한다)
-function genRun(seed, p) {
+// model: 'capsule'(현행, 잼의 3분의 2로 캡슐) 또는 REWARD_MODELS의 id(캡슐 없음 + 챕터 오름 보상)
+function genRun(seed, p, model = 'capsule') {
+  const reward = model === 'capsule' ? null : REWARD_MODELS[model]
+  let chProg = 0 // 챕터 모델의 현재 챕터 진행값
+  let chNow = 1 // 챕터 모델의 현재 챕터
   const rand = mulberry32(seed)
   const weeks = []
   let streak = 0
@@ -72,7 +95,7 @@ function genRun(seed, p) {
     const nOpen = Math.min(COLLECTIONS.max, COLLECTIONS.start + Math.floor(tm / COLLECTIONS.everyMonths))
     const score = p.chapterScore * tm
     let ch = 1
-    for (const th of CH_TH) if (score >= th) ch++
+    if (!reward) for (const th of CH_TH) if (score >= th) ch++
     const avail = []
     const emit = (tribe, tier) => {
       totalItems++
@@ -93,8 +116,29 @@ function genRun(seed, p) {
         emit(0, tier)
       }
     }
+    // 챕터 모델: 캡슐 없이 진행값이 필요 잼에 닿으면 챕터가 오르고(넘친 잼 이월, 한 번에 여러 챕터) 오를 때마다 보상을 낸다
+    if (reward) {
+      chProg += p.weeklyJam + SERVICE_WEEKLY
+      while (chNow < 10 && chProg >= CHAPTER_NEED[chNow - 1]) {
+        chProg -= CHAPTER_NEED[chNow - 1]
+        const cnt = reward.count(chNow)
+        chNow++
+        let anyEpic = false
+        for (let i = 0; i < cnt; i++) {
+          const tribe = rand() < CAPSULE.otherTribe ? 1 + Math.floor(rand() * 4) : 0
+          let tier
+          if (i === 0 && epicMiss >= reward.pity) tier = 2 + weighted(rand, reward.rarity.slice(2))
+          else if (streak >= JAM.streak) tier = 1 + weighted(rand, reward.rarity.slice(1))
+          else tier = weighted(rand, reward.rarity)
+          streak = tier === 0 ? streak + 1 : 0
+          if (tier >= 2) anyEpic = true
+          emit(tribe, tier)
+        }
+        epicMiss = anyEpic ? 0 : epicMiss + 1
+      }
+    }
     // 캡슐(잼의 3분의 2)
-    capsuleCarry += (p.weeklyJam * (2 / 3)) / CH_COST[ch - 1]
+    if (!reward) capsuleCarry += (p.weeklyJam * (2 / 3)) / CH_COST[ch - 1]
     while (capsuleCarry >= 1) {
       capsuleCarry -= 1
       const cnt = 1 + (rand() < CAPSULE.bonusProb ? 1 : 0)
@@ -112,7 +156,7 @@ function genRun(seed, p) {
       epicMiss = anyEpic ? 0 : epicMiss + 1
     }
     // 잠긴 아이템 배지 열기(잼의 3분의 1, 먼저 들어온 것부터)
-    unlockPool += p.weeklyJam / 3
+    unlockPool += p.weeklyJam / 3 // 챕터 모델도 같은 값으로 둔다(포인트 모델은 chapter-capsule-sim.mjs가 맡는다)
     while (queue.length && unlockPool >= JAM.lockedMin[queue[0][3]]) {
       unlockPool -= JAM.lockedMin[queue[0][3]]
       avail.push(queue.shift())
@@ -242,7 +286,7 @@ function firstComplete(run, T, rule, policy, seed, opts = {}) {
         }
         if (r < 0) break
         consume(r, mats)
-        const tier = sure ? r + 1 : upP !== null ? r + (rand() < upP ? 1 : 0) : r + weighted(rand, CAPSULE.rarity.slice(r))
+        const tier = sure ? r + 1 : upP !== null ? r + (rand() < upP ? 1 : 0) : r + weighted(rand, MIX_RARITY.slice(r))
         const tribe = ownOnly ? 0 : rand() < CAPSULE.otherTribe ? 1 + Math.floor(rand() * 4) : 0
         let c = Math.floor(rand() * nOpen)
         if (pick && tribe === 0) {
@@ -276,39 +320,53 @@ const CASES = [
   { id: '조정4 지금 규칙+재료 3개', rule: 'new', policy: 'short', opts: { mats: 3 } },
   { id: '조정5 조정2+재료 3개', rule: 'new', policy: 'short', opts: { ownOnly: true, pick: true, mats: 3 } }
 ]
-const onlyIds = process.argv[3] ? process.argv[3].split(',') : null
+// 기본으로 돌리는 대표 규칙: 등급 올리기 없음(아래쪽 기준), 지금 규칙, 조정3(밸런스 문서 5절과 비슷하게 나오는 변형). '전체'를 주면 CASES 전부
+const DEFAULT_CASE_IDS = ['없음', '지금 규칙·전부 재료', '조정3 조정2+등급 확정']
+const onlyIds = process.argv[3] === '전체' ? null : process.argv[3] ? process.argv[3].split(',') : DEFAULT_CASE_IDS
+const models = process.argv[4] ? process.argv[4].split(',') : MODEL_IDS
 const results = {}
 const incomeStats = {}
 for (const [pname, p] of Object.entries(PERSONAS)) {
   results[pname] = {}
-  const runs = []
-  for (let i = 0; i < N; i++) runs.push(genRun(1000 + i, p))
-  let tot = 0
-  const tierSum = [0, 0, 0, 0]
-  for (const r of runs) for (let w = 0; w < Math.floor(12 * WPM); w++) for (const it of r.weeks[w].items) { tot++; tierSum[it[3]]++ }
-  incomeStats[pname] = { perMonth: +(tot / N / 12).toFixed(1), rarePerWeek: +(tierSum[1] / N / (12 * WPM)).toFixed(2), epicPerMonth: +(tierSum[2] / N / 12).toFixed(2), mysticPerMonth: +(tierSum[3] / N / 12).toFixed(3) }
-  for (const cs of CASES) {
-    if (onlyIds && !onlyIds.includes(cs.id)) continue
-    results[pname][cs.id] = []
-    for (let T = 0; T < 4; T++) {
-      const times = []
-      for (let i = 0; i < N; i++) times.push(firstComplete(runs[i], T, cs.rule, cs.policy, 777000 + i, cs.opts) / WPM)
-      times.sort((a, b) => a - b)
-      const q = (f) => times[Math.min(N - 1, Math.floor(N * f))]
-      const within = (m) => times.filter((x) => x <= m).length / N
-      results[pname][cs.id].push({ T, median: q(0.5), p25: q(0.25), p75: q(0.75), in12: within(12), in24: within(24), in60: within(60) })
+  incomeStats[pname] = {}
+  for (const model of models) {
+    results[pname][model] = {}
+    const runs = []
+    for (let i = 0; i < N; i++) runs.push(genRun(1000 + i, p, model))
+    let tot = 0
+    const tierSum = [0, 0, 0, 0]
+    for (const r of runs) for (let w = 0; w < Math.floor(12 * WPM); w++) for (const it of r.weeks[w].items) { tot++; tierSum[it[3]]++ }
+    incomeStats[pname][model] = { perMonth: +(tot / N / 12).toFixed(1), rarePerWeek: +(tierSum[1] / N / (12 * WPM)).toFixed(2), epicPerMonth: +(tierSum[2] / N / 12).toFixed(2), mysticPerMonth: +(tierSum[3] / N / 12).toFixed(3) }
+    for (const cs of CASES) {
+      if (onlyIds && !onlyIds.includes(cs.id)) continue
+      results[pname][model][cs.id] = []
+      for (let T = 0; T < 4; T++) {
+        const times = []
+        for (let i = 0; i < N; i++) times.push(firstComplete(runs[i], T, cs.rule, cs.policy, 777000 + i, cs.opts) / WPM)
+        times.sort((a, b) => a - b)
+        const q = (f) => times[Math.min(N - 1, Math.floor(N * f))]
+        const within = (m) => times.filter((x) => x <= m).length / N
+        results[pname][model][cs.id].push({ T, median: q(0.5), p25: q(0.25), p75: q(0.75), in12: within(12), in24: within(24), in60: within(60) })
+      }
     }
   }
 }
 
 const fmt = (x) => (x === Infinity ? '5년 넘음' : x >= 24 ? `${x.toFixed(0)}달` : `${x.toFixed(1)}달`)
-console.log(`반복 ${N}회, 최대 ${MONTHS}달\n`)
-console.log('들어오는 양(첫 12달 평균):', JSON.stringify(incomeStats), '\n')
-for (const [pname, byCase] of Object.entries(results)) {
+console.log(`반복 ${N}회, 최대 ${MONTHS}달, 모델: ${models.join(', ')}, 규칙: ${onlyIds ? onlyIds.join(', ') : '전체'}\n`)
+console.log('들어오는 양(첫 12달 평균, 퍼소나 > 모델: 월 아이템 배지 / Rare 주당 / Epic 월 / Mystic 월):')
+for (const [pname, byModel] of Object.entries(incomeStats)) {
+  console.log(`  ${pname}`)
+  for (const [model, st] of Object.entries(byModel)) console.log(`    ${model.padEnd(10)} ${st.perMonth} / ${st.rarePerWeek} / ${st.epicPerMonth} / ${st.mysticPerMonth}`)
+}
+console.log()
+for (const [pname, byModel] of Object.entries(results)) {
   console.log(`## ${pname}  (중앙값 [25%~75%] / 12달 안 완성 비율)`)
-  for (const [id, arr] of Object.entries(byCase)) {
-    console.log(id.padEnd(22), arr.map((x) => `${TIER_NAMES[x.T]} ${fmt(x.median)} [${fmt(x.p25)}~${fmt(x.p75)}] ${Math.round(x.in12 * 100)}%`).join(' | '))
+  for (const [model, byCase] of Object.entries(byModel)) {
+    for (const [id, arr] of Object.entries(byCase)) {
+      console.log(`${model.padEnd(10)} ${id.padEnd(22)}`, arr.map((x) => `${TIER_NAMES[x.T]} ${fmt(x.median)} [${fmt(x.p25)}~${fmt(x.p75)}] ${Math.round(x.in12 * 100)}%`).join(' | '))
+    }
   }
   console.log()
 }
-if (process.env.SIM_JSON) (await import('node:fs')).writeFileSync(process.env.SIM_JSON, JSON.stringify({ N, MONTHS, incomeStats, results }, null, 1))
+if (process.env.SIM_JSON) (await import('node:fs')).writeFileSync(process.env.SIM_JSON, JSON.stringify({ N, MONTHS, models, incomeStats, results }, null, 1))
