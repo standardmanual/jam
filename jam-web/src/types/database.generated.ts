@@ -1055,6 +1055,62 @@ export type Database = {
         }
         Relationships: []
       }
+      chapter_jam_backfill: {
+        Row: {
+          after_chapter_jam: number
+          after_chapter_no: number
+          before_capsule_full_count: number
+          before_chapter_jam: number
+          before_chapter_no: number
+          computed_jam: number
+          created_at: string
+          ledger_fills: number
+          old_gauge_jam: number | null
+          promoted_chapters: number[]
+          seeded_event_keys: string[]
+          user_id: string
+          wallet_balance: number
+        }
+        Insert: {
+          after_chapter_jam: number
+          after_chapter_no: number
+          before_capsule_full_count: number
+          before_chapter_jam: number
+          before_chapter_no: number
+          computed_jam: number
+          created_at?: string
+          ledger_fills: number
+          old_gauge_jam?: number | null
+          promoted_chapters?: number[]
+          seeded_event_keys?: string[]
+          user_id: string
+          wallet_balance: number
+        }
+        Update: {
+          after_chapter_jam?: number
+          after_chapter_no?: number
+          before_capsule_full_count?: number
+          before_chapter_jam?: number
+          before_chapter_no?: number
+          computed_jam?: number
+          created_at?: string
+          ledger_fills?: number
+          old_gauge_jam?: number | null
+          promoted_chapters?: number[]
+          seeded_event_keys?: string[]
+          user_id?: string
+          wallet_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_jam_backfill_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_jam_events: {
         Row: {
           amount: number
