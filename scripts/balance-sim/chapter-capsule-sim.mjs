@@ -12,10 +12,13 @@
 //   ⑤ 인벤토리 보류 주 비율·잼 소멸  ⑥ 서비스 활동 잼 상한 있음/없음 짝 비교  ⑦ 잼 조건 배지·미션 영향  + 19.2절 목표 대조
 //   ⑧ 등급별 월 아이템 배지(Rare 주당, Epic·Mystic 월)와 출처 비중 + 안 비교 표(기준 유저)
 //   챕터 모드는 ②(챕터별 가득 참 주당 횟수)와 잼 소멸이 없어 «-»로 둔다. ⑤의 «보류 주%»는 «보상이 빈칸을 기다린 주 비율»이다.
+//   ⑨ 동기화 막힘(챕터 모드만, 티켓 20261127_1752): 막힌 주 비율, 막힘 시작 횟수, 평균·최장 막힘 길이, 미뤄진 활동 최대 개수, 서비스 활동 잼 손실률
 //
 // 사용법: node scripts/balance-sim/chapter-capsule-sim.mjs [반복 횟수=400] [안 id 쉼표 목록=전체]   (환경변수 SIM_JSON=결과를 저장할 경로)
 //   안 id: 현행양, 목표역산안, 목표역산안-상한없음(이상 mode capsule), 챕터오름-A, 챕터오름-B, 챕터오름-C, 챕터오름-D, 챕터오름-E(이상 mode chapter)
 //   보조 환경변수: CLEAR_MULT(비우는 속도 배율, 기본 1), SERVICE_MULT(서비스 활동 발생 배율, 기본 1) — 추정값의 민감도를 볼 때 쓴다.
+//   BLOCK_SYNC(기본 1, 챕터 모드에만 적용): 1이면 비우기·보상 받기 뒤에도 보상 대기열이 남은 주의 동기화를 막는다(실제 구현 Q-c, C2a·C3b를 옮긴 것).
+//     막힌 주의 활동은 잃지 않고 쌓였다가 풀린 주에 한꺼번에 처리하고, 막힌 주의 서비스 활동 잼은 지급하지 않는다(코드로 확인한 사실). 0이면 막힘 없이 A3 때와 같다.
 //
 // 값의 출처: 운영 로직 4.4, 5.4, 6.7, 7.4, 12.4, 14.1절과 게이미피케이션 밸런스 2~3절. 공용 DB inventory_policy.max_slots(2026-10-28 읽음).
 // 한계(운영 로직에 없어 // 추정 으로 표시한 입력): 서비스 활동 잼 고정값·상한·종류별 주당 발생 횟수, 퍼소나별 주당 비우는 개수,
@@ -33,6 +36,7 @@ const MAXW = Math.ceil(MONTHS * WPM)
 const Y1 = Math.floor(12 * WPM) // 첫 12달(주)
 const CLEAR_MULT = Number(process.env.CLEAR_MULT ?? 1)
 const SERVICE_MULT = Number(process.env.SERVICE_MULT ?? 1)
+const BLOCK_SYNC = Number(process.env.BLOCK_SYNC ?? 1) !== 0 // 챕터 모드 동기화 막힘(티켓 20261127_1752). 캡슐 모드에는 적용하지 않는다
 
 // ── 입력 상수(출처는 줄마다)
 const CAPSULE = { bonusProb: 0.2, rarity: [70, 22, 6, 2], pity: 15 } // 5.4절
@@ -159,9 +163,10 @@ function sim(p, sc, seed) {
   const rS = mulberry32(seed + 7000001) // 서비스 활동 발생(안과 무관하게 같다)
   const rI = mulberry32(seed + 13000003) // 아이템 추첨
   const rU = mulberry32(seed + 19000007) // 비우기·열기 날짜
-  const m = { reach: {}, compCh: Array(11).fill(0), weeksCh: Array(11).fill(0), sync12: 0, cap12: 0, ptsItem12: 0, ptsFix12: 0, spend12: 0, bal12: 0, backlog12: 0, holdWeeks: 0, nearFull: 0, lost: 0, svcRaw: 0, svcGot: 0, wkAct: [], wkTot: [], cumAct: {}, cumTot: {}, unlockN12: 0, tier12: [0, 0, 0, 0], tierSrc12: { sync12: [0, 0, 0, 0], cap12: [0, 0, 0, 0] } }
+  const m = { reach: {}, compCh: Array(11).fill(0), weeksCh: Array(11).fill(0), sync12: 0, cap12: 0, ptsItem12: 0, ptsFix12: 0, spend12: 0, bal12: 0, backlog12: 0, holdWeeks: 0, nearFull: 0, lost: 0, svcRaw: 0, svcGot: 0, wkAct: [], wkTot: [], cumAct: {}, cumTot: {}, unlockN12: 0, blockWeeks: 0, blockWeeks12: 0, blockStreaks: 0, blockStreaks12: 0, blockStreakMax: 0, deferredActsMax: 0, svcLostBlocked: 0, tier12: [0, 0, 0, 0], tierSrc12: { sync12: [0, 0, 0, 0], cap12: [0, 0, 0, 0] } }
   const isChapter = sc.mode === 'chapter'
   let actCarry = rA()
+  let blockRun = 0 // 지금 이어지는 막힘 길이(주)
   let ch = 1
   let inCh = 0
   let need = sc.amounts[0]
@@ -250,10 +255,23 @@ function sim(p, sc, seed) {
     inv -= clr
     drain(w)
     settle(w)
+    // 동기화 막힘(챕터 모드): 비우기·보상 받기 뒤에도 보상 대기열이 남으면 이 주의 동기화가 막힌다. 커서가 움직이지 않아 활동은 쌓였다가 풀린 주에 한꺼번에 들어온다
+    const blocked = isChapter && BLOCK_SYNC && pend.length > 0
+    if (blocked) {
+      if (blockRun === 0) {
+        m.blockStreaks++
+        if (w < Y1) m.blockStreaks12++
+      }
+      blockRun++
+      m.blockWeeks++
+      if (w < Y1) m.blockWeeks12++
+      if (blockRun > m.blockStreakMax) m.blockStreakMax = blockRun
+    } else blockRun = 0
     // 동기화: 활동마다 확정 개수 + 보너스 두 번
     let actJam = 0
     actCarry += p.acts
-    while (actCarry >= 1) {
+    if (blocked) m.deferredActsMax = Math.max(m.deferredActsMax, Math.floor(actCarry))
+    while (!blocked && actCarry >= 1) {
       actCarry -= 1
       const j = Math.floor(p.jamPerAct * (1 - JAM_JITTER + 2 * JAM_JITTER * rA()))
       actJam += j
@@ -305,6 +323,11 @@ function sim(p, sc, seed) {
       weekUsed += g
     }
     m.svcRaw += raw
+    // 막힌 주는 서비스 활동 잼을 지급하지 않는다(지급 0, 보충 없음). 잃은 양은 상한을 적용했을 때 받았을 양이다
+    if (blocked) {
+      m.svcLostBlocked += weekUsed
+      weekUsed = 0
+    }
     m.svcGot += weekUsed
     // 캡슐 채우기: 잼을 받을 수 없는 동안(보류 2개)의 잼은 사라진다(D9)
     const intake = actJam + weekUsed
@@ -347,7 +370,7 @@ const f2 = (x) => (Number.isFinite(x) ? x.toFixed(2) : '-')
 const mo12 = 12
 const tierPerMonth = (r) => ({ rareWk: r.tier12[1] / (mo12 * WPM), epic: r.tier12[2] / mo12, mystic: r.tier12[3] / mo12, mysticEvery: r.tier12[3] > 0 ? mo12 / r.tier12[3] : Infinity })
 const out = {}
-console.log(`반복 ${N}회, 최대 ${MONTHS}달, 인벤토리 ${SLOTS}칸, CLEAR_MULT=${CLEAR_MULT}, SERVICE_MULT=${SERVICE_MULT}\n`)
+console.log(`반복 ${N}회, 최대 ${MONTHS}달, 인벤토리 ${SLOTS}칸, CLEAR_MULT=${CLEAR_MULT}, SERVICE_MULT=${SERVICE_MULT}, BLOCK_SYNC=${BLOCK_SYNC ? 1 : 0}\n`)
 console.log('=== [역산 후보 · 계산값 · 시뮬레이션 아님] 기준 유저(러닝 보통)의 주당 잼 활동 333 + 서비스 어림, 19.2절 목표에서 거꾸로 ===')
 console.log(`주당 잼 ${INV.J}(서비스 어림 ${INV.J - BASE_ACT}, 추정), 챕터에 머무는 주의 비율 g=${INV.g}, 현행 양 90 기준 챕터 1 주당 가득 참 ${(333 / 90).toFixed(1)}번(전부 캡슐에 쓸 때, 산술)`)
 console.log('챕터 | 캡슐 양(후보) | 100% 횟수(후보) | 목표 가득 참 주당 | 이 챕터를 마칠 때까지 누적(달)')
@@ -380,7 +403,18 @@ for (const sc of SCENARIOS) {
       tierCap12: tierAvg((r) => r.tierSrc12.cap12), // 출처 cap12: mode capsule은 캡슐, mode chapter는 챕터 오름 보상
       near: a('nearFull') / MAXW,
       svcGot: a('svcGot') / MAXW,
-      svcRaw: a('svcRaw') / MAXW
+      svcRaw: a('svcRaw') / MAXW,
+      // ⑨ 동기화 막힘(챕터 모드 BLOCK_SYNC=1에서만 0보다 크다)
+      blockPct12: a('blockWeeks12') / Y1,
+      blockPct: a('blockWeeks') / MAXW,
+      blockStarts12: a('blockStreaks12'),
+      blockLen12: sumArr(runs.map((r) => r.blockStreaks12)) ? sumArr(runs.map((r) => r.blockWeeks12)) / sumArr(runs.map((r) => r.blockStreaks12)) : NaN,
+      blockLen: sumArr(runs.map((r) => r.blockStreaks)) ? sumArr(runs.map((r) => r.blockWeeks)) / sumArr(runs.map((r) => r.blockStreaks)) : NaN,
+      blockMaxAvg: a('blockStreakMax'),
+      blockMax: Math.max(...runs.map((r) => r.blockStreakMax)),
+      deferredAvg: a('deferredActsMax'),
+      deferredMax: Math.max(...runs.map((r) => r.deferredActsMax)),
+      svcLostPct: a('svcRaw') ? a('svcLostBlocked') / a('svcRaw') : NaN
     }
     const a5 = sortNum(runs.map((r) => (r.reach[5] ?? Infinity) / WPM))
     const a10 = sortNum(runs.map((r) => (r.reach[10] ?? Infinity) / WPM))
@@ -425,6 +459,14 @@ for (const sc of SCENARIOS) {
     const cp = r.tierCap12.slice(1).map((x) => f2(x / mo12)).join('/')
     const tot = sumArr(r.tier12)
     console.log(' ', pn.padEnd(10), '|', f1(tot / mo12), '|', f2(t.rareWk), '|', f2(t.epic), '|', `${f2(t.mystic)}(${Number.isFinite(t.mysticEvery) ? f1(t.mysticEvery) : '-'}달에 1번)`, '|', `${Math.round((sumArr(r.tierSync12) / tot) * 100)}/${Math.round((sumArr(r.tierCap12) / tot) * 100)}%`, '|', sy, '|', cp)
+  }
+  // ⑨ 동기화 막힘(챕터 모드만)
+  if (sc.mode === 'chapter') {
+    console.log(`-- ⑨ [실측 · 시뮬레이션] 동기화 막힘(첫 12달 기준 / 전체 기간), BLOCK_SYNC=${BLOCK_SYNC ? 1 : 0} | 막힌 주% 12달/전체 | 막힘 시작 횟수(12달) | 평균 막힘 길이(주) 12달/전체 | 최장 막힘(주) 평균/최대 | 미뤄진 활동 최대 개수 평균/최대 | 서비스 활동 잼 손실률%`)
+    for (const pn of Object.keys(PERSONAS)) {
+      const r = out[sc.id][pn]
+      console.log(' ', pn.padEnd(10), '|', `${(r.blockPct12 * 100).toFixed(1)}%/${(r.blockPct * 100).toFixed(1)}%`, '|', f1(r.blockStarts12), '|', `${f1(r.blockLen12)}/${f1(r.blockLen)}`, '|', `${f1(r.blockMaxAvg)}/${r.blockMax}`, '|', `${f1(r.deferredAvg)}/${r.deferredMax}`, '|', Number.isFinite(r.svcLostPct) ? `${(r.svcLostPct * 100).toFixed(1)}%` : '-')
+    }
   }
 }
 
