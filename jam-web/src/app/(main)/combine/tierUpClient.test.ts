@@ -238,7 +238,7 @@ describe('tierUpRarityNote / tierUpResultMessage', () => {
       tierUpResultMessage('rare', [{ rarity: 'epic' }]),
       tierUpResultMessage('rare', [{ rarity: 'rare' }]),
       tierUpResultMessage('rare', [{}]),
-      d.combine.tierUp.description,
+      ...d.combine.tierUp.luck,
       d.combine.tierUp.entrySubtitle,
     ].join('\n')
     expect(all).not.toMatch(/%|퍼센트/)
@@ -326,11 +326,10 @@ describe('d.combine.tierUp 문구', () => {
     expect(copy).not.toMatch(/5개|받을 컬렉션|컬렉션 고르기|다른 컬렉션을 골라|%|퍼센트/)
     expect(d.combine.tierUp).not.toHaveProperty('collectionPicker')
     expect(d.combine.tierUp).not.toHaveProperty('invalidCollection')
-    expect(d.combine.tierUp.description).toContain('6개')
-    // 짧다(2026-11-10 사용자 결정, «더 짧게») — 두 문장 이하, 45자 안쪽. «레벨업»은 트라이브 레벨의 말이고 항상 오른다는 말도 쓰지 않는다
-    expect(d.combine.tierUp.description).not.toMatch(/레벨업|올랐|항상/)
-    expect(d.combine.tierUp.description.match(/[.!?]/g)!.length).toBeLessThanOrEqual(2)
-    expect(d.combine.tierUp.description.length).toBeLessThanOrEqual(45)
+    // 행운 문구는 7개이고 둘째 줄로 나뉜다(프로토타입 `LUCK`). 확률처럼 들리는 말·항상 오른다는 말을 쓰지 않는다
+    expect(d.combine.tierUp.luck).toHaveLength(7)
+    for (const line of d.combine.tierUp.luck) expect(line).not.toMatch(/레벨업|올랐|항상|확률/)
+    expect(d.combine.tierUp.title).toBe('등급 UP')
     expect(d.combine.tierUp.groupShort).toBe('6개부터 넣을 수 있어요')
   })
 })

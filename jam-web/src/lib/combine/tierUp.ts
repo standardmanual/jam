@@ -23,7 +23,7 @@
  *    빈칸이 모자라면 결과를 받지 않은 결과로 남기고(재료는 소모됨) 받기 전에는 새 믹스와 등급 올리기를 할 수 없다. 잠긴 결과를 가리는 방식은 믹스와 같다.
  *  - 응답의 결과 배지에는 `id`·`name`·`rarity` 외에 `imageUrl`(`badges.image_url`, 없으면 null)을 싣는다. 믹스는 레시피의 보상 배지 정보로 그림을 찾지만
  *    등급 올리기에는 레시피가 없어서다. 잠긴 결과는 그림도 가리므로 `imageUrl`이 null이다.
- *  - 잠기지 않은 결과 배지에는 설명문 `description`(`badges.description`, 비어 있으면 null)도 싣는다. 결과 연출(`TierUpRevealOverlay`)이 문장 줄로 보여 준다(티켓 20261112_2141).
+ *  - 잠기지 않은 결과 배지에는 설명문 `description`(`badges.description`, 비어 있으면 null)도 싣는다. 옛 결과 연출이 문장 줄로 보여 줬다(티켓 20261112_2141). 가차머신 결과(티켓 20261127_2225)는 이 설명문을 쓰지 않지만 응답 형식은 그대로 둔다.
  *    잠긴 결과는 이름·그림처럼 `description` 키도 싣지 않는다.
  *  - 챕터 점수 «믹스 성공»(20점)은 시도마다 새로 만든 UUID를 원천 id로 센다. 성공 기록 표(`user_combine_success_logs`)와 JAM! 행동 지표는 쓰지 않는다
  *    (`recipe_id`가 필수라 담을 수 없고, 레시피 첫 성공 같은 조건은 레시피가 있는 믹스의 것이다). 추적은 개체 이력(`custody_events` Consume, `inventory_item_events` received)이다.

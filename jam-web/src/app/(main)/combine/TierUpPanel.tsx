@@ -1,14 +1,14 @@
 'use client'
 
-import { MixerSlot } from '@/components/ui/MixerSlot'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { RarityBadge } from '@/components/ui/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
-import Button from '@/components/ui/Button'
 import InlineNotice from '@/components/ui/InlineNotice'
 import { ArrowDownIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
+import type { Ref } from 'react'
 import BagItemCell from './BagItemCell'
+import TierUpGachaStage, { type TierUpGachaHandle } from './TierUpGachaStage'
 import {
   tierUpRarityNote,
   type TierUpMaterial,
@@ -17,10 +17,11 @@ import {
 } from './tierUpClient'
 
 /**
- * 등급 올리기 화면 본문 (티켓 20261022_2119 3회, 채원 사전 판정 2026-10-23) — 서비스 전용 조립 컴포넌트, MODULAR 승격은 하지 않는다.
+ * 등급 UP 화면 본문 (티켓 20261022_2119 3회, 가차머신 리뉴얼 티켓 20261127_2225) — 서비스 전용 조립 컴포넌트, MODULAR 승격은 하지 않는다.
  *
- * 그리기만 한다. 담은 칸·시트 열림·제출 중 상태와 `/api/combine/tier-up` 호출은 `CombineClient`가 갖는다(`PendingResultsSheet`와 같은 분리).
- * 위에서 아래로 설명 문단, 슬롯 6칸(3+3), 등급 안내 한 줄, (조건부) 안내, 제출 버튼, 재료 시트 순이다.
+ * 그리기만 한다. 고른 배지·시트 열림 상태와 `/api/combine/tier-up` 호출은 `CombineClient`가 갖는다(`PendingResultsSheet`와 같은 분리).
+ * 가운데에 가차머신 무대(`TierUpGachaStage`)가 있고, «배지 넣기»가 재료 시트(`BottomSheet` + `TierUpSheetContent`)를 연다.
+ * 머신 아래에 막힘 안내(`pendingBlockedNote`·`noEnoughNotice`)가 놓인다. 설명 문장·슬롯·제출 버튼·«넣은 배지는 사라져요»는 없다.
  * «확률 안내» 링크는 두지 않는다(사용자 지시 2026-11-10, 티켓 20261110_1510). 확률 안내는 푸터 링크로만 들어간다.
  * 받을 컬렉션은 유저가 고르지 않으므로 행도 시트도 없다(티켓 20261108_2322, 사용자 결정 2026-11-08).
  * 확률 숫자·퍼센트는 어디에도 쓰지 않는다(UX 라이팅 §3.3).
@@ -31,24 +32,19 @@ const TEXT = 'text-sm text-foreground break-keep wrap-break-word text-balance'
 const PARAGRAPH = `m-0 ${TEXT}`
 
 interface Props<T extends TierUpMaterial> {
-  /** 칸 순서대로 6개 — 목록에서 찾을 수 없는 개체는 호출부가 이미 null로 걸렀다 */
-  slots: (T | null)[]
-  /** 담을 수 있는 아이템 배지가 하나도 없으면 빈 칸이 잠긴 모양(locked)이다 */
-  noMaterials: boolean
-  /** 첫 재료를 담은 뒤에만 값이 있다. 줄 자리는 항상 잡아 둔다 */
-  rarityNote: string | null
+  stageRef: Ref<TierUpGachaHandle>
+  /** 지금까지 고른 배지 수(0~6) */
+  count: number
   /** 6개 이상 가진 등급이 하나도 없다 */
   showNoEnoughNotice: boolean
-  canSubmit: boolean
-  submitting: boolean
   pendingBlocked: boolean
-  onOpenSheet: (slotIndex: number) => void
-  onRemove: (slotIndex: number) => void
-  onSubmit: () => void
+  onOpenSheet: () => void
   sheetOpen: boolean
   onCloseSheet: () => void
   sheet: TierUpSheetView<T>
   onPick: (itemId: string) => void
+  onAgain: () => void
+  onHandoff: () => void
 }
 
 function SheetCells<T extends TierUpMaterial>({ cells, onPick }: { cells: TierUpSheetCell<T>[]; onPick: (itemId: string) => void }) {
@@ -60,7 +56,8 @@ function SheetCells<T extends TierUpMaterial>({ cells, onPick }: { cells: TierUp
           name={item.badge.name}
           imageUrl={item.badge.image_url}
           state={state}
-          onClick={() => state === 'active' && onPick(item.id)}
+          releasable
+          onClick={() => (state === 'active' || state === 'used') && onPick(item.id)}
         />
       ))}
     </div>
@@ -105,78 +102,40 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
 }
 
 export default function TierUpPanel<T extends TierUpMaterial>({
-  slots,
-  noMaterials,
-  rarityNote,
+  stageRef,
+  count,
   showNoEnoughNotice,
-  canSubmit,
-  submitting,
   pendingBlocked,
   onOpenSheet,
-  onRemove,
-  onSubmit,
   sheetOpen,
   onCloseSheet,
   sheet,
   onPick,
+  onAgain,
+  onHandoff,
 }: Props<T>) {
+  const notices = (pendingBlocked || showNoEnoughNotice) && (
+    <div id="tier-up-notices" className="flex w-full flex-col gap-2">
+      {/* «배지 넣기»가 막힌 이유 — 말 없이 막지 않는다 */}
+      {pendingBlocked && <InlineNotice>{d.combine.tierUp.pendingBlockedNote}</InlineNotice>}
+      {showNoEnoughNotice && <InlineNotice>{d.combine.tierUp.noEnoughNotice}</InlineNotice>}
+    </div>
+  )
   return (
     <>
-      <div className="px-4 pt-4">
-        <p className={`${PARAGRAPH} text-center`}>{d.combine.tierUp.description}</p>
-      </div>
+      <TierUpGachaStage
+        ref={stageRef}
+        count={count}
+        disabled={pendingBlocked || showNoEnoughNotice}
+        sheetOpen={sheetOpen}
+        onInsert={onOpenSheet}
+        onAgain={onAgain}
+        onHandoff={onHandoff}
+        notice={notices}
+        describedBy="tier-up-notices"
+      />
 
-      <div className="flex-1 px-4 pt-2 pb-6">
-        {/* 6칸은 레시피 믹서와 같이 3열(3+3)이다. 제출 중에는 칸을 건드릴 수 없다(MixerSlot에 disabled가 없어 핸들러를 넘기지 않는다) */}
-        <div className="grid grid-cols-3 gap-2">
-          {slots.map((item, index) => (
-            // 슬롯 래퍼의 번호는 결과 연출(`TierUpRevealOverlay`)이 재료 그림의 화면 자리를 재는 데 쓴다
-            <div key={index} data-tier-up-slot={index}>
-              <MixerSlot
-                status={item ? 'filled' : noMaterials ? 'locked' : 'empty'}
-                name={item?.badge.name}
-                imageUrl={item?.badge.image_url}
-                onClick={item || submitting ? undefined : () => onOpenSheet(index)}
-                onRemove={item && !submitting ? () => onRemove(index) : undefined}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* 등급 안내 한 줄 — 줄이 생겨도 레이아웃이 밀리지 않게 자리를 항상 잡는다. 진행률 문구는 쓰지 않는다 */}
-        <p aria-live="polite" className={`${TEXT} mt-2 min-h-5`}>
-          {rarityNote}
-        </p>
-
-        {showNoEnoughNotice && (
-          <InlineNotice className="mt-2">{d.combine.tierUp.noEnoughNotice}</InlineNotice>
-        )}
-      </div>
-
-      {/* CTA — 레시피 믹서의 CTA(`CombineClient.tsx`, `max-w-[var(--cta-max-width)]` 버튼)와 같은 모양이다. 기존 `CombineClient.test.tsx`가 믹서 트리에서 이 버튼을
-          요소 그대로 찾아 부르므로 컴포넌트로 추출하면 시험이 깨진다 — 추출을 취소하고 복사한다(채원 판정의 취소 조건). 믹서 쪽을 고치면 이쪽도 맞춘다 */}
-      <div className="px-4 pb-6 flex flex-col items-center gap-2">
-        <Button
-          variant="primary"
-          fullWidth
-          loading={submitting}
-          disabled={!canSubmit || pendingBlocked}
-          aria-describedby={pendingBlocked ? 'tier-up-pending-note' : undefined}
-          onClick={onSubmit}
-          className="max-w-[var(--cta-max-width)]"
-        >
-          {submitting ? d.combine.tierUp.submitLoading : d.combine.tierUp.submit}
-        </Button>
-        {/* 제출이 막힌 이유 — 말 없이 막지 않는다. 읽혀야 하는 정보라 muted가 아니라 foreground로 둔다 */}
-        {pendingBlocked && (
-          <p id="tier-up-pending-note" className={`${PARAGRAPH} self-stretch`}>
-            {d.combine.tierUp.pendingBlockedNote}
-          </p>
-        )}
-        <p className="m-0 text-xs text-muted text-center break-keep wrap-break-word text-balance">{d.combine.tierUp.burnNotice}</p>
-      </div>
-
-      {/* 재료 시트 — 칸 하나를 눌러 열고 6개까지 이어서 담는다. 6칸이 차면 호출부가 닫는다 */}
+      {/* 재료 시트 — «배지 넣기»로 열고 6개까지 이어서 고른다. 6개가 차면 호출부가 닫고 바로 제출한다. 고른 배지를 다시 누르면 빠진다 */}
       <BottomSheet open={sheetOpen} onClose={onCloseSheet} title={d.combine.bagTitle}>
         <div className="px-6 py-6">
           <TierUpSheetContent sheet={sheet} onPick={onPick} />

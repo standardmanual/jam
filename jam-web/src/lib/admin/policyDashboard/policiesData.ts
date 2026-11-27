@@ -858,7 +858,7 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch8-tier-up-recipes',
     chapter: 8,
     chapterTitle: '인벤토리, 컬렉션, 믹스',
-    title: '등급 올리기 규칙 (레시피 없음)',
+    title: '등급 UP 규칙 (레시피 없음)',
     type: 'code_constant',
     currentSpec:
       '레시피를 만들지 않고 규칙 하나로 처리 (같은 등급의 아이템 배지 6개를 내면 새 아이템 1개를 받음, 중복 없음, 유저는 컬렉션을 고르지 않음, 재료는 트라이브·컬렉션·아이템 이름 무관, Mystic도 재료가 되고 Mystic 재료는 윗등급이 없어 확률 설정과 무관하게 Mystic 100%, 결과 등급은 재료 등급의 바로 위가 윗등급 확률(기본 70%)이고 같은 등급이 나머지(기본 30%), 아이템은 유저의 소속 트라이브와 상관없이 서비스의 활성 컬렉션(공개 기간 안, 드랍 제외 아님) 전체에서 정한 등급의 것을 아이템 배지마다 같은 확률로 균등 추첨, 소속 트라이브가 없는 유저도 할 수 있음, 서비스의 활성 컬렉션 전체에 재료 등급과 바로 위 등급의 아이템이 모두 있어야 시작할 수 있고(Mystic 재료는 Mystic만 있으면 됨) 아니면 서버가 재료를 소각하기 전에 거절함, 정한 등급의 아이템이 없는 경우(방어)에도 재료를 소각하기 전에 거절하고 아래 등급으로 내려가지 않음, 같은 확률표를 확률 안내 페이지가 재료 등급별 표로 보임)',
@@ -872,13 +872,13 @@ export const POLICIES_DATA: readonly PolicyItem[] = [
     id: 'ch8-tier-up-probability',
     chapter: 8,
     chapterTitle: '인벤토리, 컬렉션, 믹스',
-    title: '등급 올리기 윗등급 확률',
+    title: '등급 UP 윗등급 확률',
     type: 'admin_link',
     currentSpec:
       '기본 70% (0~100%, 재료 등급의 바로 위가 나올 확률이고 나머지는 같은 등급, Common·Rare·Epic 재료 모두 같은 값, Mystic 재료는 이 값과 무관하게 Mystic 100%, 바꾸면 확률 안내 페이지에도 함께 반영되고 저장 전에 확인창이 뜸)',
     dbTable: 'combine_policy',
     dbColumn: 'tier_up_probability',
-    userExperience: '같은 등급 6개로 등급 올리기를 하면 설정한 확률로 한 등급 위가 나오고, 나머지는 같은 등급이 나와요.',
+    userExperience: '같은 등급 6개로 등급 UP를 하면 설정한 확률로 한 등급 위가 나오고, 나머지는 같은 등급이 나와요.',
     basisDoc: '운영 로직 8.4절, 8.6절, 19.1절',
     ticketId: '20261023_1648',
     adminLink: {
