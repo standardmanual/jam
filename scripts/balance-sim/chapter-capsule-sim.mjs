@@ -16,7 +16,7 @@
 //
 // 사용법: node scripts/balance-sim/chapter-capsule-sim.mjs [반복 횟수=400] [안 id 쉼표 목록=전체]   (환경변수 SIM_JSON=결과를 저장할 경로)
 //   안 id: 현행양, 목표역산안, 목표역산안-상한없음(이상 mode capsule), 챕터오름-A, 챕터오름-B, 챕터오름-C, 챕터오름-D, 챕터오름-E(이상 mode chapter)
-//   보조 환경변수: CLEAR_MULT(비우는 속도 배율, 기본 1), SERVICE_MULT(서비스 활동 발생 배율, 기본 1) — 추정값의 민감도를 볼 때 쓴다.
+//   보조 환경변수: SLOTS(인벤토리 칸 수, 기본 10), CLEAR_MULT(비우는 속도 배율, 기본 1), SERVICE_MULT(서비스 활동 발생 배율, 기본 1) — 추정값의 민감도를 볼 때 쓴다.
 //   BLOCK_SYNC(기본 1, 챕터 모드에만 적용): 1이면 비우기·보상 받기 뒤에도 보상 대기열이 남은 주의 동기화를 막는다(실제 구현 Q-c, C2a·C3b를 옮긴 것).
 //     막힌 주의 활동은 잃지 않고 쌓였다가 풀린 주에 한꺼번에 처리하고, 막힌 주의 서비스 활동 잼은 지급하지 않는다(코드로 확인한 사실). 0이면 막힘 없이 A3 때와 같다.
 //
@@ -46,7 +46,7 @@ const CHAPTER_NEED = [870, 1120, 1260, 1600, 1980, 2205, 2700, 3300, 3960] // �
 const LOCKED_PTS = [30, 60, 120, 240] // 7.4절 최소값(현행은 잼이었고, 후보안은 같은 숫자를 포인트로 쓴다)
 const ITEM_PTS = [10, 20, 50, 100] // 14.1절 아이템 배지 열림 포인트
 const QUEST_POINTS = 100 // 14.1절 퀘스트 완료
-const SLOTS = 10 // 공용 DB inventory_policy.max_slots, 2026-10-28 읽음
+const SLOTS = Number(process.env.SLOTS ?? 10) // 인벤토리 칸 수. 기본 10은 A3 때 읽은 값(2026-10-28)이다. 라이브 inventory_policy.max_slots는 2026-11-27에 30이었다(SLOTS=30으로 본다)
 const JAM_JITTER = 0.3 // 추정: 활동 한 번의 잼이 평균의 ±30% 안에서 흔들린다
 const BASE_FIXED_PTS = 100 // 추정: 러닝 보통의 주당 고정 포인트(액티비티·체크인 배지, 컬렉션, 믹스). 보통 유저 월 800~900(14.3절)에 맞춤
 const BASE_CLEAR = 6 // 추정: 러닝 보통이 컬렉션 장착·믹스로 주당 비우는 아이템 배지 수
