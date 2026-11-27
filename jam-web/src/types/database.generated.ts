@@ -1034,16 +1034,19 @@ export type Database = {
       chapter_definitions: {
         Row: {
           chapter_no: number
+          required_jam: number | null
           required_score: number
           updated_at: string
         }
         Insert: {
           chapter_no: number
+          required_jam?: number | null
           required_score: number
           updated_at?: string
         }
         Update: {
           chapter_no?: number
+          required_jam?: number | null
           required_score?: number
           updated_at?: string
         }
@@ -4372,6 +4375,7 @@ export type Database = {
       user_chapters: {
         Row: {
           capsule_full_count: number
+          chapter_jam: number
           chapter_no: number | null
           total_score: number
           updated_at: string
@@ -4379,6 +4383,7 @@ export type Database = {
         }
         Insert: {
           capsule_full_count?: number
+          chapter_jam?: number
           chapter_no?: number | null
           total_score?: number
           updated_at?: string
@@ -4386,6 +4391,7 @@ export type Database = {
         }
         Update: {
           capsule_full_count?: number
+          chapter_jam?: number
           chapter_no?: number | null
           total_score?: number
           updated_at?: string
