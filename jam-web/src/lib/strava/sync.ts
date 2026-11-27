@@ -46,7 +46,7 @@ import { classifyStravaSyncFailure, recordStravaSyncFailure } from '@/lib/strava
 // JAM 2.0 잼 정산과 대량 수령 경보(티켓 20261017_1423) — 서버 전용 모듈. 이 파일에서만 부른다.
 import { getJamPolicy } from '@/lib/jam/policy'
 import { settleActivities, type JamSettlementItem } from '@/lib/jam/settlement'
-import { runSyncCapsuleAutoFill } from '@/lib/capsule/sync-auto-fill'
+import { processChapterRise } from '@/lib/chapter/rise'
 import { alertMassEarnIfNeeded, readMassEarnBaseline } from '@/lib/jam/massEarnAlert'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
@@ -54,7 +54,7 @@ import { recordDailySyncAndEvaluate, evaluateCheckinUsageBadges, type UsageBadge
 // JAM! 행동 지표(미션·컬렉션·가입 경과일·활동일·체크인 일수) 판정 — 동기화 끝에서 한 번 부른다
 // (티켓 20261001_0633). 호출 지점별로 어떤 키를 넘기는지는 jamActionProgressTriggers.ts가 정한다.
 import { evaluateJamActionBadges, type JamActionTrigger } from '@/lib/badge-engine/jamActionBadges'
-import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS, jamTriggersForCapsuleOpen } from '@/lib/badge-engine/jamActionProgressTriggers'
+import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS } from '@/lib/badge-engine/jamActionProgressTriggers'
 import {
   getJamActivityType,
   metersToKm,
@@ -466,9 +466,6 @@ async function evaluateWithoutNewActivities(
   userId: string,
   isFirstSync: boolean
 ): Promise<ProcessFetchedResult> {
-  // 새 활동이 없어도 가득 찬 채 남은 캡슐(인벤토리를 비웠거나 트라이브를 고른 뒤)은 «다음 동기화의 맨 앞에서» 열려야 한다(티켓 20261028_1733 3회).
-  // 던지지 않는다. 챕터 오름 처리의 챕터 배지 판정은 건너뛰므로(열기 없이 보류만 생긴 오름도 같다, 티켓 20261028_1734 3회) 챕터가 올랐으면 아래 판정에 `chapter_reached`를 더해 이어서 읽는다.
-  const capsuleStep = await runSyncCapsuleAutoFill(supabase, userId)
   const activityBadgeIds = isFirstSync
     ? await evaluateBadges(userId, [], { skipInitialSyncFlagUpdate: true })
     : await evaluateBadges(userId, [])
@@ -476,15 +473,7 @@ async function evaluateWithoutNewActivities(
   // 동기화에서도 따라잡는다(티켓 20261001_0633, R4). 오래 쉰 계정은 배지의 보조 키(최근 30일 활동일)가 막는다.
   // 획득은 결산과 earnedBadgeIds에 합치되, 반환의 `badges` 수에는 넣지 않는다(사용량 배지와 같다).
   const jamBadgeIds = (
-    await evaluateJamActionSafely(
-      supabase,
-      userId,
-      [
-        ...JAM_EMPTY_SYNC_TRIGGERS,
-        ...(capsuleStep.opened || capsuleStep.chapterRose ? (['chapter_reached'] as const) : []),
-        ...(capsuleStep.opened ? jamTriggersForCapsuleOpen() : []),
-      ]
-    )
+    await evaluateJamActionSafely(supabase, userId, JAM_EMPTY_SYNC_TRIGGERS)
   ).map((b) => b.id)
   await notifyActivityBadgesEarned(supabase, userId, [...activityBadgeIds, ...jamBadgeIds], [])
   return {
@@ -928,11 +917,11 @@ export async function processFetchedActivities(
     jamPolicy
   )
 
-  // 캡슐 자동 채움 (티켓 20261028_1733 3회, 운영 로직 5장): 정산으로 지갑에 들어온 잼(과 지난번에 열지 못해 가득 찬 채 남은 캡슐)으로
-  // «열기 → 채우기 → 가득 차면 열기»를 지갑이 빌 때까지 되풀이한다. 던지지 않는다 — 채움·열기·기록이 실패해도 동기화는 계속된다.
-  // 열기마다의 챕터 배지 판정은 건너뛴다: 아래 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 DB의 지금 챕터를 읽어 이어서 판정한다.
-  // 자동으로 열린 결과는 «아직 보지 않은 캡슐 결과» 한 건으로 남는다(`runSyncCapsuleAutoFill`).
-  const capsuleStep = await runSyncCapsuleAutoFill(supabase, userId)
+  // 챕터 오름 처리 (C2a, 티켓 20261127_1729): 정산이 새 진행값에 쌓으며 승급한 챕터(`reachedChapters`)로 소식·피드를 보낸다. 던지지 않는다.
+  // 챕터 배지 판정은 건너뛴다: 아래 동기화 끝 판정(`JAM_SYNC_TRIGGERS`의 `chapter_reached`)이 DB의 지금 챕터를 읽어 이어서 판정한다(이중 판정 규칙, `chapter/rise.ts`).
+  if (jamSettlement.reachedChapters.length > 0) {
+    await processChapterRise({ userId, reachedChapters: jamSettlement.reachedChapters }, { skipBadgeEvaluation: true })
+  }
   await alertMassEarnIfNeeded({ userId, earned: jamSettlement.total, baseline: massEarnBaseline, policy: jamPolicy })
 
   // 정산한 모든 활동에 아이템 배지를 발급한다(티켓 20261017_1424 2회, 운영 로직 6.2절). 소속 트라이브가 없으면 아이템 배지만 건너뛴다.
@@ -1019,13 +1008,8 @@ export async function processFetchedActivities(
   // 이미 끝나 주간 활동일이 이번 배치를 본다. 체크인 루프나 미션 판정 직후에 따로 부르면 활동 기록이 아직
   // 없어 이번 배치를 못 보고, 호출이 세 번이면 배지 읽기도 세 번이다. 미션 완료·컬렉션 보정은 이 시점에
   // 이미 DB에 있다. 판정이 던져도 동기화는 계속된다(evaluateJamActionSafely).
-  // 자동 채움으로 캡슐이 열렸으면 캡슐 열기 지표(연 횟수·다른 트라이브 아이템 종류 수)를 같은 판정에서 함께 다시 본다 — 열기 위치가 사용자 행동에서
-  // 동기화로 옮겼다(옛 `/api/capsule/open`은 티켓 20261028_1742 1회에서 지웠다). 판정 키는 `jamTriggersForCapsuleOpen`이다. 열린 개체는 인벤토리에 이미 들어가 있다.
-  const jamEarned = await evaluateJamActionSafely(
-    supabase,
-    userId,
-    capsuleStep.opened ? [...JAM_SYNC_TRIGGERS, ...jamTriggersForCapsuleOpen()] : JAM_SYNC_TRIGGERS
-  )
+  // 챕터가 올랐으면 `JAM_SYNC_TRIGGERS`의 `chapter_reached`가 DB의 지금 챕터를 읽어 챕터 배지를 판정한다. 캡슐 열기 지표는 동기화에서 더 판정하지 않는다(C2a).
+  const jamEarned = await evaluateJamActionSafely(supabase, userId, JAM_SYNC_TRIGGERS)
   earnedBadgeIds.push(...jamEarned.map((b) => b.id))
 
   // ① 결산에 활동배지 + JAM! 사용량 배지 + JAM! 행동 지표 배지를 함께 싣는다 (묶음 단위는 KST 하루라 대표
@@ -1140,7 +1124,7 @@ export async function syncStravaActivities(
   // 정지 여부를 읽지 못하면 던져 동기화하지 않는다. 수동 경로(/api/strava/sync)와 콜백 직후 동기화가 모두 이 함수를 지난다.
   await assertNotSuspended(supabase, userId)
 
-  // 캡슐이 가득 차고 인벤토리 빈칸이 필요 칸수보다 적으면 동기화하지 않는다(티켓 20261105_0101, 상위 20261105_0100). 이 지점은 토큰 복호화·Strava 호출·
+  // 대기 보상이 있고 인벤토리 빈칸이 필요 칸수보다 적으면 동기화하지 않는다(티켓 20261105_0101, 상위 20261105_0100). 이 지점은 토큰 복호화·Strava 호출·
   // last_synced_at 선점 앞이라 활동 기록과 조회 커서가 움직이지 않고, 풀린 뒤 다음 동기화가 이어서 가져온다. 보류 고르기 대기와 겹치면 이 안내가 먼저다.
   // 판정은 DB 함수 capsule_receive_blocked가 단일 원천이다. 읽지 못하면 던져 동기화하지 않는다.
   // 막힘을 읽기 전에 따라잡기 지급을 한 번 시도한다(티켓 20261105_1438 R2): 빈칸이 대기 보상 개수 이상이면 지급하고 남은 잼을 채우므로, 풀린 유저는 막히지 않고 이어서 동기화한다.
@@ -1149,7 +1133,7 @@ export async function syncStravaActivities(
   const receiveBlock = await readCapsuleReceiveBlocked(supabase, userId)
   if (receiveBlock.blocked) {
     console.info(
-      `[syncStravaActivities] 캡슐이 가득 차 있고 인벤토리 빈칸 ${receiveBlock.free} < 필요 ${receiveBlock.needed}라 동기화하지 않음 (userId: ${userId})`,
+      `[syncStravaActivities] 대기 보상이 있고 인벤토리 빈칸 ${receiveBlock.free} < 필요 ${receiveBlock.needed}라 동기화하지 않음 (userId: ${userId})`,
     )
     throw new CapsuleInventoryBlockedError(receiveBlock.free, receiveBlock.needed)
   }

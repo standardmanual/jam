@@ -2,8 +2,8 @@
  * lib/jam/settlement — 잼 정산은 챕터 오름을 만들지 않는다 (티켓 20261019_1316 → 20261028_1733 3회에서 바뀜)
  *
  * 고정하는 것:
- * - 정산은 챕터 점수를 부르지 않으므로 챕터가 오르지 않고, 오름 처리(`processChapterRise`)도 부르지 않는다. 점수 RPC가 올림 응답을 돌려주는 가짜여도 마찬가지다.
- *   챕터 오름은 캡슐 열기(`lib/capsule/open.ts`의 `counted` 열기)가 만든다 — 그쪽 시험은 `lib/capsule/__tests__`.
+ * - 정산은 옛 챕터 점수(`chapter_add_score`)를 부르지 않고, 오름 처리(`processChapterRise`)도 직접 부르지 않는다. 오른 챕터는 `reachedChapters`로 돌려줄 뿐이고 오름 처리는 호출한 동기화가 한다(C2a, 티켓 20261127_1729).
+ * - 승급 모드(`chapter_jam_apply`의 `p_promote: true`)로 부르고 응답의 `reachedChapters`가 정산 결과에 담긴다.
  * - 정산 항목·합계는 그대로다.
  * 공용 DB와 실제 오름 처리(소식·판정)는 부르지 않는다 — 가짜 클라이언트와 가짜 오름 처리만 쓴다.
  *
@@ -39,7 +39,7 @@ function makeClient(reached: number[]): SupabaseClient {
       if (name === 'chapter_add_score') {
         return { data: [{ score_added: args.p_amount as number, current_chapter: reached.length > 0 ? Math.max(...reached) : 2, reached_chapters: reached }], error: null }
       }
-      if (name === 'chapter_jam_apply') return { data: { ok: true, duplicate: false, applied: args.p_amount }, error: null }
+      if (name === 'chapter_jam_apply') return { data: { ok: true, duplicate: false, applied: args.p_amount, reachedChapters: reached }, error: null }
       return { data: { amount: args.p_amount, source_activity_id: args.p_source_activity_id }, error: null }
     },
   } as unknown as SupabaseClient
@@ -55,8 +55,8 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('settleActivities — 챕터 오름 처리를 부르지 않는다 (티켓 20261028_1733 3회)', () => {
-  it('점수 RPC가 오름을 돌려줄 수 있는 클라이언트여도 오름 처리를 부르지 않고 점수 RPC도 부르지 않는다(새 진행값 적립 chapter_jam_apply는 B4가 부른다)', async () => {
+describe('settleActivities — 승급 모드로 적립하고 오름 처리는 직접 부르지 않는다 (C2a, 티켓 20261127_1729)', () => {
+  it('chapter_jam_apply를 p_promote true로 불러 오른 챕터를 결과에 담고, 오름 처리와 옛 점수 RPC는 부르지 않는다', async () => {
     const client = makeClient([2, 3])
     const rpcSpy = vi.spyOn(client, 'rpc')
 
@@ -64,7 +64,9 @@ describe('settleActivities — 챕터 오름 처리를 부르지 않는다 (티�
 
     expect(riseMock).not.toHaveBeenCalled()
     expect(rpcSpy.mock.calls.map(([name]) => name)).toEqual(['jam_apply', 'chapter_jam_apply'])
+    expect(rpcSpy.mock.calls[1][1]).toMatchObject({ p_event_key: 'activity_settlement:act-1', p_promote: true })
     expect(result.total).toBe(90)
     expect(result.items).toEqual([{ stravaId: 1, activityId: 'act-1', amount: 90, earnedOn: '2026-09-12' }])
+    expect(result.reachedChapters).toEqual([2, 3])
   })
 })

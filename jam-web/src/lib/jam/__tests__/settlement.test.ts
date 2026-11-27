@@ -9,8 +9,9 @@
  * - 같은 활동을 두 번 정산해도 원장은 한 줄. 활동 하나가 실패해도 나머지는 정산, 던지지 않는다.
  * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회): 정산이 `chapter_add_score`를 부르지 않는다. 정산 순서는 오래된 활동부터이고,
  *   같은 활동을 두 번 보내도 원장은 한 줄이다.
- * - 새 진행값 적립(B4 이중 쓰기, 티켓 20261127_1727): 정산에 성공한 활동마다 `activity_settlement:<활동 id>` 키로 `chapter_jam_apply`를 `p_promote: false`로 부른다. 양은 원장에 기록된 양이다.
+ * - 새 진행값 적립과 승급(C2a, 티켓 20261127_1729): 정산에 성공한 활동마다 `activity_settlement:<활동 id>` 키로 `chapter_jam_apply`를 `p_promote: true`로 부른다. 양은 원장에 기록된 양이다.
  *   잼 0 활동·`jam_apply` 실패 활동은 부르지 않고, 적립이 실패해도 정산 결과와 원장은 그대로다.
+ * - 이번 정산으로 새로 오른 챕터는 `reachedChapters`로 모은다(여러 활동에서 오른 챕터 합침, 중복 제거, 오른 순서). 중복 키(`duplicate`)·적립 실패·챕터 없음은 모으지 않는다.
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/jam/__tests__/settlement.test.ts
@@ -132,6 +133,8 @@ function makeLedgerClient(opts: {
   activitiesError?: boolean
   /** `chapter_jam_apply`가 RPC 오류를 돌려준다 */
   chapterFails?: boolean
+  /** 활동 id → 그 활동을 처음 적립할 때 응답에 실을 오른 챕터 */
+  reachedByActivity?: Record<string, number[]>
 }): { supabase: SupabaseClient; ledger: Ledger } {
   const ledger: Ledger = { lines: new Map(), balance: 0, rpcCalls: [], chapterCalls: [], chapterKeys: new Set(), otherRpcNames: [], order: [] }
   const supabase = {
@@ -156,7 +159,8 @@ function makeLedgerClient(opts: {
         const key = args.p_event_key as string
         if (ledger.chapterKeys.has(key)) return { data: { ok: true, duplicate: true, applied: 0 }, error: null }
         ledger.chapterKeys.add(key)
-        return { data: { ok: true, duplicate: false, applied: args.p_amount }, error: null }
+        const activityId = key.replace('activity_settlement:', '')
+        return { data: { ok: true, duplicate: false, applied: args.p_amount, reachedChapters: opts.reachedByActivity?.[activityId] ?? [] }, error: null }
       }
       if (name !== 'jam_apply') {
         ledger.otherRpcNames.push(name)
@@ -263,7 +267,7 @@ describe('settleActivities', () => {
       NOW
     )
     expect(ledger.rpcCalls).toEqual([])
-    expect(result).toEqual({ total: 0, items: [] })
+    expect(result).toEqual({ total: 0, items: [], reachedChapters: [] })
   })
 
   it('활동 하나의 정산이 실패해도 나머지는 정산하고 던지지 않는다', async () => {
@@ -278,7 +282,7 @@ describe('settleActivities', () => {
   it('활동 id를 읽지 못하면 정산을 건너뛰고 던지지 않는다', async () => {
     const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1' }, activitiesError: true })
     const result = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
-    expect(result).toEqual({ total: 0, items: [] })
+    expect(result).toEqual({ total: 0, items: [], reachedChapters: [] })
     expect(ledger.rpcCalls).toEqual([])
   })
 
@@ -305,6 +309,7 @@ describe('settleActivities', () => {
     await expect(settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)).resolves.toEqual({
       total: 0,
       items: [],
+      reachedChapters: [],
     })
   })
 
@@ -314,7 +319,7 @@ describe('settleActivities', () => {
         throw new Error('호출되면 안 된다')
       },
     } as unknown as SupabaseClient
-    await expect(settleActivities(supabase, 'user-1', [], DEFAULT_JAM_POLICY, NOW)).resolves.toEqual({ total: 0, items: [] })
+    await expect(settleActivities(supabase, 'user-1', [], DEFAULT_JAM_POLICY, NOW)).resolves.toEqual({ total: 0, items: [], reachedChapters: [] })
   })
 })
 
@@ -361,8 +366,8 @@ describe('settleActivities — 챕터 점수 «모은 잼»을 세지 않는다 
   })
 })
 
-describe('settleActivities — 새 진행값 적립 (B4 이중 쓰기, 티켓 20261127_1727)', () => {
-  it('정산 성공 뒤 활동마다 activity_settlement:<활동 id> 키로 승급 없이(p_promote false) 원장에 기록된 양만큼 적립한다', async () => {
+describe('settleActivities — 새 진행값 적립과 승급 (C2a, 티켓 20261127_1729)', () => {
+  it('정산 성공 뒤 활동마다 activity_settlement:<활동 id> 키로 승급 모드(p_promote true)로 원장에 기록된 양만큼 적립한다', async () => {
     const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1', 2: 'act-2' } })
 
     await settleActivities(
@@ -374,8 +379,8 @@ describe('settleActivities — 새 진행값 적립 (B4 이중 쓰기, 티켓 20
     )
 
     expect(ledger.chapterCalls).toEqual([
-      { p_user_id: 'user-1', p_amount: 90, p_event_key: 'activity_settlement:act-1', p_promote: false },
-      { p_user_id: 'user-1', p_amount: 30, p_event_key: 'activity_settlement:act-2', p_promote: false },
+      { p_user_id: 'user-1', p_amount: 90, p_event_key: 'activity_settlement:act-1', p_promote: true },
+      { p_user_id: 'user-1', p_amount: 30, p_event_key: 'activity_settlement:act-2', p_promote: true },
     ])
     expect(ledger.otherRpcNames).toEqual([])
     expect(logMock).not.toHaveBeenCalled()
@@ -410,6 +415,51 @@ describe('settleActivities — 새 진행값 적립 (B4 이중 쓰기, 티켓 20
       'user-1',
       expect.objectContaining({ eventKey: 'activity_settlement:act-1', amount: 90 })
     )
+  })
+
+  it('여러 활동에서 오른 챕터를 오른 순서대로 합치고 중복은 한 번만 담는다', async () => {
+    const { supabase } = makeLedgerClient({
+      activityIds: { 1: 'act-1', 2: 'act-2', 3: 'act-3' },
+      reachedByActivity: { 'act-1': [2], 'act-2': [2, 3], 'act-3': [] },
+    })
+
+    const result = await settleActivities(
+      supabase,
+      'user-1',
+      [target(1), target(2, { startDate: '2026-09-13T00:00:00Z' }), target(3, { startDate: '2026-09-14T00:00:00Z' })],
+      DEFAULT_JAM_POLICY,
+      NOW
+    )
+
+    expect(result.reachedChapters).toEqual([2, 3])
+  })
+
+  it('같은 활동을 두 번 정산하면 승급은 한 번만 반영된다 — 두 번째는 duplicate라 오른 챕터를 모으지 않는다', async () => {
+    const { supabase, ledger } = makeLedgerClient({ activityIds: { 1: 'act-1' }, reachedByActivity: { 'act-1': [4] } })
+
+    const first = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
+    const second = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
+
+    expect(first.reachedChapters).toEqual([4])
+    expect(second.reachedChapters).toEqual([])
+    expect(second.total).toBe(first.total)
+    expect(ledger.chapterKeys.size).toBe(1)
+  })
+
+  it('적립이 실패하면 오른 챕터는 비어 있고 정산 결과(합계·항목)는 그대로다', async () => {
+    const { supabase } = makeLedgerClient({ activityIds: { 1: 'act-1' }, chapterFails: true, reachedByActivity: { 'act-1': [2] } })
+
+    const result = await settleActivities(supabase, 'user-1', [target(1)], DEFAULT_JAM_POLICY, NOW)
+
+    expect(result.reachedChapters).toEqual([])
+    expect(result.total).toBe(90)
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('정산 대상이 없으면 오른 챕터도 비어 있다', async () => {
+    const { supabase } = makeLedgerClient({ activityIds: {} })
+
+    await expect(settleActivities(supabase, 'user-1', [], DEFAULT_JAM_POLICY, NOW)).resolves.toEqual({ total: 0, items: [], reachedChapters: [] })
   })
 
   it('잼이 0인 활동과 jam_apply가 실패한 활동은 적립을 부르지 않는다', async () => {

@@ -9,6 +9,8 @@
  * - 종목 불일치로 걷기가 된 활동은 가벼움(×1), 전기자전거는 가벼움, 자전거는 보통(×2).
  * - 정산 실패는 동기화를 막지 않는다. 경보 기준선은 정산 전에 읽고, 경보 발송 실패는 결과를 바꾸지 않는다.
  * - 동기화 응답에 `jamEarned`가 실리고 기존 필드는 그대로다.
+ * - 승급 연결(C2a, 티켓 20261127_1729): 정산이 `chapter_jam_apply`를 승급 모드로 부르고, 새로 오른 챕터가 있을 때만 `processChapterRise`를 `skipBadgeEvaluation: true`로 부른다.
+ *   같은 동기화를 두 번 해도 DB가 같은 키를 거르므로 오름 처리는 한 번이다. 끝 판정은 `JAM_SYNC_TRIGGERS`뿐이고(캡슐 열기 지표 없음), 정산 없는 경로는 `JAM_EMPTY_SYNC_TRIGGERS`뿐이다.
  *
  * 실제 Strava·공용 DB·슬랙은 호출하지 않는다 — 가짜 클라이언트와 발송 함수 모킹만 쓴다.
  *
@@ -18,13 +20,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { StravaSummaryActivity } from '@/types/strava'
 
-const { createServiceClientMock, getAllActivitiesMock, postOpsSlackMock } = vi.hoisted(() => ({
+const { createServiceClientMock, getAllActivitiesMock, postOpsSlackMock, riseMock } = vi.hoisted(() => ({
+  riseMock: vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}),
   createServiceClientMock: vi.fn(),
   getAllActivitiesMock: vi.fn(),
   postOpsSlackMock: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
+vi.mock('@/lib/chapter/rise', () => ({ processChapterRise: (...args: unknown[]) => riseMock(...args) }))
 // 캡슐 받기 막힘(티켓 20261105_0101)은 sync-capsule-receive-block.test.ts가 맡는다 — 이 파일은 막히지 않은 유저로 본다.
 vi.mock('@/lib/capsule/receive-block', async () => {
   const actual = await vi.importActual<typeof import('@/lib/capsule/receive-block')>('@/lib/capsule/receive-block')
@@ -75,6 +79,8 @@ vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []
 vi.mock('@/lib/tribe/gate', () => ({ assertHasTribe: async () => {} }))
 
 import { processFetchedActivities, syncStravaActivities } from '../sync'
+import { evaluateJamActionBadges } from '@/lib/badge-engine/jamActionBadges'
+import { JAM_EMPTY_SYNC_TRIGGERS, JAM_SYNC_TRIGGERS } from '@/lib/badge-engine/jamActionProgressTriggers'
 
 const USER_ID = 'user-jam'
 const FUTURE = '2099-01-01T00:00:00.000Z'
@@ -93,6 +99,12 @@ interface World {
   /** 호출 순서: 'baseline'(jam_daily_earned 조회) · 'upsert'(활동 저장) · 'rpc'(jam_apply) */
   events: string[]
   rpcError: boolean
+  /** `chapter_jam_apply` 호출 인자 */
+  chapterCalls: Record<string, unknown>[]
+  /** 적립된 멱등 키(같은 키는 한 번만 센다) */
+  chapterKeys: Set<string>
+  /** 활동 id → 그 활동을 처음 적립할 때 응답에 실을 오른 챕터 */
+  chapterReached: Record<string, number[]>
 }
 
 function makeWorld(overrides: Partial<World> = {}): World {
@@ -105,6 +117,9 @@ function makeWorld(overrides: Partial<World> = {}): World {
     rpcCalls: [],
     events: [],
     rpcError: false,
+    chapterCalls: [],
+    chapterKeys: new Set(),
+    chapterReached: {},
     ...overrides,
   }
 }
@@ -204,6 +219,14 @@ function makeFakeSupabase(world: World, opts: { initialSyncDone?: boolean } = {}
   }
 
   const rpc = async (name: string, args: Record<string, unknown>) => {
+    if (name === 'chapter_jam_apply') {
+      world.chapterCalls.push(args)
+      const key = args.p_event_key as string
+      if (world.chapterKeys.has(key)) return { data: { ok: true, duplicate: true, applied: 0 }, error: null }
+      world.chapterKeys.add(key)
+      const reachedChapters = world.chapterReached[key.replace('activity_settlement:', '')] ?? []
+      return { data: { ok: true, duplicate: false, applied: args.p_amount, chapterNo: 2, chapterJam: 0, reachedChapters }, error: null }
+    }
     if (name !== 'jam_apply') return { data: null, error: { message: `알 수 없는 rpc ${name}` } }
     world.events.push('rpc')
     world.rpcCalls.push(args)
@@ -389,6 +412,54 @@ describe('잼 정산 — 활동한 날(KST)과 한 활동 한 번', () => {
     expect(world.ledger.size).toBe(1)
     expect(world.balance).toBe(90)
     expect(world.dailyRows).toHaveLength(1)
+  })
+})
+
+describe('잼 정산 — 승급과 오름 처리 연결 (C2a, 티켓 20261127_1729)', () => {
+  it('정산이 chapter_jam_apply를 승급 모드로 부르고, 오른 챕터가 있으면 오름 처리를 skipBadgeEvaluation 켜고 한 번 부른다', async () => {
+    world.chapterReached = { 'act-1': [2], 'act-2': [2, 3] }
+
+    await run([makeRaw(1), makeRaw(2)])
+
+    expect(world.chapterCalls.map((c) => [c.p_event_key, c.p_promote])).toEqual([
+      ['activity_settlement:act-1', true],
+      ['activity_settlement:act-2', true],
+    ])
+    expect(riseMock).toHaveBeenCalledTimes(1)
+    expect(riseMock).toHaveBeenCalledWith({ userId: USER_ID, reachedChapters: [2, 3] }, { skipBadgeEvaluation: true })
+  })
+
+  it('챕터가 오르지 않으면 오름 처리를 부르지 않는다', async () => {
+    await run([makeRaw(1)])
+
+    expect(world.chapterCalls).toHaveLength(1)
+    expect(riseMock).not.toHaveBeenCalled()
+  })
+
+  it('같은 동기화(같은 활동)를 두 번 해도 진행값·승급은 한 번만 반영되어 오름 처리도 한 번이다', async () => {
+    world.chapterReached = { 'act-1': [2] }
+
+    await run([makeRaw(1)])
+    await run([makeRaw(1)])
+
+    expect(world.chapterKeys.size).toBe(1)
+    expect(riseMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('끝 판정에는 JAM_SYNC_TRIGGERS만 넘기고 캡슐 열기 지표는 더하지 않는다', async () => {
+    world.chapterReached = { 'act-1': [2] }
+
+    await run([makeRaw(1)])
+
+    expect(vi.mocked(evaluateJamActionBadges)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(evaluateJamActionBadges).mock.calls[0][1]).toEqual(JAM_SYNC_TRIGGERS)
+  })
+
+  it('정산할 활동이 없는 동기화는 오름 처리 없이 JAM_EMPTY_SYNC_TRIGGERS만 판정한다', async () => {
+    await run([])
+
+    expect(riseMock).not.toHaveBeenCalled()
+    expect(vi.mocked(evaluateJamActionBadges).mock.calls.map((c) => c[1])).toEqual([JAM_EMPTY_SYNC_TRIGGERS])
   })
 })
 

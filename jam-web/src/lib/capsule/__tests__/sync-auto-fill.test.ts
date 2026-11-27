@@ -5,7 +5,8 @@
  * - 자동 채움은 열기마다의 챕터 배지 판정을 건너뛰라는 옵션(`skipRiseBadgeEvaluation`)을 켜서 부른다(동기화 끝 판정이 이어서 읽는다).
  * - `capsule_unseen_results`에 새 행을 쓰지 않는다(티켓 20261106_1028, 합친 연출을 걷었다). 열려도 클라이언트를 부르지 않고, 반환 `opened`·`chapterRose`는 그대로다.
  *   자동 채움이 실패(`stopped: 'error'`)해도 던지지 않는다.
- * - 동기화(`lib/strava/sync.ts`) 연결(소스 검색): 정산 직후 한 번 부르고, 열린 것이 있을 때만 끝 판정에 캡슐 열기 지표를 더한다.
+ * - 동기화(`lib/strava/sync.ts`) 연결(소스 검색): C2a(티켓 20261127_1729)부터 동기화는 이 단계를 부르지 않고 캡슐 열기 지표도 판정하지 않는다(정산의 승급 + `processChapterRise`로 바뀌었다).
+ *   이 단계는 서비스 활동 잼 쪽이 아직 쓴다(C2b).
  * - 캡슐 소식은 보내지 않는다(티켓 20261105_0105 T5, 옛 `capsule_nearly_full`·`capsule_jam_blocked` 발송을 걷었다).
  * - 챕터 오름(`chapterRose`): 열기 없이 대기 보상만 생긴 동기화의 오름도 참이다(새 활동이 없는 경로가 `chapter_reached`를 끝 판정에 더한다).
  * 공용 DB는 호출하지 않는다 — 가짜 자동 채움과 가짜 클라이언트만 쓴다.
@@ -143,32 +144,17 @@ describe('runSyncCapsuleAutoFill — 재진입으로 건너뛴 호출 (busy, 티
   })
 })
 
-describe('동기화 연결 (소스 검색)', () => {
+describe('동기화 연결 (소스 검색) — C2a에서 걷었다', () => {
   const source = readFileSync(path.resolve(__dirname, '../../strava/sync.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
 
-  it('runSyncCapsuleAutoFill을 두 곳에서 부른다: 새 활동이 없는 이른 반환 경로와, 잼 정산(settleActivities) 뒤 아이템 배지 발급(issueSyncItemBadges) 앞', () => {
-    expect(source.match(/runSyncCapsuleAutoFill\(/g)).toHaveLength(2)
-    const settle = source.indexOf('await settleActivities(')
-    const fill = source.lastIndexOf('await runSyncCapsuleAutoFill(')
-    const issue = source.indexOf('await issueSyncItemBadges(')
-    expect(settle).toBeGreaterThan(-1)
-    expect(fill).toBeGreaterThan(settle)
-    expect(issue).toBeGreaterThan(fill)
+  it('동기화는 runSyncCapsuleAutoFill과 캡슐 열기 지표(jamTriggersForCapsuleOpen)를 더 쓰지 않는다', () => {
+    expect(source).not.toContain('runSyncCapsuleAutoFill')
+    expect(source).not.toContain('jamTriggersForCapsuleOpen')
   })
 
-  it('열린 캡슐이 있을 때만 끝 판정에 jamTriggersForCapsuleOpen()을 더한다', () => {
-    expect(source).toMatch(/capsuleStep\.opened\s*\?\s*\[\.\.\.JAM_SYNC_TRIGGERS,\s*\.\.\.jamTriggersForCapsuleOpen\(\)\]\s*:\s*JAM_SYNC_TRIGGERS/)
-  })
-
-  it('새 활동이 없는 이른 반환 경로도 자동 채움을 돌리고, 열렸거나 챕터가 올랐으면 챕터 오름을, 열렸으면 캡슐 열기 지표를 함께 판정한다', () => {
-    const start = source.indexOf('async function evaluateWithoutNewActivities(')
-    const end = source.indexOf('export async function processFetchedActivities(')
-    const idle = source.slice(start, end)
-    expect(idle).toContain('await runSyncCapsuleAutoFill(')
-    // 챕터 오름은 열기 없이 보류만 생겨도 판정한다(`chapterRose`). 캡슐 열기 지표는 열렸을 때만 더한다
-    expect(idle).toMatch(/capsuleStep\.opened\s*\|\|\s*capsuleStep\.chapterRose\s*\?\s*\(\['chapter_reached'\] as const\)\s*:\s*\[\]/)
-    expect(idle).toMatch(/capsuleStep\.opened\s*\?\s*jamTriggersForCapsuleOpen\(\)\s*:\s*\[\]/)
+  it('정산 결과의 reachedChapters로 processChapterRise를 skipBadgeEvaluation 켜고 부른다', () => {
+    expect(source).toMatch(/processChapterRise\(\s*\{\s*userId,\s*reachedChapters:\s*jamSettlement\.reachedChapters\s*\},\s*\{\s*skipBadgeEvaluation:\s*true\s*\}\s*\)/)
   })
 })

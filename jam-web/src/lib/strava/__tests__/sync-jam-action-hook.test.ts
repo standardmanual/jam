@@ -27,13 +27,8 @@ const mocks = vi.hoisted(() => ({
   ),
   recordActivityRecap: vi.fn<(userId: string, payload: unknown) => Promise<void>>(async () => {}),
   matchedPois: [] as Array<{ id: string; name: string; linked_badge_id: string | null }>,
-  /** 동기화 안의 캡슐 자동 채움 단계 결과(티켓 20261028_1734 3회). 기본은 아무 일도 없었다 */
-  capsuleStep: { opened: false, chapterRose: false } as { opened: boolean; chapterRose: boolean },
 }))
 
-vi.mock('@/lib/capsule/sync-auto-fill', () => ({
-  runSyncCapsuleAutoFill: vi.fn(async () => ({ autoFill: {}, ...mocks.capsuleStep })),
-}))
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => {
     throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
@@ -201,7 +196,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.order.length = 0
   mocks.matchedPois = []
-  mocks.capsuleStep = { opened: false, chapterRose: false }
   mocks.evaluateJamActionBadges.mockReset()
   mocks.evaluateJamActionBadges.mockResolvedValue([])
   mocks.evaluateBadges.mockReset()
@@ -343,35 +337,13 @@ describe('processFetchedActivities — 새 활동이 없는 동기화(빈 배치
     errorSpy.mockRestore()
   })
 
-  // 티켓 20261028_1734 3회 — 챕터 오름 처리는 챕터 배지 판정을 건너뛰고 불리므로, 이 경로가 끝 판정에 chapter_reached를 더해 이어서 읽는다
-  it('챕터가 올랐으면(열기 없이 보류만 생긴 동기화) chapter_reached를 더하고, 캡슐 열기 지표는 더하지 않는다', async () => {
-    mocks.capsuleStep = { opened: false, chapterRose: true }
-
+  // C2a(티켓 20261127_1729) — 정산 없는 경로에는 챕터가 오를 일이 없다. 옛 캡슐 자동 채움 단계와 캡슐 열기 지표 판정은 걷었다
+  it('정산 없는 경로는 캡슐 단계 없이 chapter_reached·캡슐 열기 지표를 더하지 않고 JAM_EMPTY_SYNC_TRIGGERS만 판정한다', async () => {
     await processFetchedActivities(makeFakeSupabase(), 'user-1', 'token', [], false, 'sync')
 
-    expect(mocks.evaluateJamActionBadges.mock.calls[0][1]).toEqual(['days_since_signup', 'chapter_reached'])
-  })
-
-  it('캡슐이 열렸으면 chapter_reached와 캡슐 열기 지표를 더한다 — 기존 동작', async () => {
-    mocks.capsuleStep = { opened: true, chapterRose: false }
-
-    await processFetchedActivities(makeFakeSupabase(), 'user-1', 'token', [], false, 'sync')
-
-    expect(mocks.evaluateJamActionBadges.mock.calls[0][1]).toEqual([
-      'days_since_signup',
-      'chapter_reached',
-      'capsule_open_count',
-      'other_tribe_item_kinds_count',
-    ])
-  })
-
-  it('열렸고 챕터도 올랐어도 chapter_reached는 한 번만 더한다', async () => {
-    mocks.capsuleStep = { opened: true, chapterRose: true }
-
-    await processFetchedActivities(makeFakeSupabase(), 'user-1', 'token', [], false, 'sync')
-
-    const triggers = mocks.evaluateJamActionBadges.mock.calls[0][1]
-    expect(triggers.filter((t) => t === 'chapter_reached')).toHaveLength(1)
+    expect(mocks.evaluateJamActionBadges.mock.calls[0][1]).toEqual(JAM_EMPTY_SYNC_TRIGGERS)
+    expect(mocks.evaluateJamActionBadges.mock.calls[0][1]).not.toContain('chapter_reached')
+    expect(mocks.evaluateJamActionBadges.mock.calls[0][1]).not.toContain('capsule_open_count')
   })
 
   it('열리지도 챕터가 오르지도 않았으면 가입 경과일만 판정한다', async () => {

@@ -14,7 +14,8 @@
  * - `p_earned_on`에는 **활동한 날의 KST 날짜**(활동 시작 시각을 KST로 바꾼 날짜)를 넘긴다. 늦게 동기화한 활동이
  *   동기화한 날로 잡히면 주간 양이 틀어진다(마이그레이션 220의 사용자 결정, 2026-10-17).
  * - 정산이 실패해도 던지지 않는다 — 로그만 남기고 동기화를 막지 않는다.
- * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회 — 챕터는 캡슐 횟수로 오른다). 새 진행값 적립은 이중 쓰기다(B4, 티켓 20261127_1727, 승급은 캡슐).
+ * - 챕터 점수 «모은 잼»은 세지 않는다(티켓 20261028_1733 3회). 정산한 잼은 새 진행값(`chapter_jam_apply`)에 쌓고 승급 모드(`promote: true`)로 챕터를 올린다
+ *   (C2a, 티켓 20261127_1729). 이번 정산으로 새로 오른 챕터는 `reachedChapters`로 돌려주고, 오름 처리(소식·피드)는 호출한 동기화가 한다.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { applyChapterJam } from '@/lib/chapter/applyJam'
@@ -118,10 +119,12 @@ export interface JamSettlementResult {
   /** 이번 정산으로 원장에 기록된 잼의 합계 */
   total: number
   items: JamSettlementItem[]
+  /** 이번 정산으로 새로 오른 챕터(오른 순서, 중복 없음). 같은 활동을 다시 정산하면(중복 키) 비어 있다 */
+  reachedChapters: number[]
 }
 
 function emptySettlement(): JamSettlementResult {
-  return { total: 0, items: [] }
+  return { total: 0, items: [], reachedChapters: [] }
 }
 
 /**
@@ -168,6 +171,7 @@ export async function settleActivities(
       (a, b) => Date.parse(a.target.startDate) - Date.parse(b.target.startDate) || a.target.stravaId - b.target.stravaId
     )
     const items: JamSettlementItem[] = []
+    const reachedChapters: number[] = []
     for (const { target, amount, earnedOn } of ordered) {
       const activityId = activityIdByStravaId.get(target.stravaId)
       if (!activityId) {
@@ -195,22 +199,26 @@ export async function settleActivities(
           earnedOn,
         }
         items.push(item)
-        // 챕터 점수 «모은 잼»은 더 세지 않는다(티켓 20261028_1733 3회). 챕터는 캡슐이 가득 찬 횟수로 오르고, 잼은 동기화가 정산 직후 부르는 자동 채움
-        // (`lib/capsule/auto-fill.ts`)이 캡슐에 채운다. 옛 점수 장부의 나머지 쓰기는 U5가 바꾼다.
-        // 새 진행값 적립은 이중 쓰기(B4, 티켓 20261127_1727, 승급은 캡슐). 같은 활동은 같은 키라 DB가 한 번만 센다. 래퍼는 던지지 않는다.
+        // 챕터 점수 «모은 잼»은 더 세지 않는다(티켓 20261028_1733 3회). 정산한 잼은 새 진행값에 쌓고 승급 모드로 챕터를 올린다(C2a, 티켓 20261127_1729).
+        // 같은 활동은 같은 키라 DB가 한 번만 센다(이중 승급 없음). 새로 오른 챕터는 모아 돌려주고, 오름 처리는 호출한 동기화가 한다. 래퍼는 던지지 않는다.
         if (item.amount > 0) {
-          await applyChapterJam(supabase, {
+          const applied = await applyChapterJam(supabase, {
             userId,
             amount: item.amount,
             eventKey: `activity_settlement:${activityId}`,
-            promote: false,
+            promote: true,
           })
+          if (applied.ok && !applied.duplicate) {
+            for (const chapterNo of applied.reachedChapters) {
+              if (!reachedChapters.includes(chapterNo)) reachedChapters.push(chapterNo)
+            }
+          }
         }
       } catch (e) {
         console.error(`[jam-settlement] jam_apply 예외 — userId: ${userId}, stravaId: ${target.stravaId}:`, e)
       }
     }
-    return { total: items.reduce((sum, item) => sum + item.amount, 0), items }
+    return { total: items.reduce((sum, item) => sum + item.amount, 0), items, reachedChapters }
   } catch (e) {
     console.error(`[jam-settlement] 정산 예외 — 건너뜀 (userId: ${userId}):`, e)
     return emptySettlement()
