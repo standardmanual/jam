@@ -41,40 +41,17 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     expect(html).not.toContain('duration-100')
   })
 
-  it('셀은 블랙 반전 면(--background-inverse)이고 테두리가 없다 — 흰 면(--card-bg)은 없다 (티켓 20261127_0829)', () => {
+  it('셀은 기본 톤 카드 면이고 테두리가 없다 — 어두운 반전 면·옅은 흰 글자가 없다 (티켓 20261015_2133)', () => {
     const html = renderToStaticMarkup(
       <TodayStatusStrip
         left={{ kind: 'suggestion', text: '드랍 아이템 찾아보기', category: 'drops', href: '/drops' }}
         right={{ kind: 'no_following', href: '/search' }}
       />
     )
-    expect(html.match(/background:var\(--background-inverse\)/g)).toHaveLength(2)
-    expect(html).not.toContain('--card-bg')
+    expect(html.match(/background:var\(--card-bg\)/g)).toHaveLength(2)
     expect(html).not.toContain('border:1px solid')
-  })
-
-  it('라벨 칩은 반전 면 위 토큰(--surface-on-inverse 면, --snow 글자)이다 (티켓 20261127_0829)', () => {
-    const html = renderToStaticMarkup(
-      <TodayStatusStrip
-        left={{ kind: 'suggestion', text: '드랍 아이템 찾아보기', category: 'drops', href: '/drops' }}
-        right={{ kind: 'no_following', href: '/search' }}
-      />
-    )
-    expect(html.match(/background:var\(--surface-on-inverse\);color:var\(--snow\)/g)).toHaveLength(2)
-  })
-
-  it('진행 바는 ProgressCountBar다: 채움 그린(--jam-green), 트랙 --surface-on-inverse, 수치 --snow (티켓 20261127_0829)', () => {
-    const html = renderToStaticMarkup(
-      <TodayStatusStrip
-        left={{ kind: 'progress', name: '컬렉션', current: 3, total: 9, missionType: null, href: '/collections/c1' }}
-        right={{ kind: 'none' }}
-      />
-    )
-    expect(html).toContain('var(--jam-green)')
-    expect(html).toContain('background:var(--surface-on-inverse)')
-    expect(html).toContain('color:var(--snow)')
-    expect(html).not.toContain('var(--link)')
-    expect(html).toMatch(/<span[^>]*>3(<!-- -->)?\/(<!-- -->)?9<\/span>/)
+    expect(html).not.toContain('--background-inverse')
+    expect(html).not.toContain('text-snow')
   })
 
   it('라벨은 «진행»·«팔로잉»이다 (티켓 20261109_1429, 20261113_1452)', () => {
@@ -95,7 +72,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     expect(html).toContain(d.todayStatus.noFollowing)
   })
 
-  it('progress 카드: 이름 줄에는 n/n이 없고 진행 바 오른쪽에 놓인다 — 거리는 소수 1자리, 컬렉션은 정수 (티켓 20261109_1429)', () => {
+  it('progress 카드: 이름 줄에는 n/n이 없고 진행 바 오른쪽에 text-xs로 놓인다 — 거리는 소수 1자리, 컬렉션은 정수 (티켓 20261109_1429)', () => {
     const distance = renderToStaticMarkup(
       <TodayStatusStrip
         left={{ kind: 'progress', name: '10km 달리기', current: 6.4, total: 10, missionType: 'distance', href: '/missions/1' }}
@@ -105,7 +82,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
     const namePara = distance.match(/<p class="text-base font-bold[^"]*">([\s\S]*?)<\/p>/)
     expect(namePara?.[1]).toContain('10km 달리기')
     expect(namePara?.[1]).not.toContain('/')
-    expect(distance).toMatch(/<span[^>]*>6\.4(<!-- -->)?\/(<!-- -->)?10\.0<\/span>/)
+    expect(distance).toContain('<span class="text-xs font-bold whitespace-nowrap tabular-nums">6.4/10.0</span>')
 
     const collection = renderToStaticMarkup(
       <TodayStatusStrip
@@ -113,7 +90,7 @@ describe('TodayStatusStrip — 칩은 MODULAR LabelChip(티켓 20261001_1204)', 
         right={{ kind: 'none' }}
       />
     )
-    expect(collection).toMatch(/<span[^>]*>3(<!-- -->)?\/(<!-- -->)?8<\/span>/)
+    expect(collection).toContain('<span class="text-xs font-bold whitespace-nowrap tabular-nums">3/8</span>')
   })
 
   it('오른쪽 셀이 없으면(none) 왼쪽 칩만 그린다', () => {
