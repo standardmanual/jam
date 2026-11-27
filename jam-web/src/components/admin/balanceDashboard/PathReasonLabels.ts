@@ -14,7 +14,7 @@ export const PATH_LABELS: Record<PathKey, string> = {
   mix: '믹스',
   mission: '미션',
   syncCapsule: '동기화·캡슐',
-  tierUp: '등급 올리기',
+  tierUp: '등급 UP',
 }
 
 /** 길이 닫힌 사유 */

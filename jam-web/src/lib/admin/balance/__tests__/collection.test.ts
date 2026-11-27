@@ -82,13 +82,13 @@ describe('등급 칸 이름', () => {
 })
 
 describe('컬렉션과 믹스 칸 정의', () => {
-  it('구역 키는 collection이고 등급 네 칸 다음에 믹스 실패 포인트, 등급 올리기 윗등급 확률이 온다', () => {
+  it('구역 키는 collection이고 등급 네 칸 다음에 믹스 실패 포인트, 등급 UP 윗등급 확률이 온다', () => {
     expect(COLLECTION_SECTION_ID).toBe('collection')
     expect(COLLECTION_BINDING.id).toBe('collection')
     expect(COLLECTION_FIELDS.map((def) => def.key)).toEqual([...COLLECTION_TIER_KEYS, 'fail_reward_points', 'tier_up_probability'])
     expect(FAIL_REWARD_KEY).toBe('fail_reward_points')
     expect(TIER_UP_PROBABILITY_KEY).toBe('tier_up_probability')
-    expect(COLLECTION_FIELDS.map((def) => def.label)).toEqual(['Common', 'Rare', 'Epic', 'Mystic', '믹스 실패 포인트', '등급 올리기 윗등급 확률'])
+    expect(COLLECTION_FIELDS.map((def) => def.label)).toEqual(['Common', 'Rare', 'Epic', 'Mystic', '믹스 실패 포인트', '등급 UP 윗등급 확률'])
   })
 
   it('두 묶음(등급별 완성 포인트, 믹스)으로 나뉘고 포인트 칸은 포인트 단위의 0 이상 정수이며 확률 안내에는 반영되지 않는다', () => {
@@ -113,7 +113,7 @@ describe('컬렉션과 믹스 칸 정의', () => {
 
   it('윗등급 확률 칸은 퍼센트(0~100, 소수 첫째 자리)이고 기본값 70이며 확률 안내에 반영되는 칸이다', () => {
     const def = byKey[TIER_UP_PROBABILITY_KEY]
-    expect(def).toMatchObject({ label: '등급 올리기 윗등급 확률', unit: '%', group: '믹스', decimals: 1, min: 0, max: 100, defaultValue: 70, affectsDisclosure: true })
+    expect(def).toMatchObject({ label: '등급 UP 윗등급 확률', unit: '%', group: '믹스', decimals: 1, min: 0, max: 100, defaultValue: 70, affectsDisclosure: true })
     expect(def.sumTo).toBeUndefined()
     expect(def.defaultValue).toBe(DEFAULT_COMBINE_POLICY.tier_up_probability * 100)
     // 소수 첫째 자리까지, 0과 100은 통과, 범위 밖과 둘째 자리는 거절

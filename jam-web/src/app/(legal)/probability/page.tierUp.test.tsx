@@ -42,10 +42,10 @@ import { formatFraction } from '@/lib/probability/disclosure'
 import { ALL_OK, CAPSULE_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from '@/lib/probability/__tests__/fixtures'
 
 const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'
-const TITLE = '등급 올리기'
+const TITLE = '등급 UP'
 const LOWERING_RULE = '그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
 const INTRO =
-  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
+  '믹스 화면의 등급 UP에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
 const PICK_NOTE = '등급이 정해지면 서비스의 컬렉션 전체에서 그 등급으로 지금 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
 
 async function render(results: Record<string, Result> = ALL_OK): Promise<string> {
@@ -242,7 +242,7 @@ describe('정상 — 표 마크업', () => {
   })
 
   it('유저 화면에 쓰지 않는 말과 열기를 부추기는 말이 없다', async () => {
-    const text = textOf(sectionOf(await render(), TITLE))
+    const text = textOf(sectionOf(await render(), TITLE)).replaceAll('등급 UP', '') // 서비스 이름 «등급 UP»은 허용한다
     const banned = [
       '퀘스트', '랜덤', '개체', '후보', '소각', '발급', '재료', 'POI',
       '아이템북', '승급', '업그레이드', '강화', '합성', '레벨업',

@@ -42,7 +42,7 @@ interface Props {
 const METRICS_DESCRIPTION =
   '지표 여섯 개를 목표와 견줘 봐요. 목표는 기준 유저(러닝 보통)의 값이에요. 데이터가 모자란 지표는 값을 보이지 않아요. 문제가 되는 수치는 지표 아래 바로 조정에서 밸런스 설정의 해당 구역으로 가서 바꿔요.'
 const PATHS_DESCRIPTION =
-  '컬렉션마다 아이템 배지가 드랍, 믹스, 미션, 동기화와 캡슐, 등급 올리기 중 어느 길로 얻어지는지 봐요. 길이 모두 닫힌 아이템 배지는 막힘이에요.'
+  '컬렉션마다 아이템 배지가 드랍, 믹스, 미션, 동기화와 캡슐, 등급 UP 중 어느 길로 얻어지는지 봐요. 길이 모두 닫힌 아이템 배지는 막힘이에요.'
 
 async function MetricsTab() {
   const data = await loadBalanceDashboard(createServiceClient(), new Date())

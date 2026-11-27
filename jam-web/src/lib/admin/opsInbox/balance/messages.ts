@@ -154,7 +154,7 @@ export function countLadderMessage(familyKey: string, sum: number, max: number):
 export function economyKeyLabel(key: string): string {
   if (key.startsWith('rarity_') || key.startsWith('bonus_drop_rate')) return '드랍 확률 값'
   if (key === 'fail_reward_points') return '믹스 실패 보상 값'
-  if (key === 'tier_up_probability') return '등급 올리기 확률 값'
+  if (key === 'tier_up_probability') return '등급 UP 확률 값'
   return '경제 정책 값'
 }
 

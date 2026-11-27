@@ -718,7 +718,7 @@ describe('R8 경제 수치 불변', () => {
     ])
   })
 
-  it('등급 올리기 윗등급 확률(tier_up_probability)이 들어 있으면 「등급 올리기 확률 값」으로 경고한다', () => {
+  it('등급 UP 윗등급 확률(tier_up_probability)이 들어 있으면 「등급 올리기 확률 값」으로 경고한다', () => {
     const item = makeItem({ kind: 'recipe', original: { resource: { name: '믹스', tier_up_probability: 0.9 } } })
     const result = run([item], rules)
     expect(result.warnings).toHaveLength(1)
@@ -726,7 +726,7 @@ describe('R8 경제 수치 불변', () => {
       ruleKey: 'economy_keys',
       itemId: item.id,
       measured: 'tier_up_probability',
-      message: '등급 올리기 확률 값(tier_up_probability)이 이 항목에 들어 있어요. 경제 수치는 기획에서 바꾸지 않는 게 기준이에요.',
+      message: '등급 UP 확률 값(tier_up_probability)이 이 항목에 들어 있어요. 경제 수치는 기획에서 바꾸지 않는 게 기준이에요.',
     })
   })
 
