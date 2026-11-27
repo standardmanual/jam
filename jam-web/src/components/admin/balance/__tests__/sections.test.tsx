@@ -385,7 +385,7 @@ describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
     expect(out).toMatch(/id="balance-collection-fail_reward_points"[^>]*value="10"/)
     expect(out).toMatch(/id="balance-collection-tier_up_probability"[^>]*value="70"/)
     expect(out).toContain('믹스 실패 포인트')
-    expect(out).toContain('등급 올리기 윗등급 확률')
+    expect(out).toContain('등급 UP 윗등급 확률')
     expect(out).toContain('기본값 800포인트')
     expect(out).toContain('기본값 70%')
   })

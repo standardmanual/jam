@@ -100,10 +100,10 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('JAM!에는 유료 결제가 없어요. 잼과 포인트는 돈으로 팔지 않아요.')
   })
 
-  it('섹션이 동기화 → 캡슐 → 시스템 드랍 → 등급 올리기 → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이다', async () => {
+  it('섹션이 동기화 → 캡슐 → 시스템 드랍 → 등급 UP → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이다', async () => {
     const html = await render()
     const titles = [...html.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1])
-    expect(titles).toEqual(['동기화로 받는 아이템 배지', '캡슐', '시스템 드랍', '등급 올리기', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
+    expect(titles).toEqual(['동기화로 받는 아이템 배지', '캡슐', '시스템 드랍', '등급 UP', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
   })
 
   it('동기화: 개수와 잠김 표, 등급 표(서열 순 영문), 처음 뽑는 등급 문장이 등급 표 바로 아래에 있다', async () => {
@@ -379,7 +379,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     // 시스템 드랍 표, 등급 올리기 표 넷, 바뀐 날짜 표는 그대로다
     expect(count(html, '<table')).toBe(6)
     expect(textOf(sectionOf(html, '시스템 드랍'))).toMatch(/Common100%/)
-    expect(textOf(sectionOf(html, '등급 올리기'))).toContain('Rare30%Epic70%')
+    expect(textOf(sectionOf(html, '등급 UP'))).toContain('Rare30%Epic70%')
   })
 
   it('jam_policy만 못 읽어도 세 섹션이 함께 안내로 바뀐다(두 표가 한 묶음이다)', async () => {
@@ -476,7 +476,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
 describe('문구와 서식 규칙', () => {
   it('유저 화면에 쓰지 않는 말과 열기를 부추기는 말이 없다', async () => {
-    const text = textOf(await render())
+    const text = textOf(await render()).replaceAll('등급 UP', '') // 서비스 이름 «등급 UP»은 허용한다
     const banned = ['퀘스트', '랜덤', '개체', '후보', '발급', '섀도우밴', 'POI', '보정 1', '보정 2', '한 번만 더', '조금만 더', '남았어요', 'UP', '꽝', '당첨', '대박']
     for (const word of banned) expect(text, word).not.toContain(word)
     // 내부 이름 «JAM 2.0»을 유저 문구에 쓰지 않는다

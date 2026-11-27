@@ -289,8 +289,8 @@ describe('PathReasonLabels', () => {
     for (const label of [...Object.values(PATH_LABELS), ...Object.values(STATUS_LABELS)]) expect(label.trim()).not.toBe('')
   })
 
-  it('길 이름은 용어집을 따른다 — 동기화·캡슐, 등급 올리기', () => {
+  it('길 이름은 용어집을 따른다 — 동기화·캡슐, 등급 UP', () => {
     expect(PATH_LABELS.syncCapsule).toBe('동기화·캡슐')
-    expect(PATH_LABELS.tierUp).toBe('등급 올리기')
+    expect(PATH_LABELS.tierUp).toBe('등급 UP')
   })
 })

@@ -69,7 +69,7 @@ const AMBIENT_RANDOM_TEXT = '지금은 놓을 때마다 등급 비율을 무작�
 
 /** 등급 올리기 소개 — 숫자가 없는 문장이라 읽기가 실패해도 남는다 */
 const TIER_UP_INTRO =
-  '믹스 화면의 등급 올리기에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
+  '믹스 화면의 등급 UP에서 같은 등급의 아이템 배지를 가득 채워 넣으면, 소속 트라이브와 상관없이 서비스에 있는 새 아이템 배지를 받아요. 받는 등급은 확률로 정해지고, 넣은 등급의 바로 윗등급이 나오거나 같은 등급이 나와요. Mystic을 넣으면 Mystic이 나와요.'
 
 /** 등급 올리기 섹션 맨 끝 문장 — 등급이 정해진 뒤 아이템을 고르는 방식. 숫자가 없는 문장이라 읽기가 실패해도 남는다 */
 const TIER_UP_PICK_NOTE = '등급이 정해지면 서비스의 컬렉션 전체에서 그 등급으로 지금 받을 수 있는 아이템 배지를 모두 같은 확률로 골라요.'
@@ -260,7 +260,7 @@ function AmbientSection({ ambient }: { ambient: DisclosureResult<AmbientDisclosu
  */
 function TierUpSection({ tierUp }: { tierUp: DisclosureResult<TierUpDisclosure> }) {
   return (
-    <Section title="등급 올리기">
+    <Section title="등급 UP">
       <P>{TIER_UP_INTRO}</P>
       {tierUp.ok ? (
         tierUp.data.materials.map((material) => (
