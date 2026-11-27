@@ -180,6 +180,12 @@ export function pickCardMix(ticketHex: string): { cardMix: number; cardMixSecond
 export const MISSION_TICKET_HEX = '#D3474D'
 
 /**
+ * 미션 현황 티켓의 끝색. 배지 상세와 같은 `ticketEndColor`는 코랄에서 `#C4002A`(진한 크림슨)까지 내려가 첨부 이미지의 코랄 느낌을 벗어나고
+ * 12px 라벨 대비도 4.0까지 떨어진다(브라우저 실측, 2026-11-27). 명도만 0.04 낮추고 채도는 그대로 두면 `#C53942` 근처로 내려가 검정 글자 대비가 4.45로 오른다.
+ */
+export const MISSION_TICKET_END_COLOR = 'oklch(from var(--ticket) calc(l - 0.04) c h)'
+
+/**
  * 미션 현황 티켓색. 글자색은 순수 검정이다: 코랄 면 위 대비가 `#000` 4.78, `#fff` 4.39, `#171717` 4.08(계산값)이라
  * 머리의 12px 날짜 줄(AA 4.5)을 넘기는 것은 검정뿐이다. `pickTicketTextColor`는 면과 끝색 사이 중간색까지 보고 흰색을 고르므로 쓰지 않는다.
  */
@@ -188,7 +194,7 @@ export function missionTicketColor(): MissionTicketColor {
     key: 'mission',
     cssVar: '--mission-ticket',
     hex: MISSION_TICKET_HEX,
-    endColor: ticketEndColor(MISSION_TICKET_HEX),
+    endColor: MISSION_TICKET_END_COLOR,
     silhouette: '#000000',
     text: '#000000',
   }

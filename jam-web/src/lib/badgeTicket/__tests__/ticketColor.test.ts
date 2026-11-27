@@ -10,6 +10,7 @@ import {
   isYellowHue,
   missionTicketColor,
   MISSION_TICKET_HEX,
+  MISSION_TICKET_END_COLOR,
   parseTicketColorParams,
   pickTicketColor,
   resolveTicketColor,
@@ -385,6 +386,11 @@ describe('missionTicketColor (티켓 20261127_1145)', () => {
     expect(paint).toMatchObject({ key: 'mission', cssVar: '--mission-ticket', text: '#000000' })
     expect(contrastRatio(hexToRgb(paint.text), hexToRgb(paint.hex))).toBeGreaterThanOrEqual(4.5)
     expect(contrastRatio(hexToRgb('#171717'), hexToRgb(paint.hex))).toBeLessThan(4.5)
-    expect(paint.endColor).toBe(ticketEndColor(paint.hex))
+    expect(paint.endColor).toBe(MISSION_TICKET_END_COLOR)
+  })
+
+  it('끝색은 배지 상세의 끝색(채도를 올려 크림슨이 된다)과 달리 채도를 그대로 두고 명도만 0.04 낮춘다', () => {
+    expect(MISSION_TICKET_END_COLOR).toBe('oklch(from var(--ticket) calc(l - 0.04) c h)')
+    expect(MISSION_TICKET_END_COLOR).not.toBe(ticketEndColor(MISSION_TICKET_HEX))
   })
 })
