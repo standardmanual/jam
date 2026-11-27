@@ -1052,6 +1052,38 @@ export type Database = {
         }
         Relationships: []
       }
+      chapter_jam_events: {
+        Row: {
+          amount: number
+          created_at: string
+          event_key: string
+          promoted: boolean
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_key: string
+          promoted?: boolean
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_key?: string
+          promoted?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_jam_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_ups: {
         Row: {
           chapter_no: number
