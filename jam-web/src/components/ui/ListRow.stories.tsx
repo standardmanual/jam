@@ -119,6 +119,45 @@ export const Ranking: Story = {
   },
 };
 
+/** 검정 카드(Card tone="inverse") 위 한 단계 밝은 어두운 행 — 미션 현황 티켓의 달성 현황·전체 랭킹 행 (티켓 20261127_1145) */
+export const OnInverseRow: Story = {
+  name: '검정 카드 위 행(달성 칩)',
+  parameters: { backgrounds: { default: 'dark' } },
+  decorators: [(Story) => <div style={{ width: 358, padding: 12, background: 'var(--background-inverse)', borderRadius: 'var(--radius-2xl)' }}><Story /></div>],
+  args: {
+    tone: 'onInverse',
+    leadShape: 'round',
+    lead: <Avatar src={null} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />,
+    title: '러너',
+    value: <ListRowChip tone="ticket">{d.missions.achieved}</ListRowChip>,
+  },
+};
+
+/** 같은 행의 미달성 모양 — 행 면보다 한 단계 밝은 회색 칩 */
+export const OnInverseRowNotAchieved: Story = {
+  name: '검정 카드 위 행(미달성 칩)',
+  parameters: { backgrounds: { default: 'dark' } },
+  decorators: [(Story) => <div style={{ width: 358, padding: 12, background: 'var(--background-inverse)', borderRadius: 'var(--radius-2xl)' }}><Story /></div>],
+  args: {
+    tone: 'onInverse',
+    leadShape: 'round',
+    lead: <Avatar src={null} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />,
+    title: '러너',
+    value: <ListRowChip tone="on-inverse">{d.missions.notAchieved}</ListRowChip>,
+  },
+};
+
+/** 큰 상태 알약 — 달성(done 면)과 미달성(outline 외곽선)이 면 색만으로 갈린다 (티켓 20261127_1145) */
+export const LargeStatusPill: Story = {
+  name: '큰 상태 알약',
+  render: () => (
+    <div style={{ display: 'flex', gap: 12 }}>
+      <ListRowChip tone="done" size="lg">{d.missions.achieved}</ListRowChip>
+      <ListRowChip tone="outline" size="lg">{d.missions.notAchieved}</ListRowChip>
+    </div>
+  ),
+};
+
 /** 알림함(`NotificationsClient`)의 알림 행 — 문장형 제목에 굵은 핵심어와 시간 */
 export const Notification: Story = {
   name: '알림 문장 행',

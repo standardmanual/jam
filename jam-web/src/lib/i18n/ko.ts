@@ -773,6 +773,15 @@ export const ko = {
     statusAllRanks: '전체 랭킹',
     /** 랭킹형 상황 화면 위쪽 «내 순위» 라벨(티켓 20261111_2049) */
     statusMyRankLabel: '내 순위',
+    /** 미션 현황 티켓 «내 요약» 상자 라벨(티켓 20261127_1145). 랭킹형 위 칸은 «내 기록», 달성형 위 칸은 «내 현황» */
+    statusMyRecordLabel: '내 기록',
+    statusMyStatusLabel: '내 현황',
+    /** 랭킹형 아래 칸 «1위와 차이» — 1위 값에서 내 값을 뺀 만큼이다. 내가 1위이거나 내 기록이 없으면 «—»(티켓 20261127_1145) */
+    statusGapToFirstLabel: '1위와 차이',
+    /** 달성형 아래 칸 두 개와 사람 수 표기(티켓 20261127_1145). 숫자는 «N명» */
+    statusAchievedCountLabel: '달성한 참가자',
+    statusTotalCountLabel: '전체 참가자',
+    statusPeopleCount: '{count}명',
     statusLoadError: '불러오지 못했어요',
     /** 달성형에서 내가 참가 중인데 다른 참가자가 없을 때(티켓 20261111_2049) */
     statusNoOtherParticipants: '아직 다른 참가자가 없어요',

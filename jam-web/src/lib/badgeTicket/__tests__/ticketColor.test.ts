@@ -8,6 +8,8 @@ import {
   pickTicketTextColor,
   ticketEndHex,
   isYellowHue,
+  missionTicketColor,
+  MISSION_TICKET_HEX,
   parseTicketColorParams,
   pickTicketColor,
   resolveTicketColor,
@@ -21,6 +23,7 @@ import {
 import { FEED_COLORS } from '@/lib/today/feedConstants'
 import { hexToHsl } from '@/lib/today/feedColorRules'
 import { contrastRatio, generateBackground, hexToRgb, srgbToOklab } from '@/lib/collection-cover/color'
+import { readFileSync } from 'node:fs'
 
 /** 두 색의 WCAG 상대 휘도 비(1~21). 컬러셋의 옛 대비 규칙과 함께 지워진 계산을 이 시험 안에 둔다. */
 function luminance(hex: string): number {
@@ -366,5 +369,22 @@ describe('deriveCoverTicketColor', () => {
   it('끝색은 배지 상세와 같은 ticketEndColor 문자열이다', () => {
     const { hex, endColor } = deriveCoverTicketColor('#99fff3')
     expect(endColor).toBe(ticketEndColor(hex))
+  })
+})
+
+describe('missionTicketColor (티켓 20261127_1145)', () => {
+  it('hex는 primitive.css의 --jam-coral과 같고 컴포넌트 토큰 --mission-ticket이 그것을 가리킨다', () => {
+    const primitive = readFileSync(new URL('../../../../design-system/tokens/primitive.css', import.meta.url), 'utf-8')
+    const component = readFileSync(new URL('../../../../design-system/tokens/component.css', import.meta.url), 'utf-8')
+    expect(primitive).toMatch(new RegExp(`--jam-coral:\\s*${MISSION_TICKET_HEX};`, 'i'))
+    expect(component).toContain('--mission-ticket: var(--jam-coral);')
+  })
+
+  it('글자색은 순수 검정이고 코랄 면 위 대비가 AA 4.5 이상이다(#171717은 못 미친다)', () => {
+    const paint = missionTicketColor()
+    expect(paint).toMatchObject({ key: 'mission', cssVar: '--mission-ticket', text: '#000000' })
+    expect(contrastRatio(hexToRgb(paint.text), hexToRgb(paint.hex))).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(hexToRgb('#171717'), hexToRgb(paint.hex))).toBeLessThan(4.5)
+    expect(paint.endColor).toBe(ticketEndColor(paint.hex))
   })
 })

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { AchievementRow } from './MissionStatusClient'
+import { AchievementRow } from './MissionBoard'
 
 interface AchievementEntryLike {
   userId: string
@@ -31,12 +31,19 @@ describe('AchievementRow', () => {
     expect(html).toContain('data-interactive="false"')
   })
 
-  it('달성·미달성은 value 칩이다(달성은 done 블랙 면, 미달성은 --muted 면 + --snow 글자)', () => {
-    expect(render({ achieved: true })).toContain('background:var(--foreground);color:var(--snow)')
-    expect(render({ achieved: true })).toContain('>달성</span>')
-    expect(render({ achieved: false })).toContain('background:var(--muted);color:var(--snow)')
-    expect(render({ achieved: false })).not.toContain('border-radius:var(--radius-full);background:var(--surface);color:var(--muted);font-size')
-    expect(render({ achieved: false })).toContain('>미달성</span>')
+  it('행 면은 검정 카드 위 한 단계 밝은 onInverse 톤이다 (티켓 20261127_1145)', () => {
+    const html = render({})
+    expect(html).toContain('background:var(--surface-on-inverse)')
+    expect(html).toContain('color:var(--snow)')
+    expect(html).not.toContain('background:var(--background-secondary)')
+  })
+
+  it('달성·미달성은 value 칩이다(달성은 코랄 한 색 면, 미달성은 한 단계 밝은 회색 면 + 보조 글자) — 두 톤이 면 색으로 갈린다', () => {
+    const done = render({ achieved: true })
+    expect(done).toMatch(/background:var\(--mission-ticket\);color:var\(--ticket-text, var\(--ticket-ink\)\)[^>]*>달성<\/span>/)
+    const notYet = render({ achieved: false })
+    expect(notYet).toMatch(/background:var\(--surface-on-inverse\);color:var\(--muted-on-inverse\)[^>]*>미달성<\/span>/)
+    expect(notYet).not.toContain('background:var(--muted);color:var(--snow)')
   })
 
   it('«나» 칩이 없다 — 내 상태는 위쪽 «나» 영역이 알린다 (티켓 20261111_2049)', () => {

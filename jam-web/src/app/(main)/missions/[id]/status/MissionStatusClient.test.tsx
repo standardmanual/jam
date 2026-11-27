@@ -1,24 +1,24 @@
 /**
- * 미션 상황 화면 마크업 시험 (티켓 20261111_2049)
+ * 미션 현황 화면 마크업 시험 (티켓 20261111_2049, 티켓 20261127_1145에서 티켓 구조로 고쳤다)
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다. 서버 렌더는 효과(fetch)를 돌리지 않으므로
- * 화면의 첫 번째 상태(`data`)만 시험용 값으로 바꿔 끼운다.
+ * 래퍼의 첫 번째 상태(`data`)만 시험용 값으로 바꿔 끼운다. 화면 구성(`page.tsx`)과 같은 모양으로 티켓 틀과 두 슬롯을 조립해 그린다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/missions/[id]/status/MissionStatusClient.test.tsx"
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-const hoisted = vi.hoisted(() => ({ data: null as unknown }))
+const hoisted = vi.hoisted(() => ({ data: null as unknown, error: null as string | null, showLoader: false }))
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
   let call = 0
-  // 컴포넌트의 useState 호출 순서: data → error → loading (렌더마다 처음부터 센다)
+  // 래퍼의 useState 호출 순서: data → error → loading (렌더마다 처음부터 센다)
   const useState = () => {
     const i = call++ % 3
     if (i === 0) return [hoisted.data, () => {}]
-    if (i === 1) return [null, () => {}]
+    if (i === 1) return [hoisted.error, () => {}]
     return [false, () => {}]
   }
   return { ...actual, default: { ...actual, useState }, useState }
@@ -29,9 +29,13 @@ vi.mock('@/components/ui/TopNav', () => ({
     <header data-testid="topnav" data-bg={props.headerStyle?.background} />
   ),
 }))
-vi.mock('@/hooks/useDebouncedLoading', () => ({ useDebouncedLoading: () => false }))
+vi.mock('@/hooks/useDebouncedLoading', () => ({ useDebouncedLoading: () => hoisted.showLoader }))
 
+import BadgeTicket from '@/app/(main)/badges/[id]/BadgeTicket'
+import { missionTicketColor } from '@/lib/badgeTicket/ticketColor'
 import MissionStatusClient from './MissionStatusClient'
+import MissionSummary from './MissionSummary'
+import MissionBoard from './MissionBoard'
 
 const ranked = (userId: string, rank: number, extra: Record<string, unknown> = {}) => ({
   userId, displayName: `이름-${userId}`, username: userId, avatarUrl: null,
@@ -41,30 +45,85 @@ const person = (userId: string, achieved: boolean, extra: Record<string, unknown
   userId, displayName: `이름-${userId}`, username: userId, avatarUrl: null, achieved, achievedAt: null, ...extra,
 })
 
-function render(data: unknown, missionType = 'distance') {
+function render(data: unknown, missionType = 'distance', kind: 'RANKING' | 'MISSION' = 'RANKING') {
   hoisted.data = data
   return renderToStaticMarkup(
-    <MissionStatusClient missionId="m1" missionTitle="미션" displayType="ranking" missionType={missionType as never} />,
+    <MissionStatusClient missionId="m1" missionTitle="미션" displayType="ranking" missionType={missionType as never}>
+      <BadgeTicket
+        color={missionTicketColor()}
+        kindLabel={kind}
+        dateText="2026.11.27"
+        surface="inverse"
+        photo={<MissionSummary />}
+        body={<MissionBoard />}
+      />
+    </MissionStatusClient>,
   ).replace(/<style[\s\S]*?<\/style>/g, '')
 }
 
 beforeEach(() => {
   hoisted.data = null
+  hoisted.error = null
+  hoisted.showLoader = false
 })
 
-describe('MissionStatusClient — 공통 골격', () => {
-  it('루트 배경은 --mission-accent 한 색이고(그라데이션·흰 빛 없음) 상단 바 배경은 투명이다', () => {
-    const html = render({ type: 'ranking', entries: [ranked('me', 1)], me: ranked('me', 1), totalParticipants: 1 })
-    expect(html).toContain('background:var(--mission-accent)')
-    expect(html).not.toContain('gradient')
-    expect(html).not.toContain('--status-glow')
-    expect(html).toContain('data-bg="transparent"')
-    expect(html).not.toMatch(/#[0-9a-fA-F]{3,6}\b/)
+describe('MissionStatusClient — 티켓 골격', () => {
+  const data = { type: 'ranking', entries: [ranked('me', 1)], me: ranked('me', 1), totalParticipants: 1 }
+
+  it('티켓 틀(머리 RANKING·날짜·절취선 2개·검정 바탕 변형)이 서버 마크업에 그려지고 티켓색은 코랄 토큰이다', () => {
+    const html = render(data)
+    expect(html).toContain('RANKING')
+    expect(html).toContain('2026.11.27')
+    expect(html).toContain('data-ticket-color="mission"')
+    expect(html).toContain('--ticket:var(--mission-ticket)')
+    expect(html).toContain('--ticket-text:#000000')
+    expect(html).toMatch(/--ticket-end:oklch\(from var\(--ticket\)/)
+    expect(html).toContain('_onInverse_')
+    expect(html.match(/class="_tear_/g)).toHaveLength(2)
+  })
+
+  it('옛 구조(--mission-accent 루트 배경·--status-card-bg 카드·인라인 프로필 원)가 없고 화면 코드에 색 리터럴이 없다', () => {
+    const html = render(data)
+    expect(html).not.toContain('var(--mission-accent)')
+    expect(html).not.toContain('--status-card-bg')
+    expect(html).not.toContain('width:114px')
+    expect(html).not.toMatch(/style="[^"]*background:#/)
     expect(html).not.toContain('rgba(')
-    // 프로필 원은 흰 링 3px만 두르고 그림자는 쓰지 않는다(목록 행의 inset 0 그림자는 ListRow 자체 스타일이라 여기서 보지 않는다)
-    const hero = html.slice(0, html.indexOf('전체 랭킹'))
-    expect(hero).toContain('border:3px solid var(--card-bg)')
-    expect(hero).not.toContain('shadow')
+  })
+
+  it('상단 바 배경은 투명이고 페이지 래퍼가 반전 바탕을 건다', () => {
+    const html = render(data)
+    expect(html).toContain('data-bg="transparent"')
+    expect(html).toContain('_page_')
+  })
+
+  it('MISSION 머리 글자는 달성형이다', () => {
+    const html = render({ type: 'achievement', entries: [], me: person('me', true), totalParticipants: 1 }, 'distance', 'MISSION')
+    expect(html).toContain('MISSION')
+    expect(html).not.toContain('RANKING')
+  })
+})
+
+describe('MissionStatusClient — 로딩·오류', () => {
+  it('로딩 중에도 티켓 틀은 그려지고(머리·절취선), 로더가 뜨기 전에는 요약 자리만 비어 있다', () => {
+    const html = render(null)
+    expect(html).toContain('RANKING')
+    expect(html).toContain('_slot_')
+    expect(html).not.toContain('내 기록')
+  })
+
+  it('디바운스를 지나면 요약 자리에 눈 모양 로더가 뜬다', () => {
+    hoisted.showLoader = true
+    const html = render(null)
+    expect(html).toMatch(/_slot_[^>]*><div class="wandering-eyes"/)
+  })
+
+  it('오류 문구는 요약 자리에 티켓 면 글자색(--foreground)으로 나오고 카드는 그리지 않는다', () => {
+    hoisted.error = '불러오지 못했어요'
+    const html = render(null)
+    expect(html).toContain('불러오지 못했어요')
+    expect(html).toMatch(/<p class="[^"]*text-foreground[^"]*">불러오지 못했어요/)
+    expect(html).not.toContain('전체 랭킹')
   })
 })
 
@@ -72,124 +131,138 @@ describe('MissionStatusClient — 랭킹형', () => {
   const entries = [ranked('a', 1), ranked('me', 2), ranked('c', 3)]
   const base = { type: 'ranking', entries, me: entries[1], totalParticipants: 3 }
 
-  it('위쪽에 진행 상황·진행값·단위·내 순위가 차례로 나오고 포디엄·내 순위 카드는 없다', () => {
+  it('«내 요약» 위 칸에 아바타 96·이름·내 기록·값·단위가 차례로 나온다', () => {
     const html = render(base)
-    const order = ['나의 진행 상황', '>20.0', 'km', '내 순위', '2위</p>'].map((s) => html.indexOf(s))
+    const order = ['이름-me', '내 기록', '>20.0', 'km</span>'].map((s) => html.indexOf(s))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(html).toContain('width:114px')
+    expect(html).toContain('width:96px;height:96px')
+    expect(html).toContain('_avatar_')
+    expect(html).toContain('text-5xl font-bold')
   })
 
-  it('위쪽 «나» 영역 글자색: 라벨·진행값·단위는 --foreground, «N위»는 --snow 32/40 굵게다', () => {
+  it('아래 두 칸은 «내 순위»와 «1위와 차이»다(1위 값 30 − 내 값 20 = 10.0km)', () => {
     const html = render(base)
-    const hero = html.slice(0, html.indexOf('전체 랭킹'))
-    expect(hero).toContain('text-sm text-foreground')
-    expect(hero).not.toMatch(/<(p|span)[^>]*text-muted/) // 프로필 아이콘(svg)의 회색은 흰 원 위라 해당 없다
-    expect(hero).toContain('text-base font-normal text-foreground')
-    expect(hero).toMatch(/color:var\(--snow\);font-size:var\(--status-rank-size\);line-height:var\(--status-rank-line-height\)[^>]*>2위<\/p>/)
-    expect(hero).not.toContain('color:var(--mission-accent)')
+    const stats = html.slice(html.indexOf('_titleStats_'))
+    expect(stats.indexOf('내 순위')).toBeLessThan(stats.indexOf('1위와 차이'))
+    expect(stats).toContain('>2위<')
+    expect(stats).toContain('>10.0km<')
   })
 
-  it('«전체 랭킹» 카드에 1위부터 모든 참가자가 나오고 내 행에만 «나» 칩이 있다', () => {
+  it('내가 1위이면 «1위와 차이»는 «—»다', () => {
+    const me = ranked('me', 1)
+    const html = render({ type: 'ranking', entries: [me, ranked('c', 2)], me, totalParticipants: 2 })
+    expect(html).toMatch(/1위와 차이<\/span><span class="_titleStatValue_[^"]*">—</)
+  })
+
+  it('«전체 랭킹» 카드는 검정 면(Card inverse)이고 모든 참가자가 나오며 내 행에만 «나» 원이 있다', () => {
     const html = render(base)
     expect(html).toContain('전체 랭킹')
     expect(html).toContain('>참가자 3명')
     expect(html).not.toContain('다른 참가자')
-    expect(html).toContain('background:var(--status-card-bg)')
-    expect(html).not.toContain('card-bg-translucent')
-    // 카드 제목·«참가자 N명»은 흰색(--snow)
-    expect(html).toMatch(/color:var\(--snow\);font-size:var\(--status-card-title-size\)[^>]*>전체 랭킹/)
-    expect(html).toMatch(/style="color:var\(--snow\)">참가자 3명/)
+    expect(html).toContain('background:var(--background-inverse)')
     for (const id of ['a', 'me', 'c']) expect(html).toContain(`이름-${id}`)
-    expect(html.match(/>나<\/span>/g)).toHaveLength(1)
+    expect(html.match(/role="img" aria-label="나"/g)).toHaveLength(1)
   })
 
-  it('내 행 표식은 칩이 아니라 --mission-accent 22px 원이고 막대 채움도 --mission-accent다', () => {
+  it('행은 onInverse 톤이고 막대 채움·«나» 원은 티켓색 한 색(--mission-ticket)이다', () => {
     const html = render(base)
-    expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;background:var(--mission-accent);color:var(--foreground)')
-    // 칩 면(--accent-soft)의 «나»는 없다
-    expect(html).not.toMatch(/background:var\(--accent-soft\)[^>]*>나</)
-    // 막대 채움: 행 3개 모두 --mission-accent
-    expect(html.match(/background:var\(--mission-accent\)/g)!.length).toBeGreaterThanOrEqual(4)
+    expect(html).toContain('background:var(--surface-on-inverse)')
+    expect(html).toContain('width:22px;height:22px;background:var(--mission-ticket)')
+    expect(html.match(/background:var\(--mission-ticket\)/g)!.length).toBeGreaterThanOrEqual(4)
+    expect(html).toContain('background:var(--capsule-track)')
     expect(html).not.toContain('background:var(--accent)')
   })
 
-  it('내 순위가 공개 목록 밖이어도 위쪽 순위는 보이고 목록에 내 행은 없다', () => {
+  it('내 순위가 공개 목록 밖이어도 위쪽 순위는 보이고 목록에 «나» 원은 없다', () => {
     const outside = ranked('me', 12)
     const html = render({ type: 'ranking', entries: [ranked('a', 1), ranked('c', 2)], me: outside, totalParticipants: 12 })
-    expect(html).toContain('12위</p>')
-    expect(html).not.toContain('>나</span>')
+    expect(html).toContain('>12위<')
+    expect(html).not.toContain('role="img" aria-label="나"')
   })
 
-  it('me가 null이면 진행값 0과 «—»로 구조를 유지한다', () => {
+  it('me가 null이면 이름·값·순위·차이가 «—»이고 아바타는 사람 아이콘이다', () => {
     const html = render({ type: 'ranking', entries, me: null, totalParticipants: 3 }, 'activity_count')
-    expect(html).toContain('>0<')
     expect(html).toContain('>—</p>')
-    expect(html).toContain('내 순위')
+    expect(html).toMatch(/내 순위<\/span><span class="_titleStatValue_[^"]*">—</)
+    expect(html).toMatch(/1위와 차이<\/span><span class="_titleStatValue_[^"]*">—</)
+    expect(html).toContain('<svg')
   })
 
-  it('목록이 비어도(me null·entries 0) 깨지지 않고 «나» 영역만 그린다', () => {
+  it('값이 0이어도 «0»과 단위가 나온다', () => {
+    const me = ranked('me', 2, { progressValue: 0 })
+    const html = render({ type: 'ranking', entries: [ranked('a', 1), me], me, totalParticipants: 2 }, 'activity_count')
+    expect(html).toContain('>0<span')
+    expect(html).toContain('회</span>')
+  })
+
+  it('목록이 비어도(me null·entries 0) 요약 상자만 그리고 카드는 그리지 않는다', () => {
     const html = render({ type: 'ranking', entries: [], me: null, totalParticipants: 0 })
-    expect(html).toContain('>—</p>')
-    expect(html).toContain('내 순위')
+    expect(html).toContain('내 기록')
     expect(html).not.toContain('전체 랭킹')
+  })
+
+  it('긴 이름은 한 줄 말줄임(최대 280) 클래스를 쓴다', () => {
+    const me = ranked('me', 1, { displayName: '아주아주아주아주아주아주아주아주긴이름' })
+    const html = render({ type: 'ranking', entries: [me], me, totalParticipants: 1 })
+    expect(html).toContain('_name_')
   })
 })
 
 describe('MissionStatusClient — 달성형', () => {
   const me = person('me', true)
+  const others = [person('a', true), person('c', false)]
 
-  it('내가 달성하면 --foreground 알약, 미달성이면 --muted 알약이다(글자는 둘 다 --snow)', () => {
-    const done = render({ type: 'achievement', entries: [me, person('a', false)], me, totalParticipants: 2 })
-    expect(done).toContain('background:var(--foreground);color:var(--snow)')
-    expect(done).toContain('>달성</span>')
-    expect(done).not.toContain('--base-neutral-600')
-    const notYet = render({ type: 'achievement', entries: [person('a', true)], me: person('me', false), totalParticipants: 2 })
-    expect(notYet).toContain('background:var(--muted);color:var(--snow)')
-    expect(notYet).not.toContain('--base-neutral-600')
+  it('내가 달성하면 ink 면 알약(done), 미달성이면 면 없는 외곽선 알약(outline)이고 둘 다 큰 크기다', () => {
+    const done = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
+    expect(done).toContain('내 현황')
+    expect(done).toMatch(/background:var\(--foreground\);color:var\(--snow\)[^>]*>달성<\/span>/)
+    expect(done).toContain('font-size:var(--text-3xl)')
+    const notYet = render({ type: 'achievement', entries: others, me: person('me', false), totalParticipants: 3 }, 'distance', 'MISSION')
+    expect(notYet).toMatch(/background:transparent;color:var\(--foreground\)[^>]*box-shadow:inset 0 0 0 2px currentColor[^>]*>미달성<\/span>/)
+    expect(notYet).not.toContain('background:var(--muted)')
   })
 
-  it('«달성 현황» 카드 면은 --status-card-bg, 제목은 --snow다', () => {
-    const html = render({ type: 'achievement', entries: [person('a', true)], me, totalParticipants: 2 })
-    expect(html).toContain('background:var(--status-card-bg)')
-    expect(html).toMatch(/color:var\(--snow\);font-size:var\(--status-card-title-size\)[^>]*>달성 현황/)
+  it('아래 두 칸은 «달성한 참가자»(나 포함)와 «전체 참가자»다', () => {
+    const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
+    const stats = html.slice(html.indexOf('_titleStats_'))
+    expect(stats.indexOf('달성한 참가자')).toBeLessThan(stats.indexOf('전체 참가자'))
+    expect(stats).toContain('>2명<') // 다른 참가자 중 1명 + 나
+    expect(stats).toContain('>3명<')
   })
 
-  it('«달성 현황» 카드에는 서버가 내 행을 뺀 다른 참가자가 준 순서 그대로 나오고 «나» 칩은 없다', () => {
-    const html = render({
-      type: 'achievement',
-      entries: [person('a', true), person('c', false)],
-      me,
-      totalParticipants: 3,
-    })
+  it('«달성 현황» 카드에는 서버가 준 순서 그대로 다른 참가자만 나오고 «나»는 없다', () => {
+    const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
     expect(html).toContain('달성 현황')
-    // totalParticipants(3)는 나를 포함한 수라 목록(2행)과 맞도록 «다른 참가자 2명»으로 보인다
     expect(html).toContain('다른 참가자 2명')
     expect(html).not.toContain('>참가자 3명')
-    expect(html.indexOf('이름-a')).toBeGreaterThan(-1)
     expect(html.indexOf('이름-a')).toBeLessThan(html.indexOf('이름-c'))
-    // 내 이름은 위쪽 «나» 영역에 한 번만 나온다(목록에는 없다)
-    expect(html.match(/이름-me/g)).toHaveLength(1)
-    expect(html).not.toContain('>나</span>')
-    expect(html).not.toContain('— 나 —')
+    expect(html.match(/이름-me/g)).toHaveLength(1) // 요약 상자에 한 번
+    expect(html).not.toContain('role="img" aria-label="나"')
   })
 
-  it('내가 참가자가 아니면(me가 null) «다른 참가자 N명»에 totalParticipants를 그대로 쓴다', () => {
-    const html = render({ type: 'achievement', entries: [person('a', true), person('c', false)], me: null, totalParticipants: 2 })
+  it('행 칩은 달성이 코랄 한 색(ticket), 미달성이 한 단계 밝은 회색(on-inverse)이다', () => {
+    const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
+    expect(html).toMatch(/background:var\(--mission-ticket\);color:var\(--ticket-text, var\(--ticket-ink\)\)[^>]*>달성<\/span>/)
+    expect(html).toMatch(/background:var\(--surface-on-inverse\);color:var\(--muted-on-inverse\)[^>]*>미달성<\/span>/)
+  })
+
+  it('내가 참가자가 아니면(me가 null) «다른 참가자 N명»에 totalParticipants를 그대로 쓰고 알약은 미달성이다', () => {
+    const html = render({ type: 'achievement', entries: others, me: null, totalParticipants: 2 }, 'distance', 'MISSION')
     expect(html).toContain('다른 참가자 2명')
+    expect(html).toContain('>미달성</span>')
   })
 
-  it('내가 참가 중인데 다른 참가자가 없으면 «아직 다른 참가자가 없어요» EmptyState가 나온다', () => {
-    const html = render({ type: 'achievement', entries: [], me, totalParticipants: 1 })
+  it('내가 참가 중인데 다른 참가자가 없으면 검정 카드 안에 «아직 다른 참가자가 없어요» EmptyState가 나온다', () => {
+    const html = render({ type: 'achievement', entries: [], me, totalParticipants: 1 }, 'distance', 'MISSION')
     expect(html).toContain('아직 다른 참가자가 없어요')
     expect(html).toContain('다른 참가자가 생기면 여기에 보여요')
-    expect(html).not.toContain('아직 참가자가 없어요')
-    expect(html).not.toContain('참가자 1명')
+    expect(html).toMatch(/_darkCard_[^>]*>[\s\S]*아직 다른 참가자가 없어요/)
+    expect(html).not.toContain('다른 참가자 0명')
   })
 
-  it('카드 제목은 화면 전용 글자 크기 토큰을 쓴다', () => {
-    const html = render({ type: 'achievement', entries: [person('a', true)], me, totalParticipants: 2 })
-    expect(html).toContain('var(--status-card-title-size)')
+  it('카드 제목은 화면 전용 글자 크기 토큰(CSS 모듈)을 쓴다', () => {
+    const html = render({ type: 'achievement', entries: others, me, totalParticipants: 3 }, 'distance', 'MISSION')
+    expect(html).toContain('_cardTitle_')
   })
 })

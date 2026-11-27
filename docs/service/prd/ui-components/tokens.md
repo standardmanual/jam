@@ -17,7 +17,7 @@ code:
 정본 컴포넌트 목록은 [README](README.md)에 있다.
 
 <!-- BEGIN generated: gen-token-catalog -->
-토큰 445개 · 기본값 (primitive) 133개 · 의미 (semantic) 50개 · 컴포넌트 (component) 124개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 22개
+토큰 444개 · 기본값 (primitive) 134개 · 의미 (semantic) 50개 · 컴포넌트 (component) 122개 · 어드민 (admin) 138개 · 쓰는 곳 0인 토큰 22개
 
 **층 규칙**: 색·px·ms 같은 직접 값은 기본값 층에만 둔다. 의미 층과 컴포넌트 층은 기본값을 참조한다.
 화면 코드는 의미·컴포넌트 토큰과 서비스 눈금 클래스만 쓴다. 기본값을 직접 쓸 수 있는 곳은 토큰 파일·정본 폴더 등 일부뿐이다.
@@ -58,6 +58,7 @@ code:
 | `--jam-green` | `#59C02B` | 〃 | `*-jam-green` | 3 | 0 | 1 | 3 | 2 | — |
 | `--jam-purple` | `#BA8AF7` | 〃 | `*-jam-purple` | 2 | 0 | 1 | 2 | 1 | — |
 | `--jam-blue` | `#0695EC` | 〃 | `*-jam-blue` | 2 | 0 | 1 | 2 | 1 | — |
+| `--jam-coral` | `#D3474D` | 〃 | — | 0 | 0 | 0 | 0 | 1 | 다른 토큰의 재료로 쓰임 |
 | `--jam-pink` | `#F372C1` | 〃 | `*-jam-pink` | 2 | 0 | 1 | 2 | 1 | — |
 | `--jam-sky` | `#51CDF5` | 〃 | `*-jam-sky` | 2 | 0 | 1 | 2 | 1 | — |
 | `--jam-green-deep` | `#3D851E` | 〃 | `*-jam-green-deep` | 0 | 0 | 1 | 1 | 1 | — |
@@ -67,14 +68,14 @@ code:
 | `--radius-md` | `0.375rem` | 〃 | `rounded-md` | 0 | 92 | 0 | 57 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-lg` | `0.5rem` | 〃 | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-xl` | `0.75rem` | 〃 | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 14 | 110 | 0 | 75 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--radius-2xl` | `1rem` | 〃 | `rounded-2xl` | 15 | 110 | 0 | 75 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-3xl` | `1.5rem` | 〃 | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-4xl` | `2rem` | 〃 | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--radius-full` | `9999px` | 〃 | — | 19 | 0 | 0 | 11 | 0 | — |
-| `--spacing-4` | `4px` | 〃 | — | 6 | 0 | 0 | 3 | 0 | — |
+| `--spacing-4` | `4px` | 〃 | — | 7 | 0 | 0 | 3 | 0 | — |
 | `--spacing-8` | `8px` | 〃 | — | 8 | 0 | 0 | 4 | 1 | — |
 | `--spacing-12` | `12px` | 〃 | — | 3 | 0 | 0 | 2 | 3 | — |
-| `--spacing-16` | `16px` | 〃 | — | 3 | 0 | 0 | 2 | 5 | — |
+| `--spacing-16` | `16px` | 〃 | — | 4 | 0 | 0 | 3 | 5 | — |
 | `--spacing-20` | `20px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--spacing-24` | `24px` | 〃 | — | 5 | 0 | 0 | 1 | 2 | — |
 | `--spacing-32` | `32px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
@@ -101,8 +102,8 @@ code:
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
 | `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 964 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 964 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 963 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 963 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base` | `1rem` | 〃 | `text-base` | 12 | 136 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 136 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -113,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 89 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5738 | 0 | 459 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5726 | 0 | 460 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -132,8 +133,8 @@ code:
 | `--container-5xl` | `64rem` | 〃 | `max-w-5xl` | 0 | 0 | 0 | 0 | 0 | — |
 | `--container-6xl` | `72rem` | 〃 | `max-w-6xl` | 0 | 1 | 0 | 1 | 0 | — |
 | `--container-7xl` | `80rem` | 〃 | `max-w-7xl` | 0 | 0 | 0 | 0 | 0 | — |
-| `--text-3xl` | `1.875rem` | 〃 | `text-3xl` | 0 | 33 | 0 | 32 | 0 | — |
-| `--text-3xl--line-height` | `calc(2.25 / 1.875)` | 〃 | `text-3xl` | 0 | 33 | 0 | 32 | 0 | — |
+| `--text-3xl` | `1.875rem` | 〃 | `text-3xl` | 1 | 32 | 0 | 32 | 0 | — |
+| `--text-3xl--line-height` | `calc(2.25 / 1.875)` | 〃 | `text-3xl` | 1 | 32 | 0 | 32 | 0 | — |
 | `--text-4xl` | `2.25rem` | 〃 | `text-4xl` | 0 | 1 | 0 | 1 | 0 | — |
 | `--text-4xl--line-height` | `calc(2.5 / 2.25)` | 〃 | `text-4xl` | 0 | 1 | 0 | 1 | 0 | — |
 | `--text-5xl` | `3rem` | 〃 | `text-5xl` | 0 | 2 | 0 | 2 | 0 | — |
@@ -144,7 +145,7 @@ code:
 | `--font-weight-normal` | `400` | 〃 | `font-normal` | 0 | 45 | 0 | 21 | 0 | — |
 | `--font-weight-medium` | `500` | 〃 | `font-medium` | 0 | 386 | 0 | 151 | 0 | — |
 | `--font-weight-semibold` | `600` | 〃 | `font-semibold` | 0 | 211 | 0 | 105 | 0 | — |
-| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 299 | 0 | 167 | 0 | — |
+| `--font-weight-bold` | `700` | 〃 | `font-bold` | 0 | 296 | 0 | 167 | 0 | — |
 | `--font-weight-extrabold` | `800` | 〃 | `font-extrabold` | 0 | 2 | 0 | 1 | 0 | — |
 | `--font-weight-black` | `900` | 〃 | `font-black` | 0 | 10 | 0 | 7 | 0 | — |
 | `--tracking-tighter` | `-0.05em` | 〃 | `tracking-tighter` | 0 | 1 | 0 | 1 | 0 | — |
@@ -174,20 +175,20 @@ code:
 | `--background` | `var(--base-neutral-100)` | `#f5f5f5` | `*-background` | 12 | 74 | 0 | 50 | 1 | — |
 | `--background-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-background-secondary` | 12 | 12 | 0 | 16 | 1 | — |
 | `--page-bg` | `var(--base-neutral-200)` | `#e5e5e5` | `*-page-bg` | 2 | 0 | 0 | 1 | 3 | — |
-| `--card-bg` | `var(--base-white)` | `#ffffff` | `*-card-bg` | 10 | 10 | 0 | 19 | 2 | — |
+| `--card-bg` | `var(--base-white)` | `#ffffff` | `*-card-bg` | 9 | 10 | 0 | 18 | 2 | — |
 | `--btn-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-btn-secondary` | 1 | 4 | 0 | 3 | 1 | — |
-| `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 13 | 14 | 0 | 20 | 3 | — |
+| `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 17 | 14 | 0 | 22 | 3 | — |
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
-| `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 3 | 0 | 0 | 3 | 2 | — |
-| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 594 | 0 | 218 | 7 | — |
-| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 37 | 250 | 0 | 144 | 2 | — |
-| `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 0 | 16 | 1 | — |
-| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 35 | 30 | 0 | 39 | 7 | — |
-| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 2 | 8 | 0 | 6 | 2 | — |
+| `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 6 | 0 | 0 | 3 | 2 | — |
+| `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 592 | 0 | 218 | 6 | — |
+| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 249 | 0 | 143 | 2 | — |
+| `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 1 | 16 | 1 | — |
+| `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 40 | 30 | 0 | 39 | 7 | — |
+| `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 6 | 8 | 0 | 7 | 2 | — |
 | `--overlay-foreground` | `var(--base-white)` | `#ffffff` | — | 2 | 0 | 0 | 2 | 0 | — |
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
 | `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | — |
-| `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 2 | 0 | 0 | 2 | 1 | — |
+| `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 1 | 0 | 0 | 1 | 1 | — |
 | `--border` | `var(--base-neutral-200)` | `#e5e5e5` | `*-border` | 11 | 346 | 0 | 137 | 1 | — |
 | `--field-border` | `var(--base-neutral-400)` | `#a3a3a3` | `*-field-border` | 2 | 0 | 0 | 2 | 1 | — |
 | `--separator` | `var(--base-neutral-200)` | `#e5e5e5` | `*-separator` | 2 | 0 | 0 | 2 | 1 | — |
@@ -213,7 +214,7 @@ code:
 | `--spacing-safe-top` | `env(safe-area-inset-top, 0px)` | 〃 | — | 2 | 0 | 0 | 2 | 0 | — |
 | `--spacing-safe-bottom` | `env(safe-area-inset-bottom, 0px)` | 〃 | — | 4 | 0 | 0 | 4 | 1 | — |
 | `--app-max-width` | `430px` | 〃 | — | 3 | 0 | 0 | 3 | 0 | — |
-| `--topnav-height` | `56px` | 〃 | — | 3 | 0 | 0 | 3 | 0 | — |
+| `--topnav-height` | `56px` | 〃 | — | 2 | 0 | 0 | 2 | 0 | — |
 | `--sheet-full-height` | `92dvh` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--sheet-max-height` | `75dvh` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--z-toast-scrim` | `59` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
@@ -243,10 +244,10 @@ code:
 | `--tabbar-icon` | `var(--base-neutral-900)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
 | `--tabbar-icon-active` | `var(--foreground)` | `#171717` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-icon-inverse` | `var(--muted-on-inverse)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | 덮어쓰기 있음 (@media (prefers-contrast: more) > :root, [data-service-theme]) |
-| `--status-card-bg` | `color-mix(in srgb, var(--foreground) 94%, transparent)` | `color-mix(in srgb, #171717 94%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--mission-accent` | `var(--jam-red)` | `#FF1D1D` | — | 7 | 0 | 0 | 3 | 0 | — |
+| `--mission-ticket` | `var(--jam-coral)` | `#D3474D` | — | 2 | 0 | 2 | 3 | 0 | — |
+| `--mission-accent` | `var(--jam-red)` | `#FF1D1D` | — | 4 | 0 | 0 | 1 | 0 | — |
 | `--login-background` | `var(--base-black)` | `#000000` | — | 2 | 0 | 0 | 1 | 0 | — |
-| `--ticket-ink` | `var(--base-neutral-900)` | `#171717` | — | 13 | 0 | 0 | 1 | 0 | — |
+| `--ticket-ink` | `var(--base-neutral-900)` | `#171717` | — | 14 | 0 | 0 | 2 | 0 | — |
 | `--ticket-paper` | `var(--base-white)` | `#ffffff` | — | 3 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-background` | `color-mix(in srgb, var(--base-white) 72%, transparent)` | `color-mix(in srgb, #ffffff 72%, transparent)` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-blur` | `20px` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
@@ -263,8 +264,6 @@ code:
 | `--tabbar-label-line-height` | `1` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--status-card-title-size` | `1.3125rem` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--status-card-title-line-height` | `1.5` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--status-rank-size` | `2rem` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--status-rank-line-height` | `2.5rem` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--list-row-lead-size` | `48px` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--list-row-indicator-size` | `24px` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--list-row-gap` | `var(--spacing-12)` | `12px` | — | 4 | 0 | 0 | 1 | 0 | — |
@@ -463,7 +462,7 @@ code:
 | `--shadow` | `0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)` | 〃 | `shadow` | 0 | 2 | 0 | 1 | 0 | — |
 | `--radius` | `0.25rem` | 〃 | `rounded` | 0 | 79 | 0 | 45 | 6 | reference 정의(클래스 값만)와 별개로 globals.css에 변수 정의가 있음 |
 | `--background` | `oklch(1 0 0)` | 〃 | `*-background` | 12 | 74 | 0 | 50 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 77 | 594 | 0 | 218 | 7 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-foreground` | 77 | 592 | 0 | 218 | 6 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--card` | `oklch(1 0 0)` | 〃 | `*-card` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover` | `oklch(1 0 0)` | 〃 | `*-popover` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--popover-foreground` | `oklch(0.147 0.004 49.25)` | 〃 | `*-popover-foreground` | 0 | 1 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
@@ -471,7 +470,7 @@ code:
 | `--primary-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-primary-foreground` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary` | `oklch(0.97 0.001 106.424)` | 〃 | `*-secondary` | 0 | 3 | 0 | 3 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary-foreground` | `oklch(0.216 0.006 56.043)` | 〃 | `*-secondary-foreground` | 0 | 2 | 0 | 2 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 37 | 250 | 0 | 144 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 249 | 0 | 143 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1010 | 0 | 249 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
@@ -490,7 +489,7 @@ code:
 | `--radius-md` | `calc(var(--radius) * 0.8)` | `calc(0.25rem * 0.8)` | `rounded-md` | 0 | 92 | 0 | 57 | 1 | — |
 | `--radius-lg` | `var(--radius)` | `0.25rem` | `rounded-lg` | 2 | 154 | 0 | 84 | 1 | — |
 | `--radius-xl` | `calc(var(--radius) * 1.4)` | `calc(0.25rem * 1.4)` | `rounded-xl` | 4 | 158 | 0 | 46 | 1 | — |
-| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 14 | 110 | 0 | 75 | 1 | — |
+| `--radius-2xl` | `calc(var(--radius) * 1.8)` | `calc(0.25rem * 1.8)` | `rounded-2xl` | 15 | 110 | 0 | 75 | 1 | — |
 | `--radius-3xl` | `calc(var(--radius) * 2.2)` | `calc(0.25rem * 2.2)` | `rounded-3xl` | 0 | 1 | 0 | 1 | 1 | — |
 | `--radius-4xl` | `calc(var(--radius) * 2.6)` | `calc(0.25rem * 2.6)` | `rounded-4xl` | 0 | 0 | 0 | 0 | 1 | — |
 

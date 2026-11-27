@@ -19,7 +19,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon } from './icons'
 /** 굵기 단일 소스. 행 안의 모든 글자 굵기는 여기서 나온다. */
 const ROW_WEIGHT = { regular: 400, strong: 700 }
 
-export type ListRowTone = 'default' | 'tint' | 'inverse' | 'flat'
+export type ListRowTone = 'default' | 'tint' | 'inverse' | 'flat' | 'onInverse'
 
 interface ToneSpec {
   background: string
@@ -29,6 +29,7 @@ interface ToneSpec {
   muted: string
   face: string
   leadBg: string
+  leadColor: string
   ring: string
 }
 
@@ -40,22 +41,31 @@ const TONES: Record<ListRowTone, ToneSpec> = {
   default: {
     background: 'var(--card-bg)', border: 'none', radius: 'var(--radius-2xl)',
     color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--card-bg)', leadBg: 'var(--background-secondary)',
-    ring: 'var(--foreground)',
+    leadColor: 'var(--muted)', ring: 'var(--foreground)',
   },
   tint: {
     background: 'var(--background-secondary)', border: '1px solid transparent', radius: 'var(--radius-2xl)',
     color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--background-secondary)', leadBg: 'var(--surface)',
-    ring: 'var(--foreground)',
+    leadColor: 'var(--muted)', ring: 'var(--foreground)',
   },
   inverse: {
     background: 'var(--background-inverse)', border: '1px solid var(--background-inverse)', radius: 'var(--radius-2xl)',
     color: 'var(--snow)', muted: 'var(--muted-on-inverse)', face: 'var(--background-inverse)',
-    leadBg: 'var(--surface-on-inverse)', ring: 'var(--snow)',
+    leadBg: 'var(--surface-on-inverse)', leadColor: 'var(--muted)', ring: 'var(--snow)',
+  },
+  /**
+   * 검정 카드(Card tone="inverse") 위 한 단계 밝은 어두운 행(티켓 20261127_1145, 미션 현황). 면은 `--surface-on-inverse`(snow 15%), 글자는 --snow다.
+   * 티켓 안 카드 구간(`.cards`)은 --foreground를 잉크색으로 되돌리므로 글자색을 --snow로 직접 정한다. 테두리가 없어 행 사이 간격은 호출부가 둔다.
+   */
+  onInverse: {
+    background: 'var(--surface-on-inverse)', border: '1px solid transparent', radius: 'var(--radius-2xl)',
+    color: 'var(--snow)', muted: 'var(--muted-on-inverse)', face: 'var(--background-inverse)',
+    leadBg: 'var(--surface-on-inverse)', leadColor: 'var(--muted-on-inverse)', ring: 'var(--snow)',
   },
   flat: {
     background: 'transparent', border: '1px solid transparent', radius: 0,
     color: 'var(--foreground)', muted: 'var(--muted)', face: 'var(--background)', leadBg: 'var(--background-secondary)',
-    ring: 'var(--foreground)',
+    leadColor: 'var(--muted)', ring: 'var(--foreground)',
   },
 }
 
@@ -104,6 +114,12 @@ const CHIP_TONES = {
   'surface-muted': { bg: 'var(--surface)', fg: 'var(--muted)' },
   red: { bg: 'var(--jam-red)', fg: 'var(--foreground)' },
   gray: { bg: 'var(--muted)', fg: 'var(--snow)' },
+  /** 미션 현황 티켓 한 색 면(티켓 20261127_1145). 글자는 서버가 정한 티켓 글자색(--ticket-text), 티켓 밖에서는 잉크색 */
+  ticket: { bg: 'var(--mission-ticket)', fg: 'var(--ticket-text, var(--ticket-ink))' },
+  /** 어두운 행(tone="onInverse") 위 한 단계 밝은 칩 — 행 면 위에 같은 snow 15%를 한 번 더 얹는다 */
+  'on-inverse': { bg: 'var(--surface-on-inverse)', fg: 'var(--muted-on-inverse)' },
+  /** 큰 상태 알약의 «아님» 모양 — 면 없이 2px 외곽선(티켓 20261127_1145). 달성(done)과 면 색만으로 갈린다 */
+  outline: { bg: 'transparent', fg: 'var(--foreground)' },
 }
 
 /**
@@ -113,11 +129,14 @@ const CHIP_TONES = {
  */
 export function ListRowChip({
   tone = 'neutral',
+  size = 'md',
   children,
   className = '',
   style = {},
 }: {
   tone?: keyof typeof CHIP_TONES
+  /** `lg`는 큰 상태 알약(30px 굵게, 미션 현황 «내 현황», 티켓 20261127_1145). 기본 `md`는 12px 칩이다 */
+  size?: 'md' | 'lg'
   children?: ReactNode
   className?: string
   style?: CSSProperties
@@ -128,11 +147,14 @@ export function ListRowChip({
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap',
-        padding: 'var(--chip-padding)',
+        padding: size === 'lg' ? 'var(--spacing-4) var(--spacing-16)' : 'var(--chip-padding)',
         borderRadius: 'var(--radius-full)',
         background: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).bg,
         color: (CHIP_TONES[tone] ?? CHIP_TONES.neutral).fg,
-        fontSize: 'var(--text-xs)', lineHeight: 'var(--text-xs--line-height)', fontWeight: ROW_WEIGHT.strong,
+        boxShadow: tone === 'outline' ? 'inset 0 0 0 2px currentColor' : undefined,
+        fontSize: size === 'lg' ? 'var(--text-3xl)' : 'var(--text-xs)',
+        lineHeight: size === 'lg' ? 'var(--text-3xl--line-height)' : 'var(--text-xs--line-height)',
+        fontWeight: ROW_WEIGHT.strong,
         ...style,
       }}
     >
@@ -156,7 +178,7 @@ function Lead({ lead, shape, badge, tone }: { lead: ReactNode; shape: 'tile' | '
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: '100%', height: '100%', overflow: 'hidden', boxSizing: 'border-box',
           borderRadius: shape === 'round' ? 'var(--radius-full)' : 'var(--radius-xl)',
-          background: t.leadBg, color: 'var(--muted)',
+          background: t.leadBg, color: t.leadColor,
         }}
       >
         {lead}
@@ -302,6 +324,8 @@ export function ListRow({
   const framed = hasSelectedFrame(tone, selected)
   const wrapperStyle: CSSProperties = {
     ...(tone === 'flat' && !framed ? ({ '--list-row-padding-x': '0px' } as CSSProperties) : null),
+    // 어두운 행 위 포커스 링: 기본 --link는 티켓 카드 구간에서 잉크색이라 행 면에 묻힌다
+    ...(tone === 'onInverse' ? ({ '--link': 'var(--snow)' } as CSSProperties) : null),
     display: 'flex', alignItems: 'stretch', boxSizing: 'border-box', width: '100%',
     background: t.background, border: t.border, borderRadius: framed ? 'var(--radius-2xl)' : t.radius,
     borderBottom: tone === 'flat' && separator && !framed ? '1px solid var(--separator)' : t.border,

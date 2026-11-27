@@ -31,11 +31,19 @@ describe('RankingListRow — barColor·meMarker', () => {
     expect(html).not.toContain('background:var(--accent)')
   })
 
-  it('meMarker="circle"이면 이름 옆에 22px --mission-accent 원이 있고 «나» 칩은 없다', () => {
-    const html = render({ meMarker: 'circle' })
+  it('meMarker="circle"이면 22px 원이 막대 채움(barColor)과 같은 면이고 «나» 칩은 없다 (티켓 20261127_1145)', () => {
+    const html = render({ meMarker: 'circle', barColor: 'var(--mission-ticket)' })
     expect(html).toContain('role="img" aria-label="나"')
-    expect(html).toContain('width:22px;height:22px;background:var(--mission-accent);color:var(--foreground)')
+    expect(html).toContain('width:22px;height:22px;background:var(--mission-ticket);color:var(--ticket-text, var(--foreground))')
     expect(html).not.toContain('background:var(--accent-soft)')
+  })
+
+  it('rowTone을 안 주면 tint 행이고, onInverse이면 검정 카드 위 한 단계 밝은 행이다 (티켓 20261127_1145)', () => {
+    expect(render()).toContain('background:var(--background-secondary)')
+    const dark = render({ rowTone: 'onInverse' })
+    expect(dark).toContain('background:var(--surface-on-inverse)')
+    expect(dark).toContain('color:var(--snow)')
+    expect(dark).not.toContain('background:var(--background-secondary)')
   })
 
   it('barShape를 안 주면 기존 플랫 막대(--border 트랙)이고, capsule이면 캡슐 트랙(--capsule-track)이다 (티켓 20261127_0020)', () => {

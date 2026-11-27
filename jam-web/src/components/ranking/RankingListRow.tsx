@@ -53,13 +53,20 @@ export interface RankingListRowProps {
    */
   barShape?: 'flat' | 'capsule'
   /**
-   * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 `--mission-accent` 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049)다.
+   * 내 행 표식 모양. 기본 `chip`은 이름 옆 «나» 칩(홈 랭킹보드 카드)이고, `circle`은 진행 막대 채움(`barColor`)과 같은 면의 지름 22 원 안 «나»(미션 상황 화면, 티켓 20261111_2049·20261127_1145)다.
    */
   meMarker?: 'chip' | 'circle'
+  /**
+   * 행 면 톤. 기본 `tint`는 흰 카드 안 행이고, `onInverse`는 검정 카드(Card tone="inverse") 위 한 단계 밝은 어두운 행이다(미션 현황 티켓, 티켓 20261127_1145).
+   */
+  rowTone?: 'tint' | 'onInverse'
 }
 
-/** 내 행 표식 원 — 지름 22, 글자 12px 굵게·줄 높이 1. 글자만으로 뜻이 전달되므로 접근성 이름도 같은 «나»다 */
-function MeCircle() {
+/**
+ * 내 행 표식 원 — 지름 22, 글자 12px 굵게·줄 높이 1. 글자만으로 뜻이 전달되므로 접근성 이름도 같은 «나»다.
+ * 면은 진행 막대 채움과 같은 한 색(`color`), 글자는 티켓 글자색(--ticket-text, 티켓 밖이면 --foreground)이다 — 코랄 면 위 대비 때문이다(티켓 20261127_1145).
+ */
+function MeCircle({ color }: { color: string }) {
   return (
     <span
       role="img"
@@ -68,7 +75,7 @@ function MeCircle() {
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         width: 22, height: 22,
-        background: 'var(--mission-accent)', color: 'var(--foreground)',
+        background: color, color: 'var(--ticket-text, var(--foreground))',
       }}
     >
       {d.missions.statusMeChip}
@@ -85,12 +92,12 @@ function MeCircle() {
  * 클릭 영역(프로필 링크) 안은 phrasing만 쓴다 — 진행 바는 `as="span"`이고 장식이라 호출부 span 래퍼에 aria-hidden을 건다.
  * 순위 숫자는 화면용 숫자(aria-hidden)와 «N위»(sr-only)를 함께 둔다.
  */
-export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', trackColor, barShape = 'flat', meMarker = 'chip' }: RankingListRowProps) {
+export default function RankingListRow({ entry, maxValue, isMe, formatValue, barColor = 'var(--accent)', trackColor, barShape = 'flat', meMarker = 'chip', rowTone = 'tint' }: RankingListRowProps) {
   const fillRatio = maxValue > 0 ? Math.min(1, entry.value / maxValue) : 0
 
   return (
     <ListRow
-      tone="tint"
+      tone={rowTone}
       leadShape="round"
       href={entry.username ? `/${entry.username}` : undefined}
       indicator={
@@ -126,7 +133,7 @@ export default function RankingListRow({ entry, maxValue, isMe, formatValue, bar
       value={
         isMe && meMarker === 'circle' ? (
           <span className="gap-2" style={{ display: 'inline-flex', alignItems: 'center' }}>
-            <MeCircle />
+            <MeCircle color={barColor} />
             {formatValue(entry.value)}
           </span>
         ) : (

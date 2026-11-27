@@ -56,7 +56,7 @@ code:
 | `ItemSerialCode.tsx` | ItemSerialCode | 아이템 배지의 일련번호를 앞 4자 카드와 숫자 상자로 그리는 스탬프다. 배지 상세와 드랍 바텀시트, 잠긴 배지 상세에서 쓴다. | UI/Patterns/ItemSerialCode (2개) |
 | `LabelChip.tsx` | LabelChip | 카드 좌상단에 붙는 작은 라벨 칩이다. 오늘 현황 줄·정지 안내·획득 이력의 «처음 받은 날»·기사 화면에서 쓴다. | UI/Cards/LabelChip (3개) |
 | `ListCard.tsx` | ListCard | 이미지·제목·칩·값·푸터를 한 장에 쌓아 보여 주는 목록 카드다. 미션 목록에서 미션 한 건을 그릴 때 쓴다. | UI/Cards/ListCard (3개) |
-| `ListRow.tsx` | ListRowEm, ListRowChip, ListRow | 왼쪽 이미지·제목·보조 문구·오른쪽 값을 슬롯으로 조합하는 목록 행이다. 홈 피드·팔로우 목록·획득 이력·레시피 보상 등 여러 목록에서 쓴다. | UI/Cards/ListRow (15개) |
+| `ListRow.tsx` | ListRowEm, ListRowChip, ListRow | 왼쪽 이미지·제목·보조 문구·오른쪽 값을 슬롯으로 조합하는 목록 행이다. 홈 피드·팔로우 목록·획득 이력·레시피 보상 등 여러 목록에서 쓴다. | UI/Cards/ListRow (18개) |
 | `LoadMoreButton.tsx` | LoadMoreButton | 목록 끝에서 더 불러오는 전체 폭 버튼이다. 친구 피드·알림·포인트 내역에서 쓴다. | UI/Buttons/LoadMoreButton (3개) |
 | `LockedTile.tsx` | LockedTile | 잠긴 아이템 배지를 자물쇠 하나로 대신 보여 주는 정사각 타일이다. 잠긴 배지 상세·배지 격자·드랍 시트·미션 보상에서 쓴다. | UI/Cards/LockedTile (3개) |
 | `MixerSlot.tsx` | ActionCircle, MixerSlot | 믹스·등급 올리기에서 재료 배지를 담는 슬롯 카드다. 빈 칸·잠긴 칸·채운 칸 세 상태를 그린다. | UI/Patterns/MixerSlot (4개) |

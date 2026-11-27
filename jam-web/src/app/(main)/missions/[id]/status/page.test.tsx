@@ -40,6 +40,8 @@ vi.mock('next/navigation', () => ({
   },
 }))
 vi.mock('./MissionStatusClient', () => ({ default: () => null }))
+vi.mock('./MissionSummary', () => ({ default: () => null }))
+vi.mock('./MissionBoard', () => ({ default: () => null }))
 
 import MissionStatusPage from './page'
 
@@ -77,5 +79,19 @@ describe('미션 상황 화면 — 서버 분기', () => {
   it('없는 미션이면 404다', async () => {
     state.tables.missions = null
     await expect(open()).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('티켓 틀은 서버가 정한 코랄 색·머리 글자·검정 바탕 변형으로 그린다 (티켓 20261127_1145)', async () => {
+    type TicketElement = { props: { children: { props: { color: { key: string; cssVar: string; text: string }; kindLabel: string; dateText: string | null; surface: string } } } }
+    const ranking = (await open()) as unknown as TicketElement
+    const ticket = ranking.props.children.props
+    expect(ticket.color).toMatchObject({ key: 'mission', cssVar: '--mission-ticket', text: '#000000' })
+    expect(ticket.kindLabel).toBe('RANKING')
+    expect(ticket.surface).toBe('inverse')
+    expect(ticket.dateText).toMatch(/^\d{4}\.\d{2}\.\d{2}$/)
+
+    state.tables.missions = mission('achievement')
+    const achievement = (await open()) as unknown as TicketElement
+    expect(achievement.props.children.props.kindLabel).toBe('MISSION')
   })
 })

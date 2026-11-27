@@ -313,3 +313,45 @@ describe('값 행 값 칸 오른쪽 정렬', () => {
     expect(valueStyle(render(<ListRow title="이름" value="값" />), '값')).not.toContain('margin-left')
   })
 })
+
+describe('ListRow — onInverse 톤과 칩 변형 (티켓 20261127_1145)', () => {
+  const strip = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, '')
+
+  it('onInverse 행은 --surface-on-inverse 면·--snow 글자·--muted-on-inverse 보조 글자이고 포커스 링 색을 --snow로 정한다', () => {
+    const html = strip(render(<ListRow tone="onInverse" lead="L" title="제목" meta="부제" />))
+    expect(html).toContain('background:var(--surface-on-inverse)')
+    expect(html).toContain('color:var(--snow)')
+    expect(html).toContain('--link:var(--snow)')
+    expect(html).toContain('color:var(--muted-on-inverse)')
+    expect(html).not.toContain('background:var(--background-secondary)')
+  })
+
+  it('다른 톤은 포커스 링 색을 덮지 않고 lead 아이콘 색은 --muted 그대로다', () => {
+    const html = strip(render(<ListRow tone="tint" lead="L" title="제목" />))
+    expect(html).not.toContain('--link:')
+    expect(html).toContain('color:var(--muted)')
+  })
+
+  it('ListRowChip lg는 30px 큰 알약이고 기본 md는 12px 칩이다', () => {
+    const lg = render(<ListRowChip tone="done" size="lg">달성</ListRowChip>)
+    expect(lg).toContain('font-size:var(--text-3xl)')
+    expect(lg).toContain('padding:var(--spacing-4) var(--spacing-16)')
+    const md = render(<ListRowChip tone="done">달성</ListRowChip>)
+    expect(md).toContain('font-size:var(--text-xs)')
+    expect(md).toContain('padding:var(--chip-padding)')
+  })
+
+  it('outline 톤은 면 없이 2px 외곽선이고 done 톤과 면 색만으로 갈린다', () => {
+    const outline = render(<ListRowChip tone="outline" size="lg">미달성</ListRowChip>)
+    expect(outline).toContain('background:transparent')
+    expect(outline).toContain('box-shadow:inset 0 0 0 2px currentColor')
+    const done = render(<ListRowChip tone="done" size="lg">달성</ListRowChip>)
+    expect(done).toContain('background:var(--foreground)')
+    expect(done).not.toContain('box-shadow')
+  })
+
+  it('ticket·on-inverse 칩 톤은 어두운 행 위에서 쓰는 면 색이다', () => {
+    expect(render(<ListRowChip tone="ticket">달성</ListRowChip>)).toContain('background:var(--mission-ticket);color:var(--ticket-text, var(--ticket-ink))')
+    expect(render(<ListRowChip tone="on-inverse">미달성</ListRowChip>)).toContain('background:var(--surface-on-inverse);color:var(--muted-on-inverse)')
+  })
+})

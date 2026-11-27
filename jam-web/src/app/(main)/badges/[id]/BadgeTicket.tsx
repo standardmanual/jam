@@ -25,16 +25,27 @@ interface BadgeTicketProps {
   afterPhoto?: ReactNode
   /** 절취선 2 아래 카드 구간 */
   body: ReactNode
+  /**
+   * 티켓이 놓이는 바탕. 기본 `default`는 페이지 바탕(`--background`)이다. `inverse`는 검정 바탕(`--background-inverse`)에 놓이는 티켓이라
+   * 절취선 홈·점선이 그 검정으로 비친다(미션 현황, 티켓 20261127_1145). 페이지 바탕 칠과 글자색 덮어쓰기는 화면 래퍼가 한다.
+   */
+  surface?: 'default' | 'inverse'
 }
 
-export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPhoto, body }: BadgeTicketProps) {
+export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPhoto, body, surface = 'default' }: BadgeTicketProps) {
   // 로고 마스크 이미지는 CSS 안에서야 요청되므로 미리 받아 두어 머리가 늦게 칠해지지 않게 한다
   preload('/jam-logo-white.png', { as: 'image' })
 
   // 팔레트 색은 `--jam-*` 변수를 가리키고, 파생색은 hex를 그대로 쓴다. 파생색만 글자색·카드 바탕 비율을 더 넣는다(배지 상세 HTML은 그대로)
   const vars: Record<string, string> =
     'cssVar' in color
-      ? { '--ticket': `var(${color.cssVar})`, '--ticket-end': color.endColor, '--ticket-silhouette': color.silhouette }
+      ? {
+          '--ticket': `var(${color.cssVar})`,
+          '--ticket-end': color.endColor,
+          '--ticket-silhouette': color.silhouette,
+          // 미션 현황 티켓은 글자색을 서버가 정한다(코랄 위 순수 검정). 통합 팔레트 색은 기본 --ticket-ink다
+          ...('text' in color ? { '--ticket-text': color.text } : null),
+        }
       : {
           '--ticket': color.hex,
           '--ticket-end': color.endColor,
@@ -45,7 +56,11 @@ export default function BadgeTicket({ color, kindLabel, dateText, photo, afterPh
         }
 
   return (
-    <div className={styles.ticket} style={vars as CSSProperties} data-ticket-color={color.key}>
+    <div
+      className={surface === 'inverse' ? `${styles.ticket} ${styles.onInverse}` : styles.ticket}
+      style={vars as CSSProperties}
+      data-ticket-color={color.key}
+    >
       <div className={styles.head}>
         <div className={`jam-logo-mark ${styles.logo}`} role="img" aria-label="JAM!" />
         <div className={styles.meta}>

@@ -95,7 +95,22 @@ export interface DerivedTicketColor {
   cardMixSecondary: number
 }
 
-export type TicketPaint = TicketColor | DerivedTicketColor
+/**
+ * 미션 현황 티켓색 (티켓 20261127_1145). 색은 컴포넌트 토큰 `--mission-ticket`(= `--jam-coral`)이 정하고, 이 값은 대비 계산과 끝색 파생에 쓰는 같은 hex다
+ * (`primitive.css`의 `--jam-coral`과 같은지는 시험이 고정한다). 통합 팔레트 일곱 색에는 섞지 않는다.
+ */
+export interface MissionTicketColor {
+  key: 'mission'
+  cssVar: '--mission-ticket'
+  hex: string
+  endColor: string
+  /** 미션 현황은 미획득 실루엣을 쓰지 않는다 — 글자색과 같은 값을 넣어 둔다 */
+  silhouette: string
+  /** 티켓 면 위 글자색 — 순수 검정 */
+  text: string
+}
+
+export type TicketPaint = TicketColor | DerivedTicketColor | MissionTicketColor
 
 function hexToOklch(hex: string): { L: number; C: number; h: number } {
   const [L, a, b] = srgbToOklab(hexToRgb(hex))
@@ -159,6 +174,24 @@ export function pickCardMix(ticketHex: string): { cardMix: number; cardMixSecond
   while (mix > 0 && contrastRatio(ink, cardBackgroundRgb(ticketHex, mix)) < MIN_CONTRAST) mix -= 5
   const secondary = mix === CARD_MIX_DEFAULT ? CARD_MIX_SECONDARY_DEFAULT : Math.round((mix * CARD_MIX_SECONDARY_DEFAULT) / CARD_MIX_DEFAULT)
   return { cardMix: mix, cardMixSecondary: secondary }
+}
+
+/** `--jam-coral`과 같은 값 */
+export const MISSION_TICKET_HEX = '#D3474D'
+
+/**
+ * 미션 현황 티켓색. 글자색은 순수 검정이다: 코랄 면 위 대비가 `#000` 4.78, `#fff` 4.39, `#171717` 4.08(계산값)이라
+ * 머리의 12px 날짜 줄(AA 4.5)을 넘기는 것은 검정뿐이다. `pickTicketTextColor`는 면과 끝색 사이 중간색까지 보고 흰색을 고르므로 쓰지 않는다.
+ */
+export function missionTicketColor(): MissionTicketColor {
+  return {
+    key: 'mission',
+    cssVar: '--mission-ticket',
+    hex: MISSION_TICKET_HEX,
+    endColor: ticketEndColor(MISSION_TICKET_HEX),
+    silhouette: '#000000',
+    text: '#000000',
+  }
 }
 
 function paintFromHex(hex: string): DerivedTicketColor {

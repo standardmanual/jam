@@ -46,6 +46,34 @@ export function TicketTitleBoxesView({ chip, name, description }: { chip?: React
   )
 }
 
+/** 요약 상자 통계 칸 하나 — 라벨(12px)과 값(28px 굵게) */
+export interface TicketSummaryStat {
+  label: string
+  /** 값 글자(단위를 붙인 한 문자열). 한 줄로 두고 줄바꿈하지 않는다 */
+  value: string
+}
+
+/**
+ * 같은 글자 상자 규격(2px·직각·투명 면)의 요약 변형 — 미션 현황 «내 요약»(티켓 20261127_1145).
+ * 이름·설명 대신 위 칸(`top` 슬롯)과 아래 두 칸 통계(`stats`)를 받는다. 위 칸은 `titleTop`을 그대로 쓰고, 통계 두 칸은 가운데 세로 선으로 나뉜다.
+ * h1은 두지 않는다(이 변형의 이름은 `top` 안의 문단이다).
+ */
+export function TicketSummaryBoxView({ top, stats }: { top: ReactNode; stats: readonly [TicketSummaryStat, TicketSummaryStat] }) {
+  return (
+    <div className={styles.titleBox}>
+      <div className={styles.titleTop}>{top}</div>
+      <div className={styles.titleStats}>
+        {stats.map((stat) => (
+          <div key={stat.label} className={styles.titleStat}>
+            <span className={`${styles.titleStatLabel} break-keep wrap-break-word`}>{stat.label}</span>
+            <span className={styles.titleStatValue}>{stat.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function TicketTitleBoxes({ badge, chipExtra }: TicketTitleBoxesProps) {
   const chip =
     badge.level != null ? <BadgeLevelChip level={badge.level} size="md" /> : <RarityBadge rarity={badge.rarity ?? undefined} size="md" />

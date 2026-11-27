@@ -5,7 +5,8 @@
 import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { deriveCoverTicketColor, pickTicketColor } from '@/lib/badgeTicket/ticketColor'
+import { deriveCoverTicketColor, missionTicketColor, pickTicketColor } from '@/lib/badgeTicket/ticketColor'
+import { TicketSummaryBoxView } from '../TicketTitleBoxes'
 import BadgeTicket from '../BadgeTicket'
 
 const color = pickTicketColor([], () => 0.3)
@@ -111,5 +112,47 @@ describe('TicketPhoto·StravaLink', () => {
     expect(strava).toContain('variant="primary"')
     expect(strava).toContain('fullWidth')
     expect(strava).not.toContain('#FC4C02')
+  })
+})
+
+describe('BadgeTicket — 미션 현황 변형 (티켓 20261127_1145)', () => {
+  const mission = missionTicketColor()
+  const renderMission = (surface?: 'default' | 'inverse') =>
+    renderToStaticMarkup(<BadgeTicket color={mission} kindLabel="RANKING" dateText="2026.11.27" surface={surface} photo={<p>사진</p>} body={<p>카드</p>} />)
+
+  it('미션 티켓색은 토큰 변수와 서버가 정한 글자색을 첫 HTML에 담는다', () => {
+    const html = renderMission()
+    expect(html).toContain('--ticket:var(--mission-ticket)')
+    expect(html).toContain('--ticket-text:#000000')
+    expect(html).toContain('data-ticket-color="mission"')
+  })
+
+  it('surface="inverse"일 때만 검정 바탕 변형 클래스가 붙는다', () => {
+    expect(renderMission()).not.toContain('onInverse')
+    expect(renderMission('inverse')).toContain('onInverse')
+  })
+
+  it('CSS 모듈은 검정 바탕 변형에서 --background를 --background-inverse로 덮는다', () => {
+    const css = readFileSync(new URL('../BadgeTicket.module.css', import.meta.url), 'utf-8')
+    expect(css).toMatch(/\.onInverse\s*\{[^}]*--background:\s*var\(--background-inverse\)/)
+  })
+})
+
+describe('TicketSummaryBoxView (티켓 20261127_1145)', () => {
+  const html = renderToStaticMarkup(
+    <TicketSummaryBoxView top={<p>위 칸</p>} stats={[{ label: '내 순위', value: '2위' }, { label: '1위와 차이', value: '10.0km' }]} />,
+  )
+
+  it('위 칸 슬롯과 통계 두 칸을 같은 글자 상자 안에 차례로 그린다', () => {
+    expect(html.indexOf('위 칸')).toBeLessThan(html.indexOf('내 순위'))
+    expect(html.indexOf('내 순위')).toBeLessThan(html.indexOf('1위와 차이'))
+    expect(html.match(/_titleStat_/g)).toHaveLength(2)
+    expect(html).not.toContain('<h1')
+  })
+
+  it('통계 칸 값은 줄바꿈하지 않고 28px, 가운데 세로 선은 2px이다', () => {
+    const css = readFileSync(new URL('../BadgeTicket.module.css', import.meta.url), 'utf-8')
+    expect(css).toMatch(/\.titleStatValue\s*\{[^}]*font-size:\s*28px[^}]*white-space:\s*nowrap/)
+    expect(css).toMatch(/\.titleStat \+ \.titleStat\s*\{[^}]*border-left:\s*2px solid/)
   })
 })
