@@ -402,7 +402,14 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
     const centerY = Math.round(stageRect.height * 0.4)
     setCy(centerY)
     const wi = pickWinner(balls.current)
-    if (wi < 0) return
+    if (wi < 0) {
+      // 공을 고르지 못했다(공이 늘 6개라 정상 흐름에서는 일어나지 않는다, 티켓 20261128_0001).
+      // 멈춘 채 두지 않고 처음 상태로 돌아가 호출부가 제출 잠금을 풀게 한다 — 잠김·받지 않음은 기존 안내를 열고, 성공은 «한 번 더»와 같이 비운다
+      resetToIdle(false)
+      if (result.kind === 'handoff') callbacks.current.onHandoff()
+      else callbacks.current.onAgain()
+      return
+    }
     const w = balls.current.splice(wi, 1)[0]
     const toRarity = result.kind === 'reveal' ? (result.badge.rarity ?? 'common') : 'common'
     const canvasRect = canvas.getBoundingClientRect()
