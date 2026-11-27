@@ -224,33 +224,29 @@ describe('스티커와 알약', () => {
     }
   })
 
-  it('스티커 인자는 부품이 받는 값이다(모양·보색 짝·J/a/m 글자·시드·분류 문구)', () => {
-    const seen = { shapes: new Set<string>(), pairs: new Set<string>(), letters: new Set<string>() }
+  it('스티커 인자는 부품이 받는 값이다(보색 짝·J/a/m 글자·분류 문구)', () => {
+    const seen = { pairs: new Set<string>(), letters: new Set<string>() }
     for (let seed = 0; seed < 600; seed += 1) {
       const plan = planCardChips(inputOf('hero_box', seed, [label('CHECK IN')], { hasImage: false, widths: [358] }))
       const sticker = plan.chips[0].sticker
       if (!sticker) continue
-      expect(['pebble', 'wave']).toContain(sticker.shape)
       expect(Object.keys(STICKER_COLOR_PAIRS)).toContain(sticker.pair)
       expect(['J', 'a', 'm']).toContain(sticker.letter)
       expect(sticker.label).toBe('CHECK IN')
-      expect(sticker.seed).toContain(String(seed))
-      seen.shapes.add(sticker.shape)
       seen.pairs.add(sticker.pair)
       seen.letters.add(sticker.letter)
     }
-    expect(seen.shapes.size).toBe(2)
     expect(seen.pairs.size).toBe(8)
     expect(seen.letters.size).toBe(3)
   })
 
-  it('자리·기울기 방향·모양을 서로 묶지 않는다(모든 조합이 나온다)', () => {
+  it('자리·기울기 방향을 서로 묶지 않는다(모든 조합이 나온다)', () => {
     const combos = new Set<string>()
     for (let seed = 0; seed < 800; seed += 1) {
       const chip = planCardChips(inputOf('text_box', seed, [label('ITEM')], { hasImage: false, widths: [358] })).chips[0]
-      if (chip.sticker) combos.add(`${chip.corner}/${chip.tilt < 0 ? '-' : '+'}/${chip.sticker.shape}`)
+      if (chip.sticker) combos.add(`${chip.corner}/${chip.tilt < 0 ? '-' : '+'}`)
     }
-    expect(combos.size).toBe(4 * 2 * 2)
+    expect(combos.size).toBe(4 * 2)
   })
 
   it('드랍·픽업은 두 칩이 모두 분류 칩이지만 스티커는 한 카드에 한 개 이하이고 나머지는 검정 알약이다', () => {
@@ -317,7 +313,7 @@ describe('물러서기 사다리', () => {
     sticker: null,
     ...overrides,
   })
-  const sticker = { shape: 'pebble', pair: 'yellow-purple', letter: 'J', seed: 's', label: 'ITEM' } as const
+  const sticker = { pair: 'yellow-purple', letter: 'J', label: 'ITEM' } as const
 
   it('스티커가 있는 두 칩은 1~5단계를 이 순서로 밟는다', () => {
     const ladder = backoffLadder([
@@ -369,7 +365,7 @@ describe('물러서기 도달(히어로, 위쪽 빈 높이를 좁힌 시험)', (
     }
     throw new Error('조건에 맞는 시드가 없다')
   }
-  const pebble = (plan: ChipPlan) => plan.chips[0].sticker?.shape === 'pebble'
+  const pebble = (plan: ChipPlan) => plan.chips[0].sticker !== null
 
   it('1단계: 기울기를 3°로 줄이면 들어가는 자리', () => {
     for (let seed = 0; seed < 30; seed += 1) {

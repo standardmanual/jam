@@ -1,6 +1,6 @@
 /**
  * MODULAR `CategorySticker`(`@/components/ui/CategorySticker`) 계약 테스트
- * (티켓 20261122_2227). 시드 결정성·모양 범위·둘레 글자·로고 벡터·색 참조를 확인한다.
+ * (티켓 20261122_2227). 정원 모양·둘레 글자·로고 벡터·색 참조를 확인한다. 물결 덩어리는 2026-11-27에 걷었다(티켓 20261127_0756).
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -11,93 +11,45 @@ import {
   LOGO_GLYPHS,
   MIN_FONT_SIZE,
   STICKER_COLOR_PAIRS,
-  WAVE_HUMP_COUNT,
-  WAVE_HUMP_HEIGHT,
   fitRingText,
-  isSelfIntersecting,
   pebbleShape,
-  waveShape,
 } from '@/components/ui/CategorySticker'
 
 const LABELS = ['ACTIVITY', 'ITEM', 'MISSION', 'CHECK IN', 'COLLECTION', 'DROP', 'PICKUP']
-const SEEDS = Array.from({ length: 300 }, (_, i) => `seed-${i}`)
-
-describe('시드 결정성', () => {
-  it('같은 (shape, seed)는 늘 같은 path를 낸다', () => {
-    expect(pebbleShape('a').outlineD).toBe(pebbleShape('a').outlineD)
-    expect(waveShape('a').outlineD).toBe(waveShape('a').outlineD)
-    expect(pebbleShape(7).ringD).toBe(pebbleShape('7').ringD)
-  })
-  it('다른 시드는 다른 모양이다', () => {
-    const p = new Set(SEEDS.map((s) => pebbleShape(s).outlineD))
-    const w = new Set(SEEDS.map((s) => waveShape(s).outlineD))
-    expect(p.size).toBe(SEEDS.length)
-    expect(w.size).toBe(SEEDS.length)
-  })
-})
 
 describe('조약돌', () => {
-  it('96×92 상자 안에 있고 윤곽·글자 선이 자기 교차하지 않는다', () => {
-    for (const s of SEEDS) {
-      const g = pebbleShape(s)
-      expect([g.width, g.height]).toEqual([96, 92])
-      for (const [x, y] of g.points) {
-        expect(x).toBeGreaterThanOrEqual(0.99)
-        expect(x).toBeLessThanOrEqual(95.01)
-        expect(y).toBeGreaterThanOrEqual(0.99)
-        expect(y).toBeLessThanOrEqual(91.01)
-      }
-      expect(isSelfIntersecting(g.points)).toBe(false)
-      expect(isSelfIntersecting(g.ringPoints)).toBe(false)
-    }
+  // 사용자 지시(2026-11-27, 티켓 20261127_0746): 배지 바탕을 정확한 원으로 그린다. 모양이 이것 하나뿐이다.
+  it('92×92 정원이다: 모든 윤곽점이 중심에서 같은 거리(반지름 45)에 있고 늘 같은 path를 낸다', () => {
+    const g = pebbleShape()
+    expect([g.width, g.height]).toEqual([92, 92])
+    expect(pebbleShape().outlineD).toBe(g.outlineD)
+    expect(pebbleShape().ringD).toBe(g.ringD)
+    for (const [x, y] of g.points) expect(Math.hypot(x - 46, y - 46)).toBeCloseTo(45, 1)
+    for (const [x, y] of g.ringPoints) expect(Math.hypot(x - 46, y - 46)).toBeCloseTo(30, 1)
   })
-})
-
-describe('물결 덩어리', () => {
-  it('112×92 상자 안, 혹 7~9개, 높이 4~8.5px, 자기 교차 없음', () => {
-    for (const s of SEEDS) {
-      const g = waveShape(s)
-      expect([g.width, g.height]).toEqual([112, 92])
-      const humps = g.humps!
-      expect(humps.length).toBeGreaterThanOrEqual(WAVE_HUMP_COUNT[0])
-      expect(humps.length).toBeLessThanOrEqual(WAVE_HUMP_COUNT[1])
-      expect(humps.reduce((a, h) => a + h.span, 0)).toBeCloseTo(Math.PI * 2, 6)
-      for (const h of humps) {
-        expect(h.h).toBeGreaterThanOrEqual(WAVE_HUMP_HEIGHT[0])
-        expect(h.h).toBeLessThanOrEqual(WAVE_HUMP_HEIGHT[1])
-      }
-      for (const [x, y] of g.points) {
-        expect(x).toBeGreaterThanOrEqual(0)
-        expect(x).toBeLessThanOrEqual(112)
-        expect(y).toBeGreaterThanOrEqual(0)
-        expect(y).toBeLessThanOrEqual(92)
-      }
-      expect(isSelfIntersecting(g.points)).toBe(false)
-      expect(isSelfIntersecting(g.ringPoints)).toBe(false)
-    }
-  })
-  it('시드마다 혹 개수가 달라진다', () => {
-    expect(new Set(SEEDS.map((s) => waveShape(s).humps!.length)).size).toBe(3)
+  it('윤곽과 글자 선은 SVG 호(A)로 그려 곡선 근사가 아니다', () => {
+    const g = pebbleShape()
+    expect(g.outlineD).toMatch(/^M46 1A45 45 0 1 1 46 91A45 45 0 1 1 46 1Z$/)
+    expect(g.ringD).toMatch(/^M46 16A30 30 0 1 1 46 76A30 30 0 1 1 46 16Z$/)
+    expect(g.ringLength).toBeCloseTo(2 * Math.PI * 30, 1)
   })
 })
 
 describe('둘레 글자', () => {
-  it.each(['pebble', 'wave'] as const)('%s: 일곱 문구가 최소 두 번 되풀이되고 하한 이상이다', (shape) => {
-    const base = shape === 'pebble' ? 11 : 10
-    for (const s of SEEDS.slice(0, 50)) {
-      const g = shape === 'pebble' ? pebbleShape(s) : waveShape(s)
-      for (const label of LABELS) {
-        const r = fitRingText(label, g.ringLength, base)
-        expect(r.repeat).toBeGreaterThanOrEqual(2)
-        expect(r.fits).toBe(true)
-        expect(r.fontSize).toBeGreaterThanOrEqual(MIN_FONT_SIZE)
-        expect(r.fontSize).toBeLessThanOrEqual(base)
-        expect(r.content.split(label).length - 1).toBe(r.repeat)
-      }
+  it('일곱 문구가 최소 두 번 되풀이되고 하한 이상이다', () => {
+    const base = 11
+    const g = pebbleShape()
+    for (const label of LABELS) {
+      const r = fitRingText(label, g.ringLength, base)
+      expect(r.repeat).toBeGreaterThanOrEqual(2)
+      expect(r.fits).toBe(true)
+      expect(r.fontSize).toBeGreaterThanOrEqual(MIN_FONT_SIZE)
+      expect(r.fontSize).toBeLessThanOrEqual(base)
+      expect(r.content.split(label).length - 1).toBe(r.repeat)
     }
   })
   it('긴 문구는 글자가 기준보다 작아지고 짧은 문구는 기준 크기를 지킨다', () => {
-    const g = waveShape('x')
+    const g = pebbleShape()
     expect(fitRingText('COLLECTION COLLECTION', g.ringLength, 10).fontSize).toBeLessThan(10)
     expect(fitRingText('ITEM', g.ringLength, 10).fontSize).toBe(10)
   })
@@ -110,7 +62,7 @@ describe('둘레 글자', () => {
 })
 
 describe('렌더', () => {
-  const html = renderToStaticMarkup(<CategorySticker shape="pebble" seed="s" label="MISSION" pair="sky-red" letter="m" />)
+  const html = renderToStaticMarkup(<CategorySticker label="MISSION" pair="sky-red" letter="m" />)
   it('role=img·aria-label·굵기 900·textPath가 있다', () => {
     expect(html).toContain('role="img"')
     expect(html).toContain('aria-label="MISSION"')
@@ -131,7 +83,7 @@ describe('렌더', () => {
     expect(html).not.toContain('<image')
   })
   it('문구가 비면 둘레 글자 없이 바탕과 로고만 그린다', () => {
-    const empty = renderToStaticMarkup(<CategorySticker shape="wave" seed="s" label="" />)
+    const empty = renderToStaticMarkup(<CategorySticker label="" />)
     expect(empty).not.toContain('<text')
     expect(empty.match(/<path/g)).toHaveLength(2)
   })

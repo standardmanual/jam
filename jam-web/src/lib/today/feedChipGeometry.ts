@@ -27,7 +27,7 @@ import {
   FEED_STAMP_TILT,
   FEED_TEXT_BOX_TITLE_STEPS,
 } from './feedConstants'
-import { PEBBLE_SIZE, WAVE_SIZE } from '@/components/ui/CategorySticker'
+import { PEBBLE_SIZE } from '@/components/ui/CategorySticker'
 
 /** 칩 배치 계산 대상 유형 7개. 전체 배경 이미지(`full_image`)는 서비스에서 꺼져 있어 뺀다. */
 export const CHIP_GEOMETRY_TYPES = [
@@ -105,7 +105,6 @@ export interface Rect {
   b: number
 }
 export type ChipTextSize = 'lg' | 'sm'
-export type StickerShapeName = 'pebble' | 'wave'
 
 // ── 칩·스티커 크기 추정 ─────────────────────────────────────
 
@@ -145,10 +144,9 @@ export function chipHeightOf(size: ChipTextSize): number {
   return cornerSpecOf(size).height
 }
 
-/** 스티커 기본 크기(`CategorySticker.jsx`의 `PEBBLE_SIZE`·`WAVE_SIZE`)에 배율을 곱한 크기. */
-export function stickerSizeOf(shape: StickerShapeName, scale = 1): { w: number; h: number } {
-  const base = shape === 'wave' ? WAVE_SIZE : PEBBLE_SIZE
-  return { w: base.width * scale, h: base.height * scale }
+/** 스티커 기본 크기(`CategorySticker`의 `PEBBLE_SIZE`)에 배율을 곱한 크기. */
+export function stickerSizeOf(scale = 1): { w: number; h: number } {
+  return { w: PEBBLE_SIZE.width * scale, h: PEBBLE_SIZE.height * scale }
 }
 
 /** 기울어진 직사각형(w×h, 각도 deg)이 차지하는 경계 상자. 각도의 부호는 상관없다. */
@@ -300,12 +298,16 @@ export function dropPickupBoundsOf(cardWidth: number, count: number): Rect[] {
   })
 }
 
-/** 도장이 놓이는 기준 상자(칩의 앵커와 같은 상자). */
-function stampAnchorOf(type: ChipGeometryType, width: number, art: Rect | null, textBox: Rect | null): Rect | null {
+/**
+ * 도장이 놓이는 기준 상자. 배지 소개만 카드 전체(네 모서리가 카드 모서리)이고, 나머지는 칩의 앵커와 같은 상자다.
+ * 배지 소개의 도장은 배지 그림이 아니라 카드 모서리에 붙는다(사용자 지시 2026-11-27, 티켓 20261127_0750).
+ */
+function stampAnchorOf(type: ChipGeometryType, width: number, height: number, art: Rect | null, textBox: Rect | null): Rect | null {
   if (type === 'hero_box') return { l: PAD, t: PAD, r: width - PAD, b: PAD + FEED_HERO_IMAGE_HEIGHT }
   if (type === 'drop_pickup') return { l: PAD, t: PAD, r: width - PAD, b: PAD + dropPickupAreaHeightOf(width) }
   if (type === 'text_box') return textBox
-  if (type === 'badge_intro' || type === 'collection_intro') return art
+  if (type === 'badge_intro') return { l: 0, t: 0, r: width, b: height }
+  if (type === 'collection_intro') return art
   return null
 }
 
@@ -380,7 +382,7 @@ export function cardGeometryOf(input: CardGeometryInput): CardGeometry {
   }
 
   if (input.stampCorner) {
-    const anchor = stampAnchorOf(type, w, art, textBox)
+    const anchor = stampAnchorOf(type, w, height, art, textBox)
     if (anchor) {
       const grow = (tiltedBounds(FEED_STAMP_SIZE, FEED_STAMP_SIZE, FEED_STAMP_TILT).w - FEED_STAMP_SIZE) / 2
       const left = input.stampCorner.endsWith('left')

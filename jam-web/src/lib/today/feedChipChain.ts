@@ -5,7 +5,7 @@
  * 앞에서 뒤로만 흐르는 상태(`ChainState`: 바로 앞 두 장의 값·앞 서명·앞 스티커)만 쓰므로, 배열의 앞부분이 같으면 뒤가 달라도 앞 결과는 같다. `Math.random`·`Date` 없음.
  *
  * 규칙(상위 §3·§4):
- * - (가) 같은 값은 연속 2장까지만 이어진다. 값은 자리(첫 칩의 모서리)·기울기 방향(첫 칩)·모양(알약·조약돌·물결)·분류 문구를 각자 따로 본다. 번갈아 쓰는 고정 패턴은 쓰지 않는다.
+ * - (가) 같은 값은 연속 2장까지만 이어진다. 값은 자리(첫 칩의 모서리)·기울기 방향(첫 칩)·모양(알약·스티커)·분류 문구를 각자 따로 본다. 번갈아 쓰는 고정 패턴은 쓰지 않는다.
  * - (나) 바로 앞 카드와 칩 배치 전체(서명, `signatureOf`)가 같으면 안 된다.
  * - (다) 같은 꼴(알약만·스티커 포함)이 세 장 이어지지 않는다(연속 2장까지).
  * - (라) 스티커의 글자는 바로 앞 스티커와 다르고, 바탕 색 짝은 카드 바탕·박스 색과 다르며 바로 앞 스티커와 다르다. 이 둘은 후보와 상관없이 늘 지킬 수 있어(글자 3개, 짝 8개) 고른 계획에 사후로 맞춘다.
@@ -37,7 +37,7 @@ export interface ChainFeatures {
   /** 첫 칩의 기울기 방향(둘째 칩은 반대) */
   dir: '+' | '-'
   /** 스티커가 있으면 그 모양, 없으면 알약 */
-  shape: 'pill' | 'pebble' | 'wave'
+  shape: 'pill' | 'pebble'
   /** 분류 칩 문구(분류 칩이 둘이면 `|`로 이은 것). 분류 칩이 없으면 null이라 비교하지 않는다 */
   label: string | null
   form: 'pill' | 'sticker'
@@ -80,7 +80,7 @@ export function featuresOf(plan: ChipPlan): ChainFeatures | null {
   return {
     pos: first.corner,
     dir: first.tilt < 0 ? '-' : '+',
-    shape: sticker?.sticker ? sticker.sticker.shape : 'pill',
+    shape: sticker?.sticker ? 'pebble' : 'pill',
     label: labels.length > 0 ? labels.join('|') : null,
     form: sticker ? 'sticker' : 'pill',
   }
