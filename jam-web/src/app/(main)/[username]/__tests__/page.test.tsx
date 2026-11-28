@@ -10,10 +10,9 @@
  *    `strava` prop이 없고, prop 전체를 직렬화한 문자열에 민감 값이 없다
  *  - `users` 조회의 select 인자가 `*`가 아니고 민감 열을 고르지 않으며, `strava_connections`를 읽지 않는다
  *  - 본인 프로필도 같은 prop 모양이다
- *  - 캡슐(티켓 20261018_0054): 내 프로필에서만 조회해 `capsuleInitial` prop을 내리고, 타인이 보는 프로필에는 조회도 prop 자체도 없다
- *    (직렬화한 prop·RSC 페이로드에 캡슐 값이 실리지 않는다 — 클라이언트에서 숨기는 방식이 아니다)
- *  - 챕터 줄(티켓 20261019_1317): 내 프로필은 `getMyChapter`로 읽어 `chapterInitial`을 내리고, 타인이 보는 프로필은 `getPublicChapter`만 불러 `publicChapter`를 내린다
- *    (내 진행·다음 챕터는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다). 퀘스트 전과 읽지 못함은 null로 접는다
+ *  - 챕터 게이지 카드(티켓 20261127_1736 C6): 내 프로필에서만 정리(settle) 뒤 `getMyChapter`·`readCapsuleReceiveBlocked`로 읽어 `chapter`·`blocked` prop을 내리고,
+ *    타인이 보는 프로필에는 조회도 prop 자체도 없다(직렬화한 prop·RSC 페이로드에 진행값이 0건 — 클라이언트에서 숨기는 방식이 아니다)
+ *  - 챕터 줄(티켓 20261019_1317): 타인이 보는 프로필은 `getPublicChapter`만 불러 `publicChapter`를 내린다(내 진행·다음 챕터는 조회도 prop도 없다). 퀘스트 전과 읽지 못함은 null로 접는다
  *  - Strava 활동 제목(티켓 20261008_1506): 본인 프로필에서만 `strava_activities`를 읽어 `activityNames`를 채우고,
  *    타인이 보는 프로필은 조회도 하지 않아 `activityNames`가 비고 직렬화에도 제목이 없다
  *
@@ -85,11 +84,10 @@ const state = vi.hoisted(() => ({
 }))
 
 const getWalletMock = vi.hoisted(() => vi.fn<(userId: string) => Promise<number>>())
-const getCapsuleStatusMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
+const settleMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<void>>())
+const readBlockedMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 const getMyChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
 const getPublicChapterMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<unknown>>())
-/** 내 트라이브 이름(내 챕터 줄 앞에 붙는다, 2026-11-09 사용자 지시) */
-const getMyTribeNameMock = vi.hoisted(() => vi.fn<(client: unknown, userId: string) => Promise<string | null>>())
 
 // 테이블별 응답 — 모르는 테이블은 빈 결과. strava_connections는 읽히면 토큰 행을 돌려준다.
 function singleResponse(table: string) {
@@ -161,14 +159,17 @@ vi.mock('@/lib/points', () => ({
   getWallet: (userId: string) => getWalletMock(userId),
 }))
 
-vi.mock('@/lib/capsule/capsule', () => ({
-  getCapsuleStatus: (client: unknown, userId: string) => getCapsuleStatusMock(client, userId),
+vi.mock('@/lib/capsule/settle-pending', () => ({
+  settleAfterSlotsFreed: (client: unknown, userId: string) => settleMock(client, userId),
+}))
+
+vi.mock('@/lib/capsule/receive-block', () => ({
+  readCapsuleReceiveBlocked: (client: unknown, userId: string) => readBlockedMock(client, userId),
 }))
 
 vi.mock('@/lib/chapter/read', () => ({
   getMyChapter: (client: unknown, userId: string) => getMyChapterMock(client, userId),
   getPublicChapter: (client: unknown, userId: string) => getPublicChapterMock(client, userId),
-  getMyTribeName: (client: unknown, userId: string) => getMyTribeNameMock(client, userId),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -216,15 +217,8 @@ const FORBIDDEN_STRINGS = [
   'email',
 ]
 
-// 캡슐 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 캡슐이 새는 것이다
-const CAPSULE_STATUS = {
-  required: 987654,
-  filled: 123456,
-  remaining: 864198,
-  balance: 55555,
-  openable: false,
-  notOpenableReason: 'not_full',
-}
+// 막힘 판정 값 — 내 프로필에서만 내려가고 타인 프로필의 직렬화에는 없어야 한다
+const BLOCKED_RESULT = { blocked: true, pending: 3, free: 1, needed: 3, shortfall: 2 }
 
 // 내 챕터 진행 값에서만 나오는 글자 — 타인 프로필의 직렬화에 이 값이 있으면 내 진행이 새는 것이다
 const MY_CHAPTER = { ok: true, chapterNo: 7, chapterJam: 1234, requiredJam: 2700, nextChapterNo: 8, isLastChapter: false, progress: 0.4242, tribeName: '새벽러너스' }
@@ -244,14 +238,14 @@ beforeEach(() => {
   state.activityRows = []
   getWalletMock.mockReset()
   getWalletMock.mockResolvedValue(1234)
-  getCapsuleStatusMock.mockReset()
-  getCapsuleStatusMock.mockResolvedValue(CAPSULE_STATUS)
+  settleMock.mockReset()
+  settleMock.mockResolvedValue(undefined)
+  readBlockedMock.mockReset()
+  readBlockedMock.mockResolvedValue(BLOCKED_RESULT)
   getMyChapterMock.mockReset()
   getMyChapterMock.mockResolvedValue(MY_CHAPTER)
   getPublicChapterMock.mockReset()
   getPublicChapterMock.mockResolvedValue(PUBLIC_CHAPTER)
-  getMyTribeNameMock.mockReset()
-  getMyTribeNameMock.mockResolvedValue(null)
 })
 
 describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지', () => {
@@ -315,39 +309,92 @@ describe('/{username} 프로필 페이지 — ProfileClient prop 노출 방지',
     expect(state.calls.some((c) => c.table === 'strava_connections')).toBe(false)
   })
 
-  it('(d) 타인이 보는 프로필: 캡슐을 조회하지 않고 capsuleInitial prop 자체를 내리지 않는다', async () => {
+  it('(d) 타인이 보는 프로필: 정리·챕터·막힘을 조회하지 않고 chapter·blocked prop 자체를 내리지 않는다', async () => {
     const props = await renderPage('target')
 
     expect(props.isOwnProfile).toBe(false)
-    expect('capsuleInitial' in props).toBe(false)
-    expect(getCapsuleStatusMock).not.toHaveBeenCalled()
-    // 직렬화(= RSC 페이로드)에 캡슐 값이 없다
+    expect('chapter' in props).toBe(false)
+    expect('blocked' in props).toBe(false)
+    expect(settleMock).not.toHaveBeenCalled()
+    expect(getMyChapterMock).not.toHaveBeenCalled()
+    expect(readBlockedMock).not.toHaveBeenCalled()
+    // 직렬화(= RSC 페이로드)에 진행값·막힘 값이 0건이다
     const serialized = JSON.stringify(props)
-    for (const secret of ['987654', '123456', '864198', '55555', 'notOpenableReason', 'capsule']) {
+    for (const secret of ['chapterJam', 'requiredJam', '"chapter"', '"blocked"', 'pendingItemCount', 'progress']) {
       expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
     }
   })
 
-  it('(d) 내 프로필: 캡슐을 내 계정으로 조회해 capsuleInitial로 내린다', async () => {
+  it('(d) 내 프로필: 정리(settle) 뒤 챕터와 막힘을 내 계정으로 읽어 chapter·blocked로 내린다', async () => {
     state.loginUserId = TARGET_USER_ID
     const props = await renderPage('target')
 
     expect(props.isOwnProfile).toBe(true)
-    expect(props.capsuleInitial).toEqual(CAPSULE_STATUS)
-    expect(getCapsuleStatusMock).toHaveBeenCalledTimes(1)
-    expect(getCapsuleStatusMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(props.chapter).toEqual(MY_CHAPTER)
+    expect(props.blocked).toEqual({ pendingItemCount: 3 })
+    expect(settleMock).toHaveBeenCalledTimes(1)
+    expect(settleMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    expect(readBlockedMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
+    // 캡슐 조회·초기값·챕터 줄 값은 더는 내려가지 않는다
+    expect('capsuleInitial' in props).toBe(false)
+    expect('chapterInitial' in props).toBe(false)
   })
 
-  it('(d) 내 프로필에서 캡슐 조회가 실패하면 null로 접고 화면은 그대로 그려진다(위젯이 다시 가져온다)', async () => {
+  it('(d) 내 프로필: 막히지 않았으면 blocked는 null이다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getCapsuleStatusMock.mockRejectedValue(new Error('rpc 실패'))
+    readBlockedMock.mockResolvedValue({ blocked: false, pending: 0, free: 5, needed: 0, shortfall: 0 })
+
+    const props = await renderPage('target')
+
+    expect(props.blocked).toBeNull()
+  })
+
+  it('(d) 내 프로필: 정리가 끝난 뒤에 챕터와 막힘을 읽는다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    const order: string[] = []
+    settleMock.mockImplementation(async () => {
+      await Promise.resolve()
+      order.push('settle')
+    })
+    getMyChapterMock.mockImplementation(async () => {
+      order.push('chapter')
+      return MY_CHAPTER
+    })
+    readBlockedMock.mockImplementation(async () => {
+      order.push('blocked')
+      return BLOCKED_RESULT
+    })
+
+    await renderPage('target')
+
+    expect(order[0]).toBe('settle')
+    expect(order).toHaveLength(3)
+  })
+
+  it('(d) 내 프로필: 챕터 조회가 던지면 chapter가 null(오류 블록)이고 막힘은 그대로 내려간다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    getMyChapterMock.mockRejectedValue(new Error('조회 실패'))
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const props = await renderPage('target')
 
-    expect('capsuleInitial' in props).toBe(true)
-    expect(props.capsuleInitial).toBeNull()
+    expect('chapter' in props).toBe(true)
+    expect(props.chapter).toBeNull()
+    expect(props.blocked).toEqual({ pendingItemCount: 3 })
     expect(props.isOwnProfile).toBe(true)
+    errorSpy.mockRestore()
+  })
+
+  it('(d) 내 프로필: 막힘 조회가 던지면 blocked가 null이고 챕터는 그대로 내려간다', async () => {
+    state.loginUserId = TARGET_USER_ID
+    readBlockedMock.mockRejectedValue(new Error('rpc 실패'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const props = await renderPage('target')
+
+    expect(props.blocked).toBeNull()
+    expect(props.chapter).toEqual(MY_CHAPTER)
     errorSpy.mockRestore()
   })
 
@@ -505,14 +552,15 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(getPublicChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getMyChapterMock).not.toHaveBeenCalled()
     expect(props.publicChapter).toEqual({ tribeName: '새벽러너스', chapterNo: 3 })
-    expect('chapterInitial' in props).toBe(false)
+    expect('chapter' in props).toBe(false)
+    expect('blocked' in props).toBe(false)
   })
 
   it('(k) 타인이 보는 프로필: 직렬화(RSC 페이로드)에 내 진행·다음 챕터·점수 값이 없다', async () => {
     const props = await renderPage('target')
     const serialized = JSON.stringify(props)
 
-    for (const secret of ['0.4242', '1234', '2700', 'progress', 'nextChapterNo', 'chapterJam', 'requiredJam', 'isLastChapter', 'chapterInitial', 'score', 'total_score']) {
+    for (const secret of ['0.4242', '1234', '2700', 'progress', 'nextChapterNo', 'chapterJam', 'requiredJam', 'isLastChapter', 'pendingItemCount', 'score', 'total_score']) {
       expect(serialized, `타인 프로필의 직렬화된 prop에 "${secret}"가 있다`).not.toContain(secret)
     }
     expect(Object.keys(props.publicChapter as object).sort()).toEqual(['chapterNo', 'tribeName'])
@@ -535,73 +583,26 @@ describe('/{username} 프로필 페이지 — 챕터 줄', () => {
     expect(props.isOwnProfile).toBe(false)
   })
 
-  it('(l) 내 프로필: getMyChapter를 내 계정으로 읽어 chapterInitial로 내리고 타인용 prop은 없다', async () => {
+  it('(l) 내 프로필: getPublicChapter를 부르지 않고 타인용 prop도 없다', async () => {
     state.loginUserId = TARGET_USER_ID
     const props = await renderPage('target')
 
     expect(getMyChapterMock).toHaveBeenCalledTimes(1)
-    expect(getMyChapterMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
     expect(getPublicChapterMock).not.toHaveBeenCalled()
-    expect(props.chapterInitial).toEqual({ chapterNo: 7, tribeName: null })
     expect('publicChapter' in props).toBe(false)
-    // 응답의 ok 표지 같은 내부 모양은 화면으로 넘기지 않는다
-    expect('ok' in (props.chapterInitial as object)).toBe(false)
   })
 
-  it('(l) 내 프로필: 마지막 챕터도 챕터 번호만 내려간다', async () => {
+  it('(l) 내 프로필: 마지막 챕터·챕터 없음(chapterNo null)·읽지 못함(ok:false) 결과를 그대로 내린다 — 그리는 쪽이 처리한다', async () => {
     state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: 50, chapterJam: 5400, requiredJam: null, nextChapterNo: null, isLastChapter: true, progress: null, tribeName: null })
-
-    const props = await renderPage('target')
-
-    expect(props.chapterInitial).toEqual({ chapterNo: 50, tribeName: null })
+    const last = { ok: true, chapterNo: 9, chapterJam: 5400, requiredJam: null, nextChapterNo: null, isLastChapter: true, progress: null, tribeName: null }
+    const none = { ok: true, chapterNo: null, chapterJam: null, requiredJam: null, nextChapterNo: null, isLastChapter: false, progress: null, tribeName: null }
+    for (const value of [last, none, { ok: false }]) {
+      getMyChapterMock.mockResolvedValue(value)
+      const props = await renderPage('target')
+      expect(props.chapter).toEqual(value)
+    }
   })
 
-  it('(l) 내 프로필: 내 트라이브 이름을 내 계정으로 읽어 챕터 줄에 함께 내리고, 타인 프로필은 부르지 않는다', async () => {
-    state.loginUserId = TARGET_USER_ID
-    getMyTribeNameMock.mockResolvedValue('새벽러너스')
-
-    const mine = await renderPage('target')
-
-    expect(getMyTribeNameMock).toHaveBeenCalledTimes(1)
-    expect(getMyTribeNameMock.mock.calls[0][1]).toBe(TARGET_USER_ID)
-    expect(mine.chapterInitial).toEqual({ chapterNo: 7, tribeName: '새벽러너스' })
-
-    getMyTribeNameMock.mockClear()
-    state.loginUserId = 'someone-else'
-    await renderPage('target')
-    expect(getMyTribeNameMock).not.toHaveBeenCalled()
-  })
-
-  it('(l) 내 프로필: 챕터가 없으면(퀘스트 전) 트라이브가 있어도 줄을 그리지 않는다', async () => {
-    state.loginUserId = TARGET_USER_ID
-    getMyTribeNameMock.mockResolvedValue('새벽러너스')
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, chapterJam: null, requiredJam: null, nextChapterNo: null, isLastChapter: false, progress: null, tribeName: null })
-
-    const props = await renderPage('target')
-
-    expect(props.chapterInitial).toBeNull()
-  })
-
-  it('(l) 내 프로필: 퀘스트 전(chapterNo null)은 chapterInitial이 null이다 — 줄을 그리지 않는다', async () => {
-    state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: true, chapterNo: null, chapterJam: null, requiredJam: null, nextChapterNo: null, isLastChapter: false, progress: null, tribeName: null })
-
-    const props = await renderPage('target')
-
-    expect('chapterInitial' in props).toBe(true)
-    expect(props.chapterInitial).toBeNull()
-  })
-
-  it('(l) 내 프로필: 읽지 못하면(ok:false) chapterInitial이 null이다 — 줄을 그리지 않고 화면은 그대로 그려진다', async () => {
-    state.loginUserId = TARGET_USER_ID
-    getMyChapterMock.mockResolvedValue({ ok: false })
-
-    const props = await renderPage('target')
-
-    expect(props.chapterInitial).toBeNull()
-    expect(props.isOwnProfile).toBe(true)
-  })
 })
 
 /**

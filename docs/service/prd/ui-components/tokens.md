@@ -100,8 +100,8 @@ code:
 | `--scale-modal` | `0.96` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--scale-compact` | `0.7` | 〃 | — | 5 | 0 | 0 | 1 | 0 | — |
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
-| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 835 | 0 | 229 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 835 | 0 | 225 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 963 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 963 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base` | `1rem` | 〃 | `text-base` | 12 | 137 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -114,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5750 | 0 | 461 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5746 | 0 | 461 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -154,7 +154,7 @@ code:
 | `--tracking-wide` | `0.025em` | 〃 | `tracking-wide` | 0 | 1 | 0 | 1 | 0 | — |
 | `--tracking-wider` | `0.05em` | 〃 | `tracking-wider` | 0 | 8 | 0 | 4 | 0 | — |
 | `--tracking-widest` | `0.1em` | 〃 | `tracking-widest` | 0 | 3 | 0 | 3 | 0 | — |
-| `--leading-tight` | `1.25` | 〃 | `leading-tight` | 0 | 11 | 0 | 7 | 0 | — |
+| `--leading-tight` | `1.25` | 〃 | `leading-tight` | 0 | 10 | 0 | 6 | 0 | — |
 | `--leading-snug` | `1.375` | 〃 | `leading-snug` | 0 | 8 | 0 | 6 | 0 | — |
 | `--leading-normal` | `1.5` | 〃 | `leading-normal` | 0 | 0 | 0 | 0 | 0 | — |
 | `--leading-relaxed` | `1.625` | 〃 | `leading-relaxed` | 0 | 7 | 0 | 6 | 0 | — |
@@ -181,7 +181,7 @@ code:
 | `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 6 | 0 | 0 | 3 | 2 | — |
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 2 | 221 | 6 | — |
-| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 248 | 1 | 143 | 2 | — |
+| `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 247 | 1 | 143 | 2 | — |
 | `--link` | `var(--base-neutral-900)` | `#171717` | `*-link` | 5 | 12 | 2 | 17 | 1 | — |
 | `--snow` | `var(--base-snow)` | `#fcfcfc` | `*-snow` | 38 | 32 | 0 | 41 | 7 | — |
 | `--muted-on-inverse` | `color-mix(in srgb, var(--snow) 70%, transparent)` | `color-mix(in srgb, #fcfcfc 70%, transparent)` | `*-muted-on-inverse` | 5 | 9 | 0 | 7 | 2 | — |
@@ -468,7 +468,7 @@ code:
 | `--primary-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-primary-foreground` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary` | `oklch(0.97 0.001 106.424)` | 〃 | `*-secondary` | 0 | 3 | 0 | 3 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary-foreground` | `oklch(0.216 0.006 56.043)` | 〃 | `*-secondary-foreground` | 0 | 2 | 0 | 2 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 248 | 1 | 143 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 247 | 1 | 143 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1010 | 0 | 249 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |

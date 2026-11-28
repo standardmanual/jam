@@ -27,9 +27,9 @@ import type { UserRow, ActivityFeedRow, BadgeRarity } from '@/types/database'
 import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget, isCheckinEarn } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
-import CapsuleWidget from '@/components/capsule/CapsuleWidget'
-import type { CapsuleStatus } from '@/lib/capsule/capsule-contract'
-import ChapterLine, { type MyChapterLineData, type PublicChapterLineData } from '@/components/chapter/ChapterLine'
+import ChapterGaugeSection from '@/components/chapter/ChapterGaugeSection'
+import ChapterLine, { type PublicChapterLineData } from '@/components/chapter/ChapterLine'
+import type { MyChapterResult } from '@/lib/chapter/read'
 import { leveledFamilyKey } from '@/lib/activity-feed/collapseLeveled'
 
 /** `POST /api/follows` 응답 중 배지 리빌 연출에 필요한 조각(sync.ts EarnedBadgePayload와 동일 계약) */
@@ -92,18 +92,13 @@ interface Props {
    */
   activityNames?: Record<string, string>
   /**
-   * 캡슐 위젯의 서버 초기값(티켓 20261018_0054). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
-   * 그래서 타인에게는 DOM과 RSC 페이로드에 캡슐 값이 실리지 않는다(클라이언트에서 숨기는 방식이 아니다).
-   * `null`은 «내 프로필인데 서버 조회가 실패했다»이고 위젯이 클라이언트에서 다시 가져온다.
+   * 내 챕터 게이지 카드의 서버 값(티켓 20261127_1736 C6). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
+   * 그래서 타인에게는 DOM과 RSC 페이로드에 진행값이 실리지 않는다(클라이언트에서 숨기는 방식이 아니다).
+   * `null`은 «내 프로필인데 서버 조회가 실패했다»이고 카드 자리에 오류 블록과 «다시 시도»가 뜬다.
    */
-  capsuleInitial?: CapsuleStatus | null
-  /**
-   * 내 챕터 줄의 서버 값(티켓 20261019_1317). **내 프로필에서만 내려온다 — 타인이 보는 프로필에는 prop 자체가 없다(`undefined`).**
-   * 챕터 번호만 담는다(막대·다음 챕터는 없다, 티켓 20261031_1806). 내 정보라 `capsuleInitial`과 같은 방식으로 DOM과 RSC 페이로드에서 막는다.
-   * `null`은 «챕터가 없다(퀘스트 전)» 또는 «서버가 읽지 못했다»이고 둘 다 줄을 그리지 않는다(사용자 결정 4).
-   * 값이면 헤더의 표시 이름 위에 작은 글씨 «트라이브 · 챕터 N» 한 줄로 그린다(트라이브가 없으면 «챕터 N»).
-   */
-  chapterInitial?: MyChapterLineData | null
+  chapter?: MyChapterResult | null
+  /** 막힘 안내 카드 값(내 프로필 전용). 대기 보상으로 막혔을 때만 값이 있고 아니면 `null`. 타인 프로필에는 없다 */
+  blocked?: { pendingItemCount: number } | null
   /**
    * 다른 유저 프로필의 트라이브·챕터 한 줄(티켓 20261019_1317). **다른 유저 프로필에서만 내려온다.** 진행은 담지 않는다.
    * `null`은 읽지 못함이고 줄을 그리지 않는다. 보일 조각이 없으면 `ChapterLine`이 아무것도 그리지 않는다.
@@ -123,8 +118,8 @@ export default function ProfileClient({
   currentUserId,
   pointBalance,
   activityNames,
-  capsuleInitial,
-  chapterInitial,
+  chapter,
+  blocked,
   publicChapter,
 }: Props) {
   const router = useRouter()
@@ -559,13 +554,9 @@ export default function ProfileClient({
 
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
-            {/* 내 챕터 — 표시 이름 위 작은 글씨 한 줄(티켓 20261031_1806). 퀘스트 전·읽지 못함(null)은 줄 자체를 그리지 않는다 */}
-            {/* 챕터 줄과 같은 행 오른쪽 끝에 칩 크기의 편집 버튼을 둔다(2026-11-08 사용자 요청). 챕터가 없어도 버튼은 오른쪽 끝에 남는다 */}
+            {/* 편집 버튼은 행 오른쪽 끝에 칩 크기로 둔다(2026-11-08 사용자 요청). 내 챕터 줄은 챕터 게이지 카드와 겹쳐 걷었다(티켓 20261127_1736) */}
             {isOwnProfile && (
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {chapterInitial && <ChapterLine variant="mine" chapter={chapterInitial} />}
-                </div>
+              <div className="flex items-center justify-end">
                 {/* 칩 크기(목록 칩과 같은 12px 글자·2px 8px 여백)로 줄인다(2026-11-08 사용자 요청). 테두리 1px만큼 여백을 뺀다 */}
                 <Button
                   surface="main"
@@ -587,13 +578,13 @@ export default function ProfileClient({
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </Link>
 
-            {/* 숫자 줄(티켓 20261108_1216). 팔로우 버튼은 헤더 아래 전체 폭, 편집 버튼은 챕터 줄 오른쪽 끝에 있다(2026-11-08 사용자 요청). */}
+            {/* 숫자 줄(티켓 20261108_1216). 팔로우 버튼은 헤더 아래 전체 폭, 편집 버튼은 헤더 행 오른쪽 끝에 있다(2026-11-08 사용자 요청). */}
             {statRow}
           </div>
 
         </div>
 
-        {/* 팔로우/언팔로우(타인) 버튼 — 헤더 아래 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청). 편집 버튼은 챕터 줄 오른쪽 끝으로 옮겼다.
+        {/* 팔로우/언팔로우(타인) 버튼 — 헤더 아래 전체 폭 작은 버튼(xs, 약 31px)으로 둔다(2026-11-08 사용자 요청). 편집 버튼은 헤더 행 오른쪽 끝에 있다.
             sm은 42px라 이 자리에 크다(xs 약 31px를 쓴다).
             예전에는 편집이 숫자 줄 오른쪽, 팔로우가 헤더 오른쪽에 있어 숫자 줄 칸이 좁아져 줄이 바뀌었다. */}
         {!isOwnProfile && (
@@ -612,12 +603,12 @@ export default function ProfileClient({
 
         {/* 다른 유저의 챕터 줄 (티켓 20261019_1317) — 헤더 아래 전폭 한 줄 «트라이브 · 챕터 3 · 단골». 게이지 없음.
             다른 유저 프로필에서만 서버가 `publicChapter`를 내려주고, 읽지 못함(null)이거나 보일 조각이 없으면 줄이 없다. */}
-        {!isOwnProfile && publicChapter && <ChapterLine variant="public" chapter={publicChapter} />}
+        {!isOwnProfile && publicChapter && <ChapterLine chapter={publicChapter} />}
 
-        {/* 캡슐 위젯 — 내 프로필에서만. 프로필 헤더와 선택 영역(피드·목록) 사이이고 헤더와의 간격은 바깥 gap-6 하나다
-            (챕터는 헤더의 표시 이름 위로 옮겼다, 티켓 20261031_1806. 위젯 안의 게이지-안내 간격은 위젯이 정한다).
-            캡슐 위젯(티켓 20261018_0054)의 렌더 조건은 서버가 prop을 내려줬는지(`capsuleInitial !== undefined`)이고, 타인 프로필에는 prop이 없다. */}
-        {isOwnProfile && capsuleInitial !== undefined && <CapsuleWidget initial={capsuleInitial} blockedCard />}
+        {/* 챕터 게이지 카드 — 내 프로필에서만(티켓 20261127_1736). 프로필 헤더와 선택 영역(피드·목록) 사이이고 간격은 바깥 gap-6 하나다.
+            홈과 같은 `ChapterGaugeSection`을 그대로 놓는다(챕터 없음이면 null이라 빈 간격이 없다). 렌더 조건은 서버가 prop을 내려줬는지(`chapter !== undefined`)이고,
+            타인 프로필에는 prop이 없다. */}
+        {isOwnProfile && chapter !== undefined && <ChapterGaugeSection chapter={chapter} blocked={blocked ?? null} />}
 
         {/* 탭 콘텐츠 — 탭뷰일 때만.
             로딩은 Skeleton loader and reveal(14-skeleton-reveal.md)로 처리한다.

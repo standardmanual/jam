@@ -7,9 +7,10 @@ import { attachFeedImages } from '@/lib/activity-feed/attachImages'
 import { isDropRowLocked, lockedDropFeedMeta, type DropRowLockInfo } from '@/lib/activity-feed/lockedDrop'
 import { fetchCapsuleIssuedItemIds } from '@/lib/activity-feed/capsuleItems'
 import { getWallet } from '@/lib/points'
-import { getCapsuleStatus } from '@/lib/capsule/capsule'
-import { getMyChapter, getMyTribeName, getPublicChapter } from '@/lib/chapter/read'
-import type { MyChapterLineData, PublicChapterLineData } from '@/components/chapter/ChapterLine'
+import { settleAfterSlotsFreed } from '@/lib/capsule/settle-pending'
+import { readCapsuleReceiveBlocked } from '@/lib/capsule/receive-block'
+import { getMyChapter, getPublicChapter, type MyChapterResult } from '@/lib/chapter/read'
+import type { PublicChapterLineData } from '@/components/chapter/ChapterLine'
 import { d, t } from '@/lib/i18n'
 
 interface Props {
@@ -64,44 +65,50 @@ export default async function UserProfilePage({ params }: Props) {
   // 타인 프로필 조회 시엔 조회조차 하지 않는다.
   const pointBalance = isOwnProfile ? await getWallet(user.id) : null
 
-  // 캡슐 초기값 — 내 프로필에서만 조회한다(티켓 20261018_0054). 타인이 보는 프로필은 조회도, prop 전달도 하지 않아
-  // DOM과 RSC 페이로드에 캡슐 값이 실리지 않는다(클라이언트에서 숨기는 방식은 쓰지 않는다). 조회가 실패하면 null로 접고
-  // 위젯이 클라이언트에서 다시 가져온다.
-  const capsulePromise = isOwnProfile
-    ? getCapsuleStatus(service, user.id).catch((err: unknown) => {
-        console.error('[[username]/page] 캡슐 조회 실패 — 위젯이 클라이언트에서 다시 가져온다', err)
-        return null
-      })
+  // 챕터 게이지 카드 값 — 티켓 20261127_1736(C6). 내 프로필에서만 조회한다. 타인이 보는 프로필은 조회도, prop 전달도 하지 않아
+  // DOM과 RSC 페이로드에 진행값이 실리지 않는다(클라이언트에서 숨기는 방식은 쓰지 않는다).
+  // 홈과 같이 칸이 비어 있으면 대기 보상을 먼저 받게 한 뒤(`settleAfterSlotsFreed`, 던지지 않는다) 챕터·막힘을 읽는다.
+  // 조회가 실패하면 던지지 않고 null로 접는다 — 챕터는 카드 자리에 «다시 시도» 오류 블록이, 막힘은 안내만 생략한다.
+  const settlePromise = isOwnProfile ? settleAfterSlotsFreed(service, user.id) : Promise.resolve(undefined)
+  const myChapterPromise: Promise<MyChapterResult | null | undefined> = isOwnProfile
+    ? settlePromise
+        .then(() => getMyChapter(service, user.id))
+        .catch((err: unknown) => {
+          console.error('[[username]/page] 챕터 조회 실패 — 카드 자리에 오류 블록을 그린다', err)
+          return null
+        })
     : Promise.resolve(undefined)
-
-  // 챕터 줄 값 — 티켓 20261019_1317. 내 프로필은 진행(게이지)까지 읽는 `getMyChapter`, 다른 유저 프로필은 진행을 읽지도 않는
-  // `getPublicChapter`만 부른다. 두 함수는 던지지 않고 읽지 못하면 `{ ok: false }`를 돌려준다.
+  // 막힘 안내는 프로필에 이용 정지 배너가 없어 정지 여부와 상관없이 이 결과만 따른다(기존 캡슐 위젯과 같은 동작).
+  const blockedPromise: Promise<{ pendingItemCount: number } | null | undefined> = isOwnProfile
+    ? settlePromise
+        .then(() => readCapsuleReceiveBlocked(service, user.id))
+        .then((result) => (result.blocked ? { pendingItemCount: result.pending } : null))
+        .catch((err: unknown) => {
+          console.error('[[username]/page] 막힘 조회 실패 — 막힘 안내만 생략한다', err)
+          return null
+        })
+    : Promise.resolve(undefined)
+  // 다른 유저 프로필은 진행을 읽지도 않는 `getPublicChapter`만 부른다(티켓 20261019_1317). 던지지 않고 읽지 못하면 `{ ok: false }`를 돌려준다.
   // `target`이 위에서 `users`에서 확인된 뒤라 «존재하지 않는 유저가 챕터 없음으로 보이는» 문제는 없다.
-  // 내 진행은 `capsuleInitial`처럼 내 프로필에서만 조회·전달한다(타인에게는 조회도 prop도 없어 RSC 페이로드에 실리지 않는다).
-  const myChapterPromise = isOwnProfile ? getMyChapter(service, user.id) : Promise.resolve(undefined)
   const publicChapterPromise = isOwnProfile ? Promise.resolve(undefined) : getPublicChapter(service, subjectId)
-  // 내 챕터 줄 앞에 붙는 내 트라이브 이름(2026-11-09 사용자 지시). 읽지 못하면 null이라 챕터만 그려진다.
-  const myTribeNamePromise = isOwnProfile ? getMyTribeName(service, user.id) : Promise.resolve(undefined)
 
   // ─── 통계 (팔로워/팔로잉 + isFollowing) ──────────────────
   const [
     followerCountResult,
     followingCountResult,
     isFollowingResult,
-    capsuleInitial,
     myChapter,
+    myBlocked,
     publicChapterResult,
-    myTribeName,
   ] = await Promise.all([
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     service.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
     isOwnProfile
       ? Promise.resolve({ data: null, error: null })
       : service.from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
-    capsulePromise,
     myChapterPromise,
+    blockedPromise,
     publicChapterPromise,
-    myTribeNamePromise,
   ])
 
   if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
@@ -112,12 +119,7 @@ export default async function UserProfilePage({ params }: Props) {
   const followingCount = followingCountResult.count ?? 0
   const isFollowing = !!isFollowingResult.data
 
-  // 퀘스트 전(chapterNo null)과 읽지 못함(ok: false)은 줄을 그리지 않는다 — null로 접는다(사용자 결정 4, 티켓 20261019_1317).
-  // 점수는 응답에 없고, 내 프로필은 챕터 번호만 내린다(막대·다음 챕터는 그리지 않는다, 티켓 20261031_1806). 다른 유저에게는 진행 필드 자체를 만들지 않는다.
-  const chapterInitial: MyChapterLineData | null =
-    myChapter?.ok && myChapter.chapterNo !== null
-      ? { chapterNo: myChapter.chapterNo, tribeName: myTribeName ?? null }
-      : null
+  // 타인 프로필의 줄은 퀘스트 전(chapterNo null)과 읽지 못함(ok: false)이면 null로 접는다(사용자 결정 4, 티켓 20261019_1317). 진행 필드는 만들지 않는다.
   const publicChapter: PublicChapterLineData | null = publicChapterResult?.ok
     ? { tribeName: publicChapterResult.tribe?.name ?? null, chapterNo: publicChapterResult.chapterNo }
     : null
@@ -373,7 +375,7 @@ export default async function UserProfilePage({ params }: Props) {
       currentUserId={user.id}
       pointBalance={pointBalance}
       activityNames={activityNames}
-      {...(isOwnProfile ? { capsuleInitial: capsuleInitial ?? null, chapterInitial } : { publicChapter })}
+      {...(isOwnProfile ? { chapter: myChapter ?? null, blocked: myBlocked ?? null } : { publicChapter })}
     />
   )
 }
