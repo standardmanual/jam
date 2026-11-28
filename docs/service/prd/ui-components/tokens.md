@@ -189,7 +189,7 @@ code:
 | `--accent` | `var(--base-neutral-900)` | `#171717` | `*-accent` | 14 | 16 | 0 | 21 | 1 | — |
 | `--accent-foreground` | `var(--snow)` | `#fcfcfc` | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | — |
 | `--accent-soft` | `var(--base-neutral-100)` | `#f5f5f5` | `*-accent-soft` | 1 | 0 | 0 | 1 | 1 | — |
-| `--border` | `var(--base-neutral-200)` | `#e5e5e5` | `*-border` | 11 | 346 | 0 | 137 | 1 | — |
+| `--border` | `var(--base-neutral-200)` | `#e5e5e5` | `*-border` | 11 | 346 | 1 | 138 | 1 | — |
 | `--field-border` | `var(--base-neutral-400)` | `#a3a3a3` | `*-field-border` | 2 | 0 | 0 | 2 | 1 | — |
 | `--separator` | `var(--base-neutral-200)` | `#e5e5e5` | `*-separator` | 2 | 0 | 0 | 2 | 1 | — |
 | `--backdrop` | `color-mix(in srgb, var(--base-black) 50%, transparent)` | `color-mix(in srgb, #000000 50%, transparent)` | `*-backdrop` | 5 | 2 | 0 | 5 | 1 | — |
@@ -473,7 +473,7 @@ code:
 | `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--destructive` | `oklch(0.577 0.245 27.325)` | 〃 | `*-destructive` | 0 | 116 | 0 | 35 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--border` | `oklch(0.923 0.003 48.717)` | 〃 | `*-border` | 11 | 346 | 0 | 137 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--border` | `oklch(0.923 0.003 48.717)` | 〃 | `*-border` | 11 | 346 | 1 | 138 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--input` | `oklch(0.923 0.003 48.717)` | 〃 | `*-input` | 0 | 8 | 0 | 6 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--ring` | `oklch(0.709 0.01 56.259)` | 〃 | `*-ring` | 0 | 41 | 0 | 25 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--sidebar` | `oklch(0.985 0.001 106.423)` | 〃 | `*-sidebar` | 0 | 5 | 0 | 1 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |

@@ -756,6 +756,8 @@ export function TierUpGachaResultMeta({
           className={styles.metaItem}
           style={{
             visibility: again.visible ? 'visible' : 'hidden',
+            // 결과 영역(.reveal)이 터치를 받지 않으므로 버튼 자리만 다시 받는다(티켓 20261128_1258)
+            pointerEvents: again.visible ? 'auto' : 'none',
             animation: again.visible ? `${styles.riseIn} ${T(320)}ms ease-out both` : undefined,
           }}
         >

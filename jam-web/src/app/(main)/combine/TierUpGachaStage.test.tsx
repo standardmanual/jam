@@ -28,4 +28,11 @@ describe('TierUpGachaResultMeta', () => {
   it('«인벤토리에 담았어요» 문구는 더 이상 그리지 않는다', () => {
     expect(render({ ...base, description: '설명' })).not.toContain('인벤토리에 담았어요')
   })
+
+  it('«한 번 더»는 보일 때 터치를 받는다 — 결과 영역(.reveal)이 터치를 막아도 버튼 자리는 다시 받는다(티켓 20261128_1258)', () => {
+    const shown = renderToStaticMarkup(<TierUpGachaResultMeta badge={base} T={T} again={{ visible: true, onClick: () => {} }} />)
+    expect(shown).toMatch(/pointer-events:auto[^"]*"><button/)
+    const hidden = renderToStaticMarkup(<TierUpGachaResultMeta badge={base} T={T} again={{ visible: false, onClick: () => {} }} />)
+    expect(hidden).toMatch(/pointer-events:none[^"]*"><button/)
+  })
 })

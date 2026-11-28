@@ -12,10 +12,14 @@ export const TIER_UP_PAGE_STYLE: CSSProperties = {
   background: 'radial-gradient(120% 60% at 50% 45%, #0b1a30 0%, transparent 70%), #04060b', // ui-allow: 가차머신 하드코딩(티켓 20261127_2225 사용자 승인)
 }
 
-/** TopNav를 네거티브로: 배경은 비우고 글자·뒤로가기를 흰색으로 만든다(DS TopNavBar는 `--foreground`를 읽는다) */
+/**
+ * TopNav를 네거티브로: 배경은 비우고 글자·뒤로가기를 흰색으로 만든다(DS TopNavBar는 `--foreground`를 읽는다).
+ * 동기화·알림 원형 버튼(`SyncIconButton`·`NotificationBell`)은 원 배경이 `bg-border`라 `--border`를 어두운 반투명으로 덮는다(티켓 20261128_1258)
+ */
 export const TIER_UP_NAV_STYLE = {
   background: 'transparent',
   '--foreground': '#ffffff', // ui-allow: 가차머신 하드코딩(티켓 20261127_2225 사용자 승인)
+  '--border': 'rgba(255, 255, 255, 0.14)', // ui-allow: 가차머신 하드코딩(티켓 20261128_1258 사용자 지시)
 } as CSSProperties
 
 export const GACHA = {
