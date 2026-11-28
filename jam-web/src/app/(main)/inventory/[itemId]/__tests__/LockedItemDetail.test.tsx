@@ -459,8 +459,8 @@ describe('LockedItemDetail — 일반 아이템 배지 상세와 같은 구성 (
 describe('LockedItemDetail — 획득 경로 문구', () => {
   const routeText = (overrides: Partial<LockedItemDetailProps>) => visibleText(render(overrides))
 
-  it('캡슐에서 나온 개체는 obtained_by가 drop이어도 «캡슐 열기 보상»이다', () => {
-    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule' })).toContain(`${d.badges.earnRoute} 캡슐 열기 보상`)
+  it('캡슐에서 나온 개체는 obtained_by가 drop이어도 «잼으로 받은 보상»이다', () => {
+    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule' })).toContain(`${d.badges.earnRoute} 잼으로 받은 보상`)
   })
 
   it('챕터 오름 보상에서 나온 개체는 «챕터 오름 보상»이다', () => {
@@ -469,7 +469,7 @@ describe('LockedItemDetail — 획득 경로 문구', () => {
 
   it('미션 보상으로 받은 개체는 «미션 보상»이고, 발급 기록이 있으면 발급 기록이 앞선다', () => {
     expect(routeText({ obtainedBy: 'system_event', missionReward: true })).toContain(`${d.badges.earnRoute} 미션 보상`)
-    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule', missionReward: true })).toContain(`${d.badges.earnRoute} 캡슐 열기 보상`)
+    expect(routeText({ obtainedBy: 'drop', issueRoute: 'capsule', missionReward: true })).toContain(`${d.badges.earnRoute} 잼으로 받은 보상`)
     expect(routeText({ obtainedBy: 'system_event' })).toContain(`${d.badges.earnRoute} 시스템 지급`)
   })
 

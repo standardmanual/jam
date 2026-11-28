@@ -100,8 +100,8 @@ describe('안내 영역 — 서버가 준 notice로 간결 문구를 고른다(�
     expect(html.match(/<section/g)).toHaveLength(1)
     expect(html.match(/role="img"/g)).toHaveLength(1)
     expect(text).toContain(d.capsule.widget.notice.blocked)
-    expect(text).toContain(d.capsule.blockedBanner.line1)
-    expect(text).toContain(t(d.capsule.blockedBanner.line2, { count: 2 }))
+    expect(text).toContain(d.chapterGauge.blocked.line1)
+    expect(text).toContain(t(d.chapterGauge.blocked.line2, { count: 2 }))
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(text).toContain('인벤토리 가기')
     // 빈칸 덧줄·«인벤토리 보기»는 홈 막힘 카드에서 그리지 않는다

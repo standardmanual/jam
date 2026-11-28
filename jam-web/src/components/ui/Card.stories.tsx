@@ -38,7 +38,7 @@ export const Tint: Story = {
 /** 캡슐 차단 안내(`CapsuleBlockedCard`)와 온보딩 트라이브 선택(`TribeStep`)에서 고른 카드 — 어두운 반전 면에 `--snow` 글자. */
 export const Inverse: Story = {
   name: '반전 — 어두운 면',
-  args: { tone: 'inverse', children: d.capsule.blockedBanner.line1 },
+  args: { tone: 'inverse', children: d.chapterGauge.blocked.line1 },
   decorators: [Narrow],
 };
 
@@ -60,8 +60,8 @@ export const InverseInInk: Story = {
       }}
     >
       <Card {...args}>
-        <p className="m-0 text-base text-foreground">{d.capsule.blockedBanner.line1}</p>
-        <p className="m-0 text-sm text-muted">{d.capsule.blockedBanner.line2NoCount}</p>
+        <p className="m-0 text-base text-foreground">{d.chapterGauge.blocked.line1}</p>
+        <p className="m-0 text-sm text-muted">{d.chapterGauge.blocked.line2NoCount}</p>
       </Card>
     </div>
   ),

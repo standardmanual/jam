@@ -28,7 +28,7 @@ const BOTTOM_GAP_PX = 12
  */
 export default function CapsuleBlockedCard({ pendingItemCount }: { pendingItemCount: number }) {
   const router = useRouter()
-  const copy = d.capsule.blockedBanner
+  const copy = d.chapterGauge.blocked
   // 둘째 줄의 n은 받지 못한 아이템 배지 수다. 서버가 정한 값(`capsule.pendingItemCount`)을 그대로 쓰고, 0 이하이면 숫자 없는 문장으로 말한다
   const line2 = pendingItemCount > 0 ? t(copy.line2, { count: pendingItemCount }) : copy.line2NoCount
   const noteId = useId()

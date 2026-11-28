@@ -703,22 +703,14 @@ describe('④ 미션', () => {
   })
 })
 
-describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
-  const REST = '아직 못 받은 보상이 1개 있으니 받기 버튼으로 가져오면 가득 차도 잼이 계속 들어와요'
+describe('과거 캡슐 소식 (티켓 20261028_1734 3회, 문구 개정 20261127_1737 Q-f)', () => {
+  const HELD = '인벤토리 빈칸이 모자라 받지 못한 보상이 1개 있었어요'
+  const BLOCKED = '인벤토리 빈칸이 모자라 받지 못한 보상이 2개 있었어요. 그때 들어온 잼은 쌓이지 않았어요'
 
-  it('capsule_nearly_full: 단계(70·80·90)마다 퍼센트만 달라지고 그 숫자만 굵게 보인다', () => {
-    for (const stage of [70, 80, 90]) {
-      const v = view('capsule_nearly_full', { stage })
-      expect(text(v)).toBe(`캡슐이 ${stage}% 찼어요. ${REST}`)
-      expect(notificationTokens(v).filter((token) => token.bold).map((token) => token.text)).toEqual([`${stage}%`])
-      expect(missingMessageSlots(v)).toEqual([])
-    }
-  })
-
-  it('capsule_nearly_full: 단계가 비었거나 손상되면 숫자 없는 문장을 쓴다', () => {
-    for (const payload of [{}, { stage: 0 }, { stage: 50 }, { stage: 100 }, { stage: 'x' }, { stage: null }]) {
+  it('capsule_nearly_full: 단계와 상관없이 «캡슐»·퍼센트 없는 고정 문장이다', () => {
+    for (const payload of [{ stage: 70 }, { stage: 80 }, { stage: 90 }, {}, { stage: 50 }, { stage: 'x' }, { stage: null }]) {
       const v = view('capsule_nearly_full', payload)
-      expect(text(v)).toBe(`캡슐이 거의 찼어요. ${REST}`)
+      expect(text(v)).toBe(HELD)
       expect(notificationTokens(v).some((token) => token.bold)).toBe(false)
       expect(missingMessageSlots(v)).toEqual([])
     }
@@ -726,15 +718,14 @@ describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
 
   it('capsule_jam_blocked: 담는 값 없이 고정 문장이다', () => {
     const v = view('capsule_jam_blocked', {})
-    expect(text(v)).toBe('캡슐이 가득 찼고 못 받은 보상이 2개라 지금 들어오는 잼은 사라져요. 받기 버튼으로 1개를 가져오면 다시 잼을 모을 수 있어요')
+    expect(text(v)).toBe(BLOCKED)
     expect(notificationTokens(v).some((token) => token.bold)).toBe(false)
     expect(missingMessageSlots(v)).toEqual([])
   })
 
-  it('capsule_jam_blocked: 잼이 사라진다는 사실을 한 번만 적고, 받을 수 있는 방법을 이어서 적는다(윈터 톤 확인 2026-10-29)', () => {
-    const t = text(view('capsule_jam_blocked', {}))
-    expect(t.match(/사라져요/g)).toHaveLength(1)
-    expect(t).toContain('받기 버튼으로 1개를 가져오면')
+  it('두 소식 모두 «캡슐»·«받기 버튼»·퍼센트가 없다', () => {
+    const all = [view('capsule_nearly_full', { stage: 90 }), view('capsule_jam_blocked', {})].map(text).join(' ')
+    for (const gone of ['캡슐', '받기 버튼', '%']) expect(all).not.toContain(gone)
   })
 
   it('두 소식 모두 서두르게 하는 말과 소비를 부추기는 말이 없다(운영 로직 18.2절)', () => {
@@ -742,7 +733,7 @@ describe('캡슐 알림 (티켓 20261028_1734 3회)', () => {
     for (const banned of ['지금 아니면', '얼른', '서두르', '놓치', '지금 바로', '뽑', '보류']) expect(all).not.toContain(banned)
   })
 
-  it('착지는 캡슐이 있는 홈이다 — 단계나 payload와 상관없다', () => {
+  it('착지는 홈이다 — 단계나 payload와 상관없다(enum 값·착지는 바꾸지 않았다)', () => {
     expect(notificationTarget(view('capsule_nearly_full', { stage: 80 }))).toEqual({ href: '/', avatarHref: null })
     expect(notificationTarget(view('capsule_nearly_full', {}))).toEqual({ href: '/', avatarHref: null })
     expect(notificationTarget(view('capsule_jam_blocked', {}))).toEqual({ href: '/', avatarHref: null })

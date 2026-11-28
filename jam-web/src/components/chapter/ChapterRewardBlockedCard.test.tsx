@@ -14,11 +14,17 @@ vi.mock('next/navigation', () => ({
 }))
 
 import ChapterRewardBlockedCard from './ChapterRewardBlockedCard'
+import { d } from '@/lib/i18n'
 
 const html = renderToStaticMarkup(<ChapterRewardBlockedCard pendingItemCount={2} />)
 const textOf = (value: string) => value.replace(/<[^>]*>/g, '')
 
 describe('ChapterRewardBlockedCard', () => {
+  it('문구는 d.chapterGauge.blocked에 있고 옛 d.capsule.blockedBanner는 없다', () => {
+    expect(Object.keys(d.chapterGauge.blocked)).toEqual(['line1', 'line2', 'line2NoCount', 'cta'])
+    expect('blockedBanner' in d.capsule).toBe(false)
+  })
+
   it('두 줄 안내와 «인벤토리 가기» 버튼 하나가 보인다', () => {
     expect(textOf(html)).toContain('인벤토리가 가득 찼어요.')
     expect(textOf(html)).toContain('아이템 배지 2개를 받으려면 인벤토리를 비워주세요.')

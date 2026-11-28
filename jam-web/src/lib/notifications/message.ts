@@ -706,15 +706,11 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       return { template: n.msgRewardPending, vars: { missionTitle } }
     }
 
-    // ── 캡슐 알림 (티켓 20261028_1734 3회) ───────────────────────────────────────────
-    case 'capsule_nearly_full': {
-      // 단계는 DB가 돌려준 70·80·90뿐이다. 그 밖의 값(payload 손상)이면 «캡슐이  찼어요» 대신 숫자 없는 문장을 쓴다
-      const stage = Math.floor(num(p, 'stage'))
-      if (stage !== 70 && stage !== 80 && stage !== 90) return { template: n.msgCapsuleNearlyFullNoStage, vars: {} }
-      return { template: n.msgCapsuleNearlyFull, vars: { percent: `${stage}%` } }
-    }
+    // ── 과거 캡슐 소식 (티켓 20261028_1734 3회, 문구 개정 20261127_1737) — 행은 그대로 두고 «캡슐» 없는 사실 문장으로 보인다. payload를 쓰지 않는다 ──
+    case 'capsule_nearly_full':
+      return { template: n.msgPastRewardHeld, vars: {} }
     case 'capsule_jam_blocked':
-      return { template: n.msgCapsuleJamBlocked, vars: {} }
+      return { template: n.msgPastJamBlocked, vars: {} }
 
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {

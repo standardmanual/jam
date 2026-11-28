@@ -28,7 +28,7 @@ const SIDE_GAP_PX = 14
  */
 export default function ChapterRewardBlockedCard({ pendingItemCount }: { pendingItemCount: number }) {
   const router = useRouter()
-  const copy = d.capsule.blockedBanner
+  const copy = d.chapterGauge.blocked
   const line2 = pendingItemCount > 0 ? t(copy.line2, { count: pendingItemCount }) : copy.line2NoCount
   const noteId = useId()
 

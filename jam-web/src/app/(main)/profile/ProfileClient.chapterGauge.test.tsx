@@ -79,13 +79,13 @@ describe('프로필의 챕터 게이지 카드', () => {
   it('막힘 값이 있으면 카드 바로 아래에 막힘 안내 카드가 이어 붙는다', () => {
     const html = render({ chapter: CHAPTER, blocked: BLOCKED })
     const cardAt = html.indexOf(CARD_LABEL)
-    const blockedAt = html.indexOf(d.capsule.blockedBanner.line1)
+    const blockedAt = html.indexOf(d.chapterGauge.blocked.line1)
     expect(cardAt).toBeGreaterThan(-1)
     expect(blockedAt).toBeGreaterThan(cardAt)
   })
 
   it('막힘이 아니면(null) 막힘 안내가 없다', () => {
-    expect(render({ chapter: CHAPTER, blocked: null })).not.toContain(d.capsule.blockedBanner.line1)
+    expect(render({ chapter: CHAPTER, blocked: null })).not.toContain(d.chapterGauge.blocked.line1)
   })
 
   it('챕터가 없으면(chapterNo null) 카드도 막힘 카드도 래퍼도 없다 — 헤더에는 편집 버튼만 남는다', () => {
@@ -101,7 +101,7 @@ describe('프로필의 챕터 게이지 카드', () => {
       expect(html).toContain(d.chapterGauge.loadFailed)
       expect(html).toContain('다시 시도')
       expect(html).not.toContain(CARD_LABEL)
-      expect(html.indexOf(d.capsule.blockedBanner.line1)).toBeGreaterThan(html.indexOf(d.chapterGauge.loadFailed))
+      expect(html.indexOf(d.chapterGauge.blocked.line1)).toBeGreaterThan(html.indexOf(d.chapterGauge.loadFailed))
     }
   })
 
@@ -109,13 +109,13 @@ describe('프로필의 챕터 게이지 카드', () => {
     const html = render({ isOwnProfile: false })
     expect(html).not.toContain(CARD_LABEL)
     expect(html).not.toContain(d.chapterGauge.loadFailed)
-    expect(html).not.toContain(d.capsule.blockedBanner.line1)
+    expect(html).not.toContain(d.chapterGauge.blocked.line1)
   })
 
   it('방어: 타인 프로필에 prop이 실수로 와도 카드를 그리지 않는다', () => {
     const html = render({ isOwnProfile: false, chapter: CHAPTER, blocked: BLOCKED })
     expect(html).not.toContain(CARD_LABEL)
-    expect(html).not.toContain(d.capsule.blockedBanner.line1)
+    expect(html).not.toContain(d.chapterGauge.blocked.line1)
     expect(flat(html)).not.toContain('1,260')
   })
 

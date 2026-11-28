@@ -112,7 +112,7 @@ export const SecondarySub: Story = {
 /** 캡슐 차단 카드의 안내 버튼 */
 export const SecondaryCompact: Story = {
   name: '보조 버튼 · 아주 작게',
-  args: { variant: 'secondary', size: 'xs', children: d.capsule.blockedBanner.cta },
+  args: { variant: 'secondary', size: 'xs', children: d.chapterGauge.blocked.cta },
 };
 
 /** 인벤토리의 «믹스하기» 링크 버튼 (앱 안 이동) */
