@@ -15,9 +15,9 @@ export const CHAPTER_TRACK_PADDING_PX = 2
 /** JAM 워드마크 폭(px) — 높이는 로고 원본 비율(2610×865)을 지킨다 */
 export const CHAPTER_WORDMARK_WIDTH_PX = 26
 
-/** 숫자를 채움 안에 둘 수 있는지 재는 값 — 칩과 숫자 사이 간격(px), 글자 하나의 폭(px, 추정), 채움 오른쪽 끝에서 띄우는 간격(px, = --spacing-12) */
+/** 숫자를 채움 안에 둘 수 있는지 재는 값 — 칩과 숫자 사이 간격(px), 글자 하나의 폭(px, 추정; 두 숫자 모두 16px 글자라 필요 잼 숫자와 같은 값), 채움 오른쪽 끝에서 띄우는 간격(px, = --spacing-12) */
 export const NUMBER_CHIP_GAP_PX = 4
-export const NUMBER_CHAR_WIDTH_PX = 12.5
+export const NUMBER_CHAR_WIDTH_PX = 10
 export const NUMBER_FILL_END_GAP_PX = 12
 /** 필요 잼 숫자(16px 글자) 글자 하나의 폭(px, 추정) — 쉼표가 좁아 넉넉한 쪽으로 어림한 값이다. 글자 배율은 호출부가 곱해 넘긴다 */
 export const NUMBER_REQUIRED_CHAR_WIDTH_PX = 10
@@ -113,6 +113,29 @@ export function insideNumberRightPaddingPx(
   if (!(innerWidthPx > 0)) return NUMBER_FILL_END_GAP_PX
   const overlap = fillWidthPx(innerWidthPx, ratio) - (innerWidthPx - requiredReservedPx(requiredCharCount, requiredCharWidthPx))
   return Math.max(NUMBER_FILL_END_GAP_PX, overlap)
+}
+
+/**
+ * 두 숫자가 한 트랙에 함께 들어가는가. 필요 잼 숫자와 함께 놓았을 때 모은 잼 숫자가 바깥 자리에 들어가면 들어간다.
+ * 안쪽 자리가 되려면 채움이 안쪽 필요 길이 이상이어야 하고, 채움 끝이 필요 잼 영역에 닿아 클램프할 때는 클램프한 왼쪽 끝이 칩과 간격 밖에 있어야 한다.
+ * 어느 쪽도 안 되면(채움이 짧아 안쪽에 못 두고 바깥 자리는 필요 잼 영역에 닿는 극단) 들어가지 않는다. 이때 호출부는 필요 잼 숫자를 그리지 않는다
+ * (같은 수치를 트랙 접근성 라벨이 읽어 주므로 정보는 잃지 않는다). 폭을 모르거나 필요 잼 숫자가 없으면 들어간다.
+ */
+export function requiredNumberFits(
+  innerWidthPx: number,
+  ratio: number,
+  charCount: number,
+  charWidthPx: number = NUMBER_CHAR_WIDTH_PX,
+  requiredCharCount: number = 0,
+  requiredCharWidthPx: number = NUMBER_REQUIRED_CHAR_WIDTH_PX
+): boolean {
+  if (!(innerWidthPx > 0) || !(requiredCharCount > 0)) return true
+  if (collectedNumberPlacement(innerWidthPx, ratio, charCount, charWidthPx, requiredCharCount, requiredCharWidthPx) === 'outside') return true
+  const fillEnd = fillWidthPx(innerWidthPx, ratio)
+  if (fillEnd < insideNumberNeededPx(charCount, charWidthPx)) return false
+  const reservedLeft = innerWidthPx - requiredReservedPx(requiredCharCount, requiredCharWidthPx)
+  if (fillEnd - NUMBER_FILL_END_GAP_PX <= reservedLeft) return true
+  return reservedLeft - charCount * charWidthPx >= CHAPTER_CHIP_WIDTH_PX + NUMBER_CHIP_GAP_PX
 }
 
 export type RequiredNumberCover = 'none' | 'partial' | 'full'

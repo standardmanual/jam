@@ -56,10 +56,10 @@ export const Start: Story = {
   args: { ...COMMON, tribeName: '야간 러너', chapterNo: 1, filled: 0, required: 2344 },
 };
 
-/** 약 20% — 모은 잼 숫자가 채움 오른쪽 바깥(간격 8, 오렌지). 챕터 번호 4자리가 윗줄을 밀어도 이름이 버티는지 본다 */
+/** 약 17% — 모은 잼 숫자가 채움 오른쪽 바깥(간격 8, 오렌지). 챕터 번호 4자리가 윗줄을 밀어도 이름이 버티는지 본다 */
 export const TwentyPercent: Story = {
-  name: '약 20% (465 / 2,344, 챕터 9999)',
-  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 9999, filled: 465, required: 2344 },
+  name: '약 17% (400 / 2,344, 챕터 9999)',
+  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 9999, filled: 400, required: 2344 },
 };
 
 /** 약 65% — 모은 잼 숫자가 채움 안 오른쪽 끝(어두운 글자), 필요 잼 숫자는 오른쪽 끝(오렌지) */
@@ -86,10 +86,10 @@ export const LastChapter: Story = {
   args: { ...COMMON, tribeName: '야간 러너', chapterNo: 10, filled: 1200, required: null },
 };
 
-/** 숫자 자리 경계 — 이 폭(트랙 안쪽 약 298px)에서 3자리 숫자가 채움 안으로 들어가는 첫 값 494(493은 바깥). 글자 폭 12.5px는 추정이라 실측으로 맞춘다 */
+/** 숫자 자리 경계 — 이 폭(트랙 안쪽 약 298px)에서 3자리 숫자가 채움 안으로 들어가는 첫 값 425(424는 바깥). 글자 폭 10px는 추정이라 실측으로 맞춘다 */
 export const PlacementBoundary: Story = {
   name: '숫자 자리 경계',
-  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 494, required: 2344 },
+  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 425, required: 2344 },
 };
 
 /** 6자리 큰 값 — 모은 잼 «123,456»과 필요 잼 «900,000»이 겹치지 않는다(사이 8px 이상, getBoundingClientRect로 실측) */
@@ -98,16 +98,16 @@ export const LargeNumber: Story = {
   args: { ...COMMON, tribeName: '야간 러너', chapterNo: 7, filled: 123456, required: 900000 },
 };
 
-/** 바깥 자리의 끝 — 3자리 숫자가 채움 밖에 있는 마지막 값 183(184부터 안쪽). 두 숫자 사이가 8px 이상인지 본다 */
+/** 바깥 자리의 끝 — 3자리 숫자가 채움 밖에 있는 마지막 값 157(158부터 안쪽). 두 숫자 사이가 8px 이상인지 본다 */
 export const OutsideEnd: Story = {
-  name: '바깥 자리의 끝 (183 / 870)',
-  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 183, required: 870 },
+  name: '바깥 자리의 끝 (157 / 870)',
+  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 157, required: 870 },
 };
 
 /** 안쪽으로 바뀌는 첫 값 — 필요 길이를 막 넘긴 값 */
 export const InsideFirst: Story = {
-  name: '안쪽으로 바뀌는 첫 값 (184 / 870)',
-  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 184, required: 870 },
+  name: '안쪽으로 바뀌는 첫 값 (158 / 870)',
+  args: { ...COMMON, tribeName: '야간 러너', chapterNo: 3, filled: 158, required: 870 },
 };
 
 /** 안쪽 + 클램프 — 채움이 필요 잼 영역에 닿는 값. 모은 잼 숫자의 오른쪽 끝이 필요 잼 영역 왼쪽에서 멈춘다 */

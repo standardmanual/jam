@@ -4,7 +4,7 @@
  * 고정하는 것
  *  - 채움 정도: 필요량이 없으면(챕터 10) 가득, 0 이하·숫자가 아니면 0, 범위 밖 값은 0~1로 자른다.
  *  - 채움 길이 = 칩 폭 44 + (트랙 안쪽 폭 - 44) × 정도. 정도가 0이어도 칩 폭 아래로 내려가지 않는다.
- *  - 숫자 자리: 채움 길이가 «칩 44 + 간격 4 + 글자 수 × 12.5 + 12» 이상이면 안, 아니면 밖. 경계값 양쪽.
+ *  - 숫자 자리: 채움 길이가 «칩 44 + 간격 4 + 글자 수 × 10 + 12» 이상이면 안, 아니면 밖. 경계값 양쪽.
  *  - 필요 잼 영역(12 + 글자 수 × 10 + 8, 마지막 챕터 0): 바깥 자리는 영역과 안 겹칠 때만, 닿으면 안쪽 클램프(오른쪽 여백을 키움).
  *  - 필요 잼 숫자 걸침: 안 걸침·일부·전부. 글자 150% + 360px 조합에서도 필요 잼 영역을 침범하지 않는다.
  *  - 숫자 글자: 천 단위 쉼표, 소수 버림, 음수·숫자 아님은 0.
@@ -27,6 +27,7 @@ import {
   insideNumberRightPaddingPx,
   moveDurationMs,
   requiredNumberCover,
+  requiredNumberFits,
   requiredReservedPx,
 } from '../chapterGaugeCardMath'
 
@@ -62,22 +63,22 @@ describe('채움 길이', () => {
 })
 
 describe('모은 잼 숫자 자리', () => {
-  it('필요 길이는 칩 44 + 간격 4 + 글자 수 × 12.5 + 12다', () => {
-    expect(insideNumberNeededPx(1)).toBe(44 + 4 + 12.5 + 12)
-    expect(insideNumberNeededPx(5)).toBe(44 + 4 + 62.5 + 12)
+  it('필요 길이는 칩 44 + 간격 4 + 글자 수 × 10 + 12다', () => {
+    expect(insideNumberNeededPx(1)).toBe(44 + 4 + 10 + 12)
+    expect(insideNumberNeededPx(5)).toBe(44 + 4 + 50 + 12)
   })
-  it('경계: 3글자 숫자는 트랙 안쪽 298px에서 494/2,344부터 안, 493부터 밖이다', () => {
+  it('경계: 3글자 숫자는 트랙 안쪽 298px에서 425/2,344부터 안, 424부터 밖이다', () => {
     const inner = 298
-    expect(collectedNumberPlacement(inner, chapterFillRatio(494, 2344), 3)).toBe('inside')
-    expect(collectedNumberPlacement(inner, chapterFillRatio(493, 2344), 3)).toBe('outside')
+    expect(collectedNumberPlacement(inner, chapterFillRatio(425, 2344), 3)).toBe('inside')
+    expect(collectedNumberPlacement(inner, chapterFillRatio(424, 2344), 3)).toBe('outside')
   })
   it('글자 폭을 키워 받으면(기준 글자 크기 확대) 필요 길이와 경계가 따라 움직인다', () => {
-    // 125% 확대: 글자 폭 12.5 × 1.25
-    const wide = 12.5 * 1.25
+    // 125% 확대: 글자 폭 10 × 1.25
+    const wide = 10 * 1.25
     expect(insideNumberNeededPx(3, wide)).toBe(44 + 4 + 3 * wide + 12)
-    // 100%에서는 안인 494가 확대하면 밖이 된다(숫자가 칩을 덮지 않게)
-    expect(collectedNumberPlacement(298, chapterFillRatio(494, 2344), 3, wide)).toBe('outside')
-    expect(collectedNumberPlacement(298, chapterFillRatio(494, 2344), 3)).toBe('inside')
+    // 100%에서는 안인 425가 확대하면 밖이 된다(숫자가 칩을 덮지 않게)
+    expect(collectedNumberPlacement(298, chapterFillRatio(425, 2344), 3, wide)).toBe('outside')
+    expect(collectedNumberPlacement(298, chapterFillRatio(425, 2344), 3)).toBe('inside')
   })
   it('채움 길이가 필요 길이와 정확히 같으면 안이다', () => {
     // 1글자 숫자의 필요 길이(72.5)에 채움 길이가 닿는 정도를 거꾸로 구한다
@@ -109,36 +110,36 @@ describe('필요 잼 영역', () => {
 describe('모은 잼 숫자 자리 — 필요 잼 영역', () => {
   const W = 298
   it('채움 안에 둘 폭이 안 되고 바깥 자리도 영역에 닿으면 안쪽(클램프)이다', () => {
-    // 글자 150% + 안쪽 300px: 모은 잼 5자(93.75px), 필요 잼 7자(105px) → 영역 125, 바깥 오른쪽 끝 한도 175
+    // 글자 150% + 안쪽 300px: 모은 잼 5자(75px), 필요 잼 7자(105px) → 영역 125, 바깥 오른쪽 끝 한도 175
     const inner = 300
-    const cw = 12.5 * 1.5
+    const cw = 10 * 1.5
     const rw = 10 * 1.5
     const at = (fillEnd: number) => (fillEnd - 44) / (inner - 44)
-    // 바깥: 채움 끝 + 8 + 93.75 ≤ 175 → 채움 끝 ≤ 73.25
-    expect(collectedNumberPlacement(inner, at(73.25), 5, cw, 7, rw)).toBe('outside')
-    expect(collectedNumberPlacement(inner, at(73.4), 5, cw, 7, rw)).toBe('inside')
+    // 바깥: 채움 끝 + 8 + 75 ≤ 175 → 채움 끝 ≤ 92
+    expect(collectedNumberPlacement(inner, at(92), 5, cw, 7, rw)).toBe('outside')
+    expect(collectedNumberPlacement(inner, at(92.2), 5, cw, 7, rw)).toBe('inside')
     // 영역이 없으면 같은 채움 끝도 바깥이다
-    expect(collectedNumberPlacement(inner, at(73.4), 5, cw, 0, rw)).toBe('outside')
+    expect(collectedNumberPlacement(inner, at(92.2), 5, cw, 0, rw)).toBe('outside')
   })
   it('바깥 자리는 필요 잼 숫자와 8px 이상 떨어진다', () => {
     const inner = 298
     const ratio = chapterFillRatio(40, 870)
     const fillEnd = fillWidthPx(inner, ratio)
-    expect(collectedNumberPlacement(inner, ratio, 2, 12.5, 3, 10)).toBe('outside')
-    const numberRight = fillEnd + 8 + 2 * 12.5
+    expect(collectedNumberPlacement(inner, ratio, 2, 10, 3, 10)).toBe('outside')
+    const numberRight = fillEnd + 8 + 2 * 10
     const requiredLeft = inner - 12 - 3 * 10
     expect(requiredLeft - numberRight).toBeGreaterThanOrEqual(8)
   })
   it('필요 잼 숫자가 없으면(마지막 챕터) 영역이 없어 바깥은 트랙 끝까지 쓸 수 있다', () => {
-    expect(collectedNumberPlacement(W, 0.5, 2, 12.5, 0, 10)).toBe('inside')
-    expect(collectedNumberPlacement(W, 1, 5, 12.5, 0, 10)).toBe('inside')
+    expect(collectedNumberPlacement(W, 0.5, 2, 10, 0, 10)).toBe('inside')
+    expect(collectedNumberPlacement(W, 1, 5, 10, 0, 10)).toBe('inside')
   })
   it('값 0은 바깥이다(필요 잼 영역이 있어도)', () => {
-    expect(collectedNumberPlacement(W, 0, 1, 12.5, 3, 10)).toBe('outside')
+    expect(collectedNumberPlacement(W, 0, 1, 10, 3, 10)).toBe('outside')
   })
   it('글자 150% + 360px(안쪽 약 300) + 5자리 조합: 안쪽이어도 필요 잼 영역을 침범하지 않는다', () => {
     const inner = 300
-    const cw = 12.5 * 1.5
+    const cw = 10 * 1.5
     const rw = 10 * 1.5
     const ratio = chapterFillRatio(890, 900)
     expect(collectedNumberPlacement(inner, ratio, 3, cw, 3, rw)).toBe('inside')
@@ -213,5 +214,31 @@ describe('모션 시간', () => {
     expect(moveDurationMs(0, 1)).toBe(MOVE_MAX_MS)
     expect(moveDurationMs(1, 0)).toBe(MOVE_MAX_MS)
     expect(moveDurationMs(0, 0.5)).toBe(1100)
+  })
+})
+
+describe('두 숫자가 한 트랙에 들어가는가', () => {
+  // 360px 폭, 글자 150%: 트랙 안쪽 약 300px, 모은 잼 글자 폭 18.75, 필요 잼 글자 폭 15
+  const W = 300
+  it('필요 잼 숫자가 없거나 폭을 모르면 늘 들어간다', () => {
+    expect(requiredNumberFits(W, 1, 6, 18.75, 0, 15)).toBe(true)
+    expect(requiredNumberFits(0, 1, 6, 18.75, 6, 15)).toBe(true)
+  })
+  it('채움이 안쪽 필요 길이 이상이고 필요 잼 영역에 닿지 않으면(클램프가 필요 없으면) 들어간다', () => {
+    expect(requiredNumberFits(W, 0.6, 6, 18.75, 6, 15)).toBe(true)
+  })
+  it('현재 가능한 가장 큰 값(3,960 대 3,960)은 글자 150%·360px에서도 들어간다', () => {
+    expect(requiredNumberFits(W, 3900 / 3960, 5, 18.75, 5, 15)).toBe(true)
+    expect(requiredNumberFits(W, 1, 5, 18.75, 5, 15)).toBe(true)
+  })
+  it('채움이 짧아 안쪽에 못 두는데 바깥 자리도 필요 잼 영역에 닿는 극단(12,345 대 90,000, 글자 150%)은 들어가지 않는다', () => {
+    expect(requiredNumberFits(W, 12345 / 90000, 6, 18.75, 6, 15)).toBe(false)
+  })
+  it('같은 극단이어도 채움이 충분히 길면 클램프해서 들어간다', () => {
+    expect(requiredNumberFits(W, 0.9, 6, 18.75, 6, 15)).toBe(true)
+  })
+  it('클램프한 왼쪽 끝이 칩과 간격 안으로 밀리면 들어가지 않는다', () => {
+    // 모은 잼 글자 폭을 키워 클램프 왼쪽 끝(= 영역 왼쪽 - 숫자 폭)이 칩 오른쪽 끝 + 4보다 왼쪽이 되게 한다
+    expect(requiredNumberFits(W, 1, 6, 28, 6, 15)).toBe(false)
   })
 })

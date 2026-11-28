@@ -23,6 +23,7 @@ import {
   insideNumberRightPaddingPx,
   moveDurationMs,
   requiredNumberCover,
+  requiredNumberFits,
   NUMBER_CHAR_WIDTH_PX,
   NUMBER_FILL_END_GAP_PX,
   NUMBER_REQUIRED_CHAR_WIDTH_PX,
@@ -39,7 +40,7 @@ import {
  * 값이 0이면 채움을 그리지 않는다. 칩 아래에 가려진 오렌지 가장자리가 칩 둘레에 실선처럼 비치지 않게 하려는 것이다.
  * 필요 잼 숫자: 트랙 안 오른쪽 끝에 닻을 내린 오렌지 글자(16px)다. 정적이고 팝인이 없다. 채움이 숫자에 걸치면 채움 안에 같은 숫자의 어두운 복사본을
  * 트랙 안쪽 폭 상자로 깔아 두어, 채움이 닿은 부분만 하드 컷으로 어둡게 보인다(`overflow-hidden`이 자른다).
- * 모은 잼 숫자(20px): 채움 끝을 따른다. 채움 안에 들어갈 폭이면 채움 안쪽 오른쪽 끝(어두운 글자 `--capsule-track`),
+ * 모은 잼 숫자(16px, 필요 잼 숫자와 같은 크기): 채움 끝을 따른다. 채움 안에 들어갈 폭이면 채움 안쪽 오른쪽 끝(어두운 글자 `--capsule-track`),
  * 아니면 채움 오른쪽 바깥(간격 8, 오렌지 글자 `--capsule-fill`)이다. 바깥 자리가 필요 잼 영역에 닿으면 안쪽으로 들어가 오른쪽 끝이 필요 잼 영역 앞에서 멈춘다.
  * 챕터 10처럼 `required`가 `null`이면 채움은 가득이고 필요 잼 숫자와 그 영역이 없다(문구 없음, 챕터는 추후 늘어난다).
  *
@@ -235,17 +236,21 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
   // 숫자 자리는 모션 중간값이 아니라 실제 값으로 정한다. 글자 배율은 두 숫자의 글자 폭에 모두 곱한다
   const collectedCharW = NUMBER_CHAR_WIDTH_PX * charScale
   const requiredCharW = NUMBER_REQUIRED_CHAR_WIDTH_PX * charScale
-  const placement = collectedNumberPlacement(innerWidth, target, numberText.length, collectedCharW, requiredCharCount, requiredCharW)
-  const cover = requiredNumberCover(innerWidth, target, requiredCharCount, requiredCharW)
+  // 두 숫자가 한 트랙에 함께 들어가지 않는 극단(큰 글자 배율·좁은 폭·많은 자리)에서는 필요 잼 숫자를 그리지 않는다. 같은 수치를 트랙 접근성 라벨이 읽어 준다
+  const showRequired =
+    requiredText !== null && requiredNumberFits(innerWidth, target, numberText.length, collectedCharW, requiredCharCount, requiredCharW)
+  const shownRequiredCharCount = showRequired ? requiredCharCount : 0
+  const placement = collectedNumberPlacement(innerWidth, target, numberText.length, collectedCharW, shownRequiredCharCount, requiredCharW)
+  const cover = requiredNumberCover(innerWidth, target, shownRequiredCharCount, requiredCharW)
   const showNumber = numberReady && arrived
   const numberContent = showNumber ? <PopInNumber key={numberText} value={numberText} playOnMount /> : numberText
-  const numberClass = 'flex h-full items-center whitespace-nowrap text-xl font-extrabold leading-none tabular-nums'
+  const numberClass = 'flex h-full items-center whitespace-nowrap text-base font-extrabold leading-none tabular-nums'
   const numberOpacity = showNumber ? undefined : 0
   const requiredClass = 'absolute right-0 top-0 flex h-full items-center whitespace-nowrap text-base font-extrabold leading-none tabular-nums'
   // 바깥 숫자의 왼쪽 = 최종 채움 끝 + 8. 값이 0이면 채움이 없으니 칩 오른쪽 끝 + 8이다
   const outsideLeftPx = target > 0 ? fillWidthPx(innerWidth, target) : CHAPTER_CHIP_WIDTH_PX
   // 안쪽 숫자의 오른쪽 여백 — 기본은 12(토큰), 필요 잼 영역에 닿으면 그 앞에서 멈추도록 키운다
-  const insideRightPaddingPx = insideNumberRightPaddingPx(innerWidth, target, requiredCharCount, requiredCharW)
+  const insideRightPaddingPx = insideNumberRightPaddingPx(innerWidth, target, shownRequiredCharCount, requiredCharW)
   // 값이 0이면 채움을 그리지 않는다. 시작 길이는 칩보다 트랙 안쪽 여백만큼 들여 칩 둘레에 오렌지 가장자리가 비치지 않게 한다
   const fillWidth =
     motion.ratio > 0
@@ -263,7 +268,7 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
       {/* 트랙 안쪽 — 채움·칩·숫자의 기준 상자 */}
       <span ref={innerRef} className="relative block h-full w-full">
         {/* 필요 잼 숫자 원본 — 트랙 안 오른쪽 끝에 닻을 내린 오렌지 글자. 정적이다. 마지막 챕터는 없다. 같은 수치를 트랙 접근성 라벨이 읽어 주므로 숨긴다 */}
-        {requiredText !== null && (
+        {showRequired && (
           <span
             aria-hidden="true"
             data-chapter-required="value"
@@ -312,7 +317,7 @@ export default function ChapterGaugeCard({ tribeName, chapterNo, chapterLabel, f
               </span>
             )}
             {/* 필요 잼 숫자의 어두운 복사본 — 트랙 안쪽 폭과 같은 상자를 왼쪽에 맞춰 원본과 같은 자리에 겹친다. 채움이 자른 만큼만 어둡게 보인다(하드 컷) */}
-            {requiredText !== null && innerWidth > 0 && (
+            {showRequired && innerWidth > 0 && (
               <span
                 aria-hidden="true"
                 data-chapter-required-clip=""

@@ -136,11 +136,11 @@ describe('모은 잼 숫자', () => {
     expect((numberAt('inside')!.props.style as Style).color).toBe('var(--capsule-track)')
     expect((numberAt('inside')!.props.style as Style).paddingRight).toBe('var(--spacing-12)')
     unmount()
-    mount(ChapterGaugeCard, props(465))
+    mount(ChapterGaugeCard, props(400))
     expect(numberAt('outside')).toBeDefined()
     expect(numberAt('inside')).toBeUndefined()
     expect((numberAt('outside')!.props.style as Style).color).toBe('var(--capsule-fill)')
-    const end = fillWidthPx(INNER_WIDTH, chapterFillRatio(465, REQUIRED))
+    const end = fillWidthPx(INNER_WIDTH, chapterFillRatio(400, REQUIRED))
     expect((numberAt('outside')!.props.style as Style).left).toBe(`calc(${end}px + var(--spacing-8))`)
   })
 
