@@ -1,14 +1,17 @@
 /**
- * lib/probability/disclosure — 확률 안내 값 읽기 (티켓 20261021_1250 1회, 운영 로직 18.3절)
+ * lib/probability/disclosure — 확률 안내 값 읽기 (티켓 20261021_1250 1회, 운영 로직 18.3절, 티켓 20261127_1738 C8)
+ *
+ * C8: 캡슐 구역이 챕터 오름 보상 구역으로 바뀌었다. 값은 `chapter_reward_policy`(등급 확률·다른 트라이브 확률·Epic 보정)와
+ * `chapter_definitions.reward_count`(챕터별 개수), 공용 `jam_policy`에서 읽는다. 옛 `capsule_policy`는 읽지 않는다.
  *
  * 고정하는 것:
  * - 값은 읽은 행에서 만든다: 설정을 바꾼 행으로 만들면 표가 따라 바뀐다.
  * - 단위 변환: 정책 표의 등급은 퍼센트(70), 확률 칸은 0~1(0.2), 시스템 드랍 등급은 0~1(1, 0, 0, 0)이다. 부동소수 오차(0.07)도 정리한다.
- * - 0인 값: 등급 0% 줄은 지우지 않고, 확정 개수 0은 «0개», 보너스 개수 0은 «없음»이다.
+ * - 0인 값: 등급 0% 줄은 지우지 않고, 동기화 확정 개수 0은 «0개»다.
  * - 읽기에 실패하면 코드 상수 사본(`DEFAULT_*`)으로 대신하지 않고 `{ ok: false }`만 돌려준다(숫자가 하나도 없다).
- *   정책(동기화·캡슐·보정 장치), 등급 올리기(`combine_policy`), 시스템 드랍은 서로 따로 실패한다(등급 올리기 표 자체는 `tierUpDisclosure.test.ts`).
+ *   정책(동기화·챕터 오름 보상·보정 장치), 등급 올리기(`combine_policy`), 시스템 드랍은 서로 따로 실패한다(등급 올리기 표 자체는 `tierUpDisclosure.test.ts`).
  * - 필요한 칸만 이름으로 읽는다(`select('*')`와 대량 수령 경보 기준 칸이 없다).
- * - 읽는 칸 목록(`CAPSULE_COLUMNS`·`JAM_COLUMNS`·`COMBINE_COLUMNS`)을 내보낸다: 어드민 밸런스 설정이 «확률 안내에 반영되는 칸»을 가르는 단일 원천이며(티켓 20261022_1132 2회),
+ * - 읽는 칸 목록(`CHAPTER_REWARD_COLUMNS`·`JAM_COLUMNS`·`COMBINE_COLUMNS`)을 내보낸다: 어드민 밸런스 설정이 «확률 안내에 반영되는 칸»을 가르는 단일 원천이며(티켓 20261022_1132 2회),
  *   실제로 읽는 칸과 같다(동작 변경 없음).
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -19,12 +22,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const { createServiceClientMock } = vi.hoisted(() => ({ createServiceClientMock: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
 
-import { ALL_OK, AMBIENT_ROW, CAPSULE_ROW, COMBINE_ROW, JAM_ROW, fakeClient, failed, ok, type Result } from './fixtures'
+import {
+  ALL_OK,
+  AMBIENT_ROW,
+  CHAPTER_DEFINITIONS_ROWS,
+  CHAPTER_REWARD_ROW,
+  COMBINE_ROW,
+  JAM_ROW,
+  fakeClient,
+  failed,
+  ok,
+  type Result,
+} from './fixtures'
 import { DEFAULT_CAPSULE_POLICY } from '@/lib/capsule/policy'
 import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import { DEFAULT_AMBIENT_DROP_CONFIG } from '@/lib/ambient-drop/config'
 import {
-  CAPSULE_COLUMNS,
+  CHAPTER_REWARD_COLUMNS,
   COMBINE_COLUMNS,
   JAM_COLUMNS,
   buildAmbientDisclosure,
@@ -83,31 +97,43 @@ describe('정상 값 — 운영 로직 5.4·6.7절 표와 같은 표 행', () =>
     ])
   })
 
-  it('캡슐: 확정 1개와 보너스 1개, 다른 트라이브, 잠김, 첫 캡슐 잠금, 등급 표', async () => {
+  it('챕터 오름 보상: 챕터별 개수(같은 개수는 묶음), 다른 트라이브, 잠김, 등급 표 — A3 확정 값', async () => {
     const result = await loadProbabilityDisclosure(fakeClient(ALL_OK).client)
-    const capsule = policyOf(result).capsule
-    expect(capsule.counts).toEqual([
-      { label: '확정으로 나오는 개수', value: '1개' },
-      { label: '1개 더 나올 확률', value: '20%' },
+    const reward = policyOf(result).chapterReward
+    expect(reward.counts).toEqual([
+      { label: '챕터 1~3을 마치면', value: '3개' },
+      { label: '챕터 4~6을 마치면', value: '4개' },
+      { label: '챕터 7~9를 마치면', value: '5개' },
       { label: '다른 트라이브의 것일 확률', value: '아이템 배지마다 20%' },
-      // 잠김은 동기화와 캡슐이 한 값이다(jam_policy.locked_roll_probability)
+      // 잠김은 동기화와 챕터 오름 보상이 한 값이다(jam_policy.locked_roll_probability)
       { label: '잠긴 채 나올 확률', value: '25%' },
-      { label: 'JAM! 시작하기에서 여는 첫 캡슐', value: '잠긴 아이템 배지 1개가 반드시 나와요' },
     ])
-    expect(capsule.rarity).toEqual([
-      { label: 'Common', value: '70%' },
-      { label: 'Rare', value: '22%' },
-      { label: 'Epic', value: '6%' },
-      { label: 'Mystic', value: '2%' },
+    expect(reward.rarity).toEqual([
+      { label: 'Common', value: '30%' },
+      { label: 'Rare', value: '40%' },
+      { label: 'Epic', value: '22%' },
+      { label: 'Mystic', value: '8%' },
     ])
+  })
+
+  it('옛 캡슐의 «JAM! 시작하기에서 여는 첫 캡슐» 줄과 보너스 줄은 없다(규칙이 사라졌다)', async () => {
+    const reward = policyOf(await loadProbabilityDisclosure(fakeClient(ALL_OK).client)).chapterReward
+    const labels = reward.counts.map((r) => r.label)
+    expect(labels.some((l) => l.includes('JAM! 시작하기'))).toBe(false)
+    expect(labels.some((l) => l.includes('더 나올 확률') || l.includes('더 나오는 개수'))).toBe(false)
+  })
+
+  it('결과 어디에도 «캡슐»이 없다', async () => {
+    const strings = allStrings(await loadProbabilityDisclosure(fakeClient(ALL_OK).client))
+    expect(strings.filter((s) => s.includes('캡슐'))).toEqual([])
   })
 
   it('보정 장치 두 가지가 숫자와 함께 사실 문장으로 나온다', async () => {
     const pity = policyOf(await loadProbabilityDisclosure(fakeClient(ALL_OK).client)).pity
     expect(pity).toHaveLength(2)
-    expect(pity[0]).toBe('내가 캡슐을 15번 여는 동안 Epic 이상이 나오지 않으면, 그다음 캡슐의 첫 아이템 배지는 Epic 이상으로 나와요.')
+    expect(pity[0]).toBe('챕터 오름 보상을 15번 받는 동안 Epic 이상이 나오지 않으면, 그다음 챕터 오름 보상의 첫 아이템 배지는 Epic 이상으로 나와요.')
     expect(pity[1]).toBe(
-      'Common 아이템 배지가 10번 이어서 나오면, 그다음 아이템 배지는 Rare 이상으로 나와요. 동기화와 캡슐에서 나온 것을 합쳐서 세어요.'
+      'Common 아이템 배지가 10번 이어서 나오면, 그다음 아이템 배지는 Rare 이상으로 나와요. 동기화와 챕터 오름 보상에서 나온 것을 합쳐서 세어요.'
     )
   })
 
@@ -144,15 +170,12 @@ describe('정상 값 — 운영 로직 5.4·6.7절 표와 같은 표 행', () =>
 })
 
 describe('값은 읽은 행에서 만든다 — 설정을 바꾸면 표가 따라 바뀐다', () => {
-  it('캡슐·동기화 값을 바꾼 행으로 만들면 표 행이 그 값이다', async () => {
+  it('챕터 오름 보상·동기화 값을 바꾼 행으로 만들면 표 행이 그 값이다', async () => {
     const result = await loadProbabilityDisclosure(
       fakeClient({
         ...ALL_OK,
-        capsule_policy: ok({
-          ...CAPSULE_ROW,
-          guaranteed_count: 2,
-          bonus_count: 3,
-          bonus_probability: 0.35,
+        chapter_reward_policy: ok({
+          ...CHAPTER_REWARD_ROW,
           other_tribe_probability: 0.5,
           rarity_common: 50,
           rarity_rare: 30,
@@ -160,6 +183,12 @@ describe('값은 읽은 행에서 만든다 — 설정을 바꾸면 표가 따�
           rarity_mystic: 5,
           pity_epic_threshold: 20,
         }),
+        chapter_definitions: ok([
+          { chapter_no: 1, reward_count: 2 },
+          { chapter_no: 2, reward_count: 3 },
+          { chapter_no: 3, reward_count: 3 },
+          { chapter_no: 4, reward_count: null },
+        ]),
         jam_policy: ok({
           ...JAM_ROW,
           sync_item_guaranteed: 3,
@@ -176,7 +205,7 @@ describe('값은 읽은 행에서 만든다 — 설정을 바꾸면 표가 따�
         }),
       }).client
     )
-    const { sync, capsule, pity } = policyOf(result)
+    const { sync, chapterReward, pity } = policyOf(result)
     expect(asMap(sync.counts)).toEqual({
       '확정으로 받는 개수': '3개', // 등산도 같으면 «등산은»을 쓰지 않는다
       '보너스 기회': '1번',
@@ -184,13 +213,14 @@ describe('값은 읽은 행에서 만든다 — 설정을 바꾸면 표가 따�
       '잠긴 채 받을 확률': '10%',
     })
     expect(asMap(sync.rarity)).toEqual({ Common: '60%', Rare: '25%', Epic: '10%', Mystic: '5%' })
-    expect(asMap(capsule.counts)).toMatchObject({
-      '확정으로 나오는 개수': '2개',
-      '3개 더 나올 확률': '35%', // 라벨의 숫자는 bonus_count에서 만든다
+    // 개수 줄은 챕터 정의 행에서 만든다: 1은 2개, 2~3은 3개, 보상이 없는(NULL) 챕터 4는 줄이 없다
+    expect(asMap(chapterReward.counts)).toEqual({
+      '챕터 1을 마치면': '2개',
+      '챕터 2~3을 마치면': '3개',
       '다른 트라이브의 것일 확률': '아이템 배지마다 50%',
       '잠긴 채 나올 확률': '10%',
     })
-    expect(asMap(capsule.rarity)).toEqual({ Common: '50%', Rare: '30%', Epic: '15%', Mystic: '5%' })
+    expect(asMap(chapterReward.rarity)).toEqual({ Common: '50%', Rare: '30%', Epic: '15%', Mystic: '5%' })
     expect(pity[0]).toContain('20번')
     expect(pity[1]).toContain('7번')
   })
@@ -233,7 +263,8 @@ describe('단위 변환 — 읽는 곳마다 고정한다', () => {
     const asStrings = (row: Record<string, unknown>) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v]))
     const result = await loadProbabilityDisclosure(
       fakeClient({
-        capsule_policy: ok(asStrings(CAPSULE_ROW)),
+        chapter_reward_policy: ok(asStrings(CHAPTER_REWARD_ROW)),
+        chapter_definitions: ok(CHAPTER_DEFINITIONS_ROWS.map((r) => asStrings(r))),
         jam_policy: ok(asStrings(JAM_ROW)),
         combine_policy: ok(asStrings(COMBINE_ROW)),
         ambient_drop_config: ok(asStrings(AMBIENT_ROW)),
@@ -245,24 +276,18 @@ describe('단위 변환 — 읽는 곳마다 고정한다', () => {
 })
 
 describe('0인 값의 표시', () => {
-  const capsuleWith = (over: Partial<typeof CAPSULE_ROW>) => ({ ...CAPSULE_ROW, ...over })
+  const rewardWith = (over: Partial<typeof CHAPTER_REWARD_ROW>) => ({ ...CHAPTER_REWARD_ROW, ...over })
   const jamWith = (over: Partial<typeof JAM_ROW>) => ({ ...JAM_ROW, ...over })
+  const COUNTS = [{ chapterNo: 1, count: 3 }]
 
-  it('확정 개수 0은 «0개»로 쓴다(드랍 없음 설정이 가능하다)', () => {
-    const d = buildPolicyDisclosure(capsuleWith({ guaranteed_count: 0 }), jamWith({ sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 0 }))
+  it('동기화 확정 개수 0은 «0개»로 쓴다(드랍 없음 설정이 가능하다)', () => {
+    const d = buildPolicyDisclosure(CHAPTER_REWARD_ROW, jamWith({ sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 0 }), COUNTS)
     expect(d).not.toBeNull()
     expect(asMap(d!.sync.counts)['확정으로 받는 개수']).toBe('0개')
-    expect(asMap(d!.capsule.counts)['확정으로 나오는 개수']).toBe('0개')
-  })
-
-  it('캡슐 보너스 개수 0이면 보너스 줄을 «없음»으로 쓴다', () => {
-    const d = buildPolicyDisclosure(capsuleWith({ bonus_count: 0 }), JAM_ROW)!
-    expect(asMap(d.capsule.counts)['더 나오는 개수']).toBe('없음')
-    expect(d.capsule.counts.some((r) => r.label.includes('더 나올 확률'))).toBe(false)
   })
 
   it('동기화 보너스 기회 0이면 «없음»이고 보너스 확률 줄은 없다', () => {
-    const d = buildPolicyDisclosure(CAPSULE_ROW, jamWith({ sync_item_bonus_rolls: 0 }))!
+    const d = buildPolicyDisclosure(CHAPTER_REWARD_ROW, jamWith({ sync_item_bonus_rolls: 0 }), COUNTS)!
     const counts = asMap(d.sync.counts)
     expect(counts['보너스 기회']).toBe('없음')
     expect(counts).not.toHaveProperty('보너스 한 번의 확률')
@@ -270,17 +295,17 @@ describe('0인 값의 표시', () => {
 
   it('확률 0%도 지우지 않고 «0%»로 쓴다', () => {
     const d = buildPolicyDisclosure(
-      capsuleWith({ bonus_probability: 0, other_tribe_probability: 0, rarity_common: 100, rarity_rare: 0, rarity_epic: 0, rarity_mystic: 0 }),
-      jamWith({ locked_roll_probability: 0 })
+      rewardWith({ other_tribe_probability: 0, rarity_common: 100, rarity_rare: 0, rarity_epic: 0, rarity_mystic: 0 }),
+      jamWith({ locked_roll_probability: 0 }),
+      COUNTS
     )!
-    expect(asMap(d.capsule.counts)['1개 더 나올 확률']).toBe('0%')
-    expect(asMap(d.capsule.counts)['다른 트라이브의 것일 확률']).toBe('아이템 배지마다 0%')
-    expect(asMap(d.capsule.counts)['잠긴 채 나올 확률']).toBe('0%')
-    expect(asMap(d.capsule.rarity)).toEqual({ Common: '100%', Rare: '0%', Epic: '0%', Mystic: '0%' })
+    expect(asMap(d.chapterReward.counts)['다른 트라이브의 것일 확률']).toBe('아이템 배지마다 0%')
+    expect(asMap(d.chapterReward.counts)['잠긴 채 나올 확률']).toBe('0%')
+    expect(asMap(d.chapterReward.rarity)).toEqual({ Common: '100%', Rare: '0%', Epic: '0%', Mystic: '0%' })
   })
 
   it('등산 확정 개수가 달라도 한 줄에 쓴다', () => {
-    const d = buildPolicyDisclosure(CAPSULE_ROW, jamWith({ sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 1 }))!
+    const d = buildPolicyDisclosure(CHAPTER_REWARD_ROW, jamWith({ sync_item_guaranteed: 0, sync_item_guaranteed_hiking: 1 }), COUNTS)!
     expect(asMap(d.sync.counts)['확정으로 받는 개수']).toBe('0개, 등산은 1개')
   })
 
@@ -292,7 +317,7 @@ describe('0인 값의 표시', () => {
 
 describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
   // 기본값과 겹치지 않는 값으로 DB 행을 만든다. 이 값이 실패 결과에 새거나, 기본값이 대신 나타나면 걸린다.
-  const DB_CAPSULE = { ...CAPSULE_ROW, rarity_common: 41, rarity_rare: 33, rarity_epic: 17, rarity_mystic: 9, pity_epic_threshold: 23 }
+  const DB_REWARD = { ...CHAPTER_REWARD_ROW, rarity_common: 41, rarity_rare: 33, rarity_epic: 17, rarity_mystic: 9, pity_epic_threshold: 23 }
   const DB_JAM = {
     ...JAM_ROW,
     sync_rarity_common: 51,
@@ -304,22 +329,27 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
   }
 
   it('기본값 상수 사본은 DB 행과 다르다(이 시험의 전제)', () => {
-    expect(DEFAULT_CAPSULE_POLICY.rarity_common).not.toBe(DB_CAPSULE.rarity_common)
+    expect(DEFAULT_CAPSULE_POLICY.rarity_common).not.toBe(DB_REWARD.rarity_common)
     expect(DEFAULT_JAM_POLICY.sync_rarity_common).not.toBe(DB_JAM.sync_rarity_common)
   })
 
   const policyFailures: Array<[string, Record<string, Result>]> = [
-    ['capsule_policy 조회 오류', { ...ALL_OK, capsule_policy: failed }],
-    ['capsule_policy 행 없음', { ...ALL_OK, capsule_policy: { data: null, error: null } }],
-    ['capsule_policy 조회 예외', { ...ALL_OK, capsule_policy: 'throw' }],
+    ['chapter_reward_policy 조회 오류', { ...ALL_OK, chapter_reward_policy: failed }],
+    ['chapter_reward_policy 행 없음', { ...ALL_OK, chapter_reward_policy: { data: null, error: null } }],
+    ['chapter_reward_policy 조회 예외', { ...ALL_OK, chapter_reward_policy: 'throw' }],
+    ['chapter_definitions 조회 오류', { ...ALL_OK, chapter_definitions: failed }],
+    ['chapter_definitions 조회 예외', { ...ALL_OK, chapter_definitions: 'throw' }],
+    ['챕터 보상 개수가 정수가 아님', { ...ALL_OK, chapter_definitions: ok([{ chapter_no: 1, reward_count: 1.5 }]) }],
+    ['챕터 보상 개수가 0 이하', { ...ALL_OK, chapter_definitions: ok([{ chapter_no: 1, reward_count: 0 }]) }],
+    ['보상이 있는 챕터가 하나도 없음', { ...ALL_OK, chapter_definitions: ok([{ chapter_no: 10, reward_count: null }]) }],
     ['jam_policy 조회 오류', { ...ALL_OK, jam_policy: failed }],
     ['jam_policy 행 없음', { ...ALL_OK, jam_policy: { data: null, error: null } }],
     ['jam_policy 조회 예외', { ...ALL_OK, jam_policy: 'throw' }],
-    ['캡슐 칸 하나가 정책 검증에 걸림(확률 > 1)', { ...ALL_OK, capsule_policy: ok({ ...DB_CAPSULE, bonus_probability: 1.5 }) }],
-    ['캡슐 칸 하나가 정책 검증에 걸림(정수가 아닌 확정 개수)', { ...ALL_OK, capsule_policy: ok({ ...DB_CAPSULE, guaranteed_count: 1.5 }) }],
-    ['캡슐 칸 하나가 비어 있음', { ...ALL_OK, capsule_policy: ok({ ...DB_CAPSULE, pity_epic_threshold: null }) }],
+    ['챕터 보상 칸 하나가 검증에 걸림(확률 > 1)', { ...ALL_OK, chapter_reward_policy: ok({ ...DB_REWARD, other_tribe_probability: 1.5 }) }],
+    ['챕터 보상 칸 하나가 검증에 걸림(정수가 아닌 Epic 보정 횟수)', { ...ALL_OK, chapter_reward_policy: ok({ ...DB_REWARD, pity_epic_threshold: 1.5 }) }],
+    ['챕터 보상 칸 하나가 비어 있음', { ...ALL_OK, chapter_reward_policy: ok({ ...DB_REWARD, pity_epic_threshold: null }) }],
     ['동기화 칸 하나가 정책 검증에 걸림(나눌 값 0)', { ...ALL_OK, jam_policy: ok({ ...DB_JAM, sync_item_bonus_jam_divisor: 0 }) }],
-    ['캡슐 등급 합계가 100이 아님', { ...ALL_OK, capsule_policy: ok({ ...DB_CAPSULE, rarity_mystic: 10 }) }],
+    ['챕터 오름 보상 등급 합계가 100이 아님', { ...ALL_OK, chapter_reward_policy: ok({ ...DB_REWARD, rarity_mystic: 10 }) }],
     ['동기화 등급 합계가 100이 아님', { ...ALL_OK, jam_policy: ok({ ...DB_JAM, sync_rarity_mystic: 6 }) }],
   ]
 
@@ -333,9 +363,9 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
   })
 
   it('정책이 정상이면 DB 값이 그대로 나오고 기본값 상수의 값은 나오지 않는다', async () => {
-    const result = await loadProbabilityDisclosure(fakeClient({ ...ALL_OK, capsule_policy: ok(DB_CAPSULE), jam_policy: ok(DB_JAM) }).client)
+    const result = await loadProbabilityDisclosure(fakeClient({ ...ALL_OK, chapter_reward_policy: ok(DB_REWARD), jam_policy: ok(DB_JAM) }).client)
     const policy = policyOf(result)
-    expect(asMap(policy.capsule.rarity).Common).toBe('41%')
+    expect(asMap(policy.chapterReward.rarity).Common).toBe('41%')
     expect(asMap(policy.sync.rarity).Common).toBe('51%')
     expect(policy.pity[0]).toContain('23번')
     expect(policy.pity[1]).toContain('13번')
@@ -343,7 +373,7 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
     const text = JSON.stringify(policy)
     expect(text).not.toContain(String(DEFAULT_CAPSULE_POLICY.pity_epic_threshold) + '번')
     expect(text).not.toContain(`${DEFAULT_JAM_POLICY.sync_rarity_common}%`)
-    expect(text).not.toContain(`${DEFAULT_CAPSULE_POLICY.rarity_common}%`)
+    expect(text).not.toContain(`${DEFAULT_CAPSULE_POLICY.rarity_common}%`) // 옛 캡슐 기본 Common 70%
   })
 
   const ambientFailures: Array<[string, Result]> = [
@@ -371,7 +401,13 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
 
   it('모든 표가 실패해도 던지지 않고 정책·등급 올리기·시스템 드랍 모두 { ok: false }다', async () => {
     const result = await loadProbabilityDisclosure(
-      fakeClient({ capsule_policy: 'throw', jam_policy: 'throw', combine_policy: 'throw', ambient_drop_config: 'throw' }).client
+      fakeClient({
+        chapter_reward_policy: 'throw',
+        chapter_definitions: 'throw',
+        jam_policy: 'throw',
+        combine_policy: 'throw',
+        ambient_drop_config: 'throw',
+      }).client
     )
     expect(result).toEqual({ policy: { ok: false }, tierUp: { ok: false }, ambient: { ok: false } })
   })
@@ -393,15 +429,16 @@ describe('읽기 실패 — 기본값으로 대신하지 않는다', () => {
 })
 
 describe('읽는 칸', () => {
-  it('네 표 모두 칸 이름을 골라 읽는다 — select(*)와 대량 수령 경보 기준 칸이 없다', async () => {
+  it('설정 표를 칸 이름으로 골라 읽는다 — select(*)와 대량 수령 경보 기준 칸이 없고, 옛 capsule_policy는 읽지 않는다', async () => {
     const fake = fakeClient(ALL_OK)
     await loadProbabilityDisclosure(fake.client)
-    expect(Object.keys(fake.selects).sort()).toEqual(['ambient_drop_config', 'capsule_policy', 'combine_policy', 'jam_policy'])
+    expect(Object.keys(fake.selects).sort()).toEqual(['ambient_drop_config', 'chapter_definitions', 'chapter_reward_policy', 'combine_policy', 'jam_policy'])
     for (const columns of Object.values(fake.selects)) {
       expect(columns).not.toContain('*')
       expect(columns).not.toContain('mass_earn_alert')
     }
-    expect(fake.selects.capsule_policy.split(', ').sort()).toEqual(Object.keys(CAPSULE_ROW).sort())
+    expect(fake.selects.chapter_reward_policy.split(', ').sort()).toEqual(Object.keys(CHAPTER_REWARD_ROW).sort())
+    expect(fake.selects.chapter_definitions.split(', ').sort()).toEqual(['chapter_no', 'reward_count'])
     expect(fake.selects.jam_policy.split(', ').sort()).toEqual(Object.keys(JAM_ROW).sort())
     expect(fake.selects.combine_policy.split(', ').sort()).toEqual(Object.keys(COMBINE_ROW).sort())
     expect(fake.selects.ambient_drop_config.split(', ').sort()).toEqual(Object.keys(AMBIENT_ROW).sort())
@@ -410,10 +447,10 @@ describe('읽는 칸', () => {
   it('내보낸 칸 목록이 실제로 읽는 칸과 같다(어드민이 확률 안내 반영 칸을 가르는 단일 원천)', async () => {
     const fake = fakeClient(ALL_OK)
     await loadProbabilityDisclosure(fake.client)
-    expect([...CAPSULE_COLUMNS].sort()).toEqual(fake.selects.capsule_policy.split(', ').sort())
+    expect([...CHAPTER_REWARD_COLUMNS].sort()).toEqual(fake.selects.chapter_reward_policy.split(', ').sort())
     expect([...JAM_COLUMNS].sort()).toEqual(fake.selects.jam_policy.split(', ').sort())
     expect([...COMBINE_COLUMNS].sort()).toEqual(fake.selects.combine_policy.split(', ').sort())
-    expect(CAPSULE_COLUMNS).toHaveLength(9)
+    expect(CHAPTER_REWARD_COLUMNS).toHaveLength(6)
     expect(JAM_COLUMNS).toHaveLength(11)
     expect(COMBINE_COLUMNS).toEqual(['tier_up_probability'])
   })

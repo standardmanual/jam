@@ -8,7 +8,7 @@
  * - 서버 굴림과 같은 함수: 표의 값이 `tierUpProbabilities`의 출력을 `formatFraction`으로 바꾼 것과 같다.
  * - 0과 1: 확률 0인 줄도 남는다(같은 등급 100% / 윗등급 0%, 같은 등급 0% / 윗등급 100%).
  * - 따로 실패한다: `combine_policy`만 읽으며, 읽기 실패·행 없음·칸 없음·숫자가 아님·0~1 밖이면 `{ ok: false }`이고 기본값 0.7로 대신하지 않는다.
- *   반대로 캡슐·동기화 설정이 실패해도 등급 올리기 표는 그대로고, 등급 올리기가 실패해도 정책(동기화·캡슐·보정 장치)은 그대로다.
+ *   반대로 챕터 보상·동기화 설정이 실패해도 등급 올리기 표는 그대로고, 등급 올리기가 실패해도 정책(동기화·챕터 오름 보상·보정 장치)은 그대로다.
  * - 가져오는 곳: `disclosure.ts`와 `page.tsx`는 서버 모듈이 딸린 `tierUp.ts`를 직접 가져오지 않고 순수한 `tierUpOdds.ts`만 쓴다(`page.tsx`는 아예 가져오지 않는다).
  * 공용 DB는 호출하지 않는다 — 가짜 클라이언트만 쓴다.
  *
@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const { createServiceClientMock } = vi.hoisted(() => ({ createServiceClientMock: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClientMock }))
 
-import { ALL_OK, CAPSULE_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from './fixtures'
+import { ALL_OK, CHAPTER_REWARD_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from './fixtures'
 import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { TIER_UP_MATERIAL_COUNT, TIER_UP_MATERIAL_RARITIES, tierUpProbabilities } from '@/lib/combine/tierUpOdds'
 
@@ -167,12 +167,12 @@ describe('값은 읽은 설정에서 만든다 — 설정을 바꾸면 표가 �
     expect(fromString).toEqual(await loadTierUp())
   })
 
-  it('캡슐·동기화 설정을 바꿔도 등급 올리기 표는 그대로다(더는 캡슐 등급 확률에서 만들지 않는다)', async () => {
-    const changedCapsule = {
+  it('챕터 오름 보상·동기화 설정을 바꿔도 등급 올리기 표는 그대로다(더는 보상 등급 확률에서 만들지 않는다)', async () => {
+    const changedReward = {
       ...ALL_OK,
-      capsule_policy: ok({ ...CAPSULE_ROW, rarity_common: 60, rarity_rare: 25, rarity_epic: 10, rarity_mystic: 5, other_tribe_probability: 0.35 }),
+      chapter_reward_policy: ok({ ...CHAPTER_REWARD_ROW, rarity_common: 60, rarity_rare: 25, rarity_epic: 10, rarity_mystic: 5, other_tribe_probability: 0.35 }),
     }
-    expect(await loadTierUp(changedCapsule)).toEqual(await loadTierUp())
+    expect(await loadTierUp(changedReward)).toEqual(await loadTierUp())
   })
 })
 
@@ -260,9 +260,9 @@ describe('따로 실패한다 — combine_policy만 엄격하게 읽는다', () 
   })
 
   it.each([
-    ['capsule_policy 조회 오류', { ...ALL_OK, capsule_policy: failed }],
+    ['chapter_reward_policy 조회 오류', { ...ALL_OK, chapter_reward_policy: failed }],
     ['jam_policy 조회 예외', { ...ALL_OK, jam_policy: 'throw' as const }],
-    ['캡슐 등급 합계가 100이 아님', { ...ALL_OK, capsule_policy: ok({ ...CAPSULE_ROW, rarity_mystic: 10 }) }],
+    ['챕터 오름 보상 등급 합계가 100이 아님', { ...ALL_OK, chapter_reward_policy: ok({ ...CHAPTER_REWARD_ROW, rarity_mystic: 10 }) }],
   ])('반대 방향: %s → 정책은 실패해도 등급 올리기 표는 그대로 읽는다', async (_name, results) => {
     const result = await loadProbabilityDisclosure(fakeClient(results).client)
     expect(result.policy).toEqual({ ok: false })
@@ -275,10 +275,10 @@ describe('따로 실패한다 — combine_policy만 엄격하게 읽는다', () 
     expect(fake.selects.combine_policy).toBe('tier_up_probability')
   })
 
-  it('등급 올리기 때문에 캡슐 표가 읽는 칸이 늘지 않는다 — 캡슐 표는 기존 칸만 읽는다', async () => {
+  it('등급 올리기 때문에 챕터 보상 설정 표가 읽는 칸이 늘지 않는다 — 기존 칸만 읽는다', async () => {
     const fake = fakeClient(ALL_OK)
     await loadProbabilityDisclosure(fake.client)
-    expect(fake.selects.capsule_policy.split(', ').sort()).toEqual(Object.keys(CAPSULE_ROW).sort())
+    expect(fake.selects.chapter_reward_policy.split(', ').sort()).toEqual(Object.keys(CHAPTER_REWARD_ROW).sort())
   })
 
   it('표에 들어가는 모든 문자열에 유저 화면에 쓰지 않는 말이 없다', async () => {

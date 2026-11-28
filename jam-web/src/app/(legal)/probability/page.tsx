@@ -14,13 +14,13 @@ import {
 /**
  * 확률 안내 페이지 (티켓 20261021_1250 1회, 운영 로직 18.3·18.4절, 채원 사전 판정 2026-10-21).
  *
- * 확률이 들어간 보상(동기화로 받는 아이템 배지, 캡슐, 시스템 드랍)의 확률을 표로 모두 보이고 보정 장치도 접지 않고 적는다.
+ * 확률이 들어간 보상(동기화로 받는 아이템 배지, 챕터 오름 보상, 시스템 드랍)의 확률을 표로 모두 보이고 보정 장치도 접지 않고 적는다.
  * 로그인하지 않은 방문자도 열 수 있다(`proxy.ts` 공개 경로, `(legal)` 레이아웃은 인증 호출이 없다).
  *
- * 값은 `capsule_policy`·`jam_policy`·`combine_policy`·`ambient_drop_config`를 서버에서 읽어 만든다(`lib/probability/disclosure.ts`). 설정을 바꾸면 페이지도 바뀌어야
+ * 값은 `chapter_reward_policy`·`chapter_definitions`(챕터별 개수)·`jam_policy`·`combine_policy`·`ambient_drop_config`를 서버에서 읽어 만든다(`lib/probability/disclosure.ts`, 티켓 20261127_1738 C8). 설정을 바꾸면 페이지도 바뀌어야
  * 하므로 `force-dynamic`이다. 읽지 못하면 코드 상수 사본으로 대신하지 않고 해당 섹션을 «지금 불러오지 못했어요»로 바꾼다(틀린 확률을 보이지 않는다).
- * 정책 두 표(동기화·캡슐·보정 장치 세 섹션), 등급 올리기(`combine_policy` 한 표), 시스템 드랍은 서로 따로 실패한다. 값이 없고 스스로 뜻이 닫히는 문장(확률이 없는 것,
- * 변경 이력 머리 문장, 캡슐의 트라이브 후보 문장, 등급 올리기의 아이템 고르는 방식, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
+ * 정책(동기화·챕터 오름 보상·보정 장치 세 섹션), 등급 올리기(`combine_policy` 한 표), 시스템 드랍은 서로 따로 실패한다. 값이 없고 스스로 뜻이 닫히는 문장(확률이 없는 것,
+ * 변경 이력 머리 문장, 챕터 오름 보상의 트라이브 후보 문장, 등급 올리기의 아이템 고르는 방식, 시스템 드랍의 낮춤 규칙)은 읽기가 실패해도 그대로 둔다. 표의 숫자를 한정하는 «이 확률은 처음 뽑는 등급이에요»는 가리킬 표가
  * 없으므로 표와 함께 빠진다.
  *
  * «바뀐 날짜» 표는 어드민 «밸런스 설정»의 변경 이력(`balance_setting_changes`)에서 `affects_disclosure = true`인 행을 읽어 만든다
@@ -48,7 +48,7 @@ const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침�
 const FIRST_OPENED_ROW: DisclosureRow = { label: '2026년 10월 21일', value: '확률 안내를 처음 열었어요' }
 
 /**
- * 동기화와 캡슐이 같이 쓰는 규칙(`pickWithRarityFallback`) — 뽑힌 등급부터 한 등급씩 내려간다. 보정 장치로 정해진 등급도 같은 함수를 지난다.
+ * 동기화와 챕터 오름 보상이 같이 쓰는 규칙(`pickWithRarityFallback`) — 뽑힌 등급부터 한 등급씩 내려간다. 보정 장치로 정해진 등급도 같은 함수를 지난다.
  * 두 곳의 말이 갈리지 않게 상수 하나를 쓴다.
  */
 const LOWERING_RULE = '그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.'
@@ -59,7 +59,7 @@ const LOWERING_NOTE = `이 확률은 처음 뽑는 등급이에요. ${LOWERING_R
 const TRIBE_NOTE = '다른 트라이브의 것이 나올 때는 받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요. 내 트라이브에 받을 수 있는 아이템 배지가 없으면 다른 트라이브의 것이 나와요.'
 
 /**
- * 시스템 드랍은 동기화·캡슐과 낮추는 방식이 다르다 — 높은 등급에서 내려가지 않고 Common부터 올라가며 찾는다
+ * 시스템 드랍은 동기화·챕터 오름 보상과 낮추는 방식이 다르다 — 높은 등급에서 내려가지 않고 Common부터 올라가며 찾는다
  * (`lib/ambient-drop/rarity.ts`의 `fallbackPickBadge`, 정기 배포와 날짜 예약이 같은 함수를 쓴다).
  */
 const AMBIENT_LOWERING_NOTE =
@@ -195,22 +195,22 @@ function SyncSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
   )
 }
 
-function CapsuleSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
+function ChapterRewardSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
   return (
-    <Section title="캡슐">
-      <P>잼을 채워서 여는 캡슐이에요.</P>
+    <Section title="챕터 오름 보상">
+      <P>챕터를 마치면 받아요.</P>
       {policy.ok ? (
         <>
           <TableBlock
             heading="개수, 소속, 잠김"
-            caption="캡슐의 개수, 소속, 잠김"
-            rows={policy.data.capsule.counts}
+            caption="챕터 오름 보상의 개수, 소속, 잠김"
+            rows={policy.data.chapterReward.counts}
             note={TRIBE_NOTE}
           />
           <TableBlock
             heading="등급"
-            caption="캡슐의 등급 확률"
-            rows={policy.data.capsule.rarity}
+            caption="챕터 오름 보상의 등급 확률"
+            rows={policy.data.chapterReward.rarity}
             nowrapValue
             note={LOWERING_NOTE}
           />
@@ -254,7 +254,7 @@ function AmbientSection({ ambient }: { ambient: DisclosureResult<AmbientDisclosu
  * 레시피 없이 규칙으로 처리하는 믹스의 예외라 결과 등급이 확률로 정해진다. 넣은 등급(Common, Rare, Epic)마다 «넣은 등급 그대로»와 «바로 윗등급» 두 줄, Mystic은 «Mystic 100%» 한 줄의 두 칸 표를
  * 하나씩 보이고, 섹션 맨 끝에 아이템을 고르는 방식 한 문장(Note)을 한 번만 둔다. 값은 서버 굴림과 같은 함수(`tierUpProbabilities`)로 `disclosure.ts`가 만든다.
  *
- * `combine_policy.tier_up_probability` 하나로 정해지므로 정책 표(동기화·캡슐·보정 장치)와 따로 실패한다. 읽기가 실패하면 소개 문장 뒤에 안내 한 개와 끝 Note만 두고
+ * `combine_policy.tier_up_probability` 하나로 정해지므로 정책 표(동기화·챕터 오름 보상·보정 장치)와 따로 실패한다. 읽기가 실패하면 소개 문장 뒤에 안내 한 개와 끝 Note만 두고
  * 표·숫자를 모두 뺀다(Note에는 숫자가 없다). 서버 굴림은 읽기에 실패하면 코드 상수 기본값으로 굴리지만 이 페이지는 값을 숨긴다(PRD 6절 알려진 차이).
  * 링크·버튼은 두지 않는다. 믹스 화면으로 보내거나 «해 보세요»라고 하면 열기를 부추기게 된다(운영 로직 5.2절).
  */
@@ -327,7 +327,7 @@ export default async function ProbabilityPage() {
         </div>
 
         <SyncSection policy={policy} />
-        <CapsuleSection policy={policy} />
+        <ChapterRewardSection policy={policy} />
         <AmbientSection ambient={ambient} />
         <TierUpSection tierUp={tierUp} />
 

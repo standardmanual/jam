@@ -9,7 +9,29 @@
 import { expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// 운영 로직 5.4·6.7절 표의 값(= 마이그레이션 227·232의 기본값)
+// 챕터 오름 보상 설정 — A3 후보 E 확정 값(= 마이그레이션 366의 기본값, 티켓 20261127_1738 C8)
+export const CHAPTER_REWARD_ROW = {
+  other_tribe_probability: 0.2,
+  rarity_common: 30,
+  rarity_rare: 40,
+  rarity_epic: 22,
+  rarity_mystic: 8,
+  pity_epic_threshold: 15,
+}
+// 챕터별 보상 개수 — 마친 챕터 1~3은 3개, 4~6은 4개, 7~9는 5개, 마지막 챕터 10은 NULL(보상 없음). 마이그레이션 366 시드와 같다
+export const CHAPTER_DEFINITIONS_ROWS = [
+  { chapter_no: 1, reward_count: 3 },
+  { chapter_no: 2, reward_count: 3 },
+  { chapter_no: 3, reward_count: 3 },
+  { chapter_no: 4, reward_count: 4 },
+  { chapter_no: 5, reward_count: 4 },
+  { chapter_no: 6, reward_count: 4 },
+  { chapter_no: 7, reward_count: 5 },
+  { chapter_no: 8, reward_count: 5 },
+  { chapter_no: 9, reward_count: 5 },
+  { chapter_no: 10, reward_count: null },
+]
+// 옛 `capsule_policy` 행(운영 로직 5.4·6.7절 값). 확률 안내는 더 읽지 않으므로 «읽지 않는다»를 시험하는 데만 쓴다
 export const CAPSULE_ROW = {
   guaranteed_count: 1,
   bonus_count: 1,
@@ -41,6 +63,7 @@ export const AMBIENT_ROW = { rarity_mode: 'explicit', rarity_common: 1, rarity_r
 export type Result = { data: unknown; error: unknown } | 'throw'
 
 export const CHANGES_TABLE = 'balance_setting_changes'
+export const CHAPTER_DEFINITIONS_TABLE = 'chapter_definitions'
 
 export interface Fake {
   client: SupabaseClient
@@ -74,22 +97,34 @@ export function fakeClient(results: Record<string, Result>): Fake {
     return builder
   }
 
+  // 챕터 정의는 `select().order()`로 여러 행을 읽는다(챕터별 보상 개수). 결과를 정하지 않으면 읽지 못한 표(예상하지 못한 표)다
+  const definitionsBuilder = () => ({
+    order: async (column: string, options: { ascending: boolean }) => {
+      expect([column, options.ascending]).toEqual(['chapter_no', true])
+      const result = results[CHAPTER_DEFINITIONS_TABLE]
+      if (!result) throw new Error(`예상하지 못한 표: ${CHAPTER_DEFINITIONS_TABLE}`)
+      if (result === 'throw') throw new Error('network')
+      return result
+    },
+  })
+
   const client = {
     from: (table: string) => ({
       select: (columns: string) => {
         selects[table] = columns
         if (table === CHANGES_TABLE) return changesBuilder()
+        if (table === CHAPTER_DEFINITIONS_TABLE) return definitionsBuilder()
         return {
           eq: (column: string, value: number) => {
             expect([column, value]).toEqual(['id', 1])
-            return {
-              single: async () => {
-                const result = results[table]
-                if (!result) throw new Error(`예상하지 못한 표: ${table}`)
-                if (result === 'throw') throw new Error('network')
-                return result
-              },
+            const read = async () => {
+              const result = results[table]
+              if (!result) throw new Error(`예상하지 못한 표: ${table}`)
+              if (result === 'throw') throw new Error('network')
+              return result
             }
+            // `single`은 설정 표를 엄격하게 읽는 확률 안내의 읽기, `maybeSingle`은 추첨과 같은 `getChapterRewardPolicy`의 읽기다
+            return { single: read, maybeSingle: read }
           },
         }
       },
@@ -102,7 +137,8 @@ export const ok = (row: unknown): Result => ({ data: row, error: null })
 export const failed: Result = { data: null, error: { message: 'boom' } }
 
 export const ALL_OK = {
-  capsule_policy: ok(CAPSULE_ROW),
+  chapter_reward_policy: ok(CHAPTER_REWARD_ROW),
+  chapter_definitions: ok(CHAPTER_DEFINITIONS_ROWS),
   jam_policy: ok(JAM_ROW),
   combine_policy: ok(COMBINE_ROW),
   ambient_drop_config: ok(AMBIENT_ROW),

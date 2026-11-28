@@ -1,16 +1,20 @@
 /**
  * /probability — 확률 안내 페이지 (티켓 20261021_1250 1회, 운영 로직 18.3·18.4절, 채원 사전 판정 2026-10-21)
  *
+ * C8(티켓 20261127_1738): «캡슐» 구역이 «챕터 오름 보상» 구역으로 바뀌었다. 구역 제목과 화면 어디에도 «캡슐»이 없고, 값은 `chapter_reward_policy`와
+ * `chapter_definitions.reward_count`에서 읽으며(A3 확정 값 Common 30·Rare 40·Epic 22·Mystic 8, 다른 트라이브 20%, 개수 3·4·5), 옛 `section_key = 'capsule'` 이력 행은
+ * «이전 보상» 이름으로 보인다. 챕터 보상 설정을 못 읽으면 그 구역만이 아니라 정책 세 섹션(동기화·챕터 오름 보상·보정 장치)이 함께 안내로 바뀌고 나머지는 그대로다.
+ *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다. 읽기 모듈(`lib/probability/disclosure.ts`)은 mock하지 않고
  * `createServiceClient`만 가짜 클라이언트로 바꿔서, 설정 행 → 표 행 → 화면까지 한 줄로 시험한다. 공용 DB는 부르지 않는다.
  *
  * 고정하는 것:
- * - 구성: 머리(유료 결제 없음 한 줄), 동기화·캡슐·시스템 드랍 표, 확률이 없는 것 한 문단, 보정 장치 목록(접지 않음), 바뀐 날짜 표.
+ * - 구성: 머리(유료 결제 없음 한 줄), 동기화·챕터 오름 보상·시스템 드랍 표, 확률이 없는 것 한 문단, 보정 장치 목록(접지 않음), 바뀐 날짜 표.
  * - 바뀐 날짜 표(티켓 20261022_1700): 변경 이력(`balance_setting_changes`)에서 읽은 줄이 위, «처음 열었어요» 상수 줄이 항상 맨 아래다. 이력을 읽지 못해도
  *   페이지는 열리고 첫 줄만 보이며 표 아래에 읽기 실패 안내가 한 줄 붙는다. 유저 ID·변경 메모·내부 칸 이름·방향어는 HTML에 없다.
  * - 값은 읽은 행에서 만든다: 설정을 바꾸면 표가 따라 바뀐다.
  * - 읽기 실패: 해당 섹션만 «지금 불러오지 못했어요»로 바뀌고 숫자가 하나도 없다. 코드 상수 사본(DEFAULT_*)의 값이 새지 않는다. 시스템 드랍만 실패하면 정책 섹션은 그대로다.
- *   정책 표(동기화·캡슐·보정 장치)와 등급 올리기(`combine_policy`)는 따로 실패한다 — 등급 올리기 섹션의 시험은 `page.tierUp.test.tsx`에 있다.
+ *   정책 표(동기화·챕터 오름 보상·보정 장치)와 등급 올리기(`combine_policy`)는 따로 실패한다 — 등급 올리기 섹션의 시험은 `page.tierUp.test.tsx`에 있다.
  * - 의미 있는 표(caption, th scope="row"), 한국어 줄바꿈 클래스, 색 강조·그래프·애니메이션 없음, 유저 화면에 쓰지 않는 말·열기를 부추기는 말 없음.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(legal)/probability/page.test.tsx"
@@ -41,8 +45,9 @@ import { DEFAULT_JAM_POLICY } from '@/lib/jam/policy'
 import {
   ALL_OK,
   AMBIENT_ROW,
-  CAPSULE_ROW,
   CHANGES_TABLE,
+  CHAPTER_DEFINITIONS_ROWS,
+  CHAPTER_REWARD_ROW,
   COMBINE_ROW,
   JAM_ROW,
   fakeClient,
@@ -100,10 +105,11 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('JAM!에는 유료 결제가 없어요. 잼과 포인트는 돈으로 팔지 않아요.')
   })
 
-  it('섹션이 동기화 → 캡슐 → 시스템 드랍 → 등급 UP → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이다', async () => {
+  it('섹션이 동기화 → 챕터 오름 보상 → 시스템 드랍 → 등급 UP → 확률이 없는 것 → 보정 장치 → 바뀐 날짜 순이고 제목에 «캡슐»이 없다', async () => {
     const html = await render()
     const titles = [...html.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1])
-    expect(titles).toEqual(['동기화로 받는 아이템 배지', '캡슐', '시스템 드랍', '등급 UP', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
+    expect(titles.filter((t) => t.includes('캡슐'))).toEqual([])
+    expect(titles).toEqual(['동기화로 받는 아이템 배지', '챕터 오름 보상', '시스템 드랍', '등급 UP', '확률이 없는 것', '보정 장치', '바뀐 날짜'])
   })
 
   it('동기화: 개수와 잠김 표, 등급 표(서열 순 영문), 처음 뽑는 등급 문장이 등급 표 바로 아래에 있다', async () => {
@@ -121,19 +127,31 @@ describe('정상 — 구성과 값', () => {
     expect(text.indexOf(lowering) - (text.indexOf('Mystic0.5%') + 'Mystic0.5%'.length)).toBe(0)
   })
 
-  it('캡슐: 개수·소속·잠김 표 아래에 트라이브 문장, 등급 표 아래에 처음 뽑는 등급 문장', async () => {
-    const section = sectionOf(await render(), '캡슐')
+  it('챕터 오름 보상: A3 확정 값(개수 3·4·5, 다른 트라이브 20%, 등급 30·40·22·8)이 표에 그대로 있고 «캡슐»이 없다', async () => {
+    const section = sectionOf(await render(), '챕터 오름 보상')
     const text = textOf(section)
+    expect(text).toContain('챕터를 마치면 받아요.')
     expect(text).toContain('개수, 소속, 잠김')
-    expect(text).toContain('확정으로 나오는 개수1개')
-    expect(text).toContain('1개 더 나올 확률20%')
+    expect(text).toContain('챕터 1~3을 마치면3개')
+    expect(text).toContain('챕터 4~6을 마치면4개')
+    expect(text).toContain('챕터 7~9를 마치면5개')
     expect(text).toContain('다른 트라이브의 것일 확률아이템 배지마다 20%')
     expect(text).toContain('잠긴 채 나올 확률25%')
-    expect(text).toContain('JAM! 시작하기에서 여는 첫 캡슐잠긴 아이템 배지 1개가 반드시 나와요')
     const tribe = '다른 트라이브의 것이 나올 때는 받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.'
-    expect(text).toContain(`나와요${tribe}`)
+    expect(text).toContain('25%' + tribe)
     expect(text).toContain('내 트라이브에 받을 수 있는 아이템 배지가 없으면 다른 트라이브의 것이 나와요.')
-    expect(text).toMatch(/Common70%Rare22%Epic6%Mystic2%이 확률은 처음 뽑는 등급이에요/)
+    expect(text).toMatch(/Common30%Rare40%Epic22%Mystic8%이 확률은 처음 뽑는 등급이에요/)
+    // 옛 캡슐 줄(보너스, 첫 캡슐 잠금)은 없다
+    expect(text).not.toContain('더 나올 확률')
+    expect(text).not.toContain('JAM! 시작하기')
+    expect(text).not.toContain('캡슐')
+    expect(text).not.toContain('채워')
+  })
+
+  it('화면 어디에도 «캡슐»과 «채우다» 계열 문구가 없다', async () => {
+    const text = textOf(await render())
+    expect(text).not.toContain('캡슐')
+    expect(text).not.toContain('채워서')
   })
 
   it('시스템 드랍 explicit: 등급 표에 0%인 줄도 있고, 낮추는 규칙은 Common부터 찾는 방식으로 쓴다', async () => {
@@ -142,7 +160,7 @@ describe('정상 — 구성과 값', () => {
     expect(text).toContain('JAM!이 장소에 놓는 아이템 배지의 등급 확률이에요.')
     expect(text).toMatch(/Common100%Rare0%Epic0%Mystic0%/)
     expect(text).toContain('Common부터 Rare, Epic, Mystic 순서로 찾아서 아이템 배지가 있는 첫 등급에서 무작위로 골라요.')
-    // 동기화·캡슐의 «한 등급씩 낮춰서» 문장을 그대로 붙이지 않는다
+    // 동기화·챕터 오름 보상의 «한 등급씩 낮춰서» 문장을 그대로 붙이지 않는다
     expect(text).not.toContain('한 등급씩 낮춰서')
   })
 
@@ -171,9 +189,9 @@ describe('정상 — 구성과 값', () => {
     expect(section).toContain('list-disc')
     expect(section).not.toMatch(/<details|aria-expanded|hidden/)
     const text = textOf(section)
-    expect(text).toContain('내가 캡슐을 15번 여는 동안 Epic 이상이 나오지 않으면, 그다음 캡슐의 첫 아이템 배지는 Epic 이상으로 나와요.')
+    expect(text).toContain('챕터 오름 보상을 15번 받는 동안 Epic 이상이 나오지 않으면, 그다음 챕터 오름 보상의 첫 아이템 배지는 Epic 이상으로 나와요.')
     expect(text).toContain('Common 아이템 배지가 10번 이어서 나오면, 그다음 아이템 배지는 Rare 이상으로 나와요.')
-    expect(text).toContain('동기화와 캡슐에서 나온 것을 합쳐서 세어요.')
+    expect(text).toContain('동기화와 챕터 오름 보상에서 나온 것을 합쳐서 세어요.')
     // 보정으로 정해진 등급도 후보가 없으면 낮춰 뽑는다 — 목록 아래에 같은 규칙을 적는다(목록 항목은 그대로 둘)
     expect(text).toContain('그 등급에 받을 수 있는 아이템 배지가 없으면 한 등급씩 낮춰서 무작위로 골라요.')
     expect(text).not.toContain('처음 뽑는 등급')
@@ -203,6 +221,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
 
   // 채원 판정의 배치도: 이력 두 줄 + 맨 아래 상수 줄
   const HISTORY = [
+    // 옛 «캡슐» 설정의 이력 행(DB 행은 그대로) — 화면에는 «캡슐» 없이 «이전 보상»으로 보인다
     historyRow('2026-10-22T05:00:00Z', 'capsule', [change('pity_epic_threshold', 15, 12)], {
       note: '내부 메모: 공지는 슬랙에 올림',
       changed_by: '0b8a3f2e-aaaa-bbbb-cccc-111122223333',
@@ -219,7 +238,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
     const text = textOf(section)
     expect(text).toContain(
       '2026년 10월 23일동기화 Common 확률을 84%에서 83%로, 동기화 Rare 확률을 12%에서 13%로 바꿨어요' +
-        '2026년 10월 22일캡슐 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' +
+        '2026년 10월 22일이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' +
         '2026년 10월 21일확률 안내를 처음 열었어요'
     )
     expect(count(section, '<tr')).toBe(3)
@@ -253,7 +272,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
       ]),
     })
     const text = textOf(sectionOf(html, '바뀐 날짜'))
-    expect(text).toContain('2026년 10월 23일캡슐 Common 확률을 70%에서 69%로 바꿨어요2026년 10월 23일캡슐 Common 확률을 71%에서 70%로 바꿨어요')
+    expect(text).toContain('2026년 10월 23일이전 보상 Common 확률을 70%에서 69%로 바꿨어요2026년 10월 23일이전 보상 Common 확률을 71%에서 70%로 바꿨어요')
   })
 
   it('값 0을 지우지 않고, 표에 없는 칸은 내부 이름 없이 일반 문장이다', async () => {
@@ -267,8 +286,26 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
     const section = sectionOf(html, '바뀐 날짜')
     const text = textOf(section)
     expect(text).toContain('2026년 10월 23일확률 안내의 값을 바꿨어요')
-    expect(text).toContain('캡슐 보너스 확률을 20%에서 0%로, 그 밖의 값도 바꿨어요')
+    expect(text).toContain('이전 보상 보너스 확률을 20%에서 0%로, 그 밖의 값도 바꿨어요')
+    expect(text).not.toContain('캡슐')
     expect(section).not.toMatch(/pre_quest|chapter|bonus_probability/)
+  })
+
+  it('옛 capsule 이력 행과 챕터 오름 보상 이력 행, 보상이 바뀐 사실 한 줄이 «캡슐» 없이 나온다', async () => {
+    const html = await render({
+      ...ALL_OK,
+      [CHANGES_TABLE]: ok([
+        historyRow('2026-12-01T01:00:00Z', 'chapter_reward_switch', [change('reward_system', 0, 1)]),
+        historyRow('2026-12-02T05:00:00Z', 'chapter_reward', [change('rarity_common', 30, 25)]),
+        historyRow('2026-10-22T05:00:00Z', 'capsule', [change('rarity_common', 70, 69)]),
+      ]),
+    })
+    const text = textOf(sectionOf(html, '바뀐 날짜'))
+    expect(text).toContain('2026년 12월 1일받는 보상을 이전 보상에서 챕터 오름 보상으로 바꿨어요')
+    expect(text).toContain('2026년 12월 2일챕터 오름 보상 Common 확률을 30%에서 25%로 바꿨어요')
+    expect(text).toContain('2026년 10월 22일이전 보상 Common 확률을 70%에서 69%로 바꿨어요')
+    expect(text).not.toContain('캡슐')
+    expect(html).not.toMatch(/reward_system|chapter_reward_switch/)
   })
 
   it('유저 ID, 변경 메모, 내부 칸 이름, 방향어가 HTML 어디에도 없다', async () => {
@@ -292,7 +329,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
 describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
   it('표 열 개마다 sr-only caption이 있고 라벨 칸은 th scope="row"다', async () => {
     const html = await render()
-    // 동기화 2 + 캡슐 2 + 시스템 드랍 1 + 등급 올리기 4 + 바뀐 날짜 1
+    // 동기화 2 + 챕터 오름 보상 2 + 시스템 드랍 1 + 등급 올리기 4 + 바뀐 날짜 1
     expect(count(html, '<table')).toBe(10)
     expect(count(html, '<caption class="sr-only">')).toBe(10)
     // 행마다 th 하나 + td 하나
@@ -311,29 +348,33 @@ describe('표 마크업 — 의미 있는 표, 가로 스크롤 없음', () => {
   it('짧은 값 칸(등급 %)에만 whitespace-nowrap을 쓴다. 문장 값은 줄바꿈을 허용한다', async () => {
     const html = await render()
     const cells = [...html.matchAll(/<td class="([^"]*)">([^<]*)<\/td>/g)].map((m) => ({ cls: m[1], text: m[2] }))
-    const rarityCells = cells.filter((c) => /^(84|13|2\.5|0\.5|70|22|6|2|100|0)%$/.test(c.text))
+    const rarityCells = cells.filter((c) => /^(84|13|2\.5|0\.5|30|40|22|8|100|0)%$/.test(c.text))
     expect(rarityCells.length).toBeGreaterThanOrEqual(12)
     for (const cell of rarityCells) expect(cell.cls, cell.text).toContain('whitespace-nowrap')
     const sentence = cells.find((c) => c.text.includes('활동의 잼 ÷ 600'))
     expect(sentence?.cls).not.toContain('whitespace-nowrap')
-    const firstCapsule = cells.find((c) => c.text.includes('잠긴 아이템 배지 1개가 반드시 나와요'))
-    expect(firstCapsule?.cls).not.toContain('whitespace-nowrap')
+    const tribeCell = cells.find((c) => c.text.includes('아이템 배지마다'))
+    expect(tribeCell?.cls).not.toContain('whitespace-nowrap')
   })
 })
 
 describe('값은 읽은 설정에서 만든다', () => {
   it('설정을 바꾼 행으로 렌더하면 표와 문장이 따라 바뀐다', async () => {
     const html = await render({
-      capsule_policy: ok({
-        ...CAPSULE_ROW,
-        bonus_count: 2,
-        bonus_probability: 0.35,
+      chapter_reward_policy: ok({
+        ...CHAPTER_REWARD_ROW,
+        other_tribe_probability: 0.35,
         rarity_common: 50,
         rarity_rare: 30,
         rarity_epic: 15,
         rarity_mystic: 5,
         pity_epic_threshold: 20,
       }),
+      chapter_definitions: ok([
+        { chapter_no: 1, reward_count: 2 },
+        { chapter_no: 2, reward_count: 6 },
+        { chapter_no: 3, reward_count: 6 },
+      ]),
       jam_policy: ok({
         ...JAM_ROW,
         sync_item_guaranteed: 3,
@@ -349,26 +390,29 @@ describe('값은 읽은 설정에서 만든다', () => {
     const text = textOf(html)
     expect(text).toContain('확정으로 받는 개수3개')
     expect(text).toMatch(/Common60%Rare25%Epic10%Mystic5%/)
-    expect(text).toContain('2개 더 나올 확률35%')
+    expect(text).toContain('챕터 1을 마치면2개')
+    expect(text).toContain('챕터 2~3을 마치면6개')
+    expect(text).toContain('다른 트라이브의 것일 확률아이템 배지마다 35%')
     expect(text).toMatch(/Common50%Rare30%Epic15%Mystic5%/)
     expect(text).toMatch(/Common60%Rare30%Epic7%Mystic3%/)
-    expect(text).toContain('내가 캡슐을 20번 여는 동안')
+    expect(text).toContain('챕터 오름 보상을 20번 받는 동안')
     expect(text).toContain('Common 아이템 배지가 7번 이어서')
     // 바뀌기 전 값은 남지 않는다
     expect(text).not.toContain('84%')
-    expect(text).not.toContain('1개 더 나올 확률')
-    expect(text).not.toContain('15번 여는 동안')
+    expect(text).not.toContain('챕터 4~6을 마치면')
+    expect(text).not.toContain('아이템 배지마다 20%')
+    expect(text).not.toContain('15번 받는 동안')
   })
 })
 
 describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없다', () => {
   const sectionNumbers = /\d/
 
-  it('정책을 못 읽으면 동기화·캡슐·보정 장치가 안내로 바뀌고 숫자가 하나도 없다', async () => {
-    const html = await render({ ...ALL_OK, capsule_policy: failed })
-    // 등급 올리기는 combine_policy만 읽으므로 안내가 아니다 — 동기화·캡슐·보정 장치 세 곳이다
+  it('챕터 보상 설정을 못 읽으면 챕터 오름 보상 구역이 안내로 바뀌고(동기화·보정 장치와 한 묶음) 숫자가 하나도 없으며, 나머지는 그대로 보인다', async () => {
+    const html = await render({ ...ALL_OK, chapter_reward_policy: failed })
+    // 등급 올리기는 combine_policy만 읽으므로 안내가 아니다 — 동기화·챕터 오름 보상·보정 장치 세 곳이다
     expect(count(html, 'role="status"')).toBe(3)
-    for (const title of ['동기화로 받는 아이템 배지', '캡슐', '보정 장치']) {
+    for (const title of ['동기화로 받는 아이템 배지', '챕터 오름 보상', '보정 장치']) {
       const section = sectionOf(html, title)
       expect(textOf(section), title).toContain(UNAVAILABLE)
       expect(textOf(section), title).not.toMatch(sectionNumbers)
@@ -382,15 +426,26 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(textOf(sectionOf(html, '등급 UP'))).toContain('Rare30%Epic70%')
   })
 
-  it('jam_policy만 못 읽어도 세 섹션이 함께 안내로 바뀐다(두 표가 한 묶음이다)', async () => {
+  it('jam_policy만 못 읽어도 세 섹션이 함께 안내로 바뀐다(설정 표가 한 묶음이다)', async () => {
     const html = await render({ ...ALL_OK, jam_policy: failed })
     expect(count(html, 'role="status"')).toBe(3)
-    expect(textOf(sectionOf(html, '캡슐'))).not.toMatch(sectionNumbers)
+    expect(textOf(sectionOf(html, '챕터 오름 보상'))).not.toMatch(sectionNumbers)
+  })
+
+  it('챕터별 개수(chapter_definitions)만 못 읽어도 개수만 빠지지 않고 세 섹션이 함께 안내로 바뀐다(일부 값만 보이지 않는다)', async () => {
+    for (const failure of [failed, 'throw' as const, ok([{ chapter_no: 1, reward_count: 0 }])]) {
+      const html = await render({ ...ALL_OK, chapter_definitions: failure })
+      expect(count(html, 'role="status"')).toBe(3)
+      expect(textOf(sectionOf(html, '챕터 오름 보상'))).not.toMatch(sectionNumbers)
+      // 시스템 드랍과 등급 올리기는 그대로다
+      expect(textOf(sectionOf(html, '시스템 드랍'))).toMatch(/Common100%/)
+      expect(textOf(sectionOf(html, '등급 UP'))).toContain('Rare30%Epic70%')
+    }
   })
 
   it('스스로 뜻이 닫히는 문장은 읽기가 실패해도 남는다(시스템 드랍 낮춤 규칙, 트라이브 문장, 확률이 없는 것, 변경 이력 머리 문장)', async () => {
-    const text = textOf(await render({ ...ALL_OK, capsule_policy: 'throw', ambient_drop_config: failed }))
-    // 동기화·캡슐·보정 장치의 낮춤 문장은 표 없이 남기지 않는다(시스템 드랍 쪽만 남는다)
+    const text = textOf(await render({ ...ALL_OK, chapter_reward_policy: 'throw', ambient_drop_config: failed }))
+    // 동기화·챕터 오름 보상·보정 장치의 낮춤 문장은 표 없이 남기지 않는다(시스템 드랍 쪽만 남는다)
     expect(text).not.toContain('한 등급씩 낮춰서 무작위로 골라요.')
     expect(text).not.toContain('처음 뽑는 등급')
     expect(text).toContain('받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.')
@@ -408,7 +463,7 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     expect(ambient).not.toContain('<table')
     expect(textOf(ambient)).not.toMatch(/\d/)
     expect(textOf(sectionOf(html, '동기화로 받는 아이템 배지'))).toMatch(/Common84%/)
-    expect(textOf(sectionOf(html, '캡슐'))).toMatch(/Common70%/)
+    expect(textOf(sectionOf(html, '챕터 오름 보상'))).toMatch(/Common30%Rare40%Epic22%Mystic8%/)
     expect(count(sectionOf(html, '보정 장치'), '<li')).toBe(2)
   })
 
@@ -425,14 +480,14 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
       expect(textOf(section)).toContain('확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.')
       // 다른 섹션은 그대로다
       expect(textOf(sectionOf(html, '동기화로 받는 아이템 배지'))).toMatch(/Common84%/)
-      expect(textOf(sectionOf(html, '캡슐'))).toMatch(/Common70%/)
+      expect(textOf(sectionOf(html, '챕터 오름 보상'))).toMatch(/Common30%Rare40%Epic22%Mystic8%/)
       expect(count(sectionOf(html, '보정 장치'), '<li')).toBe(2)
     }
   })
 
   it('정책과 변경 이력이 함께 실패해도 각자 안내를 보인다(이력 쪽은 표 아래에 한 줄)', async () => {
-    const html = await render({ ...ALL_OK, capsule_policy: failed, [CHANGES_TABLE]: failed })
-    // 정책 쪽 3곳(동기화·캡슐·보정 장치)에 변경 이력 1곳을 더한 4곳이다
+    const html = await render({ ...ALL_OK, chapter_reward_policy: failed, [CHANGES_TABLE]: failed })
+    // 정책 쪽 3곳(동기화·챕터 오름 보상·보정 장치)에 변경 이력 1곳을 더한 4곳이다
     expect(count(html, 'role="status"')).toBe(4)
     expect(count(sectionOf(html, '바뀐 날짜'), 'role="status"')).toBe(1)
     expect(textOf(sectionOf(html, '바뀐 날짜'))).toContain('2026년 10월 21일확률 안내를 처음 열었어요')
@@ -440,7 +495,8 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
 
   it('설정 표를 모두 못 읽으면 값 칸이 하나도 없다(퍼센트·나눗셈 기호 없음, 날짜 외 숫자 없음)', async () => {
     const html = await render({
-      capsule_policy: failed,
+      chapter_reward_policy: failed,
+      chapter_definitions: failed,
       jam_policy: 'throw',
       combine_policy: failed,
       ambient_drop_config: { data: null, error: null },
@@ -453,7 +509,13 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
   })
 
   it('읽기가 실패해도 코드 상수 사본(DEFAULT_*)의 값이 새지 않는다', async () => {
-    const html = await render({ capsule_policy: failed, jam_policy: failed, combine_policy: failed, ambient_drop_config: failed })
+    const html = await render({
+      chapter_reward_policy: failed,
+      chapter_definitions: failed,
+      jam_policy: failed,
+      combine_policy: failed,
+      ambient_drop_config: failed,
+    })
     const text = textOf(html)
     const leaks = [
       `${DEFAULT_JAM_POLICY.sync_rarity_common}%`,
@@ -469,7 +531,15 @@ describe('읽기 실패 — 해당 섹션만 안내로 바뀌고 숫자가 없�
     ]
     for (const leak of leaks) expect(text, leak).not.toContain(leak)
     // 이 시험의 전제 — 정상 값(= 기본값과 같다)은 화면에 실제로 나온다
-    const normal = textOf(await render({ capsule_policy: ok(CAPSULE_ROW), jam_policy: ok(JAM_ROW), combine_policy: ok(COMBINE_ROW), ambient_drop_config: ok(AMBIENT_ROW) }))
+    const normal = textOf(
+      await render({
+        chapter_reward_policy: ok(CHAPTER_REWARD_ROW),
+        chapter_definitions: ok(CHAPTER_DEFINITIONS_ROWS),
+        jam_policy: ok(JAM_ROW),
+        combine_policy: ok(COMBINE_ROW),
+        ambient_drop_config: ok(AMBIENT_ROW),
+      })
+    )
     expect(normal).toContain('84%')
   })
 })

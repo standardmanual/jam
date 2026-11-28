@@ -10,10 +10,10 @@
  * - 값: 기본 설정(`combine_policy.tier_up_probability` 0.7)에서 Common·Rare·Epic은 «넣은 등급 그대로 30%» / «바로 윗등급 70%», Mystic은 «Mystic 100%» 한 줄(확률 설정과 무관). 70% 줄을 강조하지 않는다.
  *   설정을 바꾸면 따라 바뀌고(0·1·0.5·0.333), 서버 굴림의 `tierUpProbabilities`와 같다. 0%·100% 줄을 지우지 않는다.
  * - 사라진 문구: 트라이브 표(h3 «받는 아이템 배지»), «캡슐의 등급 확률에서 … 비율을 다시 맞춘 값», 이 섹션의 «처음 뽑는 등급이에요»·«한 등급씩 낮춰서»·«넣은 등급보다 낮아지지는 않아요».
- *   낮춤 문장(`LOWERING_RULE`)은 동기화·캡슐·보정 장치 세 곳에만 남는다.
+ *   낮춤 문장(`LOWERING_RULE`)은 동기화·챕터 오름 보상·보정 장치 세 곳에만 남는다.
  * - 서식: 의미 있는 표(caption, th scope="row"), 값 칸은 오른쪽 정렬·tabular-nums·whitespace-nowrap, 한국어 줄바꿈 클래스, 가로 스크롤 래퍼·링크·버튼·아이콘 없음.
  * - 따로 실패한다: `combine_policy`를 못 읽으면 h2 + 소개 문단 + 안내 한 개 + 끝 Note뿐이고 숫자가 하나도 없으며 다른 섹션은 그대로다.
- *   반대로 캡슐·동기화 설정을 못 읽어도 등급 올리기 표는 그대로 보인다.
+ *   반대로 챕터 보상·동기화 설정을 못 읽어도 등급 올리기 표는 그대로 보인다.
  * - 기존 «확률이 없는 것» 문단은 «레시피로 하는 믹스»로 좁혀졌고 문단 하나를 유지한다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(legal)/probability/page.tierUp.test.tsx"
@@ -39,7 +39,7 @@ import ProbabilityPage from './page'
 import { DEFAULT_COMBINE_POLICY } from '@/lib/combine/policy'
 import { TIER_UP_MATERIAL_RARITIES, tierUpProbabilities } from '@/lib/combine/tierUpOdds'
 import { formatFraction } from '@/lib/probability/disclosure'
-import { ALL_OK, CAPSULE_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from '@/lib/probability/__tests__/fixtures'
+import { ALL_OK, CHAPTER_REWARD_ROW, COMBINE_ROW, failed, fakeClient, ok, type Result } from '@/lib/probability/__tests__/fixtures'
 
 const UNAVAILABLE = '지금 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.'
 const TITLE = '등급 UP'
@@ -172,7 +172,7 @@ describe('정상 — 자리와 구성', () => {
     }
   })
 
-  it('낮춤 문장은 동기화·캡슐·보정 장치 세 곳에만 있다(같은 상수 한 곳의 말)', async () => {
+  it('낮춤 문장은 동기화·챕터 오름 보상·보정 장치 세 곳에만 있다(같은 상수 한 곳의 말)', async () => {
     const html = await render()
     expect(count(textOf(html), LOWERING_RULE)).toBe(3)
     expect(count(textOf(sectionOf(html, TITLE)), LOWERING_RULE)).toBe(0)
@@ -318,10 +318,10 @@ describe('값은 읽은 설정에서 만든다 (combine_policy.tier_up_probabili
     }
   })
 
-  it('캡슐 등급·다른 트라이브 확률을 바꿔도 등급 올리기 표는 그대로다(더는 캡슐 설정에서 만들지 않는다)', async () => {
+  it('챕터 오름 보상 등급·다른 트라이브 확률을 바꿔도 등급 올리기 표는 그대로다(보상 설정에서 만들지 않는다)', async () => {
     const changed = {
       ...ALL_OK,
-      capsule_policy: ok({ ...CAPSULE_ROW, rarity_common: 60, rarity_rare: 25, rarity_epic: 10, rarity_mystic: 5, other_tribe_probability: 0.35 }),
+      chapter_reward_policy: ok({ ...CHAPTER_REWARD_ROW, rarity_common: 60, rarity_rare: 25, rarity_epic: 10, rarity_mystic: 5, other_tribe_probability: 0.35 }),
     }
     expect(sectionOf(await render(changed), TITLE)).toBe(sectionOf(await render(), TITLE))
   })
@@ -358,7 +358,7 @@ describe('읽기 실패 — 소개 문단 + 안내 한 개 + 끝 Note뿐이고 �
     // 이 실패는 다른 섹션에 번지지 않는다 — 안내는 이 섹션 한 곳뿐이고 다른 표는 그대로다
     expect(count(html, 'role="status"')).toBe(1)
     expect(textOf(sectionOf(html, '동기화로 받는 아이템 배지'))).toMatch(/Common84%/)
-    expect(textOf(sectionOf(html, '캡슐'))).toMatch(/Common70%/)
+    expect(textOf(sectionOf(html, '챕터 오름 보상'))).toMatch(/Common30%Rare40%Epic22%Mystic8%/)
     expect(textOf(sectionOf(html, '시스템 드랍'))).toMatch(/Common100%/)
     expect(count(sectionOf(html, '보정 장치'), '<li')).toBe(2)
   })
@@ -370,20 +370,20 @@ describe('읽기 실패 — 소개 문단 + 안내 한 개 + 끝 Note뿐이고 �
     expect(text).not.toContain('30%')
   })
 
-  it('반대 방향: 캡슐·동기화 설정을 못 읽어도 등급 올리기 표는 그대로 보인다', async () => {
+  it('반대 방향: 챕터 보상·동기화 설정을 못 읽어도 등급 올리기 표는 그대로 보인다', async () => {
     for (const results of [
-      { ...ALL_OK, capsule_policy: failed },
+      { ...ALL_OK, chapter_reward_policy: failed },
       { ...ALL_OK, jam_policy: failed },
-      { ...ALL_OK, capsule_policy: 'throw' as const },
+      { ...ALL_OK, chapter_reward_policy: 'throw' as const },
     ]) {
       const html = await render(results)
       const section = sectionOf(html, TITLE)
       expect(count(section, '<table')).toBe(4)
       expect(count(section, 'role="status"')).toBe(0)
       expect(textOf(section)).toContain('Common 6개를 넣으면Common30%Rare70%')
-      // 안내는 동기화·캡슐·보정 장치 세 곳뿐이다
+      // 안내는 동기화·챕터 오름 보상·보정 장치 세 곳뿐이다
       expect(count(html, 'role="status"')).toBe(3)
-      for (const title of ['동기화로 받는 아이템 배지', '캡슐', '보정 장치']) {
+      for (const title of ['동기화로 받는 아이템 배지', '챕터 오름 보상', '보정 장치']) {
         expect(count(sectionOf(html, title), 'role="status"'), title).toBe(1)
       }
     }
@@ -399,7 +399,8 @@ describe('읽기 실패 — 소개 문단 + 안내 한 개 + 끝 Note뿐이고 �
 
   it('설정 표를 모두 못 읽어도 %·÷·날짜 외 숫자가 없고 안내는 다섯 개다', async () => {
     const html = await render({
-      capsule_policy: failed,
+      chapter_reward_policy: failed,
+      chapter_definitions: failed,
       jam_policy: 'throw',
       combine_policy: failed,
       ambient_drop_config: { data: null, error: null },
@@ -429,7 +430,7 @@ describe('«확률이 없는 것» 문단 — 레시피로 하는 믹스로 좁�
   })
 
   it('읽기가 실패해도 남는다(스스로 뜻이 닫히는 문장)', async () => {
-    const text = textOf(await render({ ...ALL_OK, capsule_policy: failed }))
+    const text = textOf(await render({ ...ALL_OK, chapter_reward_policy: failed }))
     expect(text).toContain('레시피로 하는 믹스는 정해진 결과가 나오고')
   })
 })
