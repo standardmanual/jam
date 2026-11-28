@@ -50,7 +50,7 @@ describe('프로필 목록의 유저 검색창', () => {
 
   it('빈 목록과 채워진 목록 모두 첫 줄 위에 놓인다', () => {
     const emptyAt = profile.indexOf('{searchLink}\n          <EmptyState')
-    const listAt = profile.indexOf('{searchLink}\n        {listData.map')
+    const listAt = profile.indexOf('{searchLink}\n        <div className="flex flex-col" style={USER_LIST_STYLE}>')
     expect(emptyAt).toBeGreaterThan(-1)
     expect(listAt).toBeGreaterThan(-1)
   })

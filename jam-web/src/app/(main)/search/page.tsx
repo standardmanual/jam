@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { getDisplayName } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
+import { USER_LIST_STYLE, USER_ROW_AVATAR_SIZE } from '../userListRow'
 import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
 import Avatar from '@/components/ui/Avatar'
@@ -114,14 +115,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           />
         ) : (
           <section className="flex flex-col gap-2">
-            <p className="text-muted text-xs px-1">{t(d.search.resultCount, { count: results.length })}</p>
+            <p className="text-muted text-xs">{t(d.search.resultCount, { count: results.length })}</p>
+            <div className="flex flex-col" style={USER_LIST_STYLE}>
             {results.map((u) => {
               const displayName = getDisplayName(u)
               return (
                 <ListRow
                   key={u.id}
+                  tone="flat"
                   href={`/${u.username}`}
-                  lead={<Avatar src={u.avatar_url} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />}
+                  lead={<Avatar src={u.avatar_url} alt="" size={USER_ROW_AVATAR_SIZE} face="none" iconClassName="w-4 h-4 text-muted" />}
                   leadShape="round"
                   title={displayName}
                   titleVariant="regular"
@@ -129,6 +132,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 />
               )
             })}
+            </div>
           </section>
         )}
       </div>

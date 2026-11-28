@@ -61,6 +61,8 @@ describe('FollowUserList 행', () => {
     expect(out).not.toContain('alt="다른 사람"')
     // 폴백 안에 별도 div(원형 박스)를 두지 않는다
     expect(out).not.toContain('bg-background-secondary')
-    expect(out).toContain('w-5 h-5 text-muted')
+    expect(out).toContain('w-4 h-4 text-muted')
+    // 프로필 이미지는 36px, 행 앞 칸 토큰도 36px로 줄인다(티켓 20261128_1745)
+    expect(out).toContain('--list-row-lead-size:36px')
   })
 })

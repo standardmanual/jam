@@ -114,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5749 | 0 | 461 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5748 | 0 | 461 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -262,7 +262,7 @@ code:
 | `--toast-bottom` | `calc(var(--tabbar-bottom) + var(--tabbar-height) + 8px)` | `calc(max(10px, calc(16px + env(safe-area-inset-bottom, 0px) - 32px)) + 49px + 8px)` | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-label-size` | `0.8125rem` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--tabbar-label-line-height` | `1` | 〃 | — | 1 | 0 | 0 | 1 | 0 | — |
-| `--list-row-lead-size` | `48px` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
+| `--list-row-lead-size` | `48px` | 〃 | — | 2 | 0 | 1 | 2 | 0 | — |
 | `--list-row-indicator-size` | `24px` | 〃 | — | 2 | 0 | 0 | 1 | 0 | — |
 | `--list-row-gap` | `var(--spacing-12)` | `12px` | — | 4 | 0 | 0 | 1 | 0 | — |
 | `--list-row-padding-x` | `var(--spacing-16)` | `16px` | — | 4 | 0 | 1 | 1 | 0 | — |

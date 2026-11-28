@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/icons'
 import type { UserRow, ActivityFeedRow, BadgeRarity } from '@/types/database'
 import UserSearchBar from '../UserSearchBar'
+import { USER_LIST_STYLE, USER_ROW_AVATAR_SIZE } from '../userListRow'
 import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget, isCheckinEarn } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
@@ -469,11 +470,13 @@ export default function ProfileClient({
     return (
       <div className="flex flex-col gap-2">
         {searchLink}
+        <div className="flex flex-col" style={USER_LIST_STYLE}>
         {listData.map(u => (
           <ListRow
             key={u.id}
+            tone="flat"
             href={`/${u.username}`}
-            lead={<Avatar src={u.avatar_url} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />}
+            lead={<Avatar src={u.avatar_url} alt="" size={USER_ROW_AVATAR_SIZE} face="none" iconClassName="w-4 h-4 text-muted" />}
             leadShape="round"
             title={getDisplayName(u)}
             titleVariant="regular"
@@ -493,6 +496,7 @@ export default function ProfileClient({
             }
           />
         ))}
+        </div>
       </div>
     )
   }

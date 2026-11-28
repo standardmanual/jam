@@ -6,6 +6,7 @@ import Avatar from '@/components/ui/Avatar'
 import { ListRow } from '@/components/ui/ListRow'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { getDisplayName } from '@/lib/utils'
+import { USER_LIST_STYLE, USER_ROW_AVATAR_SIZE } from '../userListRow'
 
 export interface FollowListUser {
   id: string
@@ -53,11 +54,13 @@ export default function FollowUserList({
 
   return (
     <>
+      <div className="flex flex-col" style={USER_LIST_STYLE}>
       {users.map((u) => (
         <ListRow
           key={u.id}
+          tone="flat"
           href={`/${u.username}`}
-          lead={<Avatar src={u.avatar_url} alt="" size={48} face="none" iconClassName="w-5 h-5 text-muted" />}
+          lead={<Avatar src={u.avatar_url} alt="" size={USER_ROW_AVATAR_SIZE} face="none" iconClassName="w-4 h-4 text-muted" />}
           leadShape="round"
           title={getDisplayName(u)}
           titleVariant="regular"
@@ -72,6 +75,7 @@ export default function FollowUserList({
           }
         />
       ))}
+      </div>
 
       <BadgeRevealOverlay
         open={!!current}
