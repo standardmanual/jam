@@ -2,7 +2,7 @@
  * 홈 챕터 게이지 섹션(ChapterGaugeSection) 렌더 (티켓 20261127_1735 C5b)
  *
  * 저장소에 jsdom이 없어 서버 렌더로 마크업을 고정한다(서버 렌더 결과에 값이 들어 있다).
- * 고정하는 것: 값과 접근성 라벨, 마지막 챕터의 빈 필요 잼 줄, 챕터 없음이면 빈 출력, 오류 블록과 «다시 시도»,
+ * 고정하는 것: 값과 접근성 라벨, 마지막 챕터의 필요 잼 숫자 없음, 챕터 없음이면 빈 출력, 오류 블록과 «다시 시도»,
  * 막힘이면 카드 아래에 막힘 카드, 카드 루트의 relative와 감싸는 곳의 z-index 없음, «캡슐» 글자 없음.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -71,14 +71,14 @@ describe('ChapterGaugeSection — 카드', () => {
     expect(zero).toContain('다음 챕터까지 잼 0 / 1,260')
   })
 
-  it('마지막 챕터는 필요 잼 줄이 비어 있고 트랙 라벨에 필요량이 없다', () => {
+  it('마지막 챕터는 필요 잼 숫자가 없고 트랙 라벨에 필요량이 없다', () => {
     const last = renderToStaticMarkup(
       <ChapterGaugeSection
         chapter={chapterOf({ chapterNo: 10, chapterJam: 5000, requiredJam: null, nextChapterNo: null, isLastChapter: true, progress: null })}
         blocked={null}
       />,
     )
-    expect(last).toContain('data-chapter-required="empty"')
+    expect(last).not.toContain('data-chapter-required')
     expect(last).toContain('aria-label="잼 5,000"')
     expect(last).not.toContain(' / ')
   })

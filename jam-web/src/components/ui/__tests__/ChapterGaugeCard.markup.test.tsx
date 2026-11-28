@@ -7,7 +7,7 @@
  * 고정하는 것
  *  - 접근성: 카드 role="group", 트랙 role="img"(라벨은 호출부가 넘긴 것), 칩·워드마크 aria-hidden.
  *  - 값 0: 채움을 그리지 않고(칩 둘레 오렌지 실선 방지) 칩은 있다.
- *  - 챕터 10(필요량 null): 필요 잼 줄이 비어 있고 줄 요소(높이)는 그대로이며 «마지막» 류 문구가 없다.
+ *  - 필요 잼 숫자: 카드 아래 줄은 없고 트랙 안에 aria-hidden 숫자로 있다. 챕터 10(필요량 null)은 숫자도 자리도 없고 «마지막» 류 문구가 없다.
  *  - 천 단위 쉼표, 영문 라벨은 넘긴 값 그대로.
  *  - 긴 이름·큰 챕터 번호가 넘치지 않는 클래스(min-w-0·wrap-anywhere / shrink-0).
  *  - 로딩·오류 자리는 같은 틀을 보이지 않게 깔아 높이를 지킨다.
@@ -77,20 +77,25 @@ describe('숫자와 문구', () => {
   it('챕터 번호는 있는 그대로 그린다(9999도)', () => {
     expect(html({ chapterNo: 9999 })).toContain('>9999<')
   })
-  it('챕터 10(필요량 없음): 필요 잼 줄은 비어 있어도 같은 요소로 남고 문구가 없다', () => {
-    const normal = html()
+  it('필요 잼 숫자는 트랙 안 오른쪽 끝의 aria-hidden 오렌지 글자이고 카드 아래 줄은 없다', () => {
+    const h = html()
+    const el = h.match(/<span[^>]*data-chapter-required="value"[^>]*>/)?.[0] ?? ''
+    expect(el).toContain('aria-hidden="true"')
+    expect(el).toContain('right-0')
+    expect(el).toContain('text-base')
+    expect(el).toContain('color:var(--capsule-fill)')
+    expect(h).not.toMatch(/<div[^>]*data-chapter-required/)
+    // 트랙(role="img") 안에 있다
+    expect(h.indexOf('role="img"')).toBeLessThan(h.indexOf('data-chapter-required="value"'))
+    expect(h.indexOf('data-chapter-required="value"')).toBeLessThan(h.lastIndexOf('</div>'))
+  })
+  it('챕터 10(필요량 없음): 필요 잼 숫자도 자리도 없고 문구가 없다', () => {
     const last = html({ required: null, chapterNo: 10 })
-    const row = (h: string) => h.match(/<div[^>]*data-chapter-required="[^"]*"[^>]*>/)?.[0] ?? ''
-    expect(row(normal)).toContain('data-chapter-required="value"')
-    expect(row(last)).toContain('data-chapter-required="empty"')
-    expect(row(normal)).toContain('aria-hidden="true"')
-    expect(row(last)).toContain('aria-hidden="true"')
-    // 클래스·스타일(높이를 정하는 것)은 같다
-    const strip = (r: string) => r.replace(/data-chapter-required="[^"]*"/, '').replace(/ aria-hidden="true"/, '')
-    expect(strip(row(last))).toBe(strip(row(normal)))
-    // 줄 안은 줄바꿈 없는 공백뿐이다
-    expect(last).toMatch(/data-chapter-required="empty"[^>]*> <\/div>/)
+    expect(last).not.toContain('data-chapter-required')
     for (const word of ['마지막', 'MAX', '만렙', 'Max']) expect(last).not.toContain(word)
+  })
+  it('트랙 폭을 재기 전(서버 렌더)에는 어두운 복사본을 그리지 않는다', () => {
+    expect(html()).not.toContain('data-chapter-required-clip')
   })
   it('챕터 10도 채움은 가득이다', () => {
     const h = html({ required: null, chapterNo: 10, filled: 1200 })
@@ -120,7 +125,7 @@ describe('로딩·오류 자리', () => {
   it('로딩은 같은 틀을 보이지 않게 깔고 그 위를 Skeleton이 덮는다', () => {
     const h = renderToStaticMarkup(<ChapterGaugeCardSkeleton />)
     expect(h).toContain('class="invisible"')
-    expect(h).toContain('data-chapter-required="empty"')
+    expect(h).not.toContain('data-chapter-required')
     expect(h).toContain('border-radius:var(--radius-2xl)')
   })
   it('오류는 같은 틀 높이 안에 안내 블록을 둔다', () => {

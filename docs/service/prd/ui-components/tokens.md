@@ -74,8 +74,8 @@ code:
 | `--radius-full` | `9999px` | 〃 | — | 19 | 0 | 0 | 11 | 0 | — |
 | `--spacing-4` | `4px` | 〃 | — | 7 | 0 | 0 | 3 | 0 | — |
 | `--spacing-8` | `8px` | 〃 | — | 9 | 0 | 0 | 5 | 1 | — |
-| `--spacing-12` | `12px` | 〃 | — | 7 | 0 | 0 | 3 | 3 | — |
-| `--spacing-16` | `16px` | 〃 | — | 7 | 0 | 0 | 4 | 5 | — |
+| `--spacing-12` | `12px` | 〃 | — | 9 | 0 | 0 | 3 | 3 | — |
+| `--spacing-16` | `16px` | 〃 | — | 5 | 0 | 0 | 4 | 5 | — |
 | `--spacing-20` | `20px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
 | `--spacing-24` | `24px` | 〃 | — | 5 | 0 | 0 | 1 | 2 | — |
 | `--spacing-32` | `32px` | 〃 | — | 0 | 0 | 0 | 0 | 0 | — |
@@ -114,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5749 | 0 | 461 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5754 | 0 | 461 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -236,7 +236,7 @@ code:
 | `--rarity-epic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--rarity-mystic-foreground` | `var(--base-black)` | `#000000` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--capsule-fill` | `var(--base-capsule-orange)` | `#f94c31` | — | 9 | 0 | 0 | 6 | 0 | — |
-| `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 7 | 0 | 0 | 3 | 0 | — |
+| `--capsule-track` | `var(--base-neutral-900)` | `#171717` | — | 8 | 0 | 0 | 3 | 0 | — |
 | `--capsule-ring` | `var(--base-neutral-950)` | `#0a0a0a` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--chapter-card-bg` | `linear-gradient(180deg, var(--base-neutral-600) 0%, var(--base-neutral-800) 100%)` | `linear-gradient(180deg, #525252 0%, #262626 100%)` | — | 1 | 0 | 0 | 1 | 0 | — |
 | `--map-drop-marker-active` | `var(--jam-green)` | `#59C02B` | — | 1 | 0 | 0 | 1 | 0 | — |

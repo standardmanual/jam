@@ -19,6 +19,12 @@ export const CHAPTER_WORDMARK_WIDTH_PX = 26
 export const NUMBER_CHIP_GAP_PX = 4
 export const NUMBER_CHAR_WIDTH_PX = 12.5
 export const NUMBER_FILL_END_GAP_PX = 12
+/** 필요 잼 숫자(16px 글자) 글자 하나의 폭(px, 추정) — 쉼표가 좁아 넉넉한 쪽으로 어림한 값이다. 글자 배율은 호출부가 곱해 넘긴다 */
+export const NUMBER_REQUIRED_CHAR_WIDTH_PX = 10
+/** 채움 오른쪽 바깥에 놓는 모은 잼 숫자와 채움 끝 사이 간격(px, = --spacing-8). 필요 잼 영역 오른쪽 안쪽 간격과 같은 값이다 */
+export const NUMBER_OUTSIDE_GAP_PX = 8
+/** 필요 잼 숫자의 오른쪽 여백(px, = --spacing-12) */
+export const REQUIRED_NUMBER_END_GAP_PX = 12
 
 /** 진입 모션: 트랙이 이만큼(0~1) 이상 보이면 «화면에 보인다»로 친다 */
 export const ENTRY_VISIBLE_RATIO = 0.5
@@ -66,17 +72,67 @@ export function insideNumberNeededPx(charCount: number, charWidthPx: number = NU
 }
 
 /**
- * 모은 잼 숫자 자리. 최종 채움 길이가 필요 길이 이상이면 채움 안(`inside`), 아니면 트랙 안 오른쪽(`outside`)이다.
+ * 필요 잼 영역 폭(px) = 오른쪽 여백 12 + 글자 수 × 글자 폭 + 모은 잼 숫자와 띄우는 간격 8.
+ * 마지막 챕터(0자)는 숫자가 없으므로 영역도 만들지 않는다(0).
+ */
+export function requiredReservedPx(requiredCharCount: number, requiredCharWidthPx: number = NUMBER_REQUIRED_CHAR_WIDTH_PX): number {
+  if (!(requiredCharCount > 0)) return 0
+  return REQUIRED_NUMBER_END_GAP_PX + requiredCharCount * requiredCharWidthPx + NUMBER_OUTSIDE_GAP_PX
+}
+
+/**
+ * 모은 잼 숫자 자리(최종 값 기준). 채움이 안쪽 필요 길이 이상이면 `inside`가 먼저다.
+ * 아니면 `채움 끝 + 8 + 숫자 폭`이 필요 잼 영역 왼쪽 끝 이하일 때만 `outside`이고, 닿으면 `inside`(안쪽 클램프)다.
  * 트랙 폭을 아직 모르면(0 이하) `outside`다.
  */
-export function numberPlacement(
+export function collectedNumberPlacement(
   innerWidthPx: number,
   ratio: number,
   charCount: number,
-  charWidthPx: number = NUMBER_CHAR_WIDTH_PX
+  charWidthPx: number = NUMBER_CHAR_WIDTH_PX,
+  requiredCharCount: number = 0,
+  requiredCharWidthPx: number = NUMBER_REQUIRED_CHAR_WIDTH_PX
 ): NumberPlacement {
   if (!(innerWidthPx > 0)) return 'outside'
-  return fillWidthPx(innerWidthPx, ratio) >= insideNumberNeededPx(charCount, charWidthPx) ? 'inside' : 'outside'
+  const fillEnd = fillWidthPx(innerWidthPx, ratio)
+  if (fillEnd >= insideNumberNeededPx(charCount, charWidthPx)) return 'inside'
+  const outsideRight = fillEnd + NUMBER_OUTSIDE_GAP_PX + charCount * charWidthPx
+  return outsideRight <= innerWidthPx - requiredReservedPx(requiredCharCount, requiredCharWidthPx) ? 'outside' : 'inside'
+}
+
+/**
+ * 안쪽 모은 잼 숫자의 오른쪽 여백(px). 기본은 12이고, 채움 끝이 필요 잼 영역에 닿으면
+ * `채움 끝 - (트랙 폭 - 필요 잼 영역)`까지 키워 숫자의 오른쪽 끝이 필요 잼 영역 왼쪽에서 멈추게 한다.
+ */
+export function insideNumberRightPaddingPx(
+  innerWidthPx: number,
+  ratio: number,
+  requiredCharCount: number = 0,
+  requiredCharWidthPx: number = NUMBER_REQUIRED_CHAR_WIDTH_PX
+): number {
+  if (!(innerWidthPx > 0)) return NUMBER_FILL_END_GAP_PX
+  const overlap = fillWidthPx(innerWidthPx, ratio) - (innerWidthPx - requiredReservedPx(requiredCharCount, requiredCharWidthPx))
+  return Math.max(NUMBER_FILL_END_GAP_PX, overlap)
+}
+
+export type RequiredNumberCover = 'none' | 'partial' | 'full'
+
+/**
+ * 채움이 필요 잼 숫자를 덮는 정도. 숫자는 트랙 안 오른쪽 끝(여백 12)에 있다.
+ * 렌더링에는 `data-` 속성과 시험에만 쓴다(글자색은 클리핑 복사본이 하드 컷으로 바꾼다). 숫자가 없으면(0자)·폭을 모르면 `none`이다.
+ */
+export function requiredNumberCover(
+  innerWidthPx: number,
+  ratio: number,
+  requiredCharCount: number,
+  requiredCharWidthPx: number = NUMBER_REQUIRED_CHAR_WIDTH_PX
+): RequiredNumberCover {
+  if (!(innerWidthPx > 0) || !(requiredCharCount > 0)) return 'none'
+  const end = innerWidthPx - REQUIRED_NUMBER_END_GAP_PX
+  const start = end - requiredCharCount * requiredCharWidthPx
+  const fillEnd = fillWidthPx(innerWidthPx, ratio)
+  if (fillEnd <= start) return 'none'
+  return fillEnd >= end ? 'full' : 'partial'
 }
 
 /** 같은 화면에서 값이 바뀔 때의 이동 시간(ms). 옮길 거리에 비례해 늘리되 700~1500ms 안에 둔다 */
