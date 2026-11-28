@@ -129,45 +129,46 @@ export function tierUpSubmitIds(filled: readonly (TierUpMaterial | null)[]): str
   return present.every((item) => item.badge.rarity === rarity) ? present.map((item) => item.id) : null
 }
 
-/** 재료 시트 셀 — `inactive`는 이유 줄이 대신 말하는 비활성(라벨 없음), `used`는 이미 담은 개체(«사용 중») */
+/** 재료 시트 셀 — `selected`는 고른 개체(다시 누르면 빠진다), `inactive`는 지금 담을 수 없는 카드(흐림, 눌러도 반응 없음) */
 export interface TierUpSheetCell<T extends TierUpMaterial = TierUpMaterial> {
   item: T
-  state: 'active' | 'used' | 'inactive'
+  state: 'active' | 'selected' | 'inactive'
 }
 
 export type TierUpSheetView<T extends TierUpMaterial = TierUpMaterial> =
   /** 넣을 수 있는 아이템 배지가 하나도 없다 */
   | { kind: 'empty' }
-  /** 첫 재료를 담은 뒤 — 그 등급의 셀만 한 묶음으로 보인다 */
-  | { kind: 'locked'; rarity: TierUpMaterialRarity; cells: TierUpSheetCell<T>[] }
-  /** 아직 아무것도 담지 않음 — 등급 묶음 */
-  | { kind: 'groups'; groups: { rarity: TierUpMaterialRarity; count: number; enough: boolean; cells: TierUpSheetCell<T>[] }[] }
+  /** 등급 묶음 전체. 첫 재료를 담은 뒤에는 `locked`가 고정 등급이고 다른 등급 묶음은 모두 비활성이다 */
+  | {
+      kind: 'groups'
+      locked: TierUpMaterialRarity | null
+      groups: { rarity: TierUpMaterialRarity; count: number; enough: boolean; cells: TierUpSheetCell<T>[] }[]
+    }
 
-/** 순수 — 재료 시트에 그릴 모양. 6개 미만인 묶음은 셀이 모두 비활성이다 */
+/** 순수 — 재료 시트에 그릴 모양. 6개 미만인 묶음과, 등급이 고정된 뒤의 다른 등급 묶음은 셀이 모두 비활성이다 */
 export function buildTierUpSheet<T extends TierUpMaterial>(
   groups: readonly TierUpGroup<T>[],
   filled: readonly (T | null)[],
 ): TierUpSheetView<T> {
   if (groups.length === 0) return { kind: 'empty' }
   const usedIds = new Set(filled.filter((item): item is T => item !== null).map((item) => item.id))
-  const locked = lockedTierUpRarity(filled)
-  const lockedGroup = locked ? groups.find((group) => group.rarity === locked) : undefined
-  if (locked && lockedGroup) {
-    return {
-      kind: 'locked',
-      rarity: locked,
-      cells: lockedGroup.items.map((item) => ({ item, state: usedIds.has(item.id) ? 'used' : 'active' })),
-    }
-  }
+  const requested = lockedTierUpRarity(filled)
+  const locked = requested && groups.some((group) => group.rarity === requested) ? requested : null
   return {
     kind: 'groups',
+    locked,
     groups: groups.map((group) => {
       const enough = group.items.length >= TIER_UP_MATERIAL_COUNT
+      const open = locked === null || group.rarity === locked
       return {
         rarity: group.rarity,
         count: group.items.length,
         enough,
-        cells: group.items.map((item) => ({ item, state: enough ? 'active' : 'inactive' })),
+        cells: group.items.map((item) => ({
+          item,
+          // 고른 셀은 묶음이 6개 밑으로 줄어도 selected로 남아 다시 눌러 뺄 수 있다
+          state: open && usedIds.has(item.id) ? 'selected' : open && enough ? 'active' : 'inactive',
+        })),
       }
     }),
   }
@@ -175,8 +176,7 @@ export function buildTierUpSheet<T extends TierUpMaterial>(
 
 /** 순수 — 시트에서 지금 담을 수 있는(활성) 개체 id. 담기 핸들러가 한 번 더 걸러 다른 등급이 섞인 제출을 만들지 않는다 */
 export function pickableTierUpIds(view: TierUpSheetView): Set<string> {
-  const cells =
-    view.kind === 'locked' ? view.cells : view.kind === 'groups' ? view.groups.flatMap((group) => group.cells) : []
+  const cells = view.kind === 'groups' ? view.groups.flatMap((group) => group.cells) : []
   return new Set(cells.filter((cell) => cell.state === 'active').map((cell) => cell.item.id))
 }
 

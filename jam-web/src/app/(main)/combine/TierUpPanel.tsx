@@ -56,15 +56,14 @@ function SheetCells<T extends TierUpMaterial>({ cells, onPick }: { cells: TierUp
           name={item.badge.name}
           imageUrl={item.badge.image_url}
           state={state}
-          releasable
-          onClick={() => (state === 'active' || state === 'used') && onPick(item.id)}
+          onClick={() => (state === 'active' || state === 'selected') && onPick(item.id)}
         />
       ))}
     </div>
   )
 }
 
-/** 재료 시트 본문 — 묶음 보기, 등급 고정 보기, 비어 있음 세 갈래. 시트 틀(`BottomSheet`)은 `TierUpPanel`이 그린다 */
+/** 재료 시트 본문 — 등급 묶음 보기와 비어 있음 두 갈래. 시트 틀(`BottomSheet`)은 `TierUpPanel`이 그린다 */
 export function TierUpSheetContent<T extends TierUpMaterial>({
   sheet,
   onPick,
@@ -75,16 +74,10 @@ export function TierUpSheetContent<T extends TierUpMaterial>({
   if (sheet.kind === 'empty') {
     return <EmptyState icon={<ArrowDownIcon className="w-8 h-8" />} title={d.combine.tierUp.sheetEmpty} />
   }
-  if (sheet.kind === 'locked') {
-    return (
-      <div className="flex flex-col gap-2">
-        <p className={`${PARAGRAPH} text-center`}>{tierUpRarityNote(sheet.rarity)}</p>
-        <SheetCells cells={sheet.cells} onPick={onPick} />
-      </div>
-    )
-  }
   return (
     <div className="flex flex-col gap-4">
+      {/* 첫 재료를 담은 뒤에만 — 다른 등급 묶음이 흐려진 까닭을 말한다. 묶음 위에 한 번 */}
+      {sheet.locked && <p className={`${PARAGRAPH} text-center`}>{tierUpRarityNote(sheet.locked)}</p>}
       {sheet.groups.map((group) => {
         const headingId = `tier-up-group-${group.rarity}`
         return (

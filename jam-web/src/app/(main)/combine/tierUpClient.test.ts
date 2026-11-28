@@ -164,22 +164,32 @@ describe('buildTierUpSheet', () => {
     expect(view.groups[2].cells.every((cell) => cell.state === 'active')).toBe(true)
   })
 
-  it('첫 재료를 담은 뒤에는 그 등급의 셀만 한 묶음으로 보이고, 담은 셀은 사용 중이다', () => {
+  it('첫 재료를 담은 뒤에도 모든 등급 묶음이 보이고, 고른 셀은 selected·나머지는 active, 다른 등급 묶음은 모두 inactive다', () => {
     const view = buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null, null])
-    expect(view.kind).toBe('locked')
-    if (view.kind !== 'locked') return
-    expect(view.rarity).toBe('rare')
-    expect(view.cells).toHaveLength(7)
-    expect(view.cells.filter((cell) => cell.state === 'used').map((cell) => cell.item.id)).toEqual(['r1', 'r2'])
-    expect(view.cells.filter((cell) => cell.state === 'active')).toHaveLength(5)
+    expect(view.kind).toBe('groups')
+    if (view.kind !== 'groups') return
+    expect(view.locked).toBe('rare')
+    expect(view.groups.map((g) => g.rarity)).toEqual(groups.map((g) => g.rarity))
+    const rare = view.groups.find((g) => g.rarity === 'rare')!
+    expect(rare.cells).toHaveLength(7)
+    expect(rare.cells.filter((cell) => cell.state === 'selected').map((cell) => cell.item.id)).toEqual(['r1', 'r2'])
+    expect(rare.cells.filter((cell) => cell.state === 'active')).toHaveLength(5)
+    for (const group of view.groups.filter((g) => g.rarity !== 'rare')) {
+      expect(group.cells.every((cell) => cell.state === 'inactive')).toBe(true)
+    }
   })
 
-  it('Mystic을 첫 재료로 담으면 Mystic만 활성이고 나머지 등급은 시트에 보이지 않는다', () => {
+  it('아무것도 담지 않으면 locked는 null이다', () => {
+    const view = buildTierUpSheet(groups, [null, null, null, null, null, null])
+    expect(view.kind === 'groups' && view.locked).toBeNull()
+  })
+
+  it('Mystic을 첫 재료로 담으면 Mystic만 활성이고 나머지 등급은 흐린 비활성으로 보인다', () => {
     const view = buildTierUpSheet(groups, [mystic6[0], null, null, null, null, null])
-    expect(view.kind).toBe('locked')
-    if (view.kind !== 'locked') return
-    expect(view.rarity).toBe('mystic')
-    expect(view.cells.map((cell) => cell.item.id)).toEqual(mystic6.map((item) => item.id))
+    expect(view.kind).toBe('groups')
+    if (view.kind !== 'groups') return
+    expect(view.locked).toBe('mystic')
+    expect(view.groups.find((g) => g.rarity === 'mystic')!.cells.map((cell) => cell.item.id)).toEqual(mystic6.map((item) => item.id))
     expect(pickableTierUpIds(view).has('m2')).toBe(true)
     expect(pickableTierUpIds(view).has('r1')).toBe(false)
   })

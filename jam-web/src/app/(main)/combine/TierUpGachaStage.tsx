@@ -11,6 +11,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
+import { flushSync } from 'react-dom'
 import SafeImage from '@/components/SafeImage'
 import Button from '@/components/ui/Button'
 import { RarityBadge, type Rarity } from '@/components/ui/RarityBadge'
@@ -121,6 +122,11 @@ function shuffled<T>(list: T[]): T[] {
     .map(([, v]) => v)
 }
 
+/** 결과 글자 묶음이 배지 중심 아래로 떨어지는 거리(`.meta`의 top 오프셋과 같다) */
+const META_OFFSET = 112
+/** 설명이 길어 배지를 올릴 때 중심이 내려가지 않을 하한 — 배지가 화면 위로 잘리지 않게 한다 */
+const MIN_CY = 110
+
 export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onInsert, onAgain, onHandoff, notice, describedBy }: Props) {
   const reducedNow = useSyncExternalStore(subscribeReduced, readReduced, () => false)
   const reducedRef = useRef(reducedNow)
@@ -143,6 +149,9 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
   const [showAgain, setShowAgain] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [cy, setCy] = useState(0)
+  // 3단계 직전 숨긴 측정용 글자 묶음(묶음+버튼 높이 실측용) — 잰 뒤 바로 지운다
+  const [measureBadge, setMeasureBadge] = useState<TierUpGachaBadge | null>(null)
+  const measureEl = useRef<HTMLDivElement>(null)
 
   const stageEl = useRef<HTMLDivElement>(null)
   const machineEl = useRef<HTMLDivElement>(null)
@@ -399,7 +408,16 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
 
     // 3) 공 하나가 화면 중앙(무대 높이 40%)으로 나오고 머신은 아래로 내려가며 사라진다
     const stageRect = stage.getBoundingClientRect()
-    const centerY = Math.round(stageRect.height * 0.4)
+    // 이상값은 무대 높이의 40%. 결과 글자 묶음(+«한 번 더»)이 무대 하단 여백(탭바 자리) 위에 못 들어가면 넘치는 만큼 올린다(하한 MIN_CY)
+    let centerY = Math.round(stageRect.height * 0.4)
+    if (result.kind === 'reveal') {
+      flushSync(() => setMeasureBadge(result.badge))
+      const metaHeight = measureEl.current?.offsetHeight ?? 0
+      flushSync(() => setMeasureBadge(null))
+      const padBottom = parseFloat(getComputedStyle(stage).paddingBottom) || 0
+      const fit = Math.floor(stageRect.height - padBottom - META_OFFSET - metaHeight)
+      centerY = Math.max(Math.min(centerY, fit), Math.min(centerY, MIN_CY))
+    }
     setCy(centerY)
     const wi = pickWinner(balls.current)
     if (wi < 0) {
@@ -681,25 +699,17 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
               <SafeImage src={badge.imageUrl} alt="" width={180} height={180} priority />
             </div>
           </div>
-          <TierUpGachaResultMeta badge={badge} T={T} />
+          <TierUpGachaResultMeta badge={badge} T={T} again={{ visible: showAgain, onClick: handleAgain }} />
+        </div>
+      )}
+
+      {measureBadge && (
+        <div ref={measureEl} className={styles.measure} aria-hidden="true">
+          <TierUpGachaResultMeta badge={measureBadge} T={T} again={{ visible: false, onClick: () => {} }} />
         </div>
       )}
 
       <div ref={fxEl} className={styles.fx} aria-hidden="true" />
-
-      {badge && showAgain && (
-        <div className={[styles.again, fade].join(' ')} style={{ animation: `${styles.againIn} ${T(320)}ms ease-out both` }}>
-          <Button
-            variant="secondary"
-            surface="dark"
-            size="sm"
-            onClick={handleAgain}
-            style={{ minHeight: 44, borderColor: GACHA.againBorder }}
-          >
-            {d.combine.tierUp.again}
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
@@ -708,7 +718,16 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
  * 결과 배지 아래 글자 묶음 — 등급 칩, 배지 이름, 배지 설명(티켓 20261127_2225).
  * 설명은 응답의 `description`이고, 없거나 공백뿐이면 설명 줄을 그리지 않는다. 시험이 결과 상태를 만들지 않고 이 갈래를 보도록 따로 내보낸다.
  */
-export function TierUpGachaResultMeta({ badge, T }: { badge: TierUpGachaBadge; T: (ms: number) => number }) {
+export function TierUpGachaResultMeta({
+  badge,
+  T,
+  again,
+}: {
+  badge: TierUpGachaBadge
+  T: (ms: number) => number
+  /** 주면 묶음의 마지막 항목으로 «한 번 더»를 그린다. `visible`이 거짓이면 자리만 잡고 보이지 않는다(높이 실측·늦은 등장) */
+  again?: { visible: boolean; onClick: () => void }
+}) {
   const description = badge.description?.trim()
   return (
     <div className={styles.meta}>
@@ -731,6 +750,26 @@ export function TierUpGachaResultMeta({ badge, T }: { badge: TierUpGachaBadge; T
         >
           {description}
         </p>
+      )}
+      {again && (
+        <div
+          className={styles.metaItem}
+          style={{
+            visibility: again.visible ? 'visible' : 'hidden',
+            animation: again.visible ? `${styles.riseIn} ${T(320)}ms ease-out both` : undefined,
+          }}
+        >
+          <Button
+            variant="secondary"
+            surface="dark"
+            size="sm"
+            onClick={again.onClick}
+            tabIndex={again.visible ? undefined : -1}
+            style={{ minHeight: 44, borderColor: GACHA.againBorder }}
+          >
+            {d.combine.tierUp.again}
+          </Button>
+        </div>
       )}
     </div>
   )

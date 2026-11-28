@@ -260,10 +260,11 @@ describe('CombineClient 등급 UP 흐름', () => {
     return { render, panel, entry, nav, overlay, openTierUp, pick, openSheet, fill, flush, submitAll, setItems, stage, outcomes }
   }
 
-  /** 고른 개체 id — 등급이 고정된 시트(`locked`)의 «추가됨»(used) 셀이다 */
+  type SheetShape = { kind: string; locked: string | null; groups: { rarity: string; cells: { item: { id: string }; state: string }[] }[] }
+  /** 고른 개체 id — 시트 묶음에서 selected인 셀이다 */
   const chosenIds = (tree: ReactNode, screen: ReturnType<typeof createScreen>) => {
-    const sheet = screen.panel(tree).props.sheet as { kind: string; cells?: { item: { id: string }; state: string }[] }
-    return sheet.kind === 'locked' ? sheet.cells!.filter((cell) => cell.state === 'used').map((cell) => cell.item.id) : []
+    const sheet = screen.panel(tree).props.sheet as SheetShape
+    return sheet.kind === 'groups' ? sheet.groups.flatMap((g) => g.cells).filter((cell) => cell.state === 'selected').map((cell) => cell.item.id) : []
   }
   const countOf = (tree: ReactNode, screen: ReturnType<typeof createScreen>) => screen.panel(tree).props.count as number
 
@@ -383,15 +384,17 @@ describe('CombineClient 등급 UP 흐름', () => {
     expect((screen.panel(cleared).props.sheet as { kind: string }).kind).toBe('groups')
   })
 
-  it('첫 재료를 고르면 같은 등급만 남는다', () => {
+  it('첫 재료를 고르면 모든 등급 묶음이 보이고 같은 등급만 활성이다', () => {
     const screen = createScreen()
     screen.openTierUp()
     const tree = screen.fill(['r1'])
-    const sheet = screen.panel(tree).props.sheet as { kind: string; rarity: string; cells: { item: { id: string }; state: string }[] }
-    expect(sheet.kind).toBe('locked')
-    expect(sheet.rarity).toBe('rare')
-    expect(sheet.cells.map((cell) => cell.item.id)).toEqual(FULL)
-    expect(sheet.cells[0].state).toBe('used')
+    const sheet = screen.panel(tree).props.sheet as SheetShape
+    expect(sheet.kind).toBe('groups')
+    expect(sheet.locked).toBe('rare')
+    const rare = sheet.groups.find((g) => g.rarity === 'rare')!
+    expect(rare.cells.map((cell) => cell.item.id)).toEqual(FULL)
+    expect(rare.cells[0].state).toBe('selected')
+    for (const g of sheet.groups.filter((g) => g.rarity !== 'rare')) expect(g.cells.every((c) => c.state === 'inactive')).toBe(true)
   })
 
   it('다른 등급·6개 미만 묶음의 개체는 담기지 않는다', () => {
@@ -460,11 +463,12 @@ describe('CombineClient 등급 UP 흐름', () => {
       const screen = createScreen()
       screen.openTierUp()
       const tree = screen.fill(['m1'])
-      const sheet = screen.panel(tree).props.sheet as { kind: string; rarity: string; cells: { item: { id: string }; state: string }[] }
-      expect(sheet.kind).toBe('locked')
-      expect(sheet.rarity).toBe('mystic')
-      expect(sheet.cells.map((cell) => cell.item.id)).toEqual(MYSTIC_FULL)
-      expect(sheet.cells.filter((cell) => cell.state === 'active')).toHaveLength(5)
+      const sheet = screen.panel(tree).props.sheet as SheetShape
+      expect(sheet.kind).toBe('groups')
+      expect(sheet.locked).toBe('mystic')
+      const cells = sheet.groups.find((g) => g.rarity === 'mystic')!.cells
+      expect(cells.map((cell) => cell.item.id)).toEqual(MYSTIC_FULL)
+      expect(cells.filter((cell) => cell.state === 'active')).toHaveLength(5)
     })
 
     it('Mystic을 고른 뒤 다른 등급은 담기지 않는다', () => {
