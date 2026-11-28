@@ -7,7 +7,7 @@
  * - 서버 조회는 정리(settle) 뒤에 읽고, 실패하면 던지지 않고 null로 접히며, 기존 `Promise.all`에 합쳐진다.
  * - 막힘 안내는 이용 정지 중이면 없다(홈이 이미 읽는 정지 값을 쓴다).
  * - 카드를 감싸는 곳에 z-index가 없다(시트가 탭바에 가려진 2026-08-25 사고).
- * - `TodayStatusStrip`의 면은 바뀌지 않았다(2026-11-28 사용자 정정, 흰 면 유지).
+ * - `TodayStatusStrip`의 면은 블랙(Card `inverse` 톤)이고 챕터 게이지 카드 토큰을 쓰지 않는다(2026-11-28 사용자 결정으로 블랙 복구).
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/capsuleMount.test.ts"
  */
@@ -72,9 +72,10 @@ describe('홈 챕터 게이지 카드 위치', () => {
     expect(around).not.toMatch(/z-\d|z-\[|zIndex|z-index/)
   })
 
-  it('TodayStatusStrip은 흰 면 그대로다 — 반전·어두운 면을 넘기지 않는다', () => {
+  it('TodayStatusStrip은 블랙 면(inverse 톤)이고 챕터 게이지 카드 토큰과 섞이지 않는다', () => {
     expect(code).toContain('<TodayStatusStrip left={leftStatus} right={rightStatus} />')
     const strip = readFileSync(join(__dirname, 'TodayStatusStrip.tsx'), 'utf8')
-    expect(strip).not.toMatch(/tone="inverse"|background-inverse|chapter-card-bg/)
+    expect(strip).toMatch(/tone="inverse"/)
+    expect(strip).not.toMatch(/chapter-card-bg/)
   })
 })
