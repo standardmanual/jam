@@ -228,7 +228,7 @@ points/route.ts`)·포인트 결산(`lib/points/summary.ts`)·배지 엔진 내�
 ### 합친 연출과 챕터 오름 카드는 없다
 
 합친 연출(전체 화면 퍼짐·«캡슐이 가득 찼어요» 문구 화면·«획득한 배지 보기» 버튼)은 걷었고 `d.capsule.result` 문구도 지웠다. 캡슐이 열려도 알림 화면이 없고 열린 배지는 인벤토리에서 확인한다.
-챕터가 올라도 전체 화면 카드를 띄우지 않으므로 `d.chapter.rise`(윗줄 «축하해요!»·제목 «챕터 {chapterNo}에 올랐어요»·스크린리더 안내) 문구도 지웠다. 챕터 오름은 소식 화면의 «축하해요! 챕터 N에 올랐어요» 행(`d.notifications`의 chapter_up)과 프로필의 챕터 줄(`d.chapter.line`)로만 보인다.
+챕터가 올라도 전체 화면 카드를 띄우지 않으므로 `d.chapter.rise`(윗줄 «축하해요!»·제목 «챕터 {chapterNo}에 올랐어요»·스크린리더 안내) 문구도 지웠다. 챕터 오름은 소식 화면의 «축하해요! 챕터 N에 올랐어요» 행(`d.notifications`의 chapter_up)과 챕터 게이지 카드(홈·내 프로필)의 번호 변화로만 보인다. 다른 유저 프로필의 작은 글씨 줄(`d.chapter.line`)은 그대로 있다.
 
 `/api/capsule/unseen*` 라우트는 후속 정리 전까지 남아 있어 그 오류 문구(`d.capsule.unseenFailed`·`seenInvalid`·`seenFailed`)도 `ko.ts`에 남는다. 화면은 이 문구를 쓰지 않는다.
 
