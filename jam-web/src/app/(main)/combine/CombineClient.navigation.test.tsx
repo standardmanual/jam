@@ -89,8 +89,15 @@ vi.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 
+// 앱 안 히스토리 판정은 jsdom 없이 못 쓰므로 주소 모의의 index로 대신한다(티켓 20261128_1309)
+vi.mock('@/lib/appHistory', () => ({
+  goBackOrPush: (_router: unknown, href: string) => {
+    if (navMock.state.index > 0) navMock.back()
+    else navMock.push(href)
+  },
+}))
+
 import TopNav from '@/components/ui/TopNav'
-import { ListRow } from '@/components/ui/ListRow'
 import { TEST_RECIPE } from './testRecipeFixture'
 import { markOpenedByPush } from '@/lib/combine/navigation'
 import CombineClient, { type RecipeWithSlots } from './CombineClient'
@@ -131,9 +138,8 @@ function createScreen(options: { recipes?: RecipeWithSlots[] } = {}) {
   const topNav = (tree: ReactNode) => findAll(tree, (el) => el.type === TopNav)[0]
   const onBack = (tree: ReactNode) => topNav(tree).props.onBack as (() => void) | undefined
   const listRows = (tree: ReactNode) => findAll(tree, (el) => el.type === RecipeRewardRow)
-  const tierUpEntry = (tree: ReactNode) => findAll(tree, (el) => el.type === ListRow)[0]
   const tierUpPanel = (tree: ReactNode) => findAll(tree, (el) => el.type === TierUpPanel)[0]
-  return { render, runEffects, onBack, listRows, tierUpEntry, tierUpPanel }
+  return { render, runEffects, onBack, listRows, tierUpPanel }
 }
 
 describe('CombineClient — 레시피 상세·등급 올리기 개별 URL (티켓 20261110_1215)', () => {
@@ -204,10 +210,9 @@ describe('CombineClient — 레시피 상세·등급 올리기 개별 URL (티�
     expect(navMock.replace).not.toHaveBeenCalled()
   })
 
-  it('등급 올리기를 열면 /combine?view=tier-up으로 push하고, 뒤로가기는 back이다', () => {
+  it('인벤토리에서 /combine?view=tier-up으로 들어오면 등급 올리기가 열리고, 뒤로가기는 back이다', () => {
     const screen = createScreen()
-    ;(screen.tierUpEntry(screen.render()).props.onClick as () => void)()
-    expect(navMock.push).toHaveBeenCalledWith('/combine?view=tier-up')
+    navMock.push('/combine?view=tier-up')
 
     const panel = screen.render()
     expect(screen.tierUpPanel(panel)).toBeDefined()
@@ -216,13 +221,13 @@ describe('CombineClient — 레시피 상세·등급 올리기 개별 URL (티�
     expect(screen.tierUpPanel(screen.render())).toBeUndefined()
   })
 
-  it('?view=tier-up으로 바로 열면 등급 올리기가 열리고 뒤로가기는 replace("/combine")이다', () => {
+  it('?view=tier-up으로 바로 열면 등급 올리기가 열리고 뒤로가기는 /inventory로 간다', () => {
     navMock.openDirect('view=tier-up')
     const screen = createScreen()
     const tree = screen.render()
     expect(screen.tierUpPanel(tree)).toBeDefined()
     screen.onBack(tree)!()
-    expect(navMock.replace).toHaveBeenCalledWith('/combine')
+    expect(navMock.push).toHaveBeenCalledWith('/inventory')
     expect(navMock.back).not.toHaveBeenCalled()
   })
 

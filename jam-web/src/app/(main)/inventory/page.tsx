@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import ProgressCountBar from '@/components/ui/ProgressCountBar'
 import { EmptyState } from '@/components/ui/EmptyState'
 import TopNav from '@/components/ui/TopNav'
-import { MixingBowlIcon, ArrowDownIcon } from '@/components/ui/icons'
+import { MixingBowlIcon, ArrowDownIcon, ArrowUpIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 type InventoryItemWithBadge = InventoryItemRow & {
@@ -83,10 +83,15 @@ export default async function InventoryPage() {
         {/* 20261110: 믹스하기 버튼을 진행도 바 아래로 옮겼다(사용자 지시, 버튼 색은 그대로).
             같은 날 가로 중앙으로 옮기고 레시피 상세의 믹스하기 버튼과 같은 가차머신 아이콘을 글자 앞에 붙였다(사용자 지시, 티켓 20261110_1757).
             20261114: 버튼이 페이지 폭을 가득 채우도록 늘렸다(사용자 지시, 티켓 20261114_1544) */}
-        <div className="mt-3">
-          <Button href="/combine" variant="secondary" fullWidth className="bg-surface!">
+        {/* 20261128_1309: 등급 UP 입구를 믹스 버튼 오른쪽으로 옮겼다(사용자 지시) — 두 버튼은 같은 폭 */}
+        <div className="mt-3 flex gap-2">
+          <Button href="/combine" variant="secondary" fullWidth className="bg-surface! flex-1 min-w-0 whitespace-nowrap">
             <MixingBowlIcon className="w-5 h-5 shrink-0" />
             {d.inventory.combineButton}
+          </Button>
+          <Button href="/combine?view=tier-up" variant="secondary" fullWidth className="bg-surface! flex-1 min-w-0 whitespace-nowrap">
+            <ArrowUpIcon className="w-5 h-5 shrink-0" />
+            {d.combine.tierUp.title}
           </Button>
         </div>
 

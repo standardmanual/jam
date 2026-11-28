@@ -115,7 +115,7 @@ export const SecondaryCompact: Story = {
   args: { variant: 'secondary', size: 'xs', children: d.chapterGauge.blocked.cta },
 };
 
-/** 인벤토리의 «믹스하기» 링크 버튼 (앱 안 이동) */
+/** 인벤토리의 «믹스» 링크 버튼 (앱 안 이동) */
 export const SecondaryInternalLink: Story = {
   name: '보조 버튼 · 앱 안 링크',
   args: { variant: 'secondary', fullWidth: true, href: '/combine', children: d.inventory.combineButton },

@@ -232,3 +232,18 @@ describe('인벤토리 페이지 — 슬롯 사용량 표시', () => {
     expect(html).not.toContain('href="/drops"')
   })
 })
+
+describe('인벤토리 페이지 — 믹스·등급 UP 버튼 줄 (티켓 20261128_1309)', () => {
+  it('«믹스»와 «등급 UP» 링크가 한 줄에 믹스 → 등급 UP 순서로 놓인다', async () => {
+    state.inventory = { id: 'inv-1', used_slots: 3, max_slots: 50, inventory_items: [inventoryItem('item-ok', OK_BADGE)] }
+    const html = await render()
+    const mix = html.indexOf('href="/combine"')
+    const tierUp = html.indexOf('href="/combine?view=tier-up"')
+    expect(mix).toBeGreaterThan(-1)
+    expect(tierUp).toBeGreaterThan(mix)
+    expect(html).toContain(`${d.inventory.combineButton}</a>`)
+    expect(d.inventory.combineButton).toBe('믹스')
+    expect(html).toContain(`${d.combine.tierUp.title}</a>`)
+    expect(html).not.toContain('믹스하기')
+  })
+})

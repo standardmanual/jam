@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
-import { ListRow } from '@/components/ui/ListRow'
+import { goBackOrPush } from '@/lib/appHistory'
 import { useToast } from '@/components/ui/Toast'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
@@ -56,7 +56,6 @@ import {
   recipeHref,
   recipeOpenMethod,
   resolveCombineView,
-  tierUpHref,
   wasOpenedByPush,
 } from '@/lib/combine/navigation'
 // 타입만 가져온다 — `lib/combine/pending.ts`는 서버 전용이라 값을 가져오면 번들링에서 터진다.
@@ -524,17 +523,11 @@ export default function CombineClient({
     })
   }
 
-  function openTierUp() {
-    markOpenedByPush(true)
-    router.push(tierUpHref())
-    setTierUpSlots(emptyTierUpSlots())
-    setResult(null)
-  }
-
   function closeTierUp() {
     setTierUpSlots(emptyTierUpSlots())
     setTierUpSheetOpen(false)
-    closeToList()
+    // 입구가 인벤토리로 옮겨졌다(티켓 20261128_1309) — 앱 안에서 왔으면 뒤로, 주소로 바로 열렸으면 인벤토리로 간다
+    goBackOrPush(router, '/inventory')
   }
 
   function openTierUpSheet() {
@@ -965,14 +958,6 @@ export default function CombineClient({
         />
       ) : !selectedRecipe ? (
         <>
-          {/*
-            등급 올리기 입구(티켓 20261022_2119 3회, 채원 판정) — 레시피가 아니라서 검색 결과에 걸리지 않게 검색창 위에 두고, 레시피 행의
-            lead(아이콘 칸)와 슬롯 개수 칩을 쓰지 않는다. 받지 않은 결과가 있어도 눌린다(막는 것은 제출 버튼뿐).
-          */}
-          <div className="px-4 pt-4">
-            <ListRow title={d.combine.tierUp.title} meta={d.combine.tierUp.entrySubtitle} metaLines={2} chevron onClick={openTierUp} />
-          </div>
-
           {/* 검색 */}
           <div className="px-4 pt-4 pb-4">
             <Input
