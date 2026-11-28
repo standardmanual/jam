@@ -39,7 +39,7 @@ describe('홈 인사말', () => {
 
 describe('프로필 목록의 유저 검색창', () => {
   it('내 프로필에서만 검색창을 만든다', () => {
-    expect(profile).toMatch(/const searchLink = isOwnProfile \? <UserSearchBar size="compact" \/> : null/)
+    expect(profile).toMatch(/const searchLink = isOwnProfile \? <UserSearchBar size="mini" \/> : null/)
     expect(profile).not.toMatch(/href="\/search"/)
   })
 

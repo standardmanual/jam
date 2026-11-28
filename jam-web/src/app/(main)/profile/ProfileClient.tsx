@@ -445,7 +445,7 @@ export default function ProfileClient({
     // 유저 검색창 (티켓 20261128_1700) — 홈 인사말 줄에서 옮겨 왔다. 내 프로필의 팔로워·팔로잉 목록 첫 줄 위에만 둔다.
     // 입력칸 + «검색» 버튼이고, 제출하면 /search?q= 검색 결과 페이지로 간다(UserSearchBar가 이동한다).
     // 목록이 비어 있어도 그린다: 홈에서 검색 진입이 없어져, 팔로우할 사람을 찾는 길이 여기뿐이다.
-    const searchLink = isOwnProfile ? <UserSearchBar size="compact" /> : null
+    const searchLink = isOwnProfile ? <UserSearchBar size="mini" /> : null
     if (listData.length === 0) {
       return (
         <div className="flex flex-col gap-2">
