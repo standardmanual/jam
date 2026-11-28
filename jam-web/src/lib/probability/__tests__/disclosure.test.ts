@@ -101,9 +101,9 @@ describe('정상 값 — 운영 로직 5.4·6.7절 표와 같은 표 행', () =>
     const result = await loadProbabilityDisclosure(fakeClient(ALL_OK).client)
     const reward = policyOf(result).chapterReward
     expect(reward.counts).toEqual([
-      { label: '챕터 1~3을 마치면', value: '3개' },
-      { label: '챕터 4~6을 마치면', value: '4개' },
-      { label: '챕터 7~9를 마치면', value: '5개' },
+      { label: '챕터 1~3을 마칠 때마다', value: '3개' },
+      { label: '챕터 4~6을 마칠 때마다', value: '4개' },
+      { label: '챕터 7~9를 마칠 때마다', value: '5개' },
       { label: '다른 트라이브의 것일 확률', value: '아이템 배지마다 20%' },
       // 잠김은 동기화와 챕터 오름 보상이 한 값이다(jam_policy.locked_roll_probability)
       { label: '잠긴 채 나올 확률', value: '25%' },
@@ -215,8 +215,8 @@ describe('값은 읽은 행에서 만든다 — 설정을 바꾸면 표가 따�
     expect(asMap(sync.rarity)).toEqual({ Common: '60%', Rare: '25%', Epic: '10%', Mystic: '5%' })
     // 개수 줄은 챕터 정의 행에서 만든다: 1은 2개, 2~3은 3개, 보상이 없는(NULL) 챕터 4는 줄이 없다
     expect(asMap(chapterReward.counts)).toEqual({
-      '챕터 1을 마치면': '2개',
-      '챕터 2~3을 마치면': '3개',
+      '챕터 1을 마칠 때마다': '2개',
+      '챕터 2~3을 마칠 때마다': '3개',
       '다른 트라이브의 것일 확률': '아이템 배지마다 50%',
       '잠긴 채 나올 확률': '10%',
     })

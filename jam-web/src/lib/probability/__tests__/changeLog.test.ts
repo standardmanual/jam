@@ -3,8 +3,8 @@
  *
  * 고정하는 것:
  * - 칸 이름 표가 `JAM_COLUMNS`·`CAPSULE_COLUMNS`·`CHAPTER_REWARD_COLUMNS`·`AMBIENT_COLUMNS` 30칸과 빠짐없이 맞물린다(칸이 늘면 이 시험이 먼저 깨진다).
- * - 옛 캡슐 구역(`section_key = 'capsule'`) 이력 행은 «캡슐» 없이 «이전 보상» 이름으로 읽히고 값은 그대로다. 어느 문장에도 «캡슐»이 없다(티켓 20261127_1738 C8).
- * - 보상이 바뀐 사실 한 줄(`section_key = 'chapter_reward_switch'`, 글자 값 칸)이 «받는 보상을 이전 보상에서 챕터 오름 보상으로 바꿨어요»로 읽힌다.
+ * - 옛 캡슐 구역(`section_key = 'capsule'`) 이력 행은 «캡슐» 없이 «이전 잼 보상» 이름으로 읽히고 값은 그대로다. 어느 문장에도 «캡슐»이 없다(티켓 20261127_1738 C8).
+ * - 보상이 바뀐 사실 한 줄(`section_key = 'chapter_reward_switch'`, 글자 값 칸)이 «아이템 배지를 받는 보상을 이전 잼 보상에서 챕터 오름 보상으로 바꿨어요»로 읽힌다.
  * - 30칸 모두의 문장(이름, 단위, 조사 «을/를»·«로/으로»)을 칸마다 기대 문장으로 고정한다. 값 서식은 표 위쪽 숫자와 같다(84%, 20%, 0%). 시스템 드랍은 이력 값이 퍼센트(33.3)다.
  * - 한 번의 저장은 칸이 여럿이어도 한 줄이고, 쉼표로 잇고 «바꿨어요»는 끝에 한 번이다. 칸 순서는 칸 목록 순서다.
  * - 표에 없는 칸은 내부 이름을 보이지 않는다: 전부 모르면 일반 문장, 일부만 모르면 끝에 «그 밖의 값도».
@@ -72,7 +72,7 @@ describe('칸 이름 표 — 30칸과 맞물린다', () => {
       ...Object.values(AMBIENT_COLUMN_LABELS),
     ].map((label) => label.name)
     expect(new Set(names).size).toBe(30)
-    // 어느 이름에도 «캡슐»이 없다 — 옛 캡슐 이력은 «이전 보상»으로 읽힌다
+    // 어느 이름에도 «캡슐»이 없다 — 옛 캡슐 이력은 «이전 잼 보상»으로 읽힌다
     for (const name of names) expect(name, name).not.toContain('캡슐')
     for (const name of names) {
       expect(name, name).not.toMatch(/[_:]/)
@@ -80,9 +80,9 @@ describe('칸 이름 표 — 30칸과 맞물린다', () => {
       // 조사를 받침으로 가르므로 이름은 한글 음절로 끝나야 한다
       expect(name, name).toMatch(/[가-힣]$/)
     }
-    // «Common 확률»이 동기화·이전 보상·챕터 오름 보상·시스템 드랍에 모두 있으므로 구역을 앞에 붙인다
+    // «Common 확률»이 동기화·이전 잼 보상·챕터 오름 보상·시스템 드랍에 모두 있으므로 구역을 앞에 붙인다
     expect(JAM_COLUMN_LABELS.sync_rarity_common.name).toBe('동기화 Common 확률')
-    expect(CAPSULE_COLUMN_LABELS.rarity_common.name).toBe('이전 보상 Common 확률')
+    expect(CAPSULE_COLUMN_LABELS.rarity_common.name).toBe('이전 잼 보상 Common 확률')
     expect(CHAPTER_REWARD_COLUMN_LABELS.rarity_common.name).toBe('챕터 오름 보상 Common 확률')
     expect(AMBIENT_COLUMN_LABELS.rarity_common.name).toBe('시스템 드랍 Common 확률')
   })
@@ -109,17 +109,17 @@ describe('문장 — 30칸을 칸마다 고정한다(이름, 단위, 조사)', (
     [SYNC_SECTION_ID, 'sync_rarity_rare', 13, 14, '동기화 Rare 확률을 13%에서 14%로 바꿨어요'],
     [SYNC_SECTION_ID, 'sync_rarity_epic', 2.5, 3, '동기화 Epic 확률을 2.5%에서 3%로 바꿨어요'],
     [SYNC_SECTION_ID, 'sync_rarity_mystic', 0.5, 0, '동기화 Mystic 확률을 0.5%에서 0%로 바꿨어요'],
-    [SYNC_SECTION_ID, 'common_streak_threshold', 10, 8, '동기화와 챕터 오름 보상의 Common 연속 보정 횟수를 10번에서 8번으로 바꿨어요'],
-    [SYNC_SECTION_ID, 'locked_roll_probability', 0.25, 0.3, '동기화와 챕터 오름 보상의 잠긴 채 나올 확률을 25%에서 30%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'guaranteed_count', 1, 2, '이전 보상 확정 개수를 1개에서 2개로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'bonus_count', 1, 2, '이전 보상 보너스 개수를 1개에서 2개로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'bonus_probability', 0.2, 0.35, '이전 보상 보너스 확률을 20%에서 35%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'other_tribe_probability', 0.2, 0.1, '이전 보상 다른 트라이브 확률을 20%에서 10%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'rarity_common', 70, 69, '이전 보상 Common 확률을 70%에서 69%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'rarity_rare', 22, 23, '이전 보상 Rare 확률을 22%에서 23%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'rarity_epic', 6, 5, '이전 보상 Epic 확률을 6%에서 5%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'rarity_mystic', 2, 3, '이전 보상 Mystic 확률을 2%에서 3%로 바꿨어요'],
-    [CAPSULE_SECTION_ID, 'pity_epic_threshold', 15, 12, '이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요'],
+    [SYNC_SECTION_ID, 'common_streak_threshold', 10, 8, '동기화와 보상 공통 Common 연속 보정 횟수를 10번에서 8번으로 바꿨어요'],
+    [SYNC_SECTION_ID, 'locked_roll_probability', 0.25, 0.3, '동기화와 보상 공통 잠긴 채 나올 확률을 25%에서 30%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'guaranteed_count', 1, 2, '이전 잼 보상 확정 개수를 1개에서 2개로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'bonus_count', 1, 2, '이전 잼 보상 보너스 개수를 1개에서 2개로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'bonus_probability', 0.2, 0.35, '이전 잼 보상 보너스 확률을 20%에서 35%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'other_tribe_probability', 0.2, 0.1, '이전 잼 보상 다른 트라이브 확률을 20%에서 10%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'rarity_common', 70, 69, '이전 잼 보상 Common 확률을 70%에서 69%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'rarity_rare', 22, 23, '이전 잼 보상 Rare 확률을 22%에서 23%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'rarity_epic', 6, 5, '이전 잼 보상 Epic 확률을 6%에서 5%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'rarity_mystic', 2, 3, '이전 잼 보상 Mystic 확률을 2%에서 3%로 바꿨어요'],
+    [CAPSULE_SECTION_ID, 'pity_epic_threshold', 15, 12, '이전 잼 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요'],
     [CHAPTER_REWARD_SECTION_KEY, 'other_tribe_probability', 0.2, 0.3, '챕터 오름 보상 다른 트라이브 확률을 20%에서 30%로 바꿨어요'],
     [CHAPTER_REWARD_SECTION_KEY, 'rarity_common', 30, 25, '챕터 오름 보상 Common 확률을 30%에서 25%로 바꿨어요'],
     [CHAPTER_REWARD_SECTION_KEY, 'rarity_rare', 40, 45, '챕터 오름 보상 Rare 확률을 40%에서 45%로 바꿨어요'],
@@ -145,20 +145,20 @@ describe('문장 — 30칸을 칸마다 고정한다(이름, 단위, 조사)', (
     expect(describeChanges(section, [change(field, from, to)])).toBe(expected)
   })
 
-  it('옛 캡슐 구역 행은 «캡슐» 없이 «이전 보상»으로 읽히고 값은 그대로다(DB 행은 그대로)', () => {
+  it('옛 캡슐 구역 행은 «캡슐» 없이 «이전 잼 보상»으로 읽히고 값은 그대로다(DB 행은 그대로)', () => {
     const sentence = describeChanges(CAPSULE_SECTION_ID, CAPSULE_COLUMNS.map((field) => change(field, 5, 7)))
     expect(sentence).not.toContain('캡슐')
-    expect(sentence).toContain('이전 보상 확정 개수를 5개에서 7개로')
-    expect(sentence).toContain('이전 보상 Epic 보정 횟수를 5번에서 7번으로')
+    expect(sentence).toContain('이전 잼 보상 확정 개수를 5개에서 7개로')
+    expect(sentence).toContain('이전 잼 보상 Epic 보정 횟수를 5번에서 7번으로')
   })
 
   it('0%인 값을 지우지 않는다(전 값이든 후 값이든)', () => {
-    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_probability', 0.2, 0)])).toBe('이전 보상 보너스 확률을 20%에서 0%로 바꿨어요')
-    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_count', 0, 1)])).toBe('이전 보상 보너스 개수를 0개에서 1개로 바꿨어요')
+    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_probability', 0.2, 0)])).toBe('이전 잼 보상 보너스 확률을 20%에서 0%로 바꿨어요')
+    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_count', 0, 1)])).toBe('이전 잼 보상 보너스 개수를 0개에서 1개로 바꿨어요')
   })
 
   it('부동소수 오차를 정리한다(표 위쪽 숫자와 같은 모양)', () => {
-    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_probability', 0.07, 0.29)])).toBe('이전 보상 보너스 확률을 7%에서 29%로 바꿨어요')
+    expect(describeChanges(CAPSULE_SECTION_ID, [change('bonus_probability', 0.07, 0.29)])).toBe('이전 잼 보상 보너스 확률을 7%에서 29%로 바꿨어요')
   })
 
   it('조사는 이름 끝 글자와 값 끝 글자의 받침으로 가른다', () => {
@@ -190,7 +190,7 @@ describe('한 번의 저장 — 칸이 여럿이어도 한 문장', () => {
       change('guaranteed_count', 1, 2),
     ])
     expect(sentence).toBe(
-      '이전 보상 확정 개수를 1개에서 2개로, 이전 보상 Common 확률을 70%에서 69%로, 이전 보상 Mystic 확률을 2%에서 3%로, 이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요'
+      '이전 잼 보상 확정 개수를 1개에서 2개로, 이전 잼 보상 Common 확률을 70%에서 69%로, 이전 잼 보상 Mystic 확률을 2%에서 3%로, 이전 잼 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요'
     )
   })
 
@@ -210,7 +210,7 @@ describe('표에 없는 칸 — 내부 이름을 보이지 않는다', () => {
 
   it('일부만 모르면 아는 칸 뒤에 «그 밖의 값도»를 붙인다', () => {
     expect(describeChanges(CAPSULE_SECTION_ID, [change('rarity_common', 70, 69), change('chapter:3', 100, 120)])).toBe(
-      '이전 보상 Common 확률을 70%에서 69%로, 그 밖의 값도 바꿨어요'
+      '이전 잼 보상 Common 확률을 70%에서 69%로, 그 밖의 값도 바꿨어요'
     )
     // 모르는 칸이 여럿이어도 «그 밖의 값도»는 한 번이다
     const twoUnknown = describeChanges(CAPSULE_SECTION_ID, [
@@ -254,9 +254,9 @@ describe('표에 없는 칸 — 내부 이름을 보이지 않는다', () => {
 })
 
 describe('보상이 바뀐 사실 한 줄 — 글자 값 칸', () => {
-  it('번호 0 → 1이 «이전 보상에서 챕터 오름 보상으로»로 읽히고 «캡슐»이 없다', () => {
+  it('번호 0 → 1이 «이전 잼 보상에서 챕터 오름 보상으로»로 읽히고 «캡슐»이 없다', () => {
     const sentence = describeChanges(REWARD_SWITCH_SECTION_KEY, [change(REWARD_SWITCH_FIELD, 0, 1)])
-    expect(sentence).toBe('받는 보상을 이전 보상에서 챕터 오름 보상으로 바꿨어요')
+    expect(sentence).toBe('아이템 배지를 받는 보상을 이전 잼 보상에서 챕터 오름 보상으로 바꿨어요')
     expect(sentence).not.toContain('캡슐')
   })
 
@@ -269,7 +269,7 @@ describe('보상이 바뀐 사실 한 줄 — 글자 값 칸', () => {
     const rows = buildChangeLogRows([
       { section_key: REWARD_SWITCH_SECTION_KEY, changes: [{ field: 'reward_system', from: 0, to: 1 }], created_at: '2026-12-01T01:00:00Z' },
     ])
-    expect(rows).toEqual([{ label: '2026년 12월 1일', value: '받는 보상을 이전 보상에서 챕터 오름 보상으로 바꿨어요' }])
+    expect(rows).toEqual([{ label: '2026년 12월 1일', value: '아이템 배지를 받는 보상을 이전 잼 보상에서 챕터 오름 보상으로 바꿨어요' }])
   })
 })
 
@@ -323,7 +323,7 @@ describe('buildChangeLogRows — 이력 행 → 표 한 줄', () => {
     expect(rows).toEqual([
       { label: '2026년 10월 23일', value: '동기화 Common 확률을 84%에서 83%로 바꿨어요' },
       { label: '2026년 10월 23일', value: '동기화 Common 확률을 85%에서 84%로 바꿨어요' },
-      { label: '2026년 10월 22일', value: '이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' },
+      { label: '2026년 10월 22일', value: '이전 잼 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' },
     ])
   })
 
@@ -368,7 +368,7 @@ describe('loadProbabilityChangeLog — 읽기', () => {
       ok: true,
       data: [
         { label: '2026년 10월 23일', value: '동기화 Common 확률을 84%에서 83%로, 동기화 Rare 확률을 12%에서 13%로 바꿨어요' },
-        { label: '2026년 10월 22일', value: '이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' },
+        { label: '2026년 10월 22일', value: '이전 잼 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' },
       ],
     })
     // 확률 안내에 반영되지 않는 칸의 변경(false 행)은 어디에도 나오지 않는다

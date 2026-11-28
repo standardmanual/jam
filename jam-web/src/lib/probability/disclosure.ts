@@ -257,7 +257,7 @@ function chapterRewardCountRows(counts: readonly ChapterRewardCount[]): Disclosu
   }
   return groups.map(({ from, to, count }) => {
     const range = from === to ? `${from}` : `${from}~${to}`
-    return { label: `챕터 ${range}${objectParticleOfNumber(to)} 마치면`, value: `${count}개` }
+    return { label: `챕터 ${range}${objectParticleOfNumber(to)} 마칠 때마다`, value: `${count}개` }
   })
 }
 

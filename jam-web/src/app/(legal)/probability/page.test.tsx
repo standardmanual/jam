@@ -3,7 +3,7 @@
  *
  * C8(티켓 20261127_1738): «캡슐» 구역이 «챕터 오름 보상» 구역으로 바뀌었다. 구역 제목과 화면 어디에도 «캡슐»이 없고, 값은 `chapter_reward_policy`와
  * `chapter_definitions.reward_count`에서 읽으며(A3 확정 값 Common 30·Rare 40·Epic 22·Mystic 8, 다른 트라이브 20%, 개수 3·4·5), 옛 `section_key = 'capsule'` 이력 행은
- * «이전 보상» 이름으로 보인다. 챕터 보상 설정을 못 읽으면 그 구역만이 아니라 정책 세 섹션(동기화·챕터 오름 보상·보정 장치)이 함께 안내로 바뀌고 나머지는 그대로다.
+ * «이전 잼 보상» 이름으로 보인다. 챕터 보상 설정을 못 읽으면 그 구역만이 아니라 정책 세 섹션(동기화·챕터 오름 보상·보정 장치)이 함께 안내로 바뀌고 나머지는 그대로다.
  *
  * 저장소에 jsdom·testing-library가 없어 서버 렌더(`renderToStaticMarkup`)로 고정한다. 읽기 모듈(`lib/probability/disclosure.ts`)은 mock하지 않고
  * `createServiceClient`만 가짜 클라이언트로 바꿔서, 설정 행 → 표 행 → 화면까지 한 줄로 시험한다. 공용 DB는 부르지 않는다.
@@ -130,11 +130,11 @@ describe('정상 — 구성과 값', () => {
   it('챕터 오름 보상: A3 확정 값(개수 3·4·5, 다른 트라이브 20%, 등급 30·40·22·8)이 표에 그대로 있고 «캡슐»이 없다', async () => {
     const section = sectionOf(await render(), '챕터 오름 보상')
     const text = textOf(section)
-    expect(text).toContain('챕터를 마치면 받아요.')
+    expect(text).toContain('챕터를 마쳐 다음 챕터에 오르면 아이템 배지를 받아요.')
     expect(text).toContain('개수, 소속, 잠김')
-    expect(text).toContain('챕터 1~3을 마치면3개')
-    expect(text).toContain('챕터 4~6을 마치면4개')
-    expect(text).toContain('챕터 7~9를 마치면5개')
+    expect(text).toContain('챕터 1~3을 마칠 때마다3개')
+    expect(text).toContain('챕터 4~6을 마칠 때마다4개')
+    expect(text).toContain('챕터 7~9를 마칠 때마다5개')
     expect(text).toContain('다른 트라이브의 것일 확률아이템 배지마다 20%')
     expect(text).toContain('잠긴 채 나올 확률25%')
     const tribe = '다른 트라이브의 것이 나올 때는 받을 수 있는 아이템 배지가 있는 다른 트라이브 가운데 무작위로 골라요.'
@@ -221,7 +221,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
 
   // 채원 판정의 배치도: 이력 두 줄 + 맨 아래 상수 줄
   const HISTORY = [
-    // 옛 «캡슐» 설정의 이력 행(DB 행은 그대로) — 화면에는 «캡슐» 없이 «이전 보상»으로 보인다
+    // 옛 «캡슐» 설정의 이력 행(DB 행은 그대로) — 화면에는 «캡슐» 없이 «이전 잼 보상»으로 보인다
     historyRow('2026-10-22T05:00:00Z', 'capsule', [change('pity_epic_threshold', 15, 12)], {
       note: '내부 메모: 공지는 슬랙에 올림',
       changed_by: '0b8a3f2e-aaaa-bbbb-cccc-111122223333',
@@ -238,7 +238,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
     const text = textOf(section)
     expect(text).toContain(
       '2026년 10월 23일동기화 Common 확률을 84%에서 83%로, 동기화 Rare 확률을 12%에서 13%로 바꿨어요' +
-        '2026년 10월 22일이전 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' +
+        '2026년 10월 22일이전 잼 보상 Epic 보정 횟수를 15번에서 12번으로 바꿨어요' +
         '2026년 10월 21일확률 안내를 처음 열었어요'
     )
     expect(count(section, '<tr')).toBe(3)
@@ -272,7 +272,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
       ]),
     })
     const text = textOf(sectionOf(html, '바뀐 날짜'))
-    expect(text).toContain('2026년 10월 23일이전 보상 Common 확률을 70%에서 69%로 바꿨어요2026년 10월 23일이전 보상 Common 확률을 71%에서 70%로 바꿨어요')
+    expect(text).toContain('2026년 10월 23일이전 잼 보상 Common 확률을 70%에서 69%로 바꿨어요2026년 10월 23일이전 잼 보상 Common 확률을 71%에서 70%로 바꿨어요')
   })
 
   it('값 0을 지우지 않고, 표에 없는 칸은 내부 이름 없이 일반 문장이다', async () => {
@@ -286,7 +286,7 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
     const section = sectionOf(html, '바뀐 날짜')
     const text = textOf(section)
     expect(text).toContain('2026년 10월 23일확률 안내의 값을 바꿨어요')
-    expect(text).toContain('이전 보상 보너스 확률을 20%에서 0%로, 그 밖의 값도 바꿨어요')
+    expect(text).toContain('이전 잼 보상 보너스 확률을 20%에서 0%로, 그 밖의 값도 바꿨어요')
     expect(text).not.toContain('캡슐')
     expect(section).not.toMatch(/pre_quest|chapter|bonus_probability/)
   })
@@ -301,9 +301,9 @@ describe('바뀐 날짜 — 변경 이력에서 읽는다', () => {
       ]),
     })
     const text = textOf(sectionOf(html, '바뀐 날짜'))
-    expect(text).toContain('2026년 12월 1일받는 보상을 이전 보상에서 챕터 오름 보상으로 바꿨어요')
+    expect(text).toContain('2026년 12월 1일아이템 배지를 받는 보상을 이전 잼 보상에서 챕터 오름 보상으로 바꿨어요')
     expect(text).toContain('2026년 12월 2일챕터 오름 보상 Common 확률을 30%에서 25%로 바꿨어요')
-    expect(text).toContain('2026년 10월 22일이전 보상 Common 확률을 70%에서 69%로 바꿨어요')
+    expect(text).toContain('2026년 10월 22일이전 잼 보상 Common 확률을 70%에서 69%로 바꿨어요')
     expect(text).not.toContain('캡슐')
     expect(html).not.toMatch(/reward_system|chapter_reward_switch/)
   })
@@ -390,8 +390,8 @@ describe('값은 읽은 설정에서 만든다', () => {
     const text = textOf(html)
     expect(text).toContain('확정으로 받는 개수3개')
     expect(text).toMatch(/Common60%Rare25%Epic10%Mystic5%/)
-    expect(text).toContain('챕터 1을 마치면2개')
-    expect(text).toContain('챕터 2~3을 마치면6개')
+    expect(text).toContain('챕터 1을 마칠 때마다2개')
+    expect(text).toContain('챕터 2~3을 마칠 때마다6개')
     expect(text).toContain('다른 트라이브의 것일 확률아이템 배지마다 35%')
     expect(text).toMatch(/Common50%Rare30%Epic15%Mystic5%/)
     expect(text).toMatch(/Common60%Rare30%Epic7%Mystic3%/)
@@ -399,7 +399,7 @@ describe('값은 읽은 설정에서 만든다', () => {
     expect(text).toContain('Common 아이템 배지가 7번 이어서')
     // 바뀌기 전 값은 남지 않는다
     expect(text).not.toContain('84%')
-    expect(text).not.toContain('챕터 4~6을 마치면')
+    expect(text).not.toContain('챕터 4~6을 마칠 때마다')
     expect(text).not.toContain('아이템 배지마다 20%')
     expect(text).not.toContain('15번 받는 동안')
   })

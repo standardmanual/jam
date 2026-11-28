@@ -198,7 +198,7 @@ function SyncSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> })
 function ChapterRewardSection({ policy }: { policy: DisclosureResult<PolicyDisclosure> }) {
   return (
     <Section title="챕터 오름 보상">
-      <P>챕터를 마치면 받아요.</P>
+      <P>챕터를 마쳐 다음 챕터에 오르면 아이템 배지를 받아요.</P>
       {policy.ok ? (
         <>
           <TableBlock
@@ -303,7 +303,7 @@ function ChangeLogSection({ changeLog }: { changeLog: DisclosureResult<Disclosur
   const rows = changeLog.ok ? [...changeLog.data, FIRST_OPENED_ROW] : [FIRST_OPENED_ROW]
   return (
     <Section title="바뀐 날짜">
-      <P>확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요.</P>
+      <P>확률 안내에 적힌 값을 바꾸면 바뀐 날짜와 내용을 여기에 적어요. «이전 잼 보상»은 잼을 모아 받던 지난 보상이에요.</P>
       <ProbabilityTable caption="확률 안내가 바뀐 날짜와 내용" rows={rows} nowrapLabel />
       {!changeLog.ok && <Unavailable />}
     </Section>

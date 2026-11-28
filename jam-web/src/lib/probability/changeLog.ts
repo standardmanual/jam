@@ -10,7 +10,7 @@
  * - 날짜는 `created_at`을 한국 표준시로 바꿔 «2026년 10월 23일»로 쓴다(`capsule_policy.updated_at`은 갱신 트리거가 없어 날짜로 쓸 수 없다).
  *
  * 옛 «캡슐» 설정의 이력(`section_key = 'capsule'`, 어드민에서 저장하던 행)은 DB에 그대로 두고 **«캡슐»이 없는 이름으로 바꿔 보인다**(티켓 20261127_1738 사용자 결정).
- * 지난 설정임이 읽히도록 «이전 보상» 계열 이름을 쓰고 값은 바꾸지 않는다. 지금 보상(`section_key = 'chapter_reward'`)의 이력은 «챕터 오름 보상» 이름을 쓴다.
+ * 지난 설정임이 읽히도록 «이전 잼 보상» 계열 이름을 쓰고 값은 바꾸지 않는다. 지금 보상(`section_key = 'chapter_reward'`)의 이력은 «챕터 오름 보상» 이름을 쓴다.
  * 보상이 바뀐 사실 한 줄(`section_key = 'chapter_reward_switch'`)은 전환 배포 때 SQL로 넣는다(`369_probability_chapter_reward_switch_log.sql`).
  *
  * 문구 틀은 «{이름}{을/를} {전}에서 {후}{로/으로} 바꿨어요»이고, 칸이 여럿이면 쉼표로 잇고 «바꿨어요»는 마지막에 한 번만 쓴다.
@@ -70,24 +70,24 @@ export const JAM_COLUMN_LABELS: Record<(typeof JAM_COLUMNS)[number], ColumnLabel
   sync_rarity_rare: percent('동기화 Rare 확률'),
   sync_rarity_epic: percent('동기화 Epic 확률'),
   sync_rarity_mystic: percent('동기화 Mystic 확률'),
-  common_streak_threshold: count('동기화와 챕터 오름 보상의 Common 연속 보정 횟수', '번'),
-  locked_roll_probability: fraction('동기화와 챕터 오름 보상의 잠긴 채 나올 확률'),
+  common_streak_threshold: count('동기화와 보상 공통 Common 연속 보정 횟수', '번'),
+  locked_roll_probability: fraction('동기화와 보상 공통 잠긴 채 나올 확률'),
 }
 
 /**
- * 옛 캡슐 구역(`capsule_policy` 칸, `section_key = 'capsule'`)의 칸 이름. 지금은 쓰지 않는 지난 설정이라 «캡슐» 대신 «이전 보상»으로 적는다.
+ * 옛 캡슐 구역(`capsule_policy` 칸, `section_key = 'capsule'`)의 칸 이름. 지금은 쓰지 않는 지난 설정이라 «캡슐» 대신 «이전 잼 보상»으로 적는다.
  * 값은 이력에 남은 그대로이고 이름만 바꿔 보인다. 새 이력 행은 더 생기지 않는다(어드민 캡슐 구역은 D단계에서 지운다).
  */
 export const CAPSULE_COLUMN_LABELS: Record<(typeof CAPSULE_COLUMNS)[number], ColumnLabel> = {
-  guaranteed_count: count('이전 보상 확정 개수', '개'),
-  bonus_count: count('이전 보상 보너스 개수', '개'),
-  bonus_probability: fraction('이전 보상 보너스 확률'),
-  other_tribe_probability: fraction('이전 보상 다른 트라이브 확률'),
-  rarity_common: percent('이전 보상 Common 확률'),
-  rarity_rare: percent('이전 보상 Rare 확률'),
-  rarity_epic: percent('이전 보상 Epic 확률'),
-  rarity_mystic: percent('이전 보상 Mystic 확률'),
-  pity_epic_threshold: count('이전 보상 Epic 보정 횟수', '번'),
+  guaranteed_count: count('이전 잼 보상 확정 개수', '개'),
+  bonus_count: count('이전 잼 보상 보너스 개수', '개'),
+  bonus_probability: fraction('이전 잼 보상 보너스 확률'),
+  other_tribe_probability: fraction('이전 잼 보상 다른 트라이브 확률'),
+  rarity_common: percent('이전 잼 보상 Common 확률'),
+  rarity_rare: percent('이전 잼 보상 Rare 확률'),
+  rarity_epic: percent('이전 잼 보상 Epic 확률'),
+  rarity_mystic: percent('이전 잼 보상 Mystic 확률'),
+  pity_epic_threshold: count('이전 잼 보상 Epic 보정 횟수', '번'),
 }
 
 /** 챕터 오름 보상 구역(`chapter_reward_policy` 칸)의 칸 이름. 개수는 챕터마다 따로 저장하는 값이라 이 표에 없다(그 칸은 «그 밖의 값도»로 묶인다) */
@@ -101,12 +101,12 @@ export const CHAPTER_REWARD_COLUMN_LABELS: Record<(typeof CHAPTER_REWARD_COLUMNS
 }
 
 /**
- * 보상이 캡슐에서 챕터 오름 보상으로 바뀐 사실 한 줄의 칸. 번호 0은 이전 보상, 1은 챕터 오름 보상이다.
+ * 보상이 캡슐에서 챕터 오름 보상으로 바뀐 사실 한 줄의 칸. 번호 0은 이전 잼 보상, 1은 챕터 오름 보상이다.
  * 전환 배포 때 SQL로 이력 행 한 줄(`{ field: 'reward_system', from: 0, to: 1 }`)을 넣는다.
  */
 export const REWARD_SWITCH_FIELD = 'reward_system'
 export const REWARD_SWITCH_COLUMN_LABELS: Record<typeof REWARD_SWITCH_FIELD, ColumnLabel> = {
-  [REWARD_SWITCH_FIELD]: text('받는 보상', ['이전 보상', '챕터 오름 보상']),
+  [REWARD_SWITCH_FIELD]: text('아이템 배지를 받는 보상', ['이전 잼 보상', '챕터 오름 보상']),
 }
 
 /**
