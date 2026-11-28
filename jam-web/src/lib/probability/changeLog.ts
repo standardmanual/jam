@@ -90,7 +90,7 @@ export const CAPSULE_COLUMN_LABELS: Record<(typeof CAPSULE_COLUMNS)[number], Col
   pity_epic_threshold: count('이전 잼 보상 Epic 보정 횟수', '번'),
 }
 
-/** 챕터 오름 보상 구역(`chapter_reward_policy` 칸)의 칸 이름. 개수는 챕터마다 따로 저장하는 값이라 이 표에 없다(그 칸은 «그 밖의 값도»로 묶인다) */
+/** 챕터 오름 보상 구역(`chapter_reward_policy` 칸)의 칸 이름. 챕터별 개수 칸은 `CHAPTER_REWARD_COUNT_LABELS`에 따로 있다 */
 export const CHAPTER_REWARD_COLUMN_LABELS: Record<(typeof CHAPTER_REWARD_COLUMNS)[number], ColumnLabel> = {
   other_tribe_probability: fraction('챕터 오름 보상 다른 트라이브 확률'),
   rarity_common: percent('챕터 오름 보상 Common 확률'),
@@ -99,6 +99,19 @@ export const CHAPTER_REWARD_COLUMN_LABELS: Record<(typeof CHAPTER_REWARD_COLUMNS
   rarity_mystic: percent('챕터 오름 보상 Mystic 확률'),
   pity_epic_threshold: count('챕터 오름 보상 Epic 보정 횟수', '번'),
 }
+
+/**
+ * 챕터 오름 보상의 챕터별 개수 칸(`chapter_definitions.reward_count`). 이력의 칸 이름은 `reward_count:3` 형식이고 챕터 1~9만 있다
+ * (어드민 챕터 보상 구역 `lib/admin/balance/chapterReward.ts`의 `rewardCountKey`와 같은 이름이다. 이름은 숫자 뒤에 조사를 붙이지 않도록 «N번째 챕터를»로 쓴다. 그 구역을 이 파일이 가져오지 않도록 여기에 따로 적고 시험이 둘을 맞춘다).
+ */
+const CHAPTER_REWARD_COUNT_CHAPTERS = 9
+export const CHAPTER_REWARD_COUNT_COLUMNS: readonly string[] = Array.from(
+  { length: CHAPTER_REWARD_COUNT_CHAPTERS },
+  (_, index) => `reward_count:${index + 1}`
+)
+export const CHAPTER_REWARD_COUNT_LABELS: Record<string, ColumnLabel> = Object.fromEntries(
+  CHAPTER_REWARD_COUNT_COLUMNS.map((column, index): [string, ColumnLabel] => [column, count(`${index + 1}번째 챕터를 마칠 때 받는 개수`, '개')])
+)
 
 /**
  * 보상이 캡슐에서 챕터 오름 보상으로 바뀐 사실 한 줄의 칸. 번호 0은 이전 잼 보상, 1은 챕터 오름 보상이다.
@@ -140,7 +153,10 @@ export const REWARD_SWITCH_SECTION_KEY = 'chapter_reward_switch'
 const SECTION_COLUMNS: Readonly<Record<string, SectionColumns>> = {
   [SYNC_SECTION_ID]: { columns: JAM_COLUMNS, labels: JAM_COLUMN_LABELS },
   [PAST_CAPSULE_SECTION_KEY]: { columns: CAPSULE_COLUMNS, labels: CAPSULE_COLUMN_LABELS },
-  [CHAPTER_REWARD_SECTION_KEY]: { columns: CHAPTER_REWARD_COLUMNS, labels: CHAPTER_REWARD_COLUMN_LABELS },
+  [CHAPTER_REWARD_SECTION_KEY]: {
+    columns: [...CHAPTER_REWARD_COLUMNS, ...CHAPTER_REWARD_COUNT_COLUMNS],
+    labels: { ...CHAPTER_REWARD_COLUMN_LABELS, ...CHAPTER_REWARD_COUNT_LABELS },
+  },
   [REWARD_SWITCH_SECTION_KEY]: { columns: [REWARD_SWITCH_FIELD], labels: REWARD_SWITCH_COLUMN_LABELS },
   [AMBIENT_SECTION_ID]: { columns: AMBIENT_COLUMNS, labels: AMBIENT_COLUMN_LABELS },
 }

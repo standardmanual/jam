@@ -23,12 +23,15 @@ vi.mock('@/lib/supabase/server', () => ({ createServiceClient: createServiceClie
 
 import { AMBIENT_SECTION_ID } from '@/lib/admin/balance/ambient'
 import { CAPSULE_SECTION_ID } from '@/lib/admin/balance/capsule'
+import { CHAPTER_REWARD_COUNT_KEYS, CHAPTER_REWARD_SECTION_ID } from '@/lib/admin/balance/chapterReward'
 import { SYNC_SECTION_ID } from '@/lib/admin/balance/sync'
 import { AMBIENT_COLUMNS, CAPSULE_COLUMNS, CHAPTER_REWARD_COLUMNS, JAM_COLUMNS } from '../disclosure'
 import {
   AMBIENT_COLUMN_LABELS,
   CAPSULE_COLUMN_LABELS,
   CHAPTER_REWARD_COLUMN_LABELS,
+  CHAPTER_REWARD_COUNT_COLUMNS,
+  CHAPTER_REWARD_COUNT_LABELS,
   CHAPTER_REWARD_SECTION_KEY,
   JAM_COLUMN_LABELS,
   PAST_CAPSULE_SECTION_KEY,
@@ -199,6 +202,43 @@ describe('한 번의 저장 — 칸이 여럿이어도 한 문장', () => {
     const sentence = describeChanges(SYNC_SECTION_ID, all)
     expect(sentence).not.toMatch(/외 \d+개/)
     for (const field of JAM_COLUMNS) expect(sentence).toContain(JAM_COLUMN_LABELS[field].name)
+  })
+})
+
+describe('챕터 오름 보상의 챕터별 개수 칸 (티켓 20261127_1740 C9b)', () => {
+  it('칸 이름이 어드민 챕터 보상 구역의 개수 칸(reward_count:1~9)과 같고 구역 키도 같다', () => {
+    expect([...CHAPTER_REWARD_COUNT_COLUMNS]).toEqual([...CHAPTER_REWARD_COUNT_KEYS])
+    expect(Object.keys(CHAPTER_REWARD_COUNT_LABELS)).toEqual([...CHAPTER_REWARD_COUNT_KEYS])
+    expect(CHAPTER_REWARD_SECTION_KEY).toBe(CHAPTER_REWARD_SECTION_ID)
+  })
+
+  it.each([
+    [1, 3, 4, '1번째 챕터를 마칠 때 받는 개수를 3개에서 4개로 바꿨어요'],
+    [2, 3, 5, '2번째 챕터를 마칠 때 받는 개수를 3개에서 5개로 바꿨어요'],
+    [9, 5, 6, '9번째 챕터를 마칠 때 받는 개수를 5개에서 6개로 바꿨어요'],
+  ])('챕터 %s: %s → %s', (chapterNo, from, to, expected) => {
+    expect(describeChanges(CHAPTER_REWARD_SECTION_KEY, [change(`reward_count:${chapterNo}`, from, to)])).toBe(expected)
+  })
+
+  it('개수 칸은 «그 밖의 값도»로 묶이지 않고, 정책 칸과 함께 바뀌면 정책 칸 뒤에 이어 적는다', () => {
+    const sentence = describeChanges(CHAPTER_REWARD_SECTION_KEY, [change('reward_count:3', 3, 4), change('rarity_common', 30, 25)])
+    expect(sentence).toBe('챕터 오름 보상 Common 확률을 30%에서 25%로, 3번째 챕터를 마칠 때 받는 개수를 3개에서 4개로 바꿨어요')
+    expect(sentence).not.toContain('그 밖의 값도')
+  })
+
+  it('챕터 10·범위 밖 칸은 표에 없어 내부 이름 없이 일반 문장이 된다', () => {
+    expect(describeChanges(CHAPTER_REWARD_SECTION_KEY, [change('reward_count:10', 1, 2)])).toBe(UNKNOWN_ONLY_SENTENCE)
+  })
+
+  it('이름은 한글로 끝나고 «캡슐»·«점수»·내부 이름·방향어가 없다', () => {
+    for (const column of CHAPTER_REWARD_COUNT_COLUMNS) {
+      const name = CHAPTER_REWARD_COUNT_LABELS[column].name
+      expect(name, name).not.toMatch(/캡슐|점수|[_:]/)
+      expect(name, name).toMatch(/[가-힣]$/)
+      const sentence = describeChanges(CHAPTER_REWARD_SECTION_KEY, [change(column, 5, 7)])
+      expect(sentence, sentence).toMatch(/바꿨어요$/)
+      expect(sentence, sentence).not.toMatch(/올렸|낮췄|높였|높아|낮아|늘렸|줄였|UP|→|—|\.$/)
+    }
   })
 })
 
