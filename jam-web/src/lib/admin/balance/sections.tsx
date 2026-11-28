@@ -3,13 +3,14 @@
  * **구역을 더하는 일은 구역 연결 객체(`lib/admin/balance/<구역>.ts`) 하나, 구역 본문 컴포넌트 하나, 이 배열 한 줄이다.**
  * 화면(`app/admin/balance/page.tsx`)과 구역 이동 링크(`OpsSettingsNav`)와 저장 라우트(`/api/admin/balance/[section]`)가 이 배열 하나를 읽는다.
  *
- * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회, 필요 잼 편집으로 바뀜 — 티켓 20261127_1739), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회), 시스템 드랍(`ambient`, 7-3 3회), 배지와 포인트(`badgepoints`, 7-4 1회), 서비스 활동 잼(`servicejam`, 티켓 20261028_1735 4회, 「잼」 바로 뒤).
+ * 지금 구역: 잼(`jam`, 7-1 1회), 동기화(`sync`)와 캡슐(`capsule`, 7-1 2회), 잠긴 아이템 배지(`locked`)와 컬렉션과 믹스(`collection`, 7-2 1회), 챕터(`chapter`, 7-2 2회, 필요 잼 편집으로 바뀜 — 티켓 20261127_1739), 챕터 보상(`chapter_reward`, 티켓 20261127_1740 C9b, 「챕터」 바로 뒤), 인벤토리(`inventory`, 7-3 1회), 어뷰징(`abusing`, 7-3 2회), 시스템 드랍(`ambient`, 7-3 3회), 배지와 포인트(`badgepoints`, 7-4 1회), 서비스 활동 잼(`servicejam`, 티켓 20261028_1735 4회, 「잼」 바로 뒤).
  */
 import type { ReactElement } from 'react'
 import { AbusingSection } from '@/components/admin/balance/AbusingSection'
 import { AmbientSection } from '@/components/admin/balance/AmbientSection'
 import { BadgePointsSection } from '@/components/admin/balance/BadgePointsSection'
 import { CapsuleSection } from '@/components/admin/balance/CapsuleSection'
+import { ChapterRewardSection } from '@/components/admin/balance/ChapterRewardSection'
 import { ChapterSection } from '@/components/admin/balance/ChapterSection'
 import { CollectionSection } from '@/components/admin/balance/CollectionSection'
 import { InventorySection } from '@/components/admin/balance/InventorySection'
@@ -22,6 +23,7 @@ import { AMBIENT_BINDING } from './ambient'
 import { BADGEPOINTS_BINDING } from './badgepoints'
 import { CAPSULE_BINDING } from './capsule'
 import { CHAPTER_BINDING } from './chapter'
+import { CHAPTER_REWARD_BINDING } from './chapterReward'
 import { COLLECTION_BINDING } from './collection'
 import { INVENTORY_BINDING } from './inventory'
 import { JAM_BINDING } from './jam'
@@ -113,6 +115,16 @@ export const BALANCE_SECTIONS: readonly BalanceSectionDef[] = [
       '챕터 10은 마지막이라 필요한 잼이 없어요. 챕터 번호는 늘리거나 줄이지 않고 값만 바꿔요. 저장하면 홈과 프로필의 챕터 게이지 카드에 바로 적용돼요.',
     ],
     Body: ChapterSection,
+  },
+  {
+    binding: CHAPTER_REWARD_BINDING,
+    label: '챕터 보상',
+    title: '챕터 보상',
+    description: [
+      '챕터를 마칠 때 한 번 받는 아이템 배지의 챕터별 개수와, 나오는 아이템 배지의 등급 확률·다른 트라이브 확률·Epic 보정이에요.',
+      '설정값은 유저 확률 안내 페이지에 실시간 반영돼요.',
+    ],
+    Body: ChapterRewardSection,
   },
   {
     binding: INVENTORY_BINDING,

@@ -329,15 +329,35 @@ export const CHAPTER_DEFINITION_ROW_STAMP = '2026-10-22T01:20:00.5+00:00'
 const CHAPTER_LEGACY_REQUIRED_SCORE = [0, 1000, 2300, 3800, 5700, 8500, 11500, 15000, 19000, 23000]
 /** `required_jam`의 마이그레이션 364 시드. 챕터 10은 NULL이다. */
 const CHAPTER_DEFAULT_REQUIRED_JAM = [870, 1120, 1260, 1600, 1980, 2205, 2700, 3300, 3960, null]
+/** `reward_count`의 마이그레이션 366 시드(A3 후보 E). 챕터 10은 NULL이다. */
+const CHAPTER_DEFAULT_REWARD_COUNT = [3, 3, 3, 4, 4, 4, 5, 5, 5, null]
 
-/** `chapter_definitions` 챕터 1~10 행(마이그레이션 221·364 시드). 행마다 수정 시각을 따로 줄 수 있다. */
+/** `chapter_definitions` 챕터 1~10 행(마이그레이션 221·364·366 시드). 행마다 수정 시각을 따로 줄 수 있다. */
 export function chapterDefinitionRows(stamp: string = CHAPTER_DEFINITION_ROW_STAMP): Row[] {
   return CHAPTER_DEFAULT_REQUIRED_JAM.map((required_jam, index) => ({
     chapter_no: index + 1,
     required_score: CHAPTER_LEGACY_REQUIRED_SCORE[index],
     required_jam,
+    reward_count: CHAPTER_DEFAULT_REWARD_COUNT[index],
     updated_at: stamp,
   }))
+}
+
+export const CHAPTER_REWARD_POLICY_ROW_STAMP = '2026-11-28T01:00:00.5+00:00'
+
+/** `chapter_reward_policy` id=1 행(마이그레이션 366 기본값, A3 후보 E). NUMERIC 칸은 문자열로 내려오는 경우를 흉내 낸다. */
+export function chapterRewardPolicyRow(overrides: Row = {}): Row {
+  return {
+    id: 1,
+    rarity_common: '30',
+    rarity_rare: '40',
+    rarity_epic: '22',
+    rarity_mystic: '8',
+    other_tribe_probability: '0.2',
+    pity_epic_threshold: 15,
+    updated_at: CHAPTER_REWARD_POLICY_ROW_STAMP,
+    ...overrides,
+  }
 }
 
 export const ABUSING_ROW_STAMP = '2026-10-24T01:40:00.25+00:00'

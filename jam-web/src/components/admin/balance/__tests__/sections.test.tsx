@@ -2,7 +2,7 @@
  * 밸런스 설정 구역 레지스트리와 구역 본문 (티켓 20261022_1132 1회)
  *
  * - 레지스트리(`lib/admin/balance/sections.tsx`): 구역 키가 겹치지 않고, 구역마다 연결 객체·제목·본문이 있으며, 키로 구역을 찾는다(없으면 `undefined`).
- *   지금 구역은 잼·서비스 활동 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍·배지와 포인트다
+ *   지금 구역은 잼·서비스 활동 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·챕터 보상·인벤토리·어뷰징·시스템 드랍·배지와 포인트다
  * - 구역 본문(`BalanceSectionBody`, 서버 컴포넌트): 가짜 클라이언트로 값을 읽어 폼과 최근 변경을 그린다. **값을 읽지 못하면 던지지 않고** 오류 카드가 되고
  *   (한 구역이 실패해도 다른 구역은 보인다), 최근 변경만 못 읽으면 폼은 열린다. 읽기만 하고 아무것도 쓰지 않는다
  */
@@ -28,6 +28,7 @@ import { SERVICE_JAM_BINDING } from '@/lib/admin/balance/serviceJam'
 import { SYNC_BINDING } from '@/lib/admin/balance/sync'
 import { CAPSULE_BINDING } from '@/lib/admin/balance/capsule'
 import { CHAPTER_BINDING } from '@/lib/admin/balance/chapter'
+import { CHAPTER_REWARD_BINDING } from '@/lib/admin/balance/chapterReward'
 import { COLLECTION_BINDING } from '@/lib/admin/balance/collection'
 import { ABUSING_BINDING } from '@/lib/admin/balance/abusing'
 import { AMBIENT_BINDING } from '@/lib/admin/balance/ambient'
@@ -42,6 +43,7 @@ import {
   capsulePolicyRow,
   chapterCostRows,
   chapterDefinitionRows,
+  chapterRewardPolicyRow,
   combinePolicyRow,
   createFakeDb,
   inventoryPolicyRow,
@@ -60,6 +62,13 @@ import {
   ChapterNotice,
   ChapterSection,
 } from '../ChapterSection'
+import {
+  CHAPTER_REWARD_NOTICE,
+  CHAPTER_REWARD_SHARED_NOTICE_LINK,
+  CHAPTER_REWARD_SHARED_NOTICE_PREFIX,
+  ChapterRewardSection,
+  ChapterRewardSharedNotice,
+} from '../ChapterRewardSection'
 import { ServiceJamSection } from '../ServiceJamSection'
 import { AbusingSection } from '../AbusingSection'
 import { BADGEPOINTS_NOTICE, BadgePointsNotice, BadgePointsSection } from '../BadgePointsSection'
@@ -89,6 +98,7 @@ beforeEach(() => {
     item_book_tier_default_rewards: tierDefaultRewardRows(),
     combine_policy: [combinePolicyRow()],
     chapter_definitions: chapterDefinitionRows(),
+    chapter_reward_policy: [chapterRewardPolicyRow()],
     inventory_policy: [inventoryPolicyRow()],
     inventory: inventoryRows(1234),
     abusing_policy: [abusingPolicyRow()],
@@ -114,7 +124,7 @@ beforeEach(() => {
 const html = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: JAM_BINDING })).replace(/<!-- -->/g, '')
 
 describe('구역 레지스트리', () => {
-  it('지금 구역은 잼·서비스 활동 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·인벤토리·어뷰징·시스템 드랍·배지와 포인트 순서이고 구역 키는 겹치지 않는다', () => {
+  it('지금 구역은 잼·서비스 활동 잼·동기화·캡슐·잠긴 아이템 배지·컬렉션과 믹스·챕터·챕터 보상·인벤토리·어뷰징·시스템 드랍·배지와 포인트 순서이고 구역 키는 겹치지 않는다', () => {
     expect(BALANCE_SECTIONS.map((section) => section.binding.id)).toEqual([
       'jam',
       'servicejam',
@@ -123,6 +133,7 @@ describe('구역 레지스트리', () => {
       'locked',
       'collection',
       'chapter',
+      'chapter_reward',
       'inventory',
       'abusing',
       'ambient',
@@ -159,6 +170,7 @@ describe('구역 레지스트리', () => {
     expect(findBalanceSection('locked')?.binding).toBe(LOCKED_BINDING)
     expect(findBalanceSection('collection')?.binding).toBe(COLLECTION_BINDING)
     expect(findBalanceSection('chapter')?.binding).toBe(CHAPTER_BINDING)
+    expect(findBalanceSection('chapter_reward')?.binding).toBe(CHAPTER_REWARD_BINDING)
     expect(findBalanceSection('inventory')?.binding).toBe(INVENTORY_BINDING)
     expect(findBalanceSection('abusing')?.binding).toBe(ABUSING_BINDING)
     expect(findBalanceSection('ambient')?.binding).toBe(AMBIENT_BINDING)
@@ -526,6 +538,84 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회, 티켓 20261127_1739 C
     const children = Children.toArray(ChapterSection().props.children) as ReactElement<{ binding?: unknown }>[]
     expect(children.map((child) => child.type)).toEqual([ChapterNotice, ChapterLastNotice, BalanceSectionBody])
     expect(children[2].props.binding).toBe(CHAPTER_BINDING)
+  })
+
+  it('«캡슐» 구역은 구역 배열에 그대로 남아 있다(걷는 일은 C10b)', () => {
+    expect(findBalanceSection('capsule')).toBeDefined()
+  })
+})
+
+describe('BalanceSectionBody — 챕터 보상 구역 (티켓 20261127_1740 C9b)', () => {
+  const rewardHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: CHAPTER_REWARD_BINDING })).replace(/<!-- -->/g, '')
+  const rewardScreen = async () =>
+    (await rewardHtml()) + renderToStaticMarkup(<ChapterRewardSharedNotice />).replace(/<!-- -->/g, '') + CHAPTER_REWARD_NOTICE
+
+  it('구역이 «챕터» 바로 뒤에 있고 라벨이 «챕터 보상»이다', () => {
+    const ids = BALANCE_SECTIONS.map((section) => section.binding.id)
+    expect(ids.indexOf('chapter_reward')).toBe(ids.indexOf('chapter') + 1)
+    expect(findBalanceSection('chapter_reward')?.label).toBe('챕터 보상')
+    expect(findBalanceSection('chapter_reward')?.title).toBe('챕터 보상')
+  })
+
+  it('입력 열다섯 칸(개수 아홉 칸·등급 네 칸·다른 트라이브 확률·Epic 보정)이 저장된 값으로 뜨고 챕터 10 칸은 없다', async () => {
+    const out = await rewardHtml()
+    expect([...out.matchAll(/<input /g)]).toHaveLength(15)
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['챕터를 마칠 때 받는 개수', '등급 확률', '확률', '보정'])
+    ;[3, 3, 3, 4, 4, 4, 5, 5, 5].forEach((count, index) => {
+      expect(out).toMatch(new RegExp(`id="balance-chapter_reward-reward_count:${index + 1}"[^>]*value="${count}"`))
+    })
+    expect(out).toMatch(/id="balance-chapter_reward-rarity_common"[^>]*value="30"/)
+    expect(out).toMatch(/id="balance-chapter_reward-rarity_mystic"[^>]*value="8"/)
+    expect(out).toMatch(/id="balance-chapter_reward-other_tribe_probability"[^>]*value="0.2"/)
+    expect(out).toMatch(/id="balance-chapter_reward-pity_epic_threshold"[^>]*value="15"/)
+    expect(out).not.toContain('id="balance-chapter_reward-reward_count:10"')
+    expect(out).toContain('챕터 오름 보상은 챕터 1~9에서 최대 9번이라')
+  })
+
+  it('구역 화면(안내·구역 설명·폼·칸 이름)에 «캡슐»·«점수» 글자가 없다', async () => {
+    const out = await rewardScreen()
+    const description = (findBalanceSection('chapter_reward')?.description ?? []).join(' ')
+    for (const text of [out, description]) {
+      expect(text).not.toContain('캡슐')
+      expect(text).not.toContain('점수')
+    }
+  })
+
+  it('동기화 구역과 한 값인 두 칸은 편집 칸 없이 안내만 있고 동기화 구역으로 이어진다', async () => {
+    const out = renderToStaticMarkup(<ChapterRewardSharedNotice />).replace(/<!-- -->/g, '')
+    expect(out).toContain(CHAPTER_REWARD_SHARED_NOTICE_PREFIX)
+    expect(out).toContain(`href="#${SYNC_BINDING.id}"`)
+    expect(out).toContain(`${CHAPTER_REWARD_SHARED_NOTICE_LINK}</a>`)
+    expect(out).toContain('role="note"')
+    const form = await rewardHtml()
+    expect(form).not.toContain('common_streak_threshold')
+    expect(form).not.toContain('locked_roll_probability')
+  })
+
+  it('구역 본문은 동기화 공유 안내, 챕터 보상 설명, 폼 뼈대(챕터 보상 연결) 순서이고 «캡슐» 구역 파일에서 가져오지 않는다', () => {
+    const children = Children.toArray(ChapterRewardSection().props.children) as ReactElement<{ binding?: unknown; children?: unknown }>[]
+    expect(children[0].type).toBe(ChapterRewardSharedNotice)
+    expect(children[1].props.children).toBe(CHAPTER_REWARD_NOTICE)
+    expect(children[2].type).toBe(BalanceSectionBody)
+    expect(children[2].props.binding).toBe(CHAPTER_REWARD_BINDING)
+    expect(ChapterRewardSharedNotice).not.toBe(SharedValuesNotice)
+  })
+
+  it('읽기만 한다(쓰기 호출이 없다)', async () => {
+    await rewardHtml()
+    expect(db.calls.filter((call) => call.endsWith('.update') || call.endsWith('.insert'))).toEqual([])
+  })
+
+  it('정책 행이 없거나 챕터 1~9의 개수가 NULL이면 이 구역만 오류 카드가 된다', async () => {
+    db.tables.chapter_reward_policy = []
+    let out = await rewardHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+    db.tables.chapter_reward_policy = [chapterRewardPolicyRow()]
+    db.tables.chapter_definitions = chapterDefinitionRows().map((row) => (row.chapter_no === 4 ? { ...row, reward_count: null } : row))
+    out = await rewardHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
   })
 
   it('«캡슐» 구역은 구역 배열에 그대로 남아 있다(걷는 일은 C10b)', () => {
