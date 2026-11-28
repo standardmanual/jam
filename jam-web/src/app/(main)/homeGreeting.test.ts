@@ -1,10 +1,10 @@
 /**
- * 홈 인사말과 유저 검색 아이콘의 자리 (티켓 20261128_1700)
+ * 홈 인사말과 유저 검색창의 자리 (티켓 20261128_1700)
  *
  * 서버 페이지와 프로필 클라이언트는 의존이 많아 렌더하지 않고 소스 구조로 고정한다. 고정하는 것:
  * - 홈 인사말은 두 줄이다(첫 줄 «{이름}님», 둘째 줄 «오늘도 좋은 하루예요») + 글자 크기 눈금 `text-3xl`.
  * - 홈에는 `/search` 링크와 검색 아이콘이 없다.
- * - 프로필의 팔로워·팔로잉 목록 첫 줄 위에 `/search` 링크가 있고, 내 프로필(isOwnProfile)에서만 그린다. 빈 목록에도 있다.
+ * - 프로필의 팔로워·팔로잉 목록 첫 줄 위에 검색창(`UserSearchBar`, 제출하면 `/search?q=`로 이동)이 있고, 내 프로필(isOwnProfile)에서만 그린다. 빈 목록에도 있다.
  *
  * 실행: cd jam-web && npx vitest run "src/app/(main)/homeGreeting.test.ts"
  */
@@ -37,10 +37,15 @@ describe('홈 인사말', () => {
   })
 })
 
-describe('프로필 목록의 유저 검색 아이콘', () => {
-  it('내 프로필에서만 /search 링크를 만든다', () => {
-    expect(profile).toMatch(/const searchLink = isOwnProfile \? \(\s*<Link\s+href="\/search"/)
-    expect(profile).toMatch(/\) : null/)
+describe('프로필 목록의 유저 검색창', () => {
+  it('내 프로필에서만 검색창을 만든다', () => {
+    expect(profile).toMatch(/const searchLink = isOwnProfile \? <UserSearchBar size="compact" \/> : null/)
+    expect(profile).not.toMatch(/href="\/search"/)
+  })
+
+  it('검색창은 제출하면 검색 결과 페이지로 이동한다', () => {
+    const bar = readFileSync(join(__dirname, 'UserSearchBar.tsx'), 'utf8')
+    expect(bar).toContain('router.push(`/search?q=${encodeURIComponent(trimmed)}`)')
   })
 
   it('빈 목록과 채워진 목록 모두 첫 줄 위에 놓인다', () => {

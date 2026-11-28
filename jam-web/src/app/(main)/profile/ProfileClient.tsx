@@ -22,9 +22,9 @@ import SwapText from '@/components/ui/SwapText'
 import {
   UsersIcon,
   MedalIcon,
-  SearchIcon,
 } from '@/components/ui/icons'
 import type { UserRow, ActivityFeedRow, BadgeRarity } from '@/types/database'
+import UserSearchBar from '../UserSearchBar'
 import FeedSection, { earnCountOf, badgeLevelOf, feedTarget, goToFeedTarget, isCheckinEarn } from '../FeedSection'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
@@ -442,19 +442,10 @@ export default function ProfileClient({
 
     const listData = activeTab === 'followers' ? followersData : followingData
     if (listData === null) return null
-    // 유저 검색 아이콘 (티켓 20261128_0900) — 홈 인사말 줄에서 옮겨 왔다. 내 프로필의 팔로워·팔로잉 목록 첫 줄 위에만 둔다.
+    // 유저 검색창 (티켓 20261128_1700) — 홈 인사말 줄에서 옮겨 왔다. 내 프로필의 팔로워·팔로잉 목록 첫 줄 위에만 둔다.
+    // 입력칸 + «검색» 버튼이고, 제출하면 /search?q= 검색 결과 페이지로 간다(UserSearchBar가 이동한다).
     // 목록이 비어 있어도 그린다: 홈에서 검색 진입이 없어져, 팔로우할 사람을 찾는 길이 여기뿐이다.
-    const searchLink = isOwnProfile ? (
-      <Link
-        href="/search"
-        aria-label={d.today.searchAriaLabel}
-        className="self-end w-11 h-11 -mr-1 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
-      >
-        <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
-          <SearchIcon className="w-4 h-4" />
-        </span>
-      </Link>
-    ) : null
+    const searchLink = isOwnProfile ? <UserSearchBar size="compact" /> : null
     if (listData.length === 0) {
       return (
         <div className="flex flex-col gap-2">
