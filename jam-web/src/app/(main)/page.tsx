@@ -122,20 +122,24 @@ export default async function HomePage() {
         <span className="block">{d.todayStatus.greetingBody}</span>
       </p>
 
-      {/* 챕터 게이지 카드 (티켓 20261127_1735 C5b) — 인사말 줄 바로 아래, 오늘의 현황 위. 챕터가 없는 유저는 아무것도 그리지 않아 빈 간격도 없다.
-          막힘이면 카드 아래에 안내 카드가 이어 붙는다(정지 중에는 없음). 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고). */}
-      <ChapterGaugeSection chapter={chapter} blocked={blocked} />
+      {/* 챕터 게이지·동기화 끊김·오늘의 현황·피드 묶음 (티켓 20261128_1824) — 묶음 안 영역 사이 간격은 12px(gap-3)로 둔다. 이전 20px의 절반(10px)에 가장 가까운 눈금이다(눈금은 8·12px).
+          인사말·정지 배너와 이 묶음 사이는 바깥 컨테이너의 gap-5(20px) 그대로다. 묶음에는 항상 오늘의 현황 스트립이 있어 빈 묶음이 없다. */}
+      <div className="flex flex-col gap-3">
+        {/* 챕터 게이지 카드 (티켓 20261127_1735 C5b) — 인사말 줄 바로 아래, 오늘의 현황 위. 챕터가 없는 유저는 아무것도 그리지 않아 빈 간격도 없다.
+            막힘이면 카드 아래에 안내 카드가 이어 붙는다(정지 중에는 없음). 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고). */}
+        <ChapterGaugeSection chapter={chapter} blocked={blocked} />
 
-      {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.
-          유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}
-      {showsStravaDisconnectedCard(stravaView) && <StravaDisconnectedCard />}
+        {/* Strava 동기화 끊김 카드 (티켓 20261017_1422) — 오류로 끊긴 유저에게만 렌더, 그 외엔 DOM에 없다.
+            유저가 직접 끊은 경우는 알람 없이 미연동처럼 보인다(사용자 승인). */}
+        {showsStravaDisconnectedCard(stravaView) && <StravaDisconnectedCard />}
 
-      {/* "오늘의 현황" 스트립 (신규) — 좌: 진행상황 / 우: 팔로잉. 큐레이션 없음(today_cards
-          CMS와 역할 분리, 완료 기록 참고). */}
-      <TodayStatusStrip left={leftStatus} right={rightStatus} />
+        {/* "오늘의 현황" 스트립 (신규) — 좌: 진행상황 / 우: 팔로잉. 큐레이션 없음(today_cards
+            CMS와 역할 분리, 완료 기록 참고). */}
+        <TodayStatusStrip left={leftStatus} right={rightStatus} />
 
-      {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
-      <TodayCardStack cards={todayCards} />
+        {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
+        <TodayCardStack cards={todayCards} />
+      </div>
 
       </div>
     </div>

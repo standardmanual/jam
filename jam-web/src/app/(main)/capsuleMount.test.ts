@@ -29,10 +29,15 @@ describe('홈 챕터 게이지 카드 묶음', () => {
     expect(code).toMatch(/readCapsuleReceiveBlocked\(createServiceClient\(\), userId\)/)
   })
 
-  it('카드를 묶음 div 없이 그대로 두어 홈 컬럼의 gap 하나로 위 요소와 이어진다', () => {
-    const around = code.slice(code.indexOf('d.todayStatus.greeting'), code.indexOf('<ChapterGaugeSection'))
-    expect(around).not.toMatch(/<div class[^>]*gap/)
+  it('게이지 카드부터 피드까지 하나의 gap-3(12px) 묶음이고, 인사말과 묶음 사이만 바깥 컨테이너 gap-5(20px)다', () => {
+    // 티켓 20261128_1824: 게이지·끊김 카드·오늘의 현황·피드 사이 간격을 이전 20px의 절반 근처 눈금(12px)으로 줄였다.
+    // 인사말 → 묶음은 바깥 gap-5 그대로이고, 묶음 안 영역끼리만 gap-3이다. 묶음은 게이지 카드로 시작하고 피드로 끝난다.
+    expect(code).toContain('className="px-4 pt-4 pb-6 flex flex-col gap-5"')
+    const around = code.slice(code.indexOf('d.todayStatus.greetingBody'), code.indexOf('<ChapterGaugeSection'))
+    expect(around).toMatch(/<div className="flex flex-col gap-3">\s*$/)
     expect(code).toContain('<ChapterGaugeSection chapter={chapter} blocked={blocked} />')
+    const inner = code.slice(code.indexOf('<ChapterGaugeSection'), code.indexOf('<TodayCardStack'))
+    expect(inner).toContain('<TodayStatusStrip')
   })
 
   it('확률 안내 링크를 이 묶음에 새로 만들지 않는다(푸터의 링크를 쓴다)', () => {
