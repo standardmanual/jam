@@ -37,6 +37,16 @@ describe('BagItemCell — BadgeGridCard 레이아웃', () => {
     expect(html).toContain('grayscale')
   })
 
+  it('selected: 눌려 있는 버튼이고 블랙 링이 켜지며 그림은 컬러, «추가됨» 칩이 없다(티켓 20261128_1203)', () => {
+    const html = render({ state: 'selected' })
+    expect(html.startsWith('<button type="button"')).toBe(true)
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('ring-2 ring-foreground')
+    expect(html).not.toContain(d.combine.bagUsedLabel)
+    expect(html).not.toContain('grayscale')
+    expect(html).not.toContain('opacity-40')
+  })
+
   it('needed: 버튼이 아니고 카드가 흐리며 그림만 그레이스케일이다(라벨 없음)', () => {
     const html = render({ state: 'needed' })
     expect(html).not.toContain('<button')

@@ -346,12 +346,16 @@
   text-align: center;
 }
 
-.again {
+.measure {
   position: absolute;
-  left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  z-index: 6;
+  left: 0;
+  right: 0;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.measure .meta {
+  position: static;
 }
 
 .fadeOut {
@@ -410,17 +414,6 @@
     opacity: 0;
   }
 }
-@keyframes againIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
 /* 모션 줄이기: 반사광 회전을 끈다. 빛살 회전은 스테이지가 애니메이션을 달지 않고, 시간 축소는 스테이지 코드가 맡는다 */
 @media (prefers-reduced-motion: reduce) {
   .glint {

@@ -193,23 +193,21 @@ describe('TierUpSheetContent', () => {
     expect(out).not.toContain(d.combine.bagUsedLabel)
   })
 
-  it('등급 고정 보기: 묶음 제목 없이 위에 한 줄, 담은 셀은 «추가됨» 칩이다', () => {
+  it('등급 고정 뒤에도 전체 묶음이 보이고, 안내 줄은 묶음 위에 한 번, 고른 카드는 링·눌림이며 «추가됨»이 없다', () => {
     const out = render(buildTierUpSheet(groups, [rare7[0], rare7[1], null, null, null, null]))
-    expect(out).toContain('지금은 Rare 아이템 배지만 넣을 수 있어요')
-    // 안내 한 줄은 가운데 정렬이다(2026-11-12 사용자 지시)
+    expect(out.split('지금은 Rare 아이템 배지만 넣을 수 있어요')).toHaveLength(2)
     expect(out).toMatch(/<p class="[^"]*text-center[^"]*">지금은 Rare 아이템 배지만 넣을 수 있어요<\/p>/)
-    expect(out).not.toContain('<h3')
-    expect(out).not.toContain('Common')
-    expect(out).not.toContain('Mystic')
-    expect(out.split(d.combine.bagUsedLabel)).toHaveLength(3)
+    expect(out.indexOf('지금은 Rare')).toBeLessThan(out.indexOf('<section'))
+    expect(out.match(/<h3 /g)).toHaveLength(3)
+    expect(out.match(/aria-pressed="true"/g)).toHaveLength(2)
+    expect(out.match(/ring-2 ring-foreground/g)).toHaveLength(2)
+    expect(out).not.toContain(d.combine.bagUsedLabel)
+    // 다른 등급 묶음(Common 3 + Mystic 6)은 흐린 비활성
+    expect(out.match(/opacity-40/g)).toHaveLength(9)
   })
 
-  it('등급 고정 보기: Mystic을 첫 재료로 담으면 Mystic 안내 한 줄과 Mystic 셀만 나온다', () => {
-    const out = render(buildTierUpSheet(groups, [mystic6[0], null, null, null, null, null]))
-    expect(out).toContain('지금은 Mystic 아이템 배지만 넣을 수 있어요')
-    expect(out).not.toContain('Rare')
-    expect(out.split(d.combine.bagUsedLabel)).toHaveLength(2)
-    expect(out.match(/배지 m\d/g)).toHaveLength(6)
+  it('첫 재료를 고르기 전에는 안내 줄이 없다', () => {
+    expect(render(buildTierUpSheet(groups, EMPTY_SLOTS))).not.toContain('아이템 배지만 넣을 수 있어요')
   })
 
   it('비어 있음: 안내 문구와 아이콘만 나온다', () => {

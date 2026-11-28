@@ -8,6 +8,7 @@ import type { BadgeRarity } from '@/types/database'
  * 티켓 20261110_2150부터 인벤토리·컬렉션·배지 목록과 같은 `BadgeGridCard` 레이아웃으로 그린다(캔버스 «JAM! 바텀시트»).
  *
  * - `active`: 탭해서 담을 수 있음 — 카드가 버튼이다
+ * - `selected`: 등급 UP 시트에서 고른 카드 — 컬러 그림에 블랙 링이 켜지고 눌려 있다(aria-pressed). 다시 누르면 빠진다. 칩은 없다(티켓 20261128_1203)
  * - `used`: 다른 칸에 이미 담음 — 눌리지 않고, 그림이 그레이(흑백·흐림)이며 이름 아래 가운데에 «추가됨» 칩이 붙는다
  *   (2026-11-12 사용자 지시, 캔버스 «등급 올리기 · 배지를 한 장 담은 뒤». 이전에는 카드 아래 «사용 중» 글자였다)
  * - `needed`: 아예 보유하지 않음 — 눌리지 않고 카드가 흐리며 그림이 그레이스케일이다(미보유 전용)
@@ -15,25 +16,22 @@ import type { BadgeRarity } from '@/types/database'
  *
  * 등급 칩은 `rarity`를 줄 때만 그린다(Common이면 카드가 칩을 그리지 않는다). 등급 올리기 시트는 묶음 제목이 등급을 말하므로 주지 않는다.
  */
-export type BagItemState = 'active' | 'used' | 'needed' | 'inactive'
+export type BagItemState = 'active' | 'selected' | 'used' | 'needed' | 'inactive'
 
 export default function BagItemCell({
   name,
   imageUrl,
   rarity = null,
   state,
-  releasable = false,
   onClick,
 }: {
   name: string
   imageUrl: string | null
   rarity?: BadgeRarity | null
   state: BagItemState
-  /** 참이면 `used` 셀도 눌러 풀 수 있다(등급 UP 시트: 고른 배지를 다시 누르면 빠진다, 티켓 20261127_2225) */
-  releasable?: boolean
   onClick: () => void
 }) {
-  const active = state === 'active'
+  const pressable = state === 'active' || state === 'selected'
   const className = [
     'w-full',
     state === 'needed' || state === 'inactive' ? 'opacity-40' : '',
@@ -48,7 +46,9 @@ export default function BagItemCell({
       imageUrl={imageUrl}
       rarity={rarity}
       earned={state !== 'needed' && state !== 'used'}
-      onClick={active || (releasable && state === 'used') ? onClick : undefined}
+      selected={state === 'selected'}
+      pressed={state === 'selected'}
+      onClick={pressable ? onClick : undefined}
     >
       {state === 'used' && (
         <div className="flex justify-center">
