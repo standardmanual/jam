@@ -390,7 +390,7 @@ describe('캡슐 소식 — 과거 행 표시 (capsule_nearly_full·capsule_jam_
   it('잼이 쌓이지 않았던 소식도 «캡슐» 없는 고정 문장이고 굵은 글자가 없다', () => {
     const html = render([BLOCKED])
 
-    expect(visibleText(html)).toContain('인벤토리 빈칸이 모자라 받지 못한 보상이 2개 있었어요. 그때 들어온 잼은 쌓이지 않았어요')
+    expect(visibleText(html)).toContain('인벤토리 빈칸이 모자라 받지 못한 보상이 2개 있었어요. 그때 들어온 잼은 모이지 않았어요')
     expect(visibleText(html)).not.toContain('캡슐')
     expect(html).not.toContain('<strong')
   })

@@ -13,7 +13,7 @@ import { CHAPTER_REWARD_ISSUE_ROUTE } from '@/lib/chapter/reward/route'
 import { SYNC_ISSUE_ROUTE } from '@/lib/drop-engine/syncIssueRun'
 
 describe('resolveObtainRoute', () => {
-  it('발급 기록의 경로가 캡슐이면 obtained_by가 drop이어도 «잼으로 받은 보상»이다', () => {
+  it('발급 기록의 경로가 캡슐이면 obtained_by가 drop이어도 «이전 잼 보상»이다', () => {
     expect(resolveObtainRoute('drop', 'capsule')).toBe('capsule')
     expect(resolveObtainRoute('system_event', 'capsule')).toBe('capsule')
   })
@@ -59,7 +59,7 @@ describe('resolveObtainRoute', () => {
 
 describe('받은 경로 문구', () => {
   it('경로마다 맥락과 행위가 함께 읽히는 문구다', () => {
-    expect(d.inventory.obtainByCapsule).toBe('잼으로 받은 보상')
+    expect(d.inventory.obtainByCapsule).toBe('이전 잼 보상')
     expect(d.inventory.obtainByChapterReward).toBe('챕터 오름 보상')
     expect(d.inventory.obtainByCapsule).not.toContain('캡슐')
     expect(d.inventory.obtainByDrop).toBe('활동 동기화 드랍')

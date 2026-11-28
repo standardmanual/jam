@@ -705,7 +705,7 @@ describe('④ 미션', () => {
 
 describe('과거 캡슐 소식 (티켓 20261028_1734 3회, 문구 개정 20261127_1737 Q-f)', () => {
   const HELD = '인벤토리 빈칸이 모자라 받지 못한 보상이 1개 있었어요'
-  const BLOCKED = '인벤토리 빈칸이 모자라 받지 못한 보상이 2개 있었어요. 그때 들어온 잼은 쌓이지 않았어요'
+  const BLOCKED = '인벤토리 빈칸이 모자라 받지 못한 보상이 2개 있었어요. 그때 들어온 잼은 모이지 않았어요'
 
   it('capsule_nearly_full: 단계와 상관없이 «캡슐»·퍼센트 없는 고정 문장이다', () => {
     for (const payload of [{ stage: 70 }, { stage: 80 }, { stage: 90 }, {}, { stage: 50 }, { stage: 'x' }, { stage: null }]) {
