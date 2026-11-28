@@ -114,7 +114,7 @@ code:
 | `--text-2xl--line-height` | `calc(2 / 1.5)` | 〃 | `text-2xl` | 1 | 88 | 0 | 84 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-loose` | `1.6` | 〃 | `leading-loose` | 0 | 2 | 0 | 1 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--leading-reading` | `1.75` | 〃 | `leading-reading` | 0 | 10 | 0 | 4 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5745 | 0 | 461 | 0 | — |
+| `--spacing` | `0.25rem` | 〃 | `p-4·gap-2 등 간격 클래스 전부` | 0 | 5748 | 0 | 461 | 0 | — |
 | `--breakpoint-sm` | `40rem` | 〃 | `sm:` | 0 | 75 | 0 | 27 | 0 | — |
 | `--breakpoint-md` | `48rem` | 〃 | `md:` | 0 | 173 | 0 | 87 | 0 | — |
 | `--breakpoint-lg` | `64rem` | 〃 | `lg:` | 0 | 35 | 0 | 22 | 0 | — |
@@ -178,7 +178,7 @@ code:
 | `--card-bg` | `var(--base-white)` | `#ffffff` | `*-card-bg` | 9 | 10 | 0 | 18 | 2 | — |
 | `--btn-secondary` | `var(--base-neutral-200)` | `#e5e5e5` | `*-btn-secondary` | 1 | 4 | 0 | 3 | 1 | — |
 | `--background-inverse` | `var(--base-neutral-900)` | `#171717` | `*-background-inverse` | 14 | 14 | 0 | 20 | 3 | — |
-| `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 14 | 0 | 21 | 2 | — |
+| `--surface` | `var(--base-white)` | `#ffffff` | `*-surface` | 17 | 15 | 0 | 21 | 2 | — |
 | `--surface-on-inverse` | `color-mix(in srgb, var(--snow) 15%, transparent)` | `color-mix(in srgb, #fcfcfc 15%, transparent)` | `*-surface-on-inverse` | 6 | 0 | 0 | 3 | 2 | — |
 | `--foreground` | `var(--base-neutral-900)` | `#171717` | `*-foreground` | 77 | 598 | 2 | 221 | 6 | — |
 | `--muted` | `var(--base-neutral-500)` | `#737373` | `*-muted` | 39 | 247 | 1 | 143 | 2 | — |

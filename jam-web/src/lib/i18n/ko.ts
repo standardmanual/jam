@@ -489,7 +489,7 @@ export const ko = {
   /** 인벤토리 목록/상세 */
   inventory: {
     title: '인벤토리',
-    combineButton: '믹스하기',
+    combineButton: '믹스',
     // §1.3 "인벤토리" 항목 — 내부 명칭 「슬롯」은 사용자 노출 화면에 쓰지 않는다 (티켓 20260915_2243)
     // 20260916_0844: 슬래시 앞뒤 공백 제거(§3 표기 규칙, "Lv.3" 등과 통일)
     emptyTitle: '아직 아이템이 없어요',
@@ -1775,7 +1775,7 @@ export const ko = {
     title: '믹스하기',
     /** 레시피 탐색(초기 화면) 검색 입력 placeholder(티켓 20260917_1655) */
     searchPlaceholder: '레시피 검색',
-    combineButton: '믹스하기',
+    combineButton: '믹스',
     /** §5.3 처리 중 상태 — 문장·버튼 모두 기본형(동사형)을 쓴다 */
     combineButtonLoading: '믹스하는 중',
     /** 레시피 행·요약 바에 쓰는 슬롯 개수 표시(티켓 20260917_1655) */

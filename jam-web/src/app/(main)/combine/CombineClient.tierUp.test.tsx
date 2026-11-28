@@ -96,6 +96,14 @@ vi.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ toast: toastMock }),
 }))
 
+// 앱 안 히스토리 판정은 jsdom 없이 못 쓰므로 주소 모의의 index로 대신한다(티켓 20261128_1309)
+vi.mock('@/lib/appHistory', () => ({
+  goBackOrPush: (_router: unknown, href: string) => {
+    if (navMock.state.index > 0) navMock.back()
+    else navMock.push(href)
+  },
+}))
+
 import { markOpenedByPush } from '@/lib/combine/navigation'
 import CombineClient, { toTierUpRevealBadges, type InventoryItemWithBadge } from './CombineClient'
 
@@ -105,7 +113,6 @@ beforeEach(() => {
   markOpenedByPush(false)
 })
 import TierUpPanel from './TierUpPanel'
-import { ListRow } from '@/components/ui/ListRow'
 import TopNav from '@/components/ui/TopNav'
 import BadgeRevealOverlay from '@/components/BadgeRevealOverlay'
 import { d } from '@/lib/i18n'
@@ -154,41 +161,16 @@ const DEFAULT_ITEMS = [...RARE6, ...many('c', 'common', 3), ...MYSTIC6]
 const FULL = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6']
 const MYSTIC_FULL = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']
 
-describe('등급 UP 입구 (탐색 화면)', () => {
-  it('검색창보다 위에 있고 아이콘 없이 제목과 부제가 보인다', () => {
+describe('믹스 화면에는 등급 UP 입구 행이 없다 (티켓 20261128_1309)', () => {
+  it('입구는 인벤토리 믹스 버튼 옆으로 옮겨져 목록 화면에 등급 UP 글자와 부제가 없다', () => {
     const html = renderToStaticMarkup(
       <CombineClient items={[]} publicRecipes={[TEST_RECIPE]} ownedConditionBadgeIds={[]} />,
     )
-    expect(html).toContain('등급 UP')
-    expect(html).toContain('같은 등급 6개를 넣고 새 아이템 배지 1개를 받아요')
-    expect(html.indexOf('등급 UP')).toBeLessThan(html.indexOf(d.combine.searchPlaceholder))
-    // 오른쪽 화살표(chevron)만 있고 lead(왼쪽 아이콘 칸)와 슬롯 개수 칩은 없다 — 검색창 위 입구 구간만 본다
-    const entryHtml = html.slice(0, html.indexOf(d.combine.searchPlaceholder))
-    expect(entryHtml).not.toContain('class="ds-list-row-lead"')
-    expect(entryHtml).toContain('data-interactive="true"')
-    expect(entryHtml).toMatch(/aria-hidden="true" style="[^"]*color:var\(--muted\)"><svg/)
-    // 제목은 굵게(700)다
-    expect(entryHtml).toMatch(/font-weight:700[^"]*">등급 UP</)
-  })
-
-  it('레시피가 하나도 없어도 입구는 남는다', () => {
-    const html = renderToStaticMarkup(<CombineClient items={[]} publicRecipes={[]} ownedConditionBadgeIds={[]} />)
-    expect(html).toContain('등급 UP')
-    expect(html).toContain(d.combine.noRecipes)
-  })
-
-  it('입구 부제는 최대 2줄이고, 한국어 줄바꿈은 ListRow의 keep-all이 맡는다', () => {
-    const html = renderToStaticMarkup(<CombineClient items={[]} publicRecipes={[]} ownedConditionBadgeIds={[]} />)
-    const subtitle = html.match(/<span style="[^"]*">같은 등급 6개를 넣고 새 아이템 배지 1개를 받아요<\/span>/)
-    expect(subtitle).not.toBeNull()
-    // 2줄 제한(-webkit-line-clamp:2)이고 한 줄 말줄임(nowrap·ellipsis)이 아니다
-    expect(subtitle![0]).toContain('-webkit-line-clamp:2')
-    expect(subtitle![0]).not.toContain('text-overflow:ellipsis')
-    expect(subtitle![0]).toContain('text-wrap:balance')
-    expect(html).toContain('word-break:keep-all;overflow-wrap:break-word')
+    expect(html).not.toContain('등급 UP')
+    expect(html).not.toContain('같은 등급 6개를 넣고 새 아이템 배지 1개를 받아요')
+    expect(html).toContain(d.combine.searchPlaceholder)
   })
 })
-
 
 describe('CombineClient 등급 UP 흐름', () => {
   beforeEach(() => {
@@ -227,11 +209,11 @@ describe('CombineClient 등급 UP 흐름', () => {
       if (found) (found.props.stageRef as { current: unknown }).current = stage
       return tree
     }
-    const entry = (tree: ReactNode) => findAll(tree, (el) => el.type === ListRow)[0]
     const nav = (tree: ReactNode) => findAll(tree, (el) => el.type === TopNav)[0]
     const overlay = (tree: ReactNode) => findAll(tree, (el) => el.type === BadgeRevealOverlay)[0]
     const openTierUp = () => {
-      ;(entry(render()).props.onClick as () => void)()
+      // 인벤토리의 «등급 UP» 링크가 하는 이동을 주소 모의로 흉내 낸다
+      navMock.push('/combine?view=tier-up')
       return render()
     }
     const pick = (id: string) => (panel(render()).props.onPick as (id: string) => void)(id)
@@ -257,7 +239,7 @@ describe('CombineClient 등급 UP 흐름', () => {
       props.items = next
     }
     const outcomes = () => stage.settle.mock.calls.map((call) => call[0] as StageOutcome)
-    return { render, panel, entry, nav, overlay, openTierUp, pick, openSheet, fill, flush, submitAll, setItems, stage, outcomes }
+    return { render, panel, nav, overlay, openTierUp, pick, openSheet, fill, flush, submitAll, setItems, stage, outcomes }
   }
 
   type SheetShape = { kind: string; locked: string | null; groups: { rarity: string; cells: { item: { id: string }; state: string }[] }[] }
@@ -282,7 +264,7 @@ describe('CombineClient 등급 UP 흐름', () => {
     resultBadges: [{ id: 'b1', name: '새 배지', rarity: 'epic', imageUrl: 'https://example.com/b1.png' }],
   }
 
-  it('입구를 누르면 TopNav가 투명 배경의 «등급 UP»이 되고 가차머신 화면이 열리며, 뒤로가기는 탐색 화면으로 돌아온다', () => {
+  it('등급 UP 주소로 들어오면 TopNav가 투명 배경의 «등급 UP»이 되고 가차머신 화면이 열리며, 뒤로가기는 앞 화면으로 돌아온다', () => {
     const screen = createScreen()
     const explore = screen.render()
     expect(screen.nav(explore).props.title).toBe(d.combine.title)
@@ -294,20 +276,17 @@ describe('CombineClient 등급 UP 흐름', () => {
     expect(screen.nav(opened).props.title).toBe('등급 UP')
     expect(screen.nav(opened).props.headerStyle).toMatchObject({ background: 'transparent' })
     expect(screen.panel(opened)).toBeDefined()
-    expect(screen.entry(opened)).toBeUndefined()
 
     ;(screen.nav(opened).props.onBack as () => void)()
     const back = screen.render()
     expect(screen.nav(back).props.title).toBe(d.combine.title)
     expect(screen.nav(back).props.headerStyle).toBeUndefined()
     expect(screen.panel(back)).toBeUndefined()
-    expect(screen.entry(back)).toBeDefined()
   })
 
   it('받지 않은 결과가 있어도 입구는 눌리고, 막는 것은 «배지 넣기»뿐이며 6개를 골라도 제출하지 않는다', async () => {
     const fetchMock = stubFetch({})
     const screen = createScreen({ pendingCount: 2 })
-    expect(typeof screen.entry(screen.render()).props.onClick).toBe('function')
     const opened = screen.openTierUp()
     expect(screen.panel(opened).props.pendingBlocked).toBe(true)
     const filled = await screen.submitAll()
