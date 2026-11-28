@@ -18,6 +18,9 @@ code:
   - "jam-web/src/lib/chapter/signup-reward.ts"
   - "jam-web/src/app/api/onboarding/complete/route.ts"
   - "jam-web/src/components/chapter/ChapterLine.tsx"
+  - "jam-web/src/components/chapter/ChapterGaugeSection.tsx"
+  - "jam-web/src/app/(main)/[username]/page.tsx"
+  - "jam-web/src/app/(main)/profile/ProfileClient.tsx"
   - "jam-web/src/lib/admin/user-chapter-view.ts"
   - "jam-web/src/app/admin/users/[id]/UserChapterSection.tsx"
   - "jam-web/src/app/(main)/notifications/NotificationsClient.tsx"
@@ -41,7 +44,7 @@ code:
 3. 프로필이 쓸 읽기 함수 둘.
 4. 위 읽기 함수의 응답 모양 규칙(점수 숫자를 싣지 않는다).
 
-화면에는 두 가지가 있다(7절). 프로필의 챕터 줄(내 프로필, 다른 유저 프로필)과 소식 화면의 오름 소식이다. 챕터가 올라도 전체 화면 축하 카드는 뜨지 않는다(7.2절).
+화면에는 두 가지가 있다(7절). 프로필의 챕터 표시(내 프로필은 게이지 카드, 다른 유저 프로필은 한 줄)와 소식 화면의 오름 소식이다. 챕터가 올라도 전체 화면 축하 카드는 뜨지 않는다(7.2절).
 챕터 전용 API 라우트는 없다.
 어드민 화면은 유저 상세의 챕터 구역 하나이며 9절에 있다.
 
@@ -129,26 +132,27 @@ code:
 화면은 서버가 읽은 값을 그대로 그린다. 클라이언트에서 점수를 계산하지 않고, 어떤 화면에도 점수 숫자를 그리지 않는다(운영 로직 12.3절).
 화면 문구는 `d.chapter`(`lib/i18n/ko.ts`)에 있고 용어는 «챕터»다([UX 라이팅 가이드](../../writing/UX_WRITING_GUIDELINE.md) 1.3절).
 
-### 7.1 프로필의 챕터 줄
+### 7.1 프로필의 챕터 표시
 
-프로필 서버 페이지(`app/(main)/[username]/page.tsx`)가 읽어 `ProfileClient`로 내린다. 한 컴포넌트(`ChapterLine`)가 두 모양을 맡는다.
+프로필 서버 페이지(`app/(main)/[username]/page.tsx`)가 읽어 `ProfileClient`로 내린다. 내 프로필과 다른 유저 프로필의 모양이 다르다.
 
 | 어디 | 읽는 함수 | 모양 |
 |---|---|---|
-| 내 프로필 | `getMyChapter` | 캡슐 위젯 바로 위에 «챕터 3» 줄, 오른쪽에 «다음 챕터까지», 아래에 게이지(`ProgressBar` 기본형, 숫자 없음). `[챕터 줄(막대 포함)][캡슐 게이지][안내 영역]` 묶음의 간격은 16이다(티켓 20261028_1739 3회, 이전 8) |
-| 다른 유저 프로필 | `getPublicChapter` | 헤더 아래 전폭 한 줄 «트라이브 · 챕터 3». 게이지 없음 |
+| 내 프로필 | `getMyChapter`, `readCapsuleReceiveBlocked`(대기 보상 정리 `settleAfterSlotsFreed` 뒤) | 헤더와 탭 사이에 홈과 같은 챕터 게이지 카드(`ChapterGaugeSection`, 티켓 20261127_1736 C6). 막힘이면 카드 바로 아래에 막힘 안내 카드가 이어 붙는다. 헤더에는 «트라이브 · 챕터 N» 줄이 없고 «편집» 버튼만 행 오른쪽 끝에 남는다 |
+| 다른 유저 프로필 | `getPublicChapter` | 헤더 아래 전폭 한 줄 «트라이브 · 챕터 3»(`ChapterLine`). 게이지 없음 |
 
-| 상태 | 내 프로필 | 다른 유저 프로필 |
+| 상태 | 내 프로필(카드) | 다른 유저 프로필(줄) |
 |---|---|---|
-| 챕터 있음 | «챕터 3» | «트라이브 · 챕터 3» |
-| 트라이브 없음 | 해당 없음 | «챕터 3»만 (트라이브 조각을 뺀다) |
-| 마지막 챕터(`nextChapterNo` null) | 줄만 있고 «다음 챕터까지»와 게이지가 없다. «마지막» 같은 문구도 두지 않는다(챕터가 늘 수 있다) | 해당 없음 |
-| 챕터 없음 | **줄이 없다.** 안내 줄도 «다시 시도» 버튼도 없다 | 트라이브가 있으면 트라이브 조각만, 없으면 줄이 없다 |
-| 읽지 못함(`ok: false`) | **줄이 없다.** 챕터 없음과 화면에서 구분되지 않고 새로 고침이 유일한 재시도다(사용자 결정 4) | 줄이 없다 |
+| 챕터 있음 | 트라이브 이름, CHAPTER 번호, JAM 칩 게이지, 필요 잼 | «트라이브 · 챕터 3» |
+| 트라이브 없음 | 이름 조각을 뺀다 | «챕터 3»만 (트라이브 조각을 뺀다) |
+| 마지막 챕터(`requiredJam` null) | 채움 가득, 필요 잼 줄은 같은 높이로 비운다 | 해당 없음 |
+| 챕터 없음 | **카드도 막힘 카드도 없고** 래퍼도 DOM에 없어 빈 간격이 생기지 않는다 | 트라이브가 있으면 트라이브 조각만, 없으면 줄이 없다 |
+| 읽지 못함 | 카드와 같은 높이의 오류 블록과 «다시 시도»(`router.refresh()`). 막힘 카드는 그 아래에 붙는다 | 줄이 없다 |
 
-- **내 진행은 타인에게 실리지 않는다.** 내 프로필만 `getMyChapter`를 부르고 `chapterInitial` prop을 내린다(캡슐 `capsuleInitial`과 같은 방식). 다른 유저 프로필은 `getPublicChapter`만 부르고 `publicChapter` prop을 내려, 진행·다음 챕터 필드가 조회도 전달도 되지 않는다. `[username]/__tests__/page.test.tsx`가 직렬화한 prop으로 고정한다.
-- 긴 트라이브 이름과 챕터 라벨은 줄여서(`truncate`) 320px에서 넘치지 않게 한다. «다음 챕터까지»는 줄바꿈하지 않는다.
-- 줄은 서버가 그린 값이라 로딩 상태가 없다.
+- **내 진행은 타인에게 실리지 않는다.** 내 프로필만 정리·`getMyChapter`·`readCapsuleReceiveBlocked`를 부르고 `chapter`·`blocked` prop을 내린다. 다른 유저 프로필은 `getPublicChapter`만 부르고 `publicChapter` prop을 내려, 진행(`chapterJam`·`requiredJam`)·막힘 필드가 조회도 전달도 되지 않는다. `[username]/__tests__/page.test.tsx`가 직렬화한 prop으로 고정한다.
+- 막힘 카드는 프로필에 이용 정지 배너가 없어 정지 여부와 상관없이 `readCapsuleReceiveBlocked` 결과만 따른다. 조회가 던지면 챕터는 오류 블록으로, 막힘은 안내만 생략한다.
+- 다른 유저 줄의 긴 트라이브 이름은 줄여서(`truncate`) 320px에서 넘치지 않게 한다.
+- 카드와 줄은 서버가 읽은 값이라 로딩 상태가 없다.
 
 ### 7.2 챕터 오름 축하 카드는 없다 (티켓 20261106_1104)
 
@@ -159,7 +163,7 @@ code:
 
 ### 7.3 한계
 
-- **«읽지 못함»과 «챕터 없음»이 내 프로필에서 구분되지 않는다**(7.1절).
+- 다른 유저 프로필에서는 «읽지 못함»과 «챕터 없음»이 구분되지 않는다(7.1절). 내 프로필은 읽지 못함이 오류 블록으로 구분된다.
 - 챕터 오름을 본인에게 바로 알리는 화면은 없다. 소식 화면을 열거나 프로필을 열어야 보인다.
 
 ### 7.5 소식 화면 (티켓 20261019_1317 3회)
