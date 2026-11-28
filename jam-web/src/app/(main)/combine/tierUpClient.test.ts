@@ -249,7 +249,6 @@ describe('tierUpRarityNote / tierUpResultMessage', () => {
       tierUpResultMessage('rare', [{ rarity: 'rare' }]),
       tierUpResultMessage('rare', [{}]),
       ...d.combine.tierUp.luck,
-      d.combine.tierUp.entrySubtitle,
     ].join('\n')
     expect(all).not.toMatch(/%|퍼센트/)
     expect(all).not.toContain('등급이 올랐어요')

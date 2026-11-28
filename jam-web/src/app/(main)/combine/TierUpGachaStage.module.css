@@ -321,7 +321,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(var(--cy) + 112px);
+  top: calc(var(--cy) + var(--meta-offset));
   display: flex;
   flex-direction: column;
   align-items: center;

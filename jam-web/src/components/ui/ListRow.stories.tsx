@@ -274,12 +274,12 @@ export const PointHistory: Story = {
   },
 };
 
-/** 믹스 화면 위쪽 «등급 올리기» 입구 행 — 제목과 두 줄 부제, 쉐브론 */
+/** 제목과 두 줄 부제, 쉐브론이 있는 행 */
 export const EntryWithMeta: Story = {
   name: '부제 행',
   args: {
     title: d.combine.tierUp.title,
-    meta: d.combine.tierUp.entrySubtitle,
+    meta: '같은 등급 6개를 넣고 새 아이템 배지 1개를 받아요',
     metaLines: 2,
     chevron: true,
     onClick: () => {},

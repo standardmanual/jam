@@ -122,7 +122,7 @@ function shuffled<T>(list: T[]): T[] {
     .map(([, v]) => v)
 }
 
-/** 결과 글자 묶음이 배지 중심 아래로 떨어지는 거리(`.meta`의 top 오프셋과 같다) */
+/** 결과 글자 묶음이 배지 중심 아래로 떨어지는 거리 — 결과 영역에 `--meta-offset`으로 넘겨 `.meta`의 top이 같은 값을 쓴다(티켓 20261128_1249) */
 const META_OFFSET = 112
 /** 설명이 길어 배지를 올릴 때 중심이 내려가지 않을 하한 — 배지가 화면 위로 잘리지 않게 한다 */
 const MIN_CY = 110
@@ -676,7 +676,7 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
           role="region"
           aria-label={d.combine.tierUp.resultRegion}
           className={[styles.reveal, fade].join(' ')}
-          style={{ '--cy': `${cy}px`, '--rc': rarityVar } as CSSProperties}
+          style={{ '--cy': `${cy}px`, '--meta-offset': `${META_OFFSET}px`, '--rc': rarityVar } as CSSProperties}
         >
           {/* 결과가 나왔다는 알림은 한 번만 읽힌다 */}
           <p role="status" className="sr-only">
