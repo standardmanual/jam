@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { UserRow } from '@/types/database'
@@ -23,7 +22,6 @@ import {
   type StravaHomeView,
 } from '@/lib/strava/connection-state'
 import { d, t } from '@/lib/i18n'
-import { SearchIcon } from '@/components/ui/icons'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -117,23 +115,12 @@ export default async function HomePage() {
           정지는 홈의 다른 모든 것보다 먼저 읽혀야 해서 인사말 줄 위, 컨테이너의 첫 자식이다. */}
       {suspension && <SuspensionBanner reason={suspension.reason} suspendedAt={suspension.suspendedAt} />}
 
-      {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
-          전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
-          `/search` 페이지에서 계속 쓰인다. */}
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-base font-bold truncate">
-          {t(d.todayStatus.greeting, { name: displayName })}
-        </p>
-        <Link
-          href="/search"
-          aria-label={d.today.searchAriaLabel}
-          className="w-11 h-11 -mr-1 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
-        >
-          <span className="w-9 h-9 rounded-full bg-surface text-foreground flex items-center justify-center">
-            <SearchIcon className="w-4 h-4" />
-          </span>
-        </Link>
-      </div>
+      {/* 인사말 두 줄 (티켓 20261128_0900) — 첫 줄 «{이름}님», 둘째 줄 «오늘도 좋은 하루예요», 글자 크기는 이전 text-base의 2배 눈금(text-3xl).
+          검색 아이콘은 내 프로필의 팔로워·팔로잉 목록 위로 옮겼다. 검색 폼(UserSearchBar)은 `/search` 페이지에서 계속 쓰인다. */}
+      <p className="text-3xl font-bold">
+        <span className="block truncate">{t(d.todayStatus.greetingName, { name: displayName })}</span>
+        <span className="block">{d.todayStatus.greetingBody}</span>
+      </p>
 
       {/* 챕터 게이지 카드 (티켓 20261127_1735 C5b) — 인사말 줄 바로 아래, 오늘의 현황 위. 챕터가 없는 유저는 아무것도 그리지 않아 빈 간격도 없다.
           막힘이면 카드 아래에 안내 카드가 이어 붙는다(정지 중에는 없음). 감싸는 곳에 z-index를 주지 않는다(시트가 탭바에 가려진 2026-08-25 사고). */}

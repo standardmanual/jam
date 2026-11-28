@@ -104,8 +104,8 @@ code:
 | `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 965 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 965 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 138 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 138 | 0 | 83 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base` | `1rem` | 〃 | `text-base` | 12 | 137 | 0 | 85 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 137 | 0 | 82 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg--line-height` | `calc(1.75 / 1.125)` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xl` | `1.25rem` | 〃 | `text-xl` | 2 | 20 | 0 | 21 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -133,8 +133,8 @@ code:
 | `--container-5xl` | `64rem` | 〃 | `max-w-5xl` | 0 | 0 | 0 | 0 | 0 | — |
 | `--container-6xl` | `72rem` | 〃 | `max-w-6xl` | 0 | 1 | 0 | 1 | 0 | — |
 | `--container-7xl` | `80rem` | 〃 | `max-w-7xl` | 0 | 0 | 0 | 0 | 0 | — |
-| `--text-3xl` | `1.875rem` | 〃 | `text-3xl` | 1 | 33 | 0 | 32 | 0 | — |
-| `--text-3xl--line-height` | `calc(2.25 / 1.875)` | 〃 | `text-3xl` | 1 | 33 | 0 | 32 | 0 | — |
+| `--text-3xl` | `1.875rem` | 〃 | `text-3xl` | 1 | 34 | 0 | 33 | 0 | — |
+| `--text-3xl--line-height` | `calc(2.25 / 1.875)` | 〃 | `text-3xl` | 1 | 34 | 0 | 33 | 0 | — |
 | `--text-4xl` | `2.25rem` | 〃 | `text-4xl` | 0 | 2 | 0 | 2 | 0 | — |
 | `--text-4xl--line-height` | `calc(2.5 / 2.25)` | 〃 | `text-4xl` | 0 | 2 | 0 | 2 | 0 | — |
 | `--text-5xl` | `3rem` | 〃 | `text-5xl` | 0 | 2 | 0 | 2 | 0 | — |

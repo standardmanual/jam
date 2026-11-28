@@ -280,8 +280,10 @@ export const ko = {
    * today_cards CMS와 기능이 겹치지 않도록 큐레이션 없이 정적 안내만 담는다.
    */
   todayStatus: {
-    /** 압축 인사말. name은 표시 이름(닉네임/아이디) */
-    greeting: '{name}님, 오늘도 좋은 하루예요',
+    /** 인사말 첫 줄. name은 표시 이름(닉네임/아이디). 둘째 줄(greetingBody)과 줄을 나눠 그린다(티켓 20261128_0900) */
+    greetingName: '{name}님',
+    /** 인사말 둘째 줄 */
+    greetingBody: '오늘도 좋은 하루예요',
 
     // 좌: 진행(칩 레이블, 티켓 20261113_1452)
     /** 좌측 슬롯 카드 타이틀 레이블 — 3분기(strava_not_connected/progress/suggestion) 공통 (티켓 20260830_2121) */
