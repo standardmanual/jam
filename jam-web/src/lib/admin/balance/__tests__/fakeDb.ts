@@ -325,11 +325,19 @@ export function combinePolicyRow(overrides: Row = {}): Row {
 
 export const CHAPTER_DEFINITION_ROW_STAMP = '2026-10-22T01:20:00.5+00:00'
 
-const CHAPTER_DEFAULT_REQUIRED = [0, 1000, 2300, 3800, 5700, 8500, 11500, 15000, 19000, 23000]
+/** 옛 점수 열(`required_score`, 이 구역이 더는 읽지도 쓰지도 않는다)의 마이그레이션 221 시드. 행에 남겨 두고 건드리지 않는지 시험이 본다. */
+const CHAPTER_LEGACY_REQUIRED_SCORE = [0, 1000, 2300, 3800, 5700, 8500, 11500, 15000, 19000, 23000]
+/** `required_jam`의 마이그레이션 364 시드. 챕터 10은 NULL이다. */
+const CHAPTER_DEFAULT_REQUIRED_JAM = [870, 1120, 1260, 1600, 1980, 2205, 2700, 3300, 3960, null]
 
-/** `chapter_definitions` 챕터 1~10 행(마이그레이션 221 시드). 행마다 수정 시각을 따로 줄 수 있다. */
+/** `chapter_definitions` 챕터 1~10 행(마이그레이션 221·364 시드). 행마다 수정 시각을 따로 줄 수 있다. */
 export function chapterDefinitionRows(stamp: string = CHAPTER_DEFINITION_ROW_STAMP): Row[] {
-  return CHAPTER_DEFAULT_REQUIRED.map((required_score, index) => ({ chapter_no: index + 1, required_score, updated_at: stamp }))
+  return CHAPTER_DEFAULT_REQUIRED_JAM.map((required_jam, index) => ({
+    chapter_no: index + 1,
+    required_score: CHAPTER_LEGACY_REQUIRED_SCORE[index],
+    required_jam,
+    updated_at: stamp,
+  }))
 }
 
 export const ABUSING_ROW_STAMP = '2026-10-24T01:40:00.25+00:00'

@@ -102,8 +102,8 @@ code:
 | `--font-family-base` | `"Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif` | 〃 | — | 15 | 0 | 0 | 12 | 1 | — |
 | `--text-xs` | `0.75rem` | 〃 | `text-xs` | 17 | 834 | 0 | 228 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-xs--line-height` | `calc(1 / 0.75)` | 〃 | `text-xs` | 11 | 834 | 0 | 224 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 964 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
-| `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 964 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-sm` | `0.875rem` | 〃 | `text-sm` | 7 | 965 | 0 | 299 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
+| `--text-sm--line-height` | `calc(1.25 / 0.875)` | 〃 | `text-sm` | 4 | 965 | 0 | 298 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base` | `1rem` | 〃 | `text-base` | 12 | 137 | 0 | 86 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-base--line-height` | `calc(1.5 / 1)` | 〃 | `text-base` | 9 | 137 | 0 | 83 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
 | `--text-lg` | `1.125rem` | 〃 | `text-lg` | 0 | 61 | 0 | 39 | 1 | jam-theme.css는 이름만 알리고 값은 이 정의를 가리킴 |
@@ -469,7 +469,7 @@ code:
 | `--secondary` | `oklch(0.97 0.001 106.424)` | 〃 | `*-secondary` | 0 | 3 | 0 | 3 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--secondary-foreground` | `oklch(0.216 0.006 56.043)` | 〃 | `*-secondary-foreground` | 0 | 2 | 0 | 2 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--muted` | `oklch(0.97 0.001 106.424)` | 〃 | `*-muted` | 39 | 247 | 1 | 143 | 2 | 덮어쓰기 있음 ([data-admin-theme].dark) |
-| `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1010 | 0 | 249 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
+| `--muted-foreground` | `oklch(0.553 0.013 58.071)` | 〃 | `*-muted-foreground` | 0 | 1011 | 0 | 250 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent` | `oklch(0.216 0.006 56.043)` | 〃 | `*-accent` | 14 | 16 | 0 | 21 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--accent-foreground` | `oklch(0.985 0.001 106.423)` | 〃 | `*-accent-foreground` | 13 | 4 | 0 | 12 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |
 | `--destructive` | `oklch(0.577 0.245 27.325)` | 〃 | `*-destructive` | 0 | 116 | 0 | 35 | 1 | 덮어쓰기 있음 ([data-admin-theme].dark) |

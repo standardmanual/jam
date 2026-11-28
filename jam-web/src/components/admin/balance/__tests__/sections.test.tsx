@@ -54,7 +54,9 @@ import {
 import { BalanceSectionBody } from '../BalanceSectionBody'
 import { SHARED_VALUES_NOTICE_LINK, SHARED_VALUES_NOTICE_PREFIX, SharedValuesNotice } from '../CapsuleSection'
 import {
+  CHAPTER_LAST_NOTICE,
   CHAPTER_RISEN_NOTICE,
+  ChapterLastNotice,
   ChapterNotice,
   ChapterSection,
 } from '../ChapterSection'
@@ -432,20 +434,45 @@ describe('BalanceSectionBody — 컬렉션과 믹스 구역 (7-2 1회)', () => {
   })
 })
 
-describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
+describe('BalanceSectionBody — 챕터 구역 (7-2 2회, 티켓 20261127_1739 C9a에서 필요 잼으로 바뀜)', () => {
   const chapterHtml = async () => renderToStaticMarkup(await BalanceSectionBody({ binding: CHAPTER_BINDING })).replace(/<!-- -->/g, '')
+  const chapterScreen = async () =>
+    (await chapterHtml()) +
+    renderToStaticMarkup(
+      <>
+        <ChapterNotice />
+        <ChapterLastNotice />
+      </>
+    ).replace(/<!-- -->/g, '')
 
-  it('9칸의 입력(저장된 값)과 한 개 묶음 제목이 보이고, 합계 줄은 없다', async () => {
+  it('챕터 1~9의 입력 아홉 칸(저장된 필요 잼)과 한 개 묶음 제목이 보이고, 합계 줄은 없다', async () => {
     const out = await chapterHtml()
     expect([...out.matchAll(/<input /g)]).toHaveLength(9)
-    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['챕터별 필요 누적 점수'])
-    expect(out).toMatch(/id="balance-chapter-required:2"[^>]*value="1000"/)
-    expect(out).toMatch(/id="balance-chapter-required:10"[^>]*value="23000"/)
-    expect(out).not.toContain('id="balance-chapter-required:1"')
-    expect(out).toContain('챕터 10')
-    expect(out).toContain('기본값 23,000점')
+    expect([...out.matchAll(/<legend[^>]*>([^<]*)<\/legend>/g)].map((m) => m[1])).toEqual(['챕터별 필요 잼'])
+    const expected = [870, 1120, 1260, 1600, 1980, 2205, 2700, 3300, 3960]
+    expected.forEach((jam, index) => {
+      expect(out).toMatch(new RegExp(`id="balance-chapter-required_jam:${index + 1}"[^>]*value="${jam}"`))
+    })
+    // 챕터 10은 칸이 없다
+    expect(out).not.toContain('id="balance-chapter-required_jam:10"')
+    expect(out).toContain('기본값 3,960잼')
     expect(out).not.toContain('주간 상한')
     expect(out).not.toContain('role="status"')
+  })
+
+  it('챕터 10은 칸 없이 «필요한 잼이 없어요(마지막 챕터)»로만 보인다', () => {
+    expect(CHAPTER_LAST_NOTICE).toBe('챕터 10은 필요한 잼이 없어요(마지막 챕터).')
+    expect(renderToStaticMarkup(<ChapterLastNotice />).replace(/<!-- -->/g, '')).toContain(CHAPTER_LAST_NOTICE)
+    expect(CHAPTER_LAST_NOTICE).not.toContain('0잼')
+  })
+
+  it('챕터 구역 화면에 «캡슐»·«점수» 글자가 없다(안내·구역 설명·폼·칸 이름 모두)', async () => {
+    const out = await chapterScreen()
+    const description = (findBalanceSection('chapter')?.description ?? []).join(' ')
+    for (const text of [out, description]) {
+      expect(text).not.toContain('캡슐')
+      expect(text).not.toContain('점수')
+    }
   })
 
   it('읽기만 한다(쓰기 호출이 없다)', async () => {
@@ -460,17 +487,24 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
     expect(out).not.toContain('<form')
   })
 
+  it('챕터 1~9의 필요 잼이 NULL이면(정의 위반) 이 구역만 오류 카드가 된다', async () => {
+    db.tables.chapter_definitions = chapterDefinitionRows().map((row) => (row.chapter_no === 4 ? { ...row, required_jam: null } : row))
+    const out = await chapterHtml()
+    expect(out).toContain(BALANCE_LOAD_FAILED_MESSAGE)
+    expect(out).not.toContain('<form')
+  })
+
   it('표를 읽지 못해도 이 구역만 오류 카드가 된다', async () => {
     db.readErrors.chapter_definitions = 'boom'
     expect(await chapterHtml()).toContain(BALANCE_LOAD_FAILED_MESSAGE)
   })
 
-  it('안내에 «이미 오른 유저는 내려가지 않고 낮춘 기준은 다음 점수부터»가 있고, 걷은 점수 규칙 문구는 없다', () => {
+  it('안내에 «이미 오른 유저는 내려가지 않고, 잼을 모아 오르며 넘친 잼은 이월되고, 챕터 게이지 카드의 필요 잼으로 보인다»가 있다', () => {
     const out = renderToStaticMarkup(<ChapterNotice />).replace(/<!-- -->/g, '')
     expect(CHAPTER_RISEN_NOTICE).toContain('이미 오른 유저의 챕터는 내려가지 않아요')
-    expect(CHAPTER_RISEN_NOTICE).toContain('캡슐이 100%에 닿은 횟수로 오르고')
-    expect(CHAPTER_RISEN_NOTICE).toContain('«다음 챕터까지» 게이지에만 쓰여요')
-    expect(CHAPTER_RISEN_NOTICE).not.toContain('점수를 쌓')
+    expect(CHAPTER_RISEN_NOTICE).toContain('챕터는 잼을 모아 오르고, 넘친 잼은 다음 챕터로 이월돼요')
+    expect(CHAPTER_RISEN_NOTICE).toContain('챕터 게이지 카드에 필요한 잼으로 보여요')
+    expect(CHAPTER_RISEN_NOTICE).toContain('챕터 번호는 늘리거나 줄이지 않고 값만 바꿔요')
     expect(out).toContain(CHAPTER_RISEN_NOTICE)
     expect(out).not.toContain('U11')
     expect(out).not.toContain('포인트')
@@ -478,21 +512,24 @@ describe('BalanceSectionBody — 챕터 구역 (7-2 2회)', () => {
     expect(out).toMatch(/class="[^"]*break-keep[^"]*wrap-break-word/)
   })
 
-  it('구역 설명에 챕터 1은 0이고 번호는 늘리거나 줄이지 않는다고 적혀 있고, 활동별 점수 규칙 설명은 없다', () => {
+  it('구역 설명에 필요 잼·이월·챕터 10 없음·번호 불변이 적혀 있고, 옛 점수 설명은 없다', () => {
     const description = (findBalanceSection('chapter')?.description ?? []).join(' ')
-    expect(description).toContain('챕터 1은 퀘스트를 마치면 얻어서 필요한 점수가 0')
-    expect(description).toContain('늘리거나 줄이지 않고 값만 바꾸며')
-    expect(description).toContain('앞 챕터보다 커야 해요')
-    expect(description).toContain('캡슐이 100%에 닿은 횟수로 올라요')
-    expect(description).toContain('«다음 챕터까지» 게이지에만 쓰이는')
-    expect(description).not.toContain('점수를 쌓')
+    expect(description).toContain('챕터 1~9에서 다음 챕터로 오르는 데 필요한 잼이에요')
+    expect(description).toContain('넘친 잼은 다음 챕터로 이월돼요')
+    expect(description).toContain('챕터 10은 마지막이라 필요한 잼이 없어요')
+    expect(description).toContain('늘리거나 줄이지 않고 값만 바꿔요')
+    expect(description).not.toContain('앞 챕터보다 커야 해요')
     expect(description).not.toContain('주간 상한')
   })
 
-  it('구역 본문은 안내, 폼 뼈대(챕터 구역 연결) 순서다', () => {
+  it('구역 본문은 안내, 챕터 10 읽기 줄, 폼 뼈대(챕터 구역 연결) 순서다', () => {
     const children = Children.toArray(ChapterSection().props.children) as ReactElement<{ binding?: unknown }>[]
-    expect(children.map((child) => child.type)).toEqual([ChapterNotice, BalanceSectionBody])
-    expect(children[1].props.binding).toBe(CHAPTER_BINDING)
+    expect(children.map((child) => child.type)).toEqual([ChapterNotice, ChapterLastNotice, BalanceSectionBody])
+    expect(children[2].props.binding).toBe(CHAPTER_BINDING)
+  })
+
+  it('«캡슐» 구역은 구역 배열에 그대로 남아 있다(걷는 일은 C10b)', () => {
+    expect(findBalanceSection('capsule')).toBeDefined()
   })
 })
 
