@@ -556,6 +556,9 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
 
   return (
     <div ref={stageEl} className={styles.stage}>
+      {/* 막힘 안내는 유리구 위에 글자로만 놓인다(사용자 지시 2026-11-28, 티켓 20261128_1311) */}
+      {idle && notice}
+
       <div ref={machineEl} className={styles.machine}>
         <div className={styles.dome}>
           <svg className={styles.layer} viewBox="0 0 256 256" aria-hidden="true">
@@ -667,8 +670,6 @@ export default function TierUpGachaStage({ ref, count, disabled, sheetOpen, onIn
           </div>
         </div>
       </div>
-
-      {idle && notice}
 
       {badge && (
         <div

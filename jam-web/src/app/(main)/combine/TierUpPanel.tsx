@@ -3,7 +3,6 @@
 import { EmptyState } from '@/components/ui/EmptyState'
 import { RarityBadge } from '@/components/ui/RarityBadge'
 import BottomSheet from '@/components/ui/BottomSheet'
-import InlineNotice from '@/components/ui/InlineNotice'
 import { ArrowDownIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import type { Ref } from 'react'
@@ -21,7 +20,7 @@ import {
  *
  * 그리기만 한다. 고른 배지·시트 열림 상태와 `/api/combine/tier-up` 호출은 `CombineClient`가 갖는다(`PendingResultsSheet`와 같은 분리).
  * 가운데에 가차머신 무대(`TierUpGachaStage`)가 있고, «배지 넣기»가 재료 시트(`BottomSheet` + `TierUpSheetContent`)를 연다.
- * 머신 아래에 막힘 안내(`pendingBlockedNote`·`noEnoughNotice`)가 놓인다. 설명 문장·슬롯·제출 버튼·«넣은 배지는 사라져요»는 없다.
+ * 머신(유리구) 위에 막힘 안내(`pendingBlockedNote`·`noEnoughNotice`)가 카드 배경 없이 가운데 정렬 글자로 놓인다(티켓 20261128_1311). 설명 문장·슬롯·제출 버튼·«넣은 배지는 사라져요»는 없다.
  * «확률 안내» 링크는 두지 않는다(사용자 지시 2026-11-10, 티켓 20261110_1510). 확률 안내는 푸터 링크로만 들어간다.
  * 받을 컬렉션은 유저가 고르지 않으므로 행도 시트도 없다(티켓 20261108_2322, 사용자 결정 2026-11-08).
  * 확률 숫자·퍼센트는 어디에도 쓰지 않는다(UX 라이팅 §3.3).
@@ -30,6 +29,8 @@ import {
 /** 한국어 줄바꿈(UX 라이팅 §3.2) — 문단과 짧은 안내 모두 `text-balance`를 쓴다 */
 const TEXT = 'text-sm text-foreground break-keep wrap-break-word text-balance'
 const PARAGRAPH = `m-0 ${TEXT}`
+/** 가차머신 무대의 막힘 안내 — 어두운 바탕 위 흰 글자, 카드 배경 없이 가운데 정렬(티켓 20261128_1311) */
+const NOTICE = 'm-0 text-sm text-snow text-center break-keep wrap-break-word text-balance'
 
 interface Props<T extends TierUpMaterial> {
   stageRef: Ref<TierUpGachaHandle>
@@ -108,10 +109,10 @@ export default function TierUpPanel<T extends TierUpMaterial>({
   onHandoff,
 }: Props<T>) {
   const notices = (pendingBlocked || showNoEnoughNotice) && (
-    <div id="tier-up-notices" className="flex w-full flex-col gap-2">
+    <div id="tier-up-notices" role="status" className="flex w-full flex-col gap-2">
       {/* «배지 넣기»가 막힌 이유 — 말 없이 막지 않는다 */}
-      {pendingBlocked && <InlineNotice>{d.combine.tierUp.pendingBlockedNote}</InlineNotice>}
-      {showNoEnoughNotice && <InlineNotice>{d.combine.tierUp.noEnoughNotice}</InlineNotice>}
+      {pendingBlocked && <p className={NOTICE}>{d.combine.tierUp.pendingBlockedNote}</p>}
+      {showNoEnoughNotice && <p className={NOTICE}>{d.combine.tierUp.noEnoughNotice}</p>}
     </div>
   )
   return (
