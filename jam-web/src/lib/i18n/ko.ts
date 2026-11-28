@@ -1775,7 +1775,7 @@ export const ko = {
     title: '믹스하기',
     /** 레시피 탐색(초기 화면) 검색 입력 placeholder(티켓 20260917_1655) */
     searchPlaceholder: '레시피 검색',
-    combineButton: '믹스',
+    combineButton: '믹스하기',
     /** §5.3 처리 중 상태 — 문장·버튼 모두 기본형(동사형)을 쓴다 */
     combineButtonLoading: '믹스하는 중',
     /** 레시피 행·요약 바에 쓰는 슬롯 개수 표시(티켓 20260917_1655) */

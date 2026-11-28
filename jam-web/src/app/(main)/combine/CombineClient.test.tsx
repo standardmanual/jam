@@ -1102,6 +1102,8 @@ describe('CombineClient — 슬롯 칸 (티켓 20261110_1115)', () => {
     const button = s.cta(s.render())
     expect(findAll(button, (el) => el.type === MixingBowlIcon)).toHaveLength(0)
     expect(textOf(button)).toBe(d.combine.combineButton)
+    // 인벤토리 버튼만 «믹스»로 줄였다 — 레시피 상세는 «믹스하기» 그대로다(티켓 20261128_1309)
+    expect(textOf(button)).toBe('믹스하기')
     // 로딩이 아닐 때는 스피너도 없다(스피너는 loading일 때만 나온다 — 로딩 상태 전환은 이 시험 틀로 만들 수 없다)
     const spinners = findAll(button, (el) => el.type === 'span' && String(el.props.className).includes('animate-spin'))
     expect(spinners).toHaveLength(0)
